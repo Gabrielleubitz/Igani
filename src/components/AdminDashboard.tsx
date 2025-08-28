@@ -48,6 +48,25 @@ export function AdminDashboard({
   useEffect(() => {
     setSettingsForm(settings);
   }, [settings]);
+
+  // Add escape key handler
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
+  // Handle click outside to close
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
   const [websiteForm, setWebsiteForm] = useState({
     title: '',
     description: '',
@@ -602,8 +621,19 @@ export function AdminDashboard({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex">
-      <div className="bg-white w-full max-w-7xl mx-auto my-4 rounded-2xl shadow-2xl overflow-hidden flex">
+    <div 
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex"
+      onClick={handleBackdropClick}
+    >
+      <div className="bg-white w-full max-w-7xl mx-auto my-4 rounded-2xl shadow-2xl overflow-hidden flex relative">
+        {/* Top-right close button for extra visibility */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition-all duration-200 z-20"
+          title="Close Admin Panel"
+        >
+          <X className="w-6 h-6" />
+        </button>
         {/* Sidebar */}
         <div className="w-64 bg-gray-900 text-white p-6">
           <div className="flex items-center space-x-2 mb-8">
@@ -638,12 +668,13 @@ export function AdminDashboard({
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col relative">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900 capitalize">{activeTab}</h1>
             <button
               onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 p-2"
+              className="text-gray-500 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition-all duration-200 z-10 relative"
+              title="Close Admin Panel"
             >
               <X className="w-6 h-6" />
             </button>
