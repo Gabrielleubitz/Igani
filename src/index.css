@@ -1,3 +1,39 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Performance optimizations for animations */
+* {
+  /* Force GPU acceleration for transforms and opacity changes */
+  will-change: auto;
+}
+
+/* Optimize for smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Improve animation performance */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    /* Enable hardware acceleration for commonly animated properties */
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+  
+  /* Optimize motion elements */
+  [data-framer-motion] {
+    transform-style: preserve-3d;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

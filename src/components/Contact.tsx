@@ -95,18 +95,20 @@ export function Contact({ settings, onSubmit }: ContactProps) {
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-100px" }}
             className="text-4xl font-bold mb-4"
+            style={{ willChange: 'transform, opacity' }}
           >
             Get In Touch
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-100px" }}
             className="text-xl text-slate-300 max-w-2xl mx-auto"
+            style={{ willChange: 'transform, opacity' }}
           >
             Ready to transform your digital presence? Let's discuss your project
           </motion.p>
@@ -116,17 +118,19 @@ export function Contact({ settings, onSubmit }: ContactProps) {
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.2, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-50px" }}
+            style={{ willChange: 'transform, opacity' }}
           >
             <h3 className="text-2xl font-bold mb-6">Contact Information</h3>
             <div className="space-y-6">
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.4 }}
-                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: 0.3, ease: "easeOut" }}
+                viewport={{ once: true, margin: "-50px" }}
                 className="flex items-center space-x-4"
+                style={{ willChange: 'transform, opacity' }}
               >
                 <Mail className="w-6 h-6 text-cyan-400" />
                 <div>
@@ -137,9 +141,10 @@ export function Contact({ settings, onSubmit }: ContactProps) {
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.5 }}
-                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: 0.35, ease: "easeOut" }}
+                viewport={{ once: true, margin: "-50px" }}
                 className="flex items-center space-x-4"
+                style={{ willChange: 'transform, opacity' }}
               >
                 <Phone className="w-6 h-6 text-cyan-400" />
                 <div>
@@ -150,9 +155,10 @@ export function Contact({ settings, onSubmit }: ContactProps) {
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.6 }}
-                viewport={{ once: true }}
+                transition={{ duration: 0.3, delay: 0.4, ease: "easeOut" }}
+                viewport={{ once: true, margin: "-50px" }}
                 className="flex items-center space-x-4"
+                style={{ willChange: 'transform, opacity' }}
               >
                 <MapPin className="w-6 h-6 text-cyan-400" />
                 <div>
@@ -166,8 +172,9 @@ export function Contact({ settings, onSubmit }: ContactProps) {
           <motion.div
             initial={{ opacity: 0, x: 30 }}
             whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.25, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-50px" }}
+            style={{ willChange: 'transform, opacity' }}
           >
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -246,12 +253,13 @@ export function Contact({ settings, onSubmit }: ContactProps) {
               )}
               
               <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.2 }}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-cyan-600 transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white px-8 py-3 rounded-lg hover:from-blue-700 hover:to-cyan-600 transition-all duration-200 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{ willChange: 'transform' }}
               >
                 <Send className="w-4 h-4" />
                 <span>{isSubmitting ? 'Sending...' : 'Send Message'}</span>

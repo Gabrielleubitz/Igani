@@ -21,22 +21,25 @@ export function WebsiteCard({ website }: WebsiteCardProps) {
 
   return (
     <motion.div 
-      whileHover={{ y: -4, scale: 1.01 }}
-      transition={{ duration: 0.2 }}
-      className="bg-slate-800 border border-slate-700/50 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-cyan-500/10 transition-all duration-300"
+      whileHover={{ y: -3, scale: 1.005 }}
+      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+      className="bg-slate-800 border border-slate-700/50 rounded-xl shadow-lg overflow-hidden hover:shadow-2xl hover:shadow-cyan-500/10 transition-all duration-200"
+      style={{ willChange: 'transform' }}
     >
       <div className="relative group">
         <img 
           src={website.image} 
           alt={website.title}
-          className="w-full h-48 object-cover transition-transform duration-200 group-hover:scale-102"
+          className="w-full h-48 object-cover transition-transform duration-150 group-hover:scale-105"
           loading="lazy"
+          style={{ willChange: 'transform' }}
         />
-        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center space-x-4">
+        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center justify-center space-x-4">
           <button 
             onClick={handlePreview}
-            className="bg-blue-500/20 backdrop-blur-sm text-white p-3 rounded-full hover:bg-blue-500/40 transition-all duration-200 border border-blue-400/30"
+            className="bg-blue-500/20 backdrop-blur-sm text-white p-3 rounded-full hover:bg-blue-500/40 transition-all duration-150 border border-blue-400/30"
             title="Full Preview"
+            style={{ willChange: 'background-color' }}
           >
             <Monitor className="w-5 h-5" />
           </button>
@@ -44,8 +47,9 @@ export function WebsiteCard({ website }: WebsiteCardProps) {
             href={website.url} 
             target="_blank" 
             rel="noopener noreferrer"
-            className="bg-cyan-500/20 backdrop-blur-sm text-white p-3 rounded-full hover:bg-cyan-500/40 transition-all duration-200 border border-cyan-400/30"
+            className="bg-cyan-500/20 backdrop-blur-sm text-white p-3 rounded-full hover:bg-cyan-500/40 transition-all duration-150 border border-cyan-400/30"
             title="Visit Live Site"
+            style={{ willChange: 'background-color' }}
           >
             <ExternalLink className="w-5 h-5" />
           </a>

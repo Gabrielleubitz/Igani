@@ -25,18 +25,20 @@ export function Portfolio({ websites }: PortfolioProps) {
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-100px" }}
             className="text-4xl font-bold text-white mb-4"
+            style={{ willChange: 'transform, opacity' }}
           >
             Our Portfolio
           </motion.h2>
           <motion.p 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: 0.1, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-100px" }}
             className="text-xl text-slate-300 max-w-2xl mx-auto"
+            style={{ willChange: 'transform, opacity' }}
           >
             Discover the exceptional websites we've crafted for our clients
           </motion.p>
@@ -48,16 +50,17 @@ export function Portfolio({ websites }: PortfolioProps) {
               key={category}
               initial={{ opacity: 0, scale: 0.9 }}
               whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, delay: categories.indexOf(category) * 0.05 }}
-              viewport={{ once: true }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 0.2, delay: categories.indexOf(category) * 0.03, ease: "easeOut" }}
+              viewport={{ once: true, margin: "-50px" }}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => setActiveCategory(category)}
-              className={`relative px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-500 font-medium text-xs sm:text-sm uppercase tracking-wider overflow-hidden group ${
+              className={`relative px-4 sm:px-6 md:px-8 py-2 sm:py-3 rounded-xl sm:rounded-2xl transition-all duration-200 font-medium text-xs sm:text-sm uppercase tracking-wider overflow-hidden group ${
                 activeCategory === category
                   ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 border border-cyan-400/50 shadow-lg shadow-cyan-500/25'
                   : 'bg-slate-800/50 backdrop-blur-sm text-slate-400 border border-slate-600/30 hover:border-cyan-400/30 hover:text-cyan-300'
               }`}
+              style={{ willChange: 'transform' }}
             >
               {/* Animated background glow */}
               <div className={`absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
