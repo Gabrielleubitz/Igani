@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Header } from './components/Header';
 import { Hero } from './components/Hero';
@@ -14,6 +14,13 @@ import { AdminDashboard } from './components/AdminDashboard';
 import { sampleWebsites } from './data/sampleWebsites';
 import { defaultSettings } from './data/defaultSettings';
 import { Website, SiteSettings, ContactSubmission } from './types';
+import { 
+  saveSettings, 
+  getSettings, 
+  saveContactSubmission, 
+  getContactSubmissions,
+  updateContactSubmissionStatus
+} from './lib/firestore';
 
 function HomePage({ 
   websites, 
@@ -80,54 +87,38 @@ function App() {
   const [showAdmin, setShowAdmin] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Load websites from localStorage on component mount
-  React.useEffect(() => {
-    const savedWebsites = localStorage.getItem('igani-websites');
-    const savedSettings = localStorage.getItem('igani-settings');
-    const savedSubmissions = localStorage.getItem('igani-submissions');
-    
-    if (savedWebsites) {
+  // Load data from Firebase on component mount
+  useEffect(() => {
+    const loadData = async () => {
       try {
-        const parsedWebsites = JSON.parse(savedWebsites);
-        setWebsites(parsedWebsites);
+        // Load settings from Firebase
+        const firebaseSettings = await getSettings();
+        if (firebaseSettings) {
+          setSettings(firebaseSettings);
+        }
+        
+        // Load contact submissions from Firebase
+        const submissions = await getContactSubmissions();
+        setContactSubmissions(submissions);
+        
+        // Note: Websites are still using sample data for now
+        // In future, you can implement website management in Firebase too
       } catch (error) {
-        console.error('Error loading saved websites:', error);
+        console.error('Error loading data from Firebase:', error);
       }
-    }
+    };
     
-    if (savedSettings) {
-      try {
-        const parsedSettings = JSON.parse(savedSettings);
-        setSettings(parsedSettings);
-      } catch (error) {
-        console.error('Error loading saved settings:', error);
-      }
-    }
-    
-    if (savedSubmissions) {
-      try {
-        const parsedSubmissions = JSON.parse(savedSubmissions);
-        setContactSubmissions(parsedSubmissions);
-      } catch (error) {
-        console.error('Error loading saved submissions:', error);
-      }
-    }
+    loadData();
   }, []);
 
-  // Save websites to localStorage whenever websites change
-  React.useEffect(() => {
-    localStorage.setItem('igani-websites', JSON.stringify(websites));
-  }, [websites]);
-  
-  // Save settings to localStorage whenever settings change
-  React.useEffect(() => {
-    localStorage.setItem('igani-settings', JSON.stringify(settings));
+  // Save settings to Firebase whenever settings change
+  useEffect(() => {
+    if (settings.companyName !== defaultSettings.companyName) {
+      saveSettings(settings).catch(error => {
+        console.error('Error saving settings to Firebase:', error);
+      });
+    }
   }, [settings]);
-  
-  // Save submissions to localStorage whenever submissions change
-  React.useEffect(() => {
-    localStorage.setItem('igani-submissions', JSON.stringify(contactSubmissions));
-  }, [contactSubmissions]);
   const addWebsite = (websiteData: Omit<Website, 'id' | 'createdAt'>) => {
     const newWebsite: Website = {
       ...websiteData,
@@ -145,24 +136,40 @@ function App() {
     setWebsites(websites.map(w => w.id === updatedWebsite.id ? updatedWebsite : w));
   };
 
-  const updateSettings = (newSettings: SiteSettings) => {
+  const updateSettings = async (newSettings: SiteSettings) => {
     setSettings(newSettings);
+    try {
+      await saveSettings(newSettings);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
   };
 
-  const addContactSubmission = (submissionData: Omit<ContactSubmission, 'id' | 'submittedAt' | 'status'>) => {
-    const newSubmission: ContactSubmission = {
-      ...submissionData,
-      id: Date.now().toString(),
-      submittedAt: new Date().toISOString(),
-      status: 'new'
-    };
-    setContactSubmissions([newSubmission, ...contactSubmissions]);
+  const addContactSubmission = async (submissionData: Omit<ContactSubmission, 'id' | 'submittedAt' | 'status'>) => {
+    try {
+      const submissionId = await saveContactSubmission(submissionData);
+      const newSubmission: ContactSubmission = {
+        ...submissionData,
+        id: submissionId,
+        submittedAt: new Date().toISOString(),
+        status: 'new'
+      };
+      setContactSubmissions([newSubmission, ...contactSubmissions]);
+    } catch (error) {
+      console.error('Error saving contact submission:', error);
+      throw error;
+    }
   };
 
-  const markSubmissionRead = (id: string) => {
-    setContactSubmissions(contactSubmissions.map(sub => 
-      sub.id === id ? { ...sub, status: 'read' as const } : sub
-    ));
+  const markSubmissionRead = async (id: string) => {
+    try {
+      await updateContactSubmissionStatus(id, 'read');
+      setContactSubmissions(contactSubmissions.map(sub => 
+        sub.id === id ? { ...sub, status: 'read' as const } : sub
+      ));
+    } catch (error) {
+      console.error('Error updating submission status:', error);
+    }
   };
 
   const handleAdminLogin = (password: string) => {

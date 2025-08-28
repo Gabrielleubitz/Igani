@@ -22,8 +22,8 @@ interface AdminDashboardProps {
   onAddWebsite: (website: Omit<Website, 'id' | 'createdAt'>) => void;
   onDeleteWebsite: (id: string) => void;
   onUpdateWebsite: (website: Website) => void;
-  onUpdateSettings: (settings: SiteSettings) => void;
-  onMarkSubmissionRead: (id: string) => void;
+  onUpdateSettings: (settings: SiteSettings) => Promise<void>;
+  onMarkSubmissionRead: (id: string) => Promise<void>;
 }
 
 type TabType = 'overview' | 'websites' | 'settings' | 'messages' | 'analytics';

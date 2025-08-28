@@ -6,7 +6,7 @@ import emailjs from '@emailjs/browser';
 
 interface ContactProps {
   settings: SiteSettings;
-  onSubmit: (submission: Omit<ContactSubmission, 'id' | 'submittedAt' | 'status'>) => void;
+  onSubmit: (submission: Omit<ContactSubmission, 'id' | 'submittedAt' | 'status'>) => Promise<void>;
 }
 
 export function Contact({ settings, onSubmit }: ContactProps) {
@@ -69,8 +69,8 @@ export function Contact({ settings, onSubmit }: ContactProps) {
         );
       }
 
-      // Also save to local storage for admin panel
-      onSubmit(formData);
+      // Also save to Firebase for admin panel
+      await onSubmit(formData);
       setSubmitStatus('success');
       setFormData({
         firstName: '',
