@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Globe, 
@@ -43,6 +43,11 @@ export function AdminDashboard({
   const [showWebsiteForm, setShowWebsiteForm] = useState(false);
   const [editingWebsite, setEditingWebsite] = useState<Website | null>(null);
   const [settingsForm, setSettingsForm] = useState(settings);
+
+  // Sync settings form with settings prop when it changes
+  useEffect(() => {
+    setSettingsForm(settings);
+  }, [settings]);
   const [websiteForm, setWebsiteForm] = useState({
     title: '',
     description: '',
@@ -65,7 +70,7 @@ export function AdminDashboard({
     setEditingWebsite(null);
   };
 
-  const handleWebsiteSubmit = (e: React.FormEvent) => {
+  const handleWebsiteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!websiteForm.title.trim() || !websiteForm.description.trim() || !websiteForm.url.trim() || !websiteForm.category.trim() || !websiteForm.image.trim()) {
@@ -81,15 +86,20 @@ export function AdminDashboard({
       return;
     }
     
-    if (editingWebsite) {
-      onUpdateWebsite({
-        ...editingWebsite,
-        ...websiteForm
-      });
-    } else {
-      onAddWebsite(websiteForm);
+    try {
+      if (editingWebsite) {
+        await onUpdateWebsite({
+          ...editingWebsite,
+          ...websiteForm
+        });
+      } else {
+        await onAddWebsite(websiteForm);
+      }
+      resetWebsiteForm();
+    } catch (error) {
+      console.error('Error saving website:', error);
+      alert('Failed to save website. Please try again.');
     }
-    resetWebsiteForm();
   };
 
   const startEditWebsite = (website: Website) => {
@@ -105,16 +115,26 @@ export function AdminDashboard({
     setShowWebsiteForm(true);
   };
 
-  const handleDeleteWebsite = (website: Website) => {
+  const handleDeleteWebsite = async (website: Website) => {
     if (window.confirm(`Are you sure you want to delete "${website.title}"?`)) {
-      onDeleteWebsite(website.id);
+      try {
+        await onDeleteWebsite(website.id);
+      } catch (error) {
+        console.error('Error deleting website:', error);
+        alert('Failed to delete website. Please try again.');
+      }
     }
   };
 
-  const handleSettingsSubmit = (e: React.FormEvent) => {
+  const handleSettingsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onUpdateSettings(settingsForm);
-    alert('Settings saved successfully!');
+    try {
+      await onUpdateSettings(settingsForm);
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings. Please try again.');
+    }
   };
 
   const unreadMessages = contactSubmissions.filter(sub => sub.status === 'new').length;
@@ -486,7 +506,14 @@ export function AdminDashboard({
                 </span>
                 {submission.status === 'new' && (
                   <button
-                    onClick={() => onMarkSubmissionRead(submission.id)}
+                    onClick={async () => {
+                      try {
+                        await onMarkSubmissionRead(submission.id);
+                      } catch (error) {
+                        console.error('Error marking message as read:', error);
+                        alert('Failed to mark message as read.');
+                      }
+                    }}
                     className="text-blue-600 hover:text-blue-800 text-sm"
                   >
                     Mark as Read

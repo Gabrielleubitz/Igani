@@ -125,7 +125,7 @@ function App() {
 
   // Save settings to Firebase whenever settings change
   useEffect(() => {
-    if (settings.companyName !== defaultSettings.companyName) {
+    if (settings.siteName !== defaultSettings.siteName) {
       saveSettings(settings).catch(error => {
         console.error('Error saving settings to Firebase:', error);
       });
