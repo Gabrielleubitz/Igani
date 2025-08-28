@@ -11,11 +11,12 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { SiteSettings, ContactSubmission } from '../types';
+import { SiteSettings, ContactSubmission, Website } from '../types';
 
 // Collections
 const SETTINGS_COLLECTION = 'settings';
 const CONTACT_SUBMISSIONS_COLLECTION = 'contactSubmissions';
+const WEBSITES_COLLECTION = 'websites';
 
 // Settings Functions
 export const saveSettings = async (settings: SiteSettings): Promise<void> => {
@@ -126,6 +127,79 @@ export const deleteContactSubmission = async (id: string): Promise<void> => {
     await deleteDoc(doc(db, CONTACT_SUBMISSIONS_COLLECTION, id));
   } catch (error) {
     console.error('Error deleting submission:', error);
+    throw error;
+  }
+};
+
+// Website Functions
+export const saveWebsite = async (
+  website: Omit<Website, 'id' | 'createdAt'>
+): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, WEBSITES_COLLECTION), {
+      ...website,
+      createdAt: new Date().toISOString().split('T')[0],
+      updatedAt: Timestamp.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving website:', error);
+    throw error;
+  }
+};
+
+export const getWebsites = async (): Promise<Website[]> => {
+  try {
+    const q = query(
+      collection(db, WEBSITES_COLLECTION),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const websites: Website[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      websites.push({
+        id: doc.id,
+        title: data.title,
+        description: data.description,
+        url: data.url,
+        category: data.category,
+        image: data.image,
+        createdAt: data.createdAt
+      });
+    });
+    
+    return websites;
+  } catch (error) {
+    console.error('Error getting websites:', error);
+    return [];
+  }
+};
+
+export const updateWebsite = async (website: Website): Promise<void> => {
+  try {
+    const websiteRef = doc(db, WEBSITES_COLLECTION, website.id);
+    await updateDoc(websiteRef, {
+      title: website.title,
+      description: website.description,
+      url: website.url,
+      category: website.category,
+      image: website.image,
+      updatedAt: Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error updating website:', error);
+    throw error;
+  }
+};
+
+export const deleteWebsite = async (id: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, WEBSITES_COLLECTION, id));
+  } catch (error) {
+    console.error('Error deleting website:', error);
     throw error;
   }
 };

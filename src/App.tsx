@@ -19,7 +19,11 @@ import {
   getSettings, 
   saveContactSubmission, 
   getContactSubmissions,
-  updateContactSubmissionStatus
+  updateContactSubmissionStatus,
+  saveWebsite,
+  getWebsites,
+  updateWebsite as updateWebsiteInFirestore,
+  deleteWebsite as deleteWebsiteFromFirestore
 } from './lib/firestore';
 
 function HomePage({ 
@@ -101,10 +105,18 @@ function App() {
         const submissions = await getContactSubmissions();
         setContactSubmissions(submissions);
         
-        // Note: Websites are still using sample data for now
-        // In future, you can implement website management in Firebase too
+        // Load websites from Firebase
+        const firebaseWebsites = await getWebsites();
+        if (firebaseWebsites.length > 0) {
+          setWebsites(firebaseWebsites);
+        } else {
+          // If no websites in Firebase, use sample data as fallback
+          setWebsites(sampleWebsites);
+        }
       } catch (error) {
         console.error('Error loading data from Firebase:', error);
+        // Fallback to sample data on error
+        setWebsites(sampleWebsites);
       }
     };
     
@@ -119,21 +131,36 @@ function App() {
       });
     }
   }, [settings]);
-  const addWebsite = (websiteData: Omit<Website, 'id' | 'createdAt'>) => {
-    const newWebsite: Website = {
-      ...websiteData,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    setWebsites([...websites, newWebsite]);
+  const addWebsite = async (websiteData: Omit<Website, 'id' | 'createdAt'>) => {
+    try {
+      const websiteId = await saveWebsite(websiteData);
+      const newWebsite: Website = {
+        ...websiteData,
+        id: websiteId,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      setWebsites([newWebsite, ...websites]);
+    } catch (error) {
+      console.error('Error adding website:', error);
+    }
   };
 
-  const deleteWebsite = (id: string) => {
-    setWebsites(websites.filter(w => w.id !== id));
+  const deleteWebsite = async (id: string) => {
+    try {
+      await deleteWebsiteFromFirestore(id);
+      setWebsites(websites.filter(w => w.id !== id));
+    } catch (error) {
+      console.error('Error deleting website:', error);
+    }
   };
 
-  const updateWebsite = (updatedWebsite: Website) => {
-    setWebsites(websites.map(w => w.id === updatedWebsite.id ? updatedWebsite : w));
+  const updateWebsite = async (updatedWebsite: Website) => {
+    try {
+      await updateWebsiteInFirestore(updatedWebsite);
+      setWebsites(websites.map(w => w.id === updatedWebsite.id ? updatedWebsite : w));
+    } catch (error) {
+      console.error('Error updating website:', error);
+    }
   };
 
   const updateSettings = async (newSettings: SiteSettings) => {

@@ -19,9 +19,9 @@ interface AdminDashboardProps {
   settings: SiteSettings;
   contactSubmissions: ContactSubmission[];
   onClose: () => void;
-  onAddWebsite: (website: Omit<Website, 'id' | 'createdAt'>) => void;
-  onDeleteWebsite: (id: string) => void;
-  onUpdateWebsite: (website: Website) => void;
+  onAddWebsite: (website: Omit<Website, 'id' | 'createdAt'>) => Promise<void>;
+  onDeleteWebsite: (id: string) => Promise<void>;
+  onUpdateWebsite: (website: Website) => Promise<void>;
   onUpdateSettings: (settings: SiteSettings) => Promise<void>;
   onMarkSubmissionRead: (id: string) => Promise<void>;
 }

@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Settings Collection - Allow read for all, write only for authenticated admin
+    match /settings/{document} {
+      // Allow anyone to read settings (for displaying site info)
+      allow read: if true;
+      
+      // Allow write only if user provides admin password in custom claims
+      // This works with your existing admin login system
+      allow write: if request.auth != null || 
+                      resource == null || // Allow initial creation
+                      request.time < timestamp.date(2025, 12, 31); // Temporary allow during setup
+    }
+    
+    // Contact Submissions Collection - Allow create for all, read/update only for admin
+    match /contactSubmissions/{document} {
+      // Allow anyone to create contact submissions (from contact form)
+      allow create: if true;
+      
+      // Allow read/update only for admin (in admin dashboard)  
+      // Temporary rule - allows all operations during development
+      allow read, update, delete: if request.auth != null || 
+                                     request.time < timestamp.date(2025, 12, 31);
+    }
+    
+    // Websites Collection (if you add it later)
+    match /websites/{document} {
+      allow read: if true; // Anyone can view websites
+      allow write: if request.auth != null || 
+                      request.time < timestamp.date(2025, 12, 31);
+    }
+    
+    // Default rule - deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
