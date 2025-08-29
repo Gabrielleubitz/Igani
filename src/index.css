@@ -8,6 +8,25 @@
   will-change: auto;
 }
 
+/* Optimize for smooth scrolling and reduce layout thrashing */
+html {
+  scroll-behavior: smooth;
+  /* Prevent horizontal scrollbar from appearing */
+  overflow-x: hidden;
+}
+
+body {
+  /* Optimize for animations */
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Optimize floating navigation */
+.floating-nav {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
 /* Optimize for smooth scrolling */
 html {
   scroll-behavior: smooth;

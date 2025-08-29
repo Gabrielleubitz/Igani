@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Menu, X, Settings, Home, Folder, Box, Info, Mail } from 'lucide-react';
 import { NavBar } from './ui/tubelight-navbar';
+import IganiMark from './IganiMark'; // Add this import
 
 const menuItems = [
   {
@@ -53,7 +54,7 @@ interface HeaderProps {
 export default function Header({ onAdminToggle }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeItem, setActiveItem] = useState("Home");
-  const [scrolled, setScrolled] = useState(false);
+
   const location = useLocation();
 
   // Hide navigation on preview page
@@ -64,8 +65,6 @@ export default function Header({ onAdminToggle }: HeaderProps) {
       const sections = ['home', 'portfolio', 'components', 'about', 'contact'];
       const scrollPosition = window.scrollY + 100;
       const isScrolled = window.scrollY > 20;
-      
-      setScrolled(isScrolled);
 
       for (const section of sections) {
         const element = document.getElementById(section);
@@ -99,15 +98,9 @@ export default function Header({ onAdminToggle }: HeaderProps) {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-out">
+    <header className="relative z-[100] transition-all duration-500 ease-out">
       <div 
-        className={`
-          backdrop-blur-2xl transition-all duration-500 ease-out bg-slate-900/80 border-b border-slate-700/50
-          ${scrolled 
-            ? 'bg-slate-900/90 border-slate-600/50 shadow-xl shadow-black/20' 
-            : 'bg-slate-900/80 border-slate-700/50'
-          }
-        `}
+        className="bg-slate-900/95 border-b border-slate-600/50 shadow-lg shadow-black/20 backdrop-blur-2xl transition-all duration-500 ease-out"
         style={{
           backdropFilter: 'blur(20px) saturate(180%)',
           WebkitBackdropFilter: 'blur(20px) saturate(180%)',
@@ -118,36 +111,13 @@ export default function Header({ onAdminToggle }: HeaderProps) {
             
             {/* Logo */}
             <div className="flex items-center space-x-3 group cursor-pointer">
-              <div className="flex items-center -space-x-1">
-                {/* First I */}
-                <div className="relative">
-                  <span className="text-2xl font-bold text-white transition-all duration-500 ease-out group-hover:scale-110 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:via-purple-600 group-hover:to-pink-600 group-hover:bg-clip-text tracking-tight">
-                    I
-                  </span>
-                  <div className="absolute inset-0 text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out blur-sm scale-150">
-                    I
-                  </div>
-                  <div className="absolute inset-0 text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent opacity-0 group-hover:opacity-80 transition-all duration-700 ease-out blur-md scale-200 delay-100">
-                    I
-                  </div>
-                </div>
-                
-                {/* Separator Line */}
-                <div className="w-px h-6 bg-slate-600 mx-1 transition-all duration-500 ease-out group-hover:bg-gradient-to-b group-hover:from-blue-400 group-hover:via-purple-400 group-hover:to-pink-400 group-hover:shadow-sm group-hover:shadow-purple-400/50"></div>
-                
-                {/* Second I */}
-                <div className="relative">
-                  <span className="text-2xl font-bold text-white transition-all duration-500 ease-out group-hover:scale-110 group-hover:text-transparent group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:via-purple-600 group-hover:to-pink-600 group-hover:bg-clip-text tracking-tight">
-                    I
-                  </span>
-                  <div className="absolute inset-0 text-2xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 ease-out blur-sm scale-150">
-                    I
-                  </div>
-                  <div className="absolute inset-0 text-2xl font-bold bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 bg-clip-text text-transparent opacity-0 group-hover:opacity-80 transition-all duration-700 ease-out blur-md scale-200 delay-100">
-                    I
-                  </div>
-                </div>
-              </div>
+              <IganiMark 
+                size={40}
+                variant="both"
+                animateOnHover={true}
+                className="transition-all duration-500 ease-out group-hover:scale-110"
+                ariaLabel="Igani logo"
+              />
               <span className="text-xl font-medium text-white tracking-tight transition-all duration-500 ease-out group-hover:translate-x-1">
                 Igani
               </span>
@@ -166,6 +136,21 @@ export default function Header({ onAdminToggle }: HeaderProps) {
 
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
+              <button
+                onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
+                className="
+                  group relative overflow-hidden
+                  bg-blue-600 hover:bg-blue-700
+                  backdrop-blur-xl rounded-xl px-6 py-2.5
+                  border border-blue-500/50 hover:border-blue-400/50
+                  text-white font-medium
+                  transition-all duration-300 ease-out
+                  shadow-lg hover:shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40
+                  hover:scale-105 active:scale-95
+                "
+              >
+                Book a 15-min call
+              </button>
               <button
                 onClick={onAdminToggle}
                 className="

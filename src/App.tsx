@@ -7,7 +7,10 @@ import { ServicesGrid } from './components/ui/services-grid';
 import { ComponentsShowcase } from './components/ComponentsShowcase';
 import { About } from './components/About';
 import { Contact } from './components/Contact';
+import { Process } from './components/Process';
+import { Proof } from './components/Proof';
 import { Footer } from './components/Footer';
+import { FloatingNav } from './components/FloatingNav';
 import { PreviewPage } from './components/PreviewPage';
 import { AdminLogin } from './components/AdminLogin';
 import { AdminDashboard } from './components/AdminDashboard';
@@ -56,10 +59,14 @@ function HomePage({
         </div>
       </section>
       <Portfolio websites={websites} />
+      <Process />
+      <Proof />
       <ComponentsShowcase />
       <About settings={settings} />
       <Contact settings={settings} onSubmit={addContactSubmission} />
       <Footer settings={settings} />
+      
+      <FloatingNav />
       
       {showAdmin && !isAuthenticated && (
         <AdminLogin

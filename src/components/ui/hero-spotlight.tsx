@@ -165,7 +165,7 @@ const LightRays: React.FC<LightRaysProps> = ({
       if (!containerRef.current) return
 
       const renderer = new Renderer({
-        dpr: Math.min(window.devicePixelRatio, 2),
+        dpr: Math.min(window.devicePixelRatio, 1.5),
         alpha: true,
       })
       rendererRef.current = renderer
@@ -328,7 +328,7 @@ void main() {
       const updatePlacement = () => {
         if (!containerRef.current || !renderer) return
 
-        renderer.dpr = Math.min(window.devicePixelRatio, 2)
+        renderer.dpr = Math.min(window.devicePixelRatio, 1.5)
         const { clientWidth: wCSS, clientHeight: hCSS } = containerRef.current
         renderer.setSize(wCSS, hCSS)
 
@@ -387,7 +387,7 @@ void main() {
           // Reduce frame rate for better performance
           setTimeout(() => {
             animationIdRef.current = requestAnimationFrame(loop)
-          }, 16) // ~60fps instead of unlimited
+          }, 20) // ~50fps for better performance
         } catch (error) {
           console.warn("WebGL rendering error:", error)
           return
@@ -614,34 +614,31 @@ export function VisualSpotlightShowcase({ settings }: { settings: any }) {
           <div className="space-y-6 relative z-[15]">
             <LogoIgani />
 
-            <div className="space-y-2 px-2 sm:px-4">
+            <div className="space-y-4 px-2 sm:px-4">
               <h2
-                className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extralight text-white leading-tight font-sans relative z-[15]"
+                className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light text-white leading-tight font-sans relative z-[15] max-w-4xl mx-auto"
                 style={{
                   textShadow: "0 0 30px rgba(255, 255, 255, 0.3), 0 0 60px rgba(255, 255, 255, 0.1)",
                 }}
               >
-                {settings.heroTitle}
+                You get fast, clean sites with live previews.
               </h2>
             </div>
           </div>
 
-          <div className="space-y-4 max-w-4xl mx-auto relative z-[15] px-2 sm:px-4">
-            <p className="text-base sm:text-lg md:text-xl text-slate-300 leading-relaxed drop-shadow-lg font-sans">
-              {settings.heroSubtitle}
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center pt-4 sm:pt-6 md:pt-8 relative z-[15] px-2 sm:px-4">
-            <button onClick={scrollToPortfolio} className={getGlowButtonClasses()}>
-              <span>View Portfolio</span>
-              <span className="text-lg">→</span>
-            </button>
+          <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center pt-6 sm:pt-8 md:pt-10 relative z-[15] px-2 sm:px-4">
             <button 
               onClick={scrollToContact}
-              className="inline-flex items-center justify-center space-x-2 px-6 py-3 sm:py-4 rounded-full border border-white/20 text-white hover:bg-white/10 transition-all duration-300"
+              className={getGlowButtonClasses("px-8 py-4 text-lg font-medium")}
             >
-              <span>Get Started</span>
+              <span>Book a 15-min call</span>
+              <span className="text-xl">→</span>
+            </button>
+            <button 
+              onClick={scrollToPortfolio}
+              className="inline-flex items-center justify-center space-x-2 px-8 py-4 rounded-full border border-white/30 text-white hover:bg-white/10 transition-all duration-300 text-lg font-medium"
+            >
+              <span>See work</span>
             </button>
           </div>
         </div>
