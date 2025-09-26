@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { StorageService } from '@/lib/storage'
 
+// Ensure this route is not statically generated
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 interface RouteContext {
   params: {
     orderId: string
