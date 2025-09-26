@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 interface OrderPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 async function getOrder(id: string) {
@@ -32,7 +32,8 @@ async function getOrder(id: string) {
 }
 
 export default async function OrderPage({ params }: OrderPageProps) {
-  const order = await getOrder(params.id)
+  const { id } = await params
+  const order = await getOrder(id)
 
   if (!order) {
     notFound()

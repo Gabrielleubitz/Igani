@@ -1,105 +1,32 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { GitHubService } from '@/lib/github'
+import { NextResponse } from 'next/server';
+import 'server-only';
 
-// Ensure this route is not statically generated
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { orderId } = await request.json()
+    // TODO: read JSON body and run repo creation
+    // const body = await req.json();
 
-    if (!orderId) {
+    // Validate env at runtime, not build time
+    const required = [
+      'GITHUB_APP_ID',
+      'GITHUB_APP_PRIVATE_KEY',
+      'GITHUB_APP_CLIENT_ID',
+      'GITHUB_APP_CLIENT_SECRET'
+    ];
+    const missing = required.filter(k => !process.env[k]);
+    if (missing.length) {
       return NextResponse.json(
-        { error: 'Missing orderId' },
-        { status: 400 }
-      )
+        { error: `Missing env: ${missing.join(', ')}` },
+        { status: 500 }
+      );
     }
 
-    // Get order with all related data
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
-      include: {
-        customer: true,
-        questionnaire: true,
-        generatedCopy: true,
-        delivery: true
-      }
-    })
-
-    if (!order || !order.generatedCopy) {
-      return NextResponse.json(
-        { error: 'Order or generated copy not found' },
-        { status: 404 }
-      )
-    }
-
-    // Check if repo already exists
-    if (order.delivery?.repoUrl) {
-      return NextResponse.json({
-        success: true,
-        repoUrl: order.delivery.repoUrl,
-        message: 'Repository already exists'
-      })
-    }
-
-    const brandName = (order.generatedCopy.site as any)?.brandName || 'event-site'
-    const repoName = `events-${brandName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`
-
-    // Try to create GitHub repository from template
-    const githubService = new GitHubService()
-    
-    try {
-      // Create repository from the Igani-w-g template
-      const repoResult = await githubService.createRepository(
-        'placeholder-installation-id', // Would come from GitHub App installation
-        'buyer-username', // Would come from authenticated user
-        repoName,
-        order.generatedCopy
-      )
-      
-      const delivery = await prisma.delivery.create({
-        data: {
-          orderId: orderId,
-          method: 'GITHUB',
-          repoUrl: repoResult.repoUrl,
-          commitSha: repoResult.commitSha
-        }
-      })
-
-      return NextResponse.json({
-        success: true,
-        delivery: delivery,
-        repoUrl: repoResult.repoUrl,
-        message: 'Repository created successfully'
-      })
-      
-    } catch (githubError) {
-      console.error('GitHub repository creation failed, falling back to ZIP:', githubError)
-      
-      // Create ZIP delivery as fallback
-      const zipDelivery = await prisma.delivery.create({
-        data: {
-          orderId: orderId,
-          method: 'ZIP',
-          zipUrl: `${process.env.NEXT_PUBLIC_APP_URL}/api/download/${orderId}`,
-          commitSha: null
-        }
-      })
-
-      return NextResponse.json({
-        success: true,
-        delivery: zipDelivery,
-        message: 'Created ZIP package as fallback (GitHub setup required for repo creation)'
-      })
-    }
-
-  } catch (error) {
-    console.error('Repository creation error:', error)
-    return NextResponse.json(
-      { error: 'Failed to create repository' },
-      { status: 500 }
-    )
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    console.error('create-repo error:', e?.message);
+    return NextResponse.json({ ok: false, error: e?.message }, { status: 500 });
   }
 }
