@@ -1,8 +1,7 @@
+import 'server-only'
 import { createAppAuth } from '@octokit/auth-app'
 import { Octokit } from '@octokit/rest'
-import { createReadStream } from 'fs'
-import { join } from 'path'
-import { TEMPLATE_PATHS } from './template-paths'
+import { TEMPLATE_PATHS } from '../../../lib/template-paths'
 
 interface GitHubConfig {
   appId: string
@@ -16,6 +15,18 @@ export class GitHubService {
   private octokit: Octokit
 
   constructor() {
+    // Validate env at runtime, not build time
+    const required = [
+      'GITHUB_APP_ID',
+      'GITHUB_APP_PRIVATE_KEY',
+      'GITHUB_APP_CLIENT_ID',
+      'GITHUB_APP_CLIENT_SECRET'
+    ]
+    const missing = required.filter(k => !process.env[k])
+    if (missing.length) {
+      throw new Error(`Missing GitHub env vars: ${missing.join(', ')}`)
+    }
+
     this.config = {
       appId: process.env.GITHUB_APP_ID!,
       privateKey: process.env.GITHUB_APP_PRIVATE_KEY!.replace(/\\n/g, '\n'),
