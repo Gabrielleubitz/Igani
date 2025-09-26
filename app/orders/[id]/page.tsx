@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import { prisma } from '@/lib/prisma'
 import { OrderPortal } from '@/components/OrderPortal'
 
 // Ensure this page is not statically generated
@@ -13,6 +12,7 @@ interface OrderPageProps {
 }
 
 async function getOrder(id: string) {
+  const { prisma } = await import('@/lib/prisma')
   const order = await prisma.order.findUnique({
     where: { id },
     include: {

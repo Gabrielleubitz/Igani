@@ -1,1 +1,1 @@
-{"version":1,"functions":{"/api/download/[orderId]":{},"/api/create-repo":{},"/api/health":{},"/admin":{},"/api/generate-copy":{},"/admin/debug":{},"/orders/[id]":{},"/api/stripe/webhook":{}}}
+{"version":1,"functions":{"/api/create-repo":{},"/api/download/[orderId]":{},"/admin/debug":{},"/api/health":{},"/admin":{},"/api/generate-copy":{},"/api/stripe/webhook":{},"/orders/[id]":{}}}
