@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { OpenAI } from 'openai'
-import { prisma } from '@/lib/prisma'
-import { GeneratedCopySchema, QuestionnaireData } from '@/lib/types'
+import type { QuestionnaireData } from '@/lib/types'
 
 // Ensure this route is not statically generated
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+// Dynamic imports to prevent build-time issues
+async function getDependencies() {
+  const { OpenAI } = await import('openai')
+  const { prisma } = await import('@/lib/prisma')
+  const { GeneratedCopySchema } = await import('@/lib/types')
+  return { OpenAI, prisma, GeneratedCopySchema }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,6 +23,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Get dependencies dynamically
+    const { OpenAI, prisma, GeneratedCopySchema } = await getDependencies()
 
     const questionnaireData = answers as QuestionnaireData
 
