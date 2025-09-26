@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { StorageService } from '@/lib/storage'
 
 // Ensure this route is not statically generated
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+// Dynamic imports to prevent build-time issues
+async function getDependencies() {
+  const { prisma } = await import('@/lib/prisma')
+  const { StorageService } = await import('@/lib/storage')
+  return { prisma, StorageService }
+}
 
 interface RouteContext {
   params: Promise<{
@@ -16,6 +21,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   try {
     const params = await context.params
     const { orderId } = params
+
+    // Get dependencies dynamically
+    const { prisma, StorageService } = await getDependencies()
 
     // Get order with generated content
     const order = await prisma.order.findUnique({
