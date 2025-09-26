@@ -1,9 +1,9 @@
-import { prisma } from '@/lib/prisma'
 import { AdminDashboard } from '@/components/AdminDashboard'
 
 export const dynamic = 'force-dynamic'
 
 async function getOrders() {
+  const { prisma } = await import('@/lib/prisma')
   const orders = await prisma.order.findMany({
     include: {
       customer: true,
