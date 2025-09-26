@@ -14,7 +14,8 @@ interface RouteContext {
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const { orderId } = await context.params
+    const params = await context.params
+    const { orderId } = params
 
     // Get order with generated content
     const order = await prisma.order.findUnique({
