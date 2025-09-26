@@ -2,16 +2,22 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import Stripe from 'stripe'
-import { prisma } from './prisma'
-import { QuestionnaireData, plans } from './types'
+import type { QuestionnaireData } from './types'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16'
-})
+// Dynamic imports to prevent build-time issues
+async function getDependencies() {
+  const Stripe = (await import('stripe')).default
+  const { prisma } = await import('./prisma')
+  const { plans } = await import('./types')
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2023-10-16'
+  })
+  return { stripe, prisma, plans }
+}
 
 export async function createOrder() {
   try {
+    const { prisma } = await getDependencies()
     const order = await prisma.order.create({
       data: {
         status: 'DRAFT',
@@ -35,6 +41,7 @@ export async function createOrder() {
 
 export async function saveQuestionnaire(orderId: string, data: QuestionnaireData) {
   try {
+    const { prisma } = await getDependencies()
     await prisma.questionnaire.upsert({
       where: { orderId },
       create: {
@@ -56,6 +63,7 @@ export async function saveQuestionnaire(orderId: string, data: QuestionnaireData
 
 export async function createCheckoutSession(orderId: string, planId: string) {
   try {
+    const { stripe, prisma, plans } = await getDependencies()
     const plan = plans.find(p => p.id === planId)
     if (!plan) {
       throw new Error('Invalid plan')
@@ -105,6 +113,7 @@ export async function createCheckoutSession(orderId: string, planId: string) {
 
 export async function generateCopy(orderId: string) {
   try {
+    const { prisma } = await getDependencies()
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { questionnaire: true }

@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import Stripe from 'stripe'
-import { OpenAI } from 'openai'
 
 // Ensure this route is not statically generated
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
+
+// Dynamic imports to prevent build-time issues
+async function getDependencies() {
+  const { prisma } = await import('@/lib/prisma')
+  const Stripe = (await import('stripe')).default
+  const { OpenAI } = await import('openai')
+  return { prisma, Stripe, OpenAI }
+}
 
 export async function GET() {
   const checks = {
@@ -17,6 +22,9 @@ export async function GET() {
   }
 
   try {
+    // Get dependencies dynamically
+    const { prisma, Stripe, OpenAI } = await getDependencies()
+
     // Database check
     try {
       await prisma.$queryRaw`SELECT 1`

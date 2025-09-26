@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { headers } from 'next/headers'
-import Stripe from 'stripe'
-import { prisma } from '@/lib/prisma'
+import type Stripe from 'stripe'
 
 // Ensure this route is not statically generated
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
+// Dynamic imports to prevent build-time issues
+async function getDependencies() {
+  const Stripe = (await import('stripe')).default
+  const { prisma } = await import('@/lib/prisma')
+  return { Stripe, prisma }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
     const signature = headers().get('stripe-signature')
+    
+    // Get dependencies dynamically
+    const { Stripe, prisma } = await getDependencies()
     
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: '2023-10-16'
