@@ -2,6 +2,10 @@ import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import { OrderPortal } from '@/components/OrderPortal'
 
+// Ensure this page is not statically generated
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 interface OrderPageProps {
   params: {
     id: string
