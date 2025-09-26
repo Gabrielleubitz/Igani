@@ -7,14 +7,14 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 interface RouteContext {
-  params: {
+  params: Promise<{
     orderId: string
-  }
+  }>
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
   try {
-    const { orderId } = context.params
+    const { orderId } = await context.params
 
     // Get order with generated content
     const order = await prisma.order.findUnique({
