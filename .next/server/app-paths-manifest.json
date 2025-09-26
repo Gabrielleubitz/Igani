@@ -3,12 +3,12 @@
   "/checkout/page": "app/checkout/page.js",
   "/page": "app/page.js",
   "/start/page": "app/start/page.js",
-  "/api/create-repo/route": "app/api/create-repo/route.js",
+  "/admin/page": "app/admin/page.js",
   "/admin/debug/page": "app/admin/debug/page.js",
+  "/api/create-repo/route": "app/api/create-repo/route.js",
   "/api/download/[orderId]/route": "app/api/download/[orderId]/route.js",
   "/api/generate-copy/route": "app/api/generate-copy/route.js",
-  "/api/health/route": "app/api/health/route.js",
-  "/orders/[id]/page": "app/orders/[id]/page.js",
   "/api/stripe/webhook/route": "app/api/stripe/webhook/route.js",
-  "/admin/page": "app/admin/page.js"
+  "/orders/[id]/page": "app/orders/[id]/page.js",
+  "/api/health/route": "app/api/health/route.js"
 }
