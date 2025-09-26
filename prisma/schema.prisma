@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  
+  orders    Order[]
+  
+  @@map("customers")
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  status     OrderStatus @default(DRAFT)
+  amount     Int         // amount in cents
+  currency   String      @default("usd")
+  customerId String
+  createdAt  DateTime    @default(now())
+  
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  questionnaire  Questionnaire?
+  generatedCopy  GeneratedCopy?
+  delivery       Delivery?
+  license        License?
+  
+  @@map("orders")
+}
+
+model Questionnaire {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  answers   Json     // Store all questionnaire answers as JSON
+  createdAt DateTime @default(now())
+  
+  order Order @relation(fields: [orderId], references: [id])
+  
+  @@map("questionnaires")
+}
+
+model GeneratedCopy {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  site      Json     // Generated site copy
+  emails    Json     // Generated email templates
+  sms       Json     // Generated SMS templates
+  theme     Json     // Generated theme configuration
+  createdAt DateTime @default(now())
+  
+  order Order @relation(fields: [orderId], references: [id])
+  
+  @@map("generated_copy")
+}
+
+model Delivery {
+  id        String         @id @default(cuid())
+  orderId   String         @unique
+  method    DeliveryMethod
+  repoUrl   String?        // GitHub repo URL
+  zipUrl    String?        // ZIP download URL
+  commitSha String?        // Git commit SHA
+  createdAt DateTime       @default(now())
+  
+  order Order @relation(fields: [orderId], references: [id])
+  
+  @@map("deliveries")
+}
+
+model License {
+  id        String   @id @default(cuid())
+  orderId   String   @unique
+  key       String   @unique
+  plan      String   // starter, plus, pro
+  createdAt DateTime @default(now())
+  
+  order Order @relation(fields: [orderId], references: [id])
+  
+  @@map("licenses")
+}
+
+enum OrderStatus {
+  DRAFT
+  PAID
+  FAILED
+}
+
+enum DeliveryMethod {
+  GITHUB
+  ZIP
+}
