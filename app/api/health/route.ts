@@ -3,6 +3,10 @@ import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
 import { OpenAI } from 'openai'
 
+// Ensure this route is not statically generated
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET() {
   const checks = {
     database: false,

@@ -3,16 +3,20 @@ import { headers } from 'next/headers'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/prisma'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16'
-})
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
+// Ensure this route is not statically generated
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.text()
     const signature = headers().get('stripe-signature')
+    
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2023-10-16'
+    })
+    
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
     if (!signature) {
       console.error('Missing stripe-signature header')

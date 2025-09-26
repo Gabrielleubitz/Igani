@@ -3,6 +3,10 @@ import { OpenAI } from 'openai'
 import { prisma } from '@/lib/prisma'
 import { GeneratedCopySchema, QuestionnaireData } from '@/lib/types'
 
+// Ensure this route is not statically generated
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function POST(request: NextRequest) {
   try {
     const { orderId, answers } = await request.json()
