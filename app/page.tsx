@@ -73,7 +73,7 @@ export default function HomePage() {
     loadData()
   }, [])
 
-  const categories = ['all', ...new Set(websites.map(w => w.category))]
+  const categories = ['all', ...Array.from(new Set(websites.map(w => w.category)))]
   const filteredWebsites = activeCategory === 'all'
     ? websites
     : websites.filter(w => w.category === activeCategory)
