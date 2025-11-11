@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/admin/page.tsx -> @/components/AdminDashboardClient\":{\"id\":\"app/admin/page.tsx -> @/components/AdminDashboardClient\",\"files\":[\"static/chunks/_app-pages-browser_components_AdminDashboardClient_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST='{"app/admin/page.tsx -> @/components/AdminDashboardClient":{"id":9687,"files":["static/chunks/7508b87c-39d231b69fce301c.js","static/chunks/392-aba12010fd83136f.js","static/chunks/687.fe10db6f48fd3b5f.js"]}}';
