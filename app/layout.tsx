@@ -4,8 +4,14 @@ import { Inter } from 'next/font/google'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Igani - Event Site Generator',
-  description: 'Generate white-label event sites with AI-powered copy and themes',
+  title: 'Igani - Premium Website Development',
+  description: 'Transform your vision into a stunning digital presence with custom website development',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon-16x16.svg', sizes: '16x16', type: 'image/svg+xml' }
+    ],
+  },
 }
 
 export default function RootLayout({
