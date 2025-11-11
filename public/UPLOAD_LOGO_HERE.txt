@@ -1,0 +1,22 @@
+📁 LOGO UPLOAD INSTRUCTIONS
+========================================
+
+Please upload your IGANI logo here with one of these names:
+
+Recommended:
+  • logo.png   (PNG format with transparent background)
+  • logo.svg   (SVG format - best for scaling)
+  • logo.webp  (WebP format - modern and efficient)
+
+Also supported:
+  • logo.jpg
+  • logo.jpeg
+
+Notes:
+------
+- The logo will automatically be used in the header and footer
+- Recommended size: 200-300px wide for best quality
+- Transparent background recommended (PNG or SVG)
+- After uploading, you can delete this text file
+
+Current location: /public/
