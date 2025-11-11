@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { SplashCursor } from '@/components/ui/splash-cursor'
+import { AnimatedButton } from '@/components/ui/animated-button'
 import { IganiLogo } from '@/components/IganiLogo'
 import { sampleWebsites } from '@/data/sampleWebsites'
 import { defaultSettings } from '@/data/defaultSettings'
@@ -235,18 +236,20 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.5 }}
               className="flex flex-col sm:flex-row gap-4 justify-center items-center"
             >
-              <button
+              <AnimatedButton
+                variant="primary"
+                size="large"
                 onClick={() => scrollToSection('contact')}
-                className="px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-semibold rounded-lg shadow-xl shadow-cyan-500/25 transition-all duration-300 hover:scale-105"
               >
                 Start Your Project
-              </button>
-              <button
+              </AnimatedButton>
+              <AnimatedButton
+                variant="secondary"
+                size="large"
                 onClick={() => scrollToSection('portfolio')}
-                className="px-8 py-4 bg-slate-800/80 hover:bg-slate-700/80 text-white font-semibold rounded-lg border border-slate-600 transition-all duration-300 hover:border-slate-500"
               >
                 View Our Work
-              </button>
+              </AnimatedButton>
             </motion.div>
           </div>
         </section>
@@ -784,16 +787,16 @@ export default function HomePage() {
                     </motion.div>
                   )}
 
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                  <AnimatedButton
+                    variant="primary"
+                    size="large"
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-xl shadow-cyan-500/25 transition-all duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Send className="w-5 h-5" />
-                    <span>{isSubmitting ? 'Sending...' : 'Send Message'}</span>
-                  </motion.button>
+                    <Send className="w-5 h-5 mr-2" />
+                    {isSubmitting ? 'Sending...' : 'Send Message'}
+                  </AnimatedButton>
                 </form>
               </motion.div>
             </div>
