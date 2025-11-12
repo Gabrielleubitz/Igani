@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST='{"app/admin/page.tsx -> @/components/AdminDashboardClient":{"id":7673,"files":["static/chunks/7508b87c-39d231b69fce301c.js","static/chunks/863-0ce95c854093aa9f.js","static/chunks/574.22e2650f06fb0a22.js","static/chunks/673.7e390cd5c4110661.js"]}}';
+self.__REACT_LOADABLE_MANIFEST='{"app/admin/page.tsx -> @/components/AdminDashboardClient":{"id":7673,"files":["static/chunks/7508b87c-39d231b69fce301c.js","static/chunks/863-0ce95c854093aa9f.js","static/chunks/574.22e2650f06fb0a22.js","static/chunks/673.6440a15787a60178.js"]}}';
