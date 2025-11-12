@@ -42,5 +42,8 @@ export interface ContactSubmission {
   projectType: string;
   message: string;
   submittedAt: string;
-  status: 'new' | 'read' | 'replied';
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  assignedTo?: string;
+  cancellationReason?: string;
+  statusUpdatedAt?: string;
 }
