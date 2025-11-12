@@ -207,7 +207,9 @@ export function ContactSubmissionsManager({ contacts, onUpdate }: ContactSubmiss
           </div>
         ) : (
           contacts.map((contact) => {
-            const StatusIcon = statusConfig[contact.status].icon
+            // Fallback to 'pending' if status is invalid
+            const validStatus = contact.status in statusConfig ? contact.status : 'pending'
+            const StatusIcon = statusConfig[validStatus].icon
             return (
               <motion.div
                 key={contact.id}
@@ -238,10 +240,10 @@ export function ContactSubmissionsManager({ contacts, onUpdate }: ContactSubmiss
                   </div>
 
                   {/* Status Badge */}
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig[contact.status].bg} border ${statusConfig[contact.status].border}`}>
-                    <StatusIcon className={`w-4 h-4 ${statusConfig[contact.status].color}`} />
-                    <span className={`text-sm font-semibold ${statusConfig[contact.status].color}`}>
-                      {statusConfig[contact.status].label}
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${statusConfig[validStatus].bg} border ${statusConfig[validStatus].border}`}>
+                    <StatusIcon className={`w-4 h-4 ${statusConfig[validStatus].color}`} />
+                    <span className={`text-sm font-semibold ${statusConfig[validStatus].color}`}>
+                      {statusConfig[validStatus].label}
                     </span>
                   </div>
                 </div>

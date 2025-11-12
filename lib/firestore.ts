@@ -86,6 +86,13 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
+
+      // Map old status values to new ones
+      let status: ContactSubmission['status'] = data.status || 'pending';
+      if (status === 'new' as any) status = 'pending';
+      if (status === 'read' as any) status = 'pending';
+      if (status === 'replied' as any) status = 'in-progress';
+
       submissions.push({
         id: doc.id,
         firstName: data.firstName,
@@ -94,7 +101,7 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
         projectType: data.projectType,
         message: data.message,
         submittedAt: data.submittedAt.toDate().toISOString(),
-        status: data.status || 'pending',
+        status: status,
         assignedTo: data.assignedTo,
         cancellationReason: data.cancellationReason,
         statusUpdatedAt: data.statusUpdatedAt?.toDate().toISOString()
