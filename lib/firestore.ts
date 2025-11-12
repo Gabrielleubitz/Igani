@@ -58,13 +58,14 @@ export const getSettings = async (): Promise<SiteSettings | null> => {
 
 // Contact Submissions Functions
 export const saveContactSubmission = async (
-  submission: Omit<ContactSubmission, 'id' | 'submittedAt' | 'status'>
+  submission: Omit<ContactSubmission, 'id' | 'submittedAt' | 'status' | 'assignedTo' | 'cancellationReason' | 'statusUpdatedAt'>
 ): Promise<string> => {
   try {
     const docRef = await addDoc(collection(db, CONTACT_SUBMISSIONS_COLLECTION), {
       ...submission,
       submittedAt: Timestamp.now(),
-      status: 'new' as const
+      status: 'pending' as const,
+      statusUpdatedAt: Timestamp.now()
     });
     return docRef.id;
   } catch (error) {
@@ -93,7 +94,10 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
         projectType: data.projectType,
         message: data.message,
         submittedAt: data.submittedAt.toDate().toISOString(),
-        status: data.status
+        status: data.status || 'pending',
+        assignedTo: data.assignedTo,
+        cancellationReason: data.cancellationReason,
+        statusUpdatedAt: data.statusUpdatedAt?.toDate().toISOString()
       });
     });
 
@@ -106,16 +110,40 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
 
 export const updateContactSubmissionStatus = async (
   id: string,
-  status: ContactSubmission['status']
+  status: ContactSubmission['status'],
+  cancellationReason?: string
+): Promise<void> => {
+  try {
+    const submissionRef = doc(db, CONTACT_SUBMISSIONS_COLLECTION, id);
+    const updateData: any = {
+      status,
+      statusUpdatedAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    };
+
+    if (status === 'cancelled' && cancellationReason) {
+      updateData.cancellationReason = cancellationReason;
+    }
+
+    await updateDoc(submissionRef, updateData);
+  } catch (error) {
+    console.error('Error updating submission status:', error);
+    throw error;
+  }
+};
+
+export const assignSubmissionToDeveloper = async (
+  id: string,
+  developerName: string
 ): Promise<void> => {
   try {
     const submissionRef = doc(db, CONTACT_SUBMISSIONS_COLLECTION, id);
     await updateDoc(submissionRef, {
-      status,
+      assignedTo: developerName,
       updatedAt: Timestamp.now()
     });
   } catch (error) {
-    console.error('Error updating submission status:', error);
+    console.error('Error assigning submission:', error);
     throw error;
   }
 };

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut, Globe, Mail, Settings as SettingsIcon } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
+import { ContactSubmissionsManager } from './ContactSubmissionsManager'
 import { getWebsites, getContactSubmissions } from '@/lib/firestore'
 import { Website, ContactSubmission } from '@/types'
 
@@ -119,38 +120,7 @@ export default function AdminDashboardClient() {
         )}
 
         {activeTab === 'contacts' && (
-          <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-8">
-            <h2 className="text-xl font-bold text-white mb-6">Contact Submissions</h2>
-            {contacts.length === 0 ? (
-              <p className="text-slate-400 text-center py-8">No contact submissions yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {contacts.map((contact) => (
-                  <div
-                    key={contact.id}
-                    className="bg-slate-900/60 border border-slate-700/50 rounded-xl p-6"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">
-                          {contact.firstName} {contact.lastName}
-                        </h3>
-                        <p className="text-cyan-400 text-sm">{contact.email}</p>
-                      </div>
-                      <span className="text-xs text-slate-400">
-                        {new Date(contact.submittedAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="mb-2">
-                      <span className="text-sm text-slate-400">Project Type: </span>
-                      <span className="text-sm text-white">{contact.projectType}</span>
-                    </div>
-                    <p className="text-slate-300 text-sm">{contact.message}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ContactSubmissionsManager contacts={contacts} onUpdate={loadData} />
         )}
 
         {activeTab === 'settings' && (
