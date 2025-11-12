@@ -90,12 +90,14 @@ export function StarryBackground() {
       }
 
       reset() {
+        // Random position anywhere on screen
         this.x = Math.random() * this.canvasWidth
-        this.y = Math.random() * this.canvasHeight * 0.5 // Upper half of screen
+        this.y = Math.random() * this.canvasHeight
         this.length = Math.random() * 120 + 80 // Increased length
         this.speed = Math.random() * 8 + 6 // Slightly slower for visibility
         this.opacity = 1
-        this.angle = Math.PI / 4 // 45 degrees
+        // Random angle between 30-60 degrees (more variety)
+        this.angle = (Math.random() * Math.PI / 6) + (Math.PI / 6)
         this.active = true
       }
 
@@ -159,8 +161,12 @@ export function StarryBackground() {
       shootingStars.push(new ShootingStar(canvas.width, canvas.height))
     }
 
-    // Animation loop
+    // Animation loop with timer for shooting stars
     let animationId: number
+    let lastShootingStarTime = Date.now()
+    const shootingStarInterval = 2000 // Spawn a shooting star every 2 seconds
+    let shootingStarIndex = 0
+
     const animate = () => {
       if (!ctx) return
 
@@ -169,12 +175,13 @@ export function StarryBackground() {
       // Update and draw stars
       stars.forEach(star => star.update())
 
-      // Randomly activate shooting stars
-      if (Math.random() < 0.01) { // 1% chance per frame (increased from 0.5%)
-        const inactiveStar = shootingStars.find(s => !s.active)
-        if (inactiveStar) {
-          inactiveStar.reset()
-        }
+      // Timer-based shooting star activation
+      const currentTime = Date.now()
+      if (currentTime - lastShootingStarTime > shootingStarInterval) {
+        // Activate next shooting star in sequence
+        shootingStars[shootingStarIndex].reset()
+        shootingStarIndex = (shootingStarIndex + 1) % shootingStars.length
+        lastShootingStarTime = currentTime
       }
 
       // Update and draw shooting stars
