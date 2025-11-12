@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { SplashCursor } from '@/components/ui/splash-cursor'
+import { StarryBackground } from '@/components/ui/starry-background'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import { IganiLogo } from '@/components/IganiLogo'
 import { defaultSettings } from '@/data/defaultSettings'
@@ -119,6 +120,9 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-900 relative">
+      {/* Starry Night Background */}
+      <StarryBackground />
+
       {/* Splash Cursor Animation - Full Page */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <SplashCursor />
