@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import { IganiLogo } from '@/components/IganiLogo'
-import { sampleWebsites } from '@/data/sampleWebsites'
 import { defaultSettings } from '@/data/defaultSettings'
 import { getWebsites, getSettings, saveContactSubmission } from '@/lib/firestore'
 import { Website, SiteSettings } from '@/types'
@@ -43,7 +42,7 @@ export default function HomePage() {
 
   // Firebase data
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
-  const [websites, setWebsites] = useState<Website[]>(sampleWebsites)
+  const [websites, setWebsites] = useState<Website[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Load data from Firebase on mount
@@ -58,14 +57,13 @@ export default function HomePage() {
           setSettings(firebaseSettings)
         }
 
-        // Load websites
+        // Load websites - always set the data from Firebase
         const firebaseWebsites = await getWebsites()
-        if (firebaseWebsites.length > 0) {
-          setWebsites(firebaseWebsites)
-        }
+        setWebsites(firebaseWebsites)
       } catch (error) {
         console.error('Error loading data from Firebase:', error)
-        // Keep using default data if Firebase fails
+        // Set empty array on error
+        setWebsites([])
       } finally {
         setIsLoading(false)
       }
