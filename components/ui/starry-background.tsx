@@ -92,8 +92,8 @@ export function StarryBackground() {
       reset() {
         this.x = Math.random() * this.canvasWidth
         this.y = Math.random() * this.canvasHeight * 0.5 // Upper half of screen
-        this.length = Math.random() * 80 + 40
-        this.speed = Math.random() * 10 + 10
+        this.length = Math.random() * 120 + 80 // Increased length
+        this.speed = Math.random() * 8 + 6 // Slightly slower for visibility
         this.opacity = 1
         this.angle = Math.PI / 4 // 45 degrees
         this.active = true
@@ -108,21 +108,25 @@ export function StarryBackground() {
         // Create gradient for trail
         const gradient = ctx.createLinearGradient(this.x, this.y, endX, endY)
         gradient.addColorStop(0, `rgba(255, 255, 255, ${this.opacity})`)
-        gradient.addColorStop(0.5, `rgba(147, 197, 253, ${this.opacity * 0.8})`)
+        gradient.addColorStop(0.3, `rgba(147, 197, 253, ${this.opacity})`)
+        gradient.addColorStop(0.6, `rgba(59, 130, 246, ${this.opacity * 0.6})`)
         gradient.addColorStop(1, `rgba(59, 130, 246, 0)`)
 
         ctx.beginPath()
         ctx.moveTo(this.x, this.y)
         ctx.lineTo(endX, endY)
         ctx.strokeStyle = gradient
-        ctx.lineWidth = 2
+        ctx.lineWidth = 3 // Increased from 2 to 3
         ctx.stroke()
 
-        // Draw bright head
+        // Draw bright head with glow
+        ctx.shadowBlur = 10
+        ctx.shadowColor = 'rgba(147, 197, 253, 0.8)'
         ctx.beginPath()
-        ctx.arc(this.x, this.y, 2, 0, Math.PI * 2)
+        ctx.arc(this.x, this.y, 3, 0, Math.PI * 2)
         ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`
         ctx.fill()
+        ctx.shadowBlur = 0
       }
 
       update() {
@@ -143,14 +147,14 @@ export function StarryBackground() {
 
     // Create stars
     const stars: Star[] = []
-    const starCount = 200
+    const starCount = 500 // Increased from 200 to 500
     for (let i = 0; i < starCount; i++) {
       stars.push(new Star(canvas.width, canvas.height))
     }
 
     // Create shooting stars pool
     const shootingStars: ShootingStar[] = []
-    const maxShootingStars = 3
+    const maxShootingStars = 5 // Increased from 3 to 5
     for (let i = 0; i < maxShootingStars; i++) {
       shootingStars.push(new ShootingStar(canvas.width, canvas.height))
     }
@@ -166,7 +170,7 @@ export function StarryBackground() {
       stars.forEach(star => star.update())
 
       // Randomly activate shooting stars
-      if (Math.random() < 0.005) { // 0.5% chance per frame
+      if (Math.random() < 0.01) { // 1% chance per frame (increased from 0.5%)
         const inactiveStar = shootingStars.find(s => !s.active)
         if (inactiveStar) {
           inactiveStar.reset()
