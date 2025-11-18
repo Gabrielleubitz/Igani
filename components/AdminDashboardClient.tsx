@@ -2,18 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Globe, Mail, Settings as SettingsIcon } from 'lucide-react'
+import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { ContactSubmissionsManager } from './ContactSubmissionsManager'
-import { getWebsites, getContactSubmissions } from '@/lib/firestore'
-import { Website, ContactSubmission } from '@/types'
+import TestimonialsManager from './TestimonialsManager'
+import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
+import { Website, ContactSubmission, Testimonial } from '@/types'
 
-type TabType = 'websites' | 'contacts' | 'settings'
+type TabType = 'websites' | 'contacts' | 'testimonials' | 'packages' | 'about' | 'settings'
 
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<TabType>('websites')
   const [websites, setWebsites] = useState<Website[]>([])
   const [contacts, setContacts] = useState<ContactSubmission[]>([])
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
@@ -24,12 +26,14 @@ export default function AdminDashboardClient() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [websitesData, contactsData] = await Promise.all([
+      const [websitesData, contactsData, testimonialsData] = await Promise.all([
         getWebsites(),
-        getContactSubmissions()
+        getContactSubmissions(),
+        getTestimonials()
       ])
       setWebsites(websitesData)
       setContacts(contactsData)
+      setTestimonials(testimonialsData)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -102,6 +106,39 @@ export default function AdminDashboardClient() {
             Contact Submissions ({contacts.length})
           </button>
           <button
+            onClick={() => setActiveTab('testimonials')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
+              activeTab === 'testimonials'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Star className="w-5 h-5" />
+            Testimonials ({testimonials.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('packages')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
+              activeTab === 'packages'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Package className="w-5 h-5" />
+            Packages
+          </button>
+          <button
+            onClick={() => setActiveTab('about')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
+              activeTab === 'about'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Info className="w-5 h-5" />
+            About Us
+          </button>
+          <button
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
               activeTab === 'settings'
@@ -121,6 +158,70 @@ export default function AdminDashboardClient() {
 
         {activeTab === 'contacts' && (
           <ContactSubmissionsManager contacts={contacts} onUpdate={loadData} />
+        )}
+
+        {activeTab === 'testimonials' && (
+          <TestimonialsManager />
+        )}
+
+        {activeTab === 'packages' && (
+          <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">Packages Management</h2>
+              <a
+                href="/admin/packages"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300"
+              >
+                <Package className="w-4 h-4" />
+                Go to Packages Editor
+              </a>
+            </div>
+            <p className="text-slate-400 mb-4">
+              Manage your packages, maintenance plans, and FAQs. Click the button above to access the full packages editor.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                <h3 className="text-white font-semibold mb-2">Packages</h3>
+                <p className="text-slate-300 text-sm">Create and manage service packages</p>
+              </div>
+              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                <h3 className="text-white font-semibold mb-2">Maintenance Plans</h3>
+                <p className="text-slate-300 text-sm">Manage ongoing maintenance offerings</p>
+              </div>
+              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                <h3 className="text-white font-semibold mb-2">FAQs</h3>
+                <p className="text-slate-300 text-sm">Manage frequently asked questions</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'about' && (
+          <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">About Us Management</h2>
+              <a
+                href="/admin/about"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300"
+              >
+                <Info className="w-4 h-4" />
+                Go to About Us Editor
+              </a>
+            </div>
+            <p className="text-slate-400 mb-4">
+              Manage your About Us page content, sections, and settings. Click the button above to access the full About Us editor.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                <h3 className="text-white font-semibold mb-2">Page Settings</h3>
+                <p className="text-slate-300 text-sm">Configure page title, subtitle, and meta description</p>
+              </div>
+              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
+                <h3 className="text-white font-semibold mb-2">Content Sections</h3>
+                <p className="text-slate-300 text-sm">Create and manage mission, values, team, and custom sections</p>
+              </div>
+            </div>
+          </div>
         )}
 
         {activeTab === 'settings' && (

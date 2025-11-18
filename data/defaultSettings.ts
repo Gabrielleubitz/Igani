@@ -7,8 +7,8 @@ export const defaultSettings: SiteSettings = {
   heroTitle: 'Crafting Digital Experiences',
   heroSubtitle: 'Transform your vision into stunning, high-performance websites that captivate users and drive results. Explore our portfolio of exceptional web solutions.',
   aboutTitle: 'Why Choose Igani?',
-  aboutDescription: 'We combine creativity with technical expertise to deliver websites that exceed expectations',
-  contactEmail: 'hello@igani.com',
+  aboutDescription: 'Personal ownership from start to finish. You get a single developer who partners with you, keeps momentum, and is reachable 24/7. Result: a site shaped for your brand—not a template.',
+  contactEmail: 'info@igani.co',
   contactPhone: '+972 58 44 77757',
   contactLocation: 'Netanya, Israel',
   socialLinks: {

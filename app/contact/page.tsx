@@ -6,15 +6,18 @@ import Link from 'next/link'
 import { ArrowLeft, Mail, Phone, MapPin, Send } from 'lucide-react'
 import { IganiLogo } from '@/components/IganiLogo'
 import { StarryBackground } from '@/components/ui/starry-background'
+import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import { saveContactSubmission } from '@/lib/firestore'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    projectType: 'E-commerce Website',
+    projectType: 'Landing Page',
     message: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -38,7 +41,7 @@ export default function ContactPage() {
         firstName: '',
         lastName: '',
         email: '',
-        projectType: 'E-commerce Website',
+        projectType: 'Landing Page',
         message: ''
       })
     } catch (error) {
@@ -53,24 +56,18 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-slate-900 relative">
       <StarryBackground />
-
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-900/95 border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link href="/" className="group cursor-pointer">
-              <IganiLogo className="w-40 h-14" />
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </header>
+      
+      {/* Splash Cursor Animation - Full Page */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <SplashCursor />
+      </div>
+      
+      {/* Header with Back Button */}
+      <Header 
+        showBackButton={true} 
+        backButtonText="Back to Home"
+        backButtonHref="/"
+      />
 
       {/* Main Content */}
       <div className="relative z-10 pt-32 pb-20 px-4">
@@ -104,8 +101,8 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-white mb-1">Email</p>
-                      <a href="mailto:hello@igani.com" className="text-slate-400 hover:text-cyan-400 transition-colors">
-                        hello@igani.com
+                      <a href="mailto:info@igani.co" className="text-slate-400 hover:text-cyan-400 transition-colors">
+                        info@igani.co
                       </a>
                     </div>
                   </div>
@@ -199,11 +196,11 @@ export default function ContactPage() {
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white transition-all duration-300"
                     >
+                      <option>Landing Page</option>
+                      <option>Small Business Website</option>
+                      <option>Premium Brand Site</option>
                       <option>E-commerce Website</option>
-                      <option>Corporate Website</option>
-                      <option>Portfolio Website</option>
-                      <option>Custom Web Application</option>
-                      <option>Other</option>
+                      <option>Custom Web App</option>
                     </select>
                   </div>
 
@@ -248,7 +245,7 @@ export default function ContactPage() {
                     className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-5 h-5 mr-2" />
-                    {isSubmitting ? 'Submitting...' : 'Request Consultation'}
+                    {isSubmitting ? 'Submitting...' : 'Start Free Consultation'}
                   </AnimatedButton>
                 </div>
               </form>
@@ -258,13 +255,12 @@ export default function ContactPage() {
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-700/50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-slate-500 text-sm">
-            © 2025 Igani. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <div className="relative z-10">
+        <Footer 
+          siteName="IGANI" 
+          tagline="Premium web development with a personal touch" 
+        />
+      </div>
     </div>
   )
 }
