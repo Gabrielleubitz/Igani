@@ -47,3 +47,86 @@ export interface ContactSubmission {
   cancellationReason?: string;
   statusUpdatedAt?: string;
 }
+
+export interface Testimonial {
+  id: string;
+  name: string;
+  company: string;
+  role: string;
+  message: string;
+  rating: number;
+  image?: string;
+  featured: boolean;
+  createdAt: string;
+}
+
+export interface PackageAddOn {
+  name: string;
+  priceNote: string;
+}
+
+export interface Package {
+  id: string;
+  slug: string;
+  name: string;
+  tagline: string;
+  priceMin: number;
+  priceMax: number;
+  priceUnit: string;
+  bestFor: string;
+  includes: string[];
+  addOns: PackageAddOn[];
+  delivery: string;
+  roundsOfRevisions: number | null;
+  order: number;
+  published: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MaintenancePlan {
+  id: string;
+  name: string;
+  price: number;
+  includes: string[];
+  order: number;
+  published: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PackageFAQ {
+  id: string;
+  question: string;
+  answer: string;
+  order: number;
+  published: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PackageSettings {
+  currencySymbol: string;
+  showComparison: boolean;
+  contactCtaText: string;
+  contactEmail: string;
+  calendlyUrl: string;
+}
+
+export interface AboutUsSection {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+  published: boolean;
+  type: 'hero' | 'mission' | 'values' | 'team' | 'story' | 'custom';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AboutUsSettings {
+  pageTitle: string;
+  pageSubtitle: string;
+  heroImage?: string;
+  metaDescription: string;
+}

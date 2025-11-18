@@ -5,29 +5,26 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { IganiLogo } from '@/components/IganiLogo'
 import { StarryBackground } from '@/components/ui/starry-background'
+import { SplashCursor } from '@/components/ui/splash-cursor'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-slate-900 relative">
       <StarryBackground />
-
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-900/95 border-b border-slate-700/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <Link href="/" className="group cursor-pointer">
-              <IganiLogo className="w-40 h-14" />
-            </Link>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Link>
-          </div>
-        </div>
-      </header>
+      
+      {/* Splash Cursor Animation - Full Page */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <SplashCursor />
+      </div>
+      
+      {/* Header with Back Button */}
+      <Header 
+        showBackButton={true} 
+        backButtonText="Back to Home"
+        backButtonHref="/"
+      />
 
       {/* Main Content */}
       <div className="relative z-10 pt-32 pb-20 px-4">
@@ -173,7 +170,7 @@ export default function TermsPage() {
                   For questions regarding these Terms of Service, please contact us:
                 </p>
                 <div className="mt-4 p-4 bg-slate-900/60 rounded-xl border border-slate-700/50">
-                  <p className="text-cyan-400 font-semibold">Email: hello@igani.com</p>
+                  <p className="text-cyan-400 font-semibold">Email: info@igani.co</p>
                   <p className="text-slate-400 mt-2">Phone: +972 58 44 77757</p>
                   <p className="text-slate-400 mt-2">Location: Netanya, Israel</p>
                 </div>
@@ -184,13 +181,12 @@ export default function TermsPage() {
       </div>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-slate-700/50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-slate-500 text-sm">
-            © 2025 Igani. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <div className="relative z-10">
+        <Footer 
+          siteName="IGANI" 
+          tagline="Premium web development with a personal touch" 
+        />
+      </div>
     </div>
   )
 }

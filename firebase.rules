@@ -26,9 +26,46 @@ service cloud.firestore {
                                      request.time < timestamp.date(2025, 12, 31);
     }
     
-    // Websites Collection (if you add it later)
+    // Websites Collection
     match /websites/{document} {
       allow read: if true; // Anyone can view websites
+      allow write: if request.auth != null || 
+                      request.time < timestamp.date(2025, 12, 31);
+    }
+    
+    // Testimonials Collection
+    match /testimonials/{document} {
+      allow read: if true; // Anyone can view testimonials
+      allow write: if request.auth != null || 
+                      request.time < timestamp.date(2025, 12, 31);
+    }
+    
+    // Packages Collection - Allow read for all, write only for admin
+    match /packages/{document} {
+      // Allow anyone to read packages (for public packages page)
+      allow read: if true;
+      
+      // Allow write only for admin (in admin dashboard)
+      allow write: if request.auth != null || 
+                      request.time < timestamp.date(2025, 12, 31);
+    }
+    
+    // Maintenance Plans Collection - Allow read for all, write only for admin
+    match /maintenancePlans/{document} {
+      // Allow anyone to read maintenance plans (for public packages page)
+      allow read: if true;
+      
+      // Allow write only for admin (in admin dashboard)
+      allow write: if request.auth != null || 
+                      request.time < timestamp.date(2025, 12, 31);
+    }
+    
+    // Package FAQs Collection - Allow read for all, write only for admin
+    match /faqs/{document} {
+      // Allow anyone to read FAQs (for public packages page)
+      allow read: if true;
+      
+      // Allow write only for admin (in admin dashboard)
       allow write: if request.auth != null || 
                       request.time < timestamp.date(2025, 12, 31);
     }
