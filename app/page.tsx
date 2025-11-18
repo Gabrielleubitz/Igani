@@ -134,7 +134,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
             <div className="group cursor-pointer" onClick={() => scrollToSection('home')}>
-              <IganiLogo className="w-36 h-12" />
+              <IganiLogo className="w-40 h-14" />
             </div>
 
             {/* Desktop Navigation */}
@@ -148,13 +148,16 @@ export default function HomePage() {
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
-                  className={`px-4 py-2 text-sm font-medium transition-all rounded-lg ${
+                  className={`relative px-4 py-2 text-sm font-medium transition-all rounded-lg group ${
                     activeSection === item.id
-                      ? 'text-cyan-400 bg-slate-800/80'
+                      ? 'text-cyan-400 bg-slate-800/80 shadow-lg shadow-cyan-500/20'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
                   }`}
                 >
                   {item.label}
+                  <span className={`absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 ${
+                    activeSection === item.id ? 'w-3/4' : 'w-0 group-hover:w-3/4'
+                  }`}></span>
                 </button>
               ))}
             </nav>
@@ -205,8 +208,11 @@ export default function HomePage() {
               transition={{ duration: 0.6 }}
               className="mb-6"
             >
-              <span className="inline-block px-4 py-2 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-full text-cyan-400 text-sm font-semibold">
-                Welcome to the Future of Web Development
+              <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-md border border-cyan-500/40 rounded-full text-cyan-400 text-sm font-semibold shadow-lg shadow-cyan-500/20">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                Professional Web Development Services
               </span>
             </motion.div>
 
@@ -214,12 +220,12 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-6 leading-tight"
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-5 leading-[1.1]"
             >
-              Build Stunning
+              Elevate Your Brand
               <br />
               <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                Digital Experiences
+                With Expert Web Solutions
               </span>
             </motion.h1>
 
@@ -227,7 +233,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed max-w-3xl mx-auto"
+              className="text-lg md:text-xl text-slate-300 mb-8 leading-relaxed max-w-3xl mx-auto"
             >
               {settings.heroSubtitle}
             </motion.p>
@@ -267,10 +273,10 @@ export default function HomePage() {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                Our Services
+                What We Deliver
               </h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                From concept to deployment, we bring your digital vision to life
+                Comprehensive web development services designed to drive your business growth
               </p>
             </motion.div>
 
@@ -281,14 +287,16 @@ export default function HomePage() {
                 transition={{ duration: 0.4 }}
                 viewport={{ once: true }}
                 whileHover={{ y: -8 }}
-                className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-500/10"
+                className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-blue-500/20"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <span className="text-4xl">💻</span>
+                  <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">Web Development</h3>
+                <h3 className="text-2xl font-bold mb-3 text-white">Custom Web Development</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Custom web applications built with modern technologies like React, Next.js, and Node.js.
+                  Enterprise-grade web applications engineered with React, Next.js, and Node.js to scale with your business demands.
                 </p>
               </motion.div>
 
@@ -298,14 +306,16 @@ export default function HomePage() {
                 transition={{ duration: 0.4, delay: 0.1 }}
                 viewport={{ once: true }}
                 whileHover={{ y: -8 }}
-                className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-purple-500/50 transition-all duration-300 hover:shadow-2xl hover:shadow-purple-500/10"
+                className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-purple-500/50 transition-all duration-300 shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-purple-500/20"
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <span className="text-4xl">🎨</span>
+                  <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                  </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">UI/UX Design</h3>
+                <h3 className="text-2xl font-bold mb-3 text-white">Strategic UI/UX Design</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Beautiful, intuitive interfaces that users love. From wireframes to pixel-perfect designs.
+                  Data-driven design solutions that convert visitors into customers. Professional wireframes and pixel-perfect interfaces optimized for engagement.
                 </p>
               </motion.div>
             </div>
@@ -319,10 +329,10 @@ export default function HomePage() {
               className="text-center mb-12"
             >
               <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Your Journey With Igani
+                Our Proven Process
               </h3>
               <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                A simple, streamlined process from first contact to launch
+                A systematic approach ensuring on-time delivery and exceptional results
               </p>
             </motion.div>
 
@@ -337,37 +347,37 @@ export default function HomePage() {
                   {[
                     {
                       step: '01',
-                      title: 'Discovery Call',
-                      description: 'We start with a conversation to understand your vision, goals, and requirements. Share your ideas and we\'ll help shape them.',
-                      icon: '💬',
+                      title: 'Strategic Consultation',
+                      description: 'In-depth analysis of your business objectives, target audience, and competitive landscape to develop a comprehensive digital strategy.',
+                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
                       gradient: 'from-cyan-500 to-blue-500'
                     },
                     {
                       step: '02',
-                      title: 'Design & Planning',
-                      description: 'Our team creates mockups and a detailed project roadmap. You\'ll see exactly what your site will look like before we code a single line.',
-                      icon: '✏️',
+                      title: 'Design & Architecture',
+                      description: 'Professional wireframes and high-fidelity prototypes with detailed technical specifications. Complete visual and functional approval before development begins.',
+                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
                       gradient: 'from-blue-500 to-indigo-500'
                     },
                     {
                       step: '03',
-                      title: 'Development',
-                      description: 'We build your site with cutting-edge technology, keeping you updated with regular progress reports and previews.',
-                      icon: '⚡',
+                      title: 'Development & Integration',
+                      description: 'Agile development with modern frameworks and best practices. Regular milestone deliveries with full transparency and progress tracking.',
+                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>,
                       gradient: 'from-indigo-500 to-purple-500'
                     },
                     {
                       step: '04',
-                      title: 'Review & Refine',
-                      description: 'You test everything and provide feedback. We make revisions until it\'s perfect and you\'re completely satisfied.',
-                      icon: '🔍',
+                      title: 'Quality Assurance',
+                      description: 'Rigorous testing across devices and browsers. Comprehensive review cycles ensuring flawless functionality and optimal performance.',
+                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
                       gradient: 'from-purple-500 to-pink-500'
                     },
                     {
                       step: '05',
-                      title: 'Launch & Support',
-                      description: 'We deploy your site and ensure everything runs smoothly. Plus, we\'re here for ongoing support and maintenance.',
-                      icon: '🚀',
+                      title: 'Deployment & Ongoing Support',
+                      description: 'Seamless launch with zero downtime. Continuous monitoring, maintenance, and dedicated support to ensure sustained success.',
+                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>,
                       gradient: 'from-pink-500 to-rose-500'
                     }
                   ].map((item, index) => (
@@ -383,7 +393,7 @@ export default function HomePage() {
                     >
                       {/* Content Card */}
                       <div className="flex-1 md:w-[calc(50%-3rem)]">
-                        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600 transition-all duration-300 hover:shadow-xl">
+                        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/10">
                           <div className="flex items-center gap-4 mb-4">
                             <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-xl flex items-center justify-center text-2xl`}>
                               {item.icon}
@@ -423,9 +433,9 @@ export default function HomePage() {
               >
                 <button
                   onClick={() => scrollToSection('contact')}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-xl shadow-xl shadow-cyan-500/25 transition-all duration-300 hover:scale-105"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-xl shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-105"
                 >
-                  Start Your Journey Today
+                  Schedule a Consultation
                   <Send className="w-5 h-5" />
                 </button>
               </motion.div>
@@ -443,9 +453,9 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-12"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Our Work</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Client Success Stories</h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Explore the exceptional websites and applications we've crafted
+                Proven results across industries. Explore the high-performance websites and applications we've delivered.
               </p>
             </motion.div>
 
@@ -462,8 +472,8 @@ export default function HomePage() {
                   onClick={() => setActiveCategory(category)}
                   className={`px-6 py-2.5 rounded-full transition-all duration-300 font-semibold text-sm ${
                     activeCategory === category
-                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/30'
-                      : 'bg-slate-800/80 text-slate-300 border border-slate-700/50 hover:border-cyan-500/50 hover:text-white hover:bg-slate-800'
+                      ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-xl shadow-cyan-500/40'
+                      : 'bg-slate-800/80 text-slate-300 border border-slate-700/50 hover:border-cyan-500/50 hover:text-white hover:bg-slate-800 hover:shadow-lg hover:shadow-slate-950/50'
                   }`}
                 >
                   {category.charAt(0).toUpperCase() + category.slice(1)}
@@ -490,7 +500,7 @@ export default function HomePage() {
                       transition={{ duration: 0.5, delay: index * 0.1 }}
                       viewport={{ once: true }}
                       whileHover={{ y: -12 }}
-                      className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden hover:shadow-2xl hover:shadow-cyan-500/25 transition-all duration-500 hover:border-cyan-500/60 cursor-pointer"
+                      className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-500 hover:border-cyan-500/60 cursor-pointer"
                     >
                       <div className="relative h-64 overflow-hidden">
                         <img
@@ -501,7 +511,7 @@ export default function HomePage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
                         <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/0 to-blue-600/0 group-hover:from-cyan-600/20 group-hover:to-blue-600/20 transition-all duration-500"></div>
                         <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-xl backdrop-blur-sm">
-                          ⭐ Featured
+                          Featured
                         </div>
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           <div className="bg-cyan-600 text-white p-4 rounded-full shadow-2xl transform group-hover:scale-110 transition-transform duration-300">
@@ -545,7 +555,7 @@ export default function HomePage() {
                       transition={{ duration: 0.5, delay: index * 0.1 }}
                       viewport={{ once: true }}
                       whileHover={{ y: -12 }}
-                      className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden hover:shadow-2xl hover:shadow-slate-500/15 transition-all duration-500 hover:border-slate-600/70 cursor-pointer"
+                      className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-slate-500/25 transition-all duration-500 hover:border-slate-600/70 cursor-pointer"
                     >
                       <div className="relative h-64 overflow-hidden">
                         <img
@@ -595,10 +605,10 @@ export default function HomePage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20">
               {[
-                { icon: Award, label: '50+', text: 'Projects Completed', gradient: 'from-cyan-500 to-blue-500' },
-                { icon: Users, label: '40+', text: 'Happy Clients', gradient: 'from-green-500 to-emerald-500' },
-                { icon: Clock, label: '3+', text: 'Years Experience', gradient: 'from-purple-500 to-pink-500' },
-                { icon: Star, label: '5.0', text: 'Average Rating', gradient: 'from-orange-500 to-red-500' }
+                { icon: Award, label: '50+', text: 'Projects Delivered', gradient: 'from-cyan-500 to-blue-500' },
+                { icon: Users, label: '40+', text: 'Business Clients', gradient: 'from-green-500 to-emerald-500' },
+                { icon: Clock, label: '3+', text: 'Years of Excellence', gradient: 'from-purple-500 to-pink-500' },
+                { icon: Star, label: '98%', text: 'Client Satisfaction', gradient: 'from-orange-500 to-red-500' }
               ].map((stat, index) => (
                 <motion.div
                   key={stat.text}
@@ -607,7 +617,7 @@ export default function HomePage() {
                   transition={{ duration: 0.4, delay: index * 0.1 }}
                   viewport={{ once: true }}
                   whileHover={{ y: -5, scale: 1.03 }}
-                  className="group text-center p-8 bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700/50 hover:border-slate-600 transition-all duration-300"
+                  className="group text-center p-8 bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-slate-700/50 hover:border-slate-600 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-xl hover:shadow-cyan-500/10"
                 >
                   <div className={`inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br ${stat.gradient} bg-opacity-10 rounded-xl mb-4 group-hover:scale-110 transition-transform duration-300`}>
                     <stat.icon className="w-8 h-8 text-white" />
@@ -625,13 +635,13 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
               viewport={{ once: true }}
-              className="relative overflow-hidden bg-gradient-to-r from-cyan-600 to-blue-600 rounded-3xl p-12 md:p-16 text-white text-center"
+              className="relative overflow-hidden bg-gradient-to-r from-cyan-600 to-blue-600 rounded-3xl p-12 md:p-16 text-white text-center shadow-2xl shadow-cyan-500/30"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-blue-600/50 to-purple-600/50 opacity-50"></div>
               <div className="relative z-10">
-                <h3 className="text-3xl md:text-4xl font-bold mb-4">Ready to Start Your Project?</h3>
+                <h3 className="text-3xl md:text-4xl font-bold mb-4">Ready to Accelerate Your Digital Growth?</h3>
                 <p className="text-lg md:text-xl mb-8 text-blue-100 max-w-2xl mx-auto">
-                  Let's create something amazing together. Get in touch for a free consultation.
+                  Partner with experienced developers who deliver results. Schedule your complimentary strategy session today.
                 </p>
                 <motion.button
                   onClick={() => scrollToSection('contact')}
@@ -639,7 +649,7 @@ export default function HomePage() {
                   whileTap={{ scale: 0.95 }}
                   className="bg-white text-cyan-600 px-10 py-4 rounded-xl hover:bg-slate-50 transition-all duration-300 font-bold text-lg shadow-2xl"
                 >
-                  Get Started Now
+                  Book Your Consultation
                 </motion.button>
               </div>
             </motion.div>
@@ -656,9 +666,9 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Get In Touch</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Let's Build Together</h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Ready to transform your digital presence? Let's discuss your project
+                Take the first step toward a powerful web presence. Connect with our team to discuss your requirements.
               </p>
             </motion.div>
 
@@ -684,7 +694,7 @@ export default function HomePage() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: index * 0.1 }}
                         viewport={{ once: true }}
-                        className="flex items-start space-x-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-cyan-500/50 transition-colors duration-300"
+                        className="flex items-start space-x-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md shadow-slate-950/50 hover:shadow-lg hover:shadow-cyan-500/10"
                       >
                         <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
                           <contact.icon className="w-6 h-6 text-cyan-400" />
@@ -705,7 +715,7 @@ export default function HomePage() {
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
               >
-                <form onSubmit={handleSubmit} className="space-y-6 bg-slate-800/60 p-8 rounded-2xl border border-slate-700/50">
+                <form onSubmit={handleSubmit} className="space-y-6 bg-slate-800/60 p-8 rounded-2xl border border-slate-700/50 shadow-xl shadow-slate-950/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-semibold text-white mb-2">First Name</label>
@@ -757,14 +767,14 @@ export default function HomePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Message</label>
+                    <label className="block text-sm font-semibold text-white mb-2">Project Details</label>
                     <textarea
                       rows={5}
                       name="message"
                       value={formData.message}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 resize-none transition-all duration-300"
-                      placeholder="Tell us about your project..."
+                      placeholder="Describe your business needs and project goals..."
                       required
                     ></textarea>
                   </div>
@@ -775,7 +785,7 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-green-600/20 border border-green-500/50 text-green-400 p-4 rounded-lg font-medium"
                     >
-                      Thank you! Your message has been sent successfully.
+                      Thank you for reaching out. We will respond to your inquiry within 24 hours.
                     </motion.div>
                   )}
 
@@ -785,7 +795,7 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-red-600/20 border border-red-500/50 text-red-400 p-4 rounded-lg font-medium"
                     >
-                      Sorry, there was an error. Please try again.
+                      An error occurred. Please try again or contact us directly.
                     </motion.div>
                   )}
 
@@ -797,7 +807,7 @@ export default function HomePage() {
                     className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-5 h-5 mr-2" />
-                    {isSubmitting ? 'Sending...' : 'Send Message'}
+                    {isSubmitting ? 'Submitting...' : 'Request Consultation'}
                   </AnimatedButton>
                 </form>
               </motion.div>
@@ -816,7 +826,7 @@ export default function HomePage() {
               className="flex flex-col md:flex-row justify-between items-center gap-6"
             >
               <div className="group">
-                <IganiLogo className="w-40 h-12" />
+                <IganiLogo className="w-44 h-14" />
                 <p className="text-slate-500 mt-3 text-sm max-w-xs">
                   {settings.tagline}
                 </p>
@@ -824,9 +834,9 @@ export default function HomePage() {
               <div className="text-center md:text-right">
                 <p className="text-slate-400 mb-2">© 2025 {settings.siteName}. All rights reserved.</p>
                 <div className="flex gap-4 justify-center md:justify-end">
-                  <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Privacy</a>
-                  <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Terms</a>
-                  <a href="#" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Contact</a>
+                  <a href="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Privacy</a>
+                  <a href="/terms" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Terms</a>
+                  <a href="/contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Contact</a>
                 </div>
               </div>
             </motion.div>
