@@ -9,8 +9,8 @@ export const defaultSettings: SiteSettings = {
   aboutTitle: 'Why Choose Igani?',
   aboutDescription: 'We combine creativity with technical expertise to deliver websites that exceed expectations',
   contactEmail: 'hello@igani.com',
-  contactPhone: '+1 (555) 123-4567',
-  contactLocation: 'San Francisco, CA',
+  contactPhone: '+972 58 44 77757',
+  contactLocation: 'Netanya, Israel',
   socialLinks: {
     twitter: 'https://twitter.com/igani',
     linkedin: 'https://linkedin.com/company/igani',
