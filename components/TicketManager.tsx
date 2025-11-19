@@ -96,7 +96,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
     }
 
     try {
-      await updateContactSubmissionStatus(id, status, status === 'cancelled' ? cancellationReason : undefined)
+      await updateContactSubmissionStatus(id, status, undefined)
       onUpdate()
     } catch (error) {
       console.error('Error updating status:', error)
