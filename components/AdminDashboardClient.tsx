@@ -8,6 +8,7 @@ import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
 import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial } from '@/types'
+import { LoadingScreen } from './ui/loading-screen'
 
 type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings'
 
@@ -46,14 +47,7 @@ export default function AdminDashboardClient() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto mb-4"></div>
-          <p className="text-slate-400">Loading admin panel...</p>
-        </div>
-      </div>
-    )
+    return <LoadingScreen message="Loading admin panel..." />
   }
 
   return (

@@ -10,6 +10,7 @@ import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { IganiLogo } from '@/components/IganiLogo'
 import Header from '@/components/Header'
+import { LoadingScreen } from '@/components/ui/loading-screen'
 import { T } from '@/components/T'
 
 export default function PreviewPage({ params }: { params: { id: string } }) {
@@ -55,15 +56,7 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
   }, [isHoveringIframe])
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 relative">
-        <StarryBackground />
-        <SplashCursor />
-        <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-slate-400"><T>Loading website preview...</T></div>
-        </div>
-      </div>
-    )
+    return <LoadingScreen message="Loading website preview..." />
   }
 
   if (!website) {
