@@ -396,7 +396,7 @@ export default function HomePage() {
               <div className="mb-20">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-1 h-8 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
-                  <h3 className="text-2xl font-bold text-white">Featured Projects</h3>
+                  <h3 className="text-2xl font-bold text-white">{content.featuredProjects[language]}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {featuredWebsites.map((website, index) => (
@@ -421,7 +421,7 @@ export default function HomePage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
                         <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/0 to-blue-600/0 group-hover:from-cyan-600/20 group-hover:to-blue-600/20 transition-all duration-500"></div>
                         <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-xl backdrop-blur-sm">
-                          Featured
+                          {content.featured[language]}
                         </div>
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           <div className="bg-cyan-600 text-white p-4 rounded-full shadow-2xl transform group-hover:scale-110 transition-transform duration-300">
@@ -713,11 +713,11 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="text-center md:text-right">
-                <p className="text-slate-400 mb-2">© 2025 {settings.siteName}. All rights reserved.</p>
+                <p className="text-slate-400 mb-2">© 2025 {settings.siteName}. {footer.allRightsReserved[language]}</p>
                 <div className="flex gap-4 justify-center md:justify-end">
-                  <a href="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Privacy</a>
-                  <a href="/terms" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Terms</a>
-                  <a href="/contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Contact</a>
+                  <a href="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.privacy[language]}</a>
+                  <a href="/terms" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.terms[language]}</a>
+                  <a href="/contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.contact[language]}</a>
                 </div>
               </div>
             </motion.div>
