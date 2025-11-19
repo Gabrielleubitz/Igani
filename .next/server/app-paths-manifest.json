@@ -1,13 +1,1 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/checkout/page": "app/checkout/page.js",
-  "/api/create-repo/route": "app/api/create-repo/route.js",
-  "/api/download/[orderId]/route": "app/api/download/[orderId]/route.js",
-  "/admin/debug/page": "app/admin/debug/page.js",
-  "/page": "app/page.js",
-  "/orders/[id]/page": "app/orders/[id]/page.js",
-  "/api/health/route": "app/api/health/route.js",
-  "/api/generate-copy/route": "app/api/generate-copy/route.js",
-  "/api/stripe/webhook/route": "app/api/stripe/webhook/route.js"
-}
+{}
