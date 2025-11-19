@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ContactSubmission, Package } from '@/types'
-import { 
-  updateContactSubmissionStatus, 
+import {
+  updateContactSubmissionStatus,
   assignSubmissionToDeveloper,
   updateContactSubmission,
-  getPackages 
+  getPackages,
+  saveContactSubmission
 } from '@/lib/firestore'
 import {
   CheckCircle,
@@ -60,6 +61,16 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
   const [showTicketDetails, setShowTicketDetails] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newInquiry, setNewInquiry] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    projectType: 'Landing Page',
+    message: '',
+    priority: 'medium' as ContactSubmission['priority'],
+    source: 'manual' as 'website' | 'manual' | 'referral' | 'other'
+  })
 
   useEffect(() => {
     loadPackages()
@@ -144,6 +155,36 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
     }
   }
 
+  const handleCreateInquiry = async () => {
+    if (!newInquiry.firstName || !newInquiry.lastName || !newInquiry.email || !newInquiry.message) {
+      setSaveError('Please fill in all required fields')
+      return
+    }
+
+    setIsSaving(true)
+    setSaveError(null)
+
+    try {
+      await saveContactSubmission(newInquiry)
+      setShowCreateModal(false)
+      setNewInquiry({
+        firstName: '',
+        lastName: '',
+        email: '',
+        projectType: 'Landing Page',
+        message: '',
+        priority: 'medium',
+        source: 'manual'
+      })
+      await onUpdate()
+    } catch (error) {
+      console.error('Error creating inquiry:', error)
+      setSaveError(error instanceof Error ? error.message : 'Failed to create inquiry')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const getLinkedPackage = (packageId?: string) => {
     if (!packageId) return null
     return packages.find(p => p.id === packageId)
@@ -212,13 +253,20 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
           <h2 className="text-xl font-bold text-white mb-2">Customer Inquiries</h2>
           <p className="text-slate-400 text-sm">Manage customer inquiries, link to packages, and track project details</p>
         </div>
-        
+
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-cyan-500/20 font-semibold"
+          >
+            <Plus className="w-4 h-4" />
+            Create Inquiry
+          </button>
           <button
             onClick={() => setShowAnalytics(!showAnalytics)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-              showAnalytics 
-                ? 'bg-cyan-600 text-white' 
+              showAnalytics
+                ? 'bg-cyan-600 text-white'
                 : 'bg-slate-700/50 text-slate-300 hover:text-white hover:bg-slate-700'
             }`}
           >
@@ -747,6 +795,162 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                 >
                   Confirm Cancellation
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Create Inquiry Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-800 rounded-xl border border-slate-700/50 p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white">Create New Customer Inquiry</h2>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false)
+                    setSaveError(null)
+                  }}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-slate-400 text-sm mb-6">
+                Manually create an inquiry for clients acquired through other channels (phone, referral, etc.)
+              </p>
+
+              <div className="space-y-6">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-white font-medium mb-2">First Name *</label>
+                    <input
+                      type="text"
+                      value={newInquiry.firstName}
+                      onChange={(e) => setNewInquiry({ ...newInquiry, firstName: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
+                      placeholder="John"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Last Name *</label>
+                    <input
+                      type="text"
+                      value={newInquiry.lastName}
+                      onChange={(e) => setNewInquiry({ ...newInquiry, lastName: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
+                      placeholder="Doe"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-white font-medium mb-2">Email *</label>
+                  <input
+                    type="email"
+                    value={newInquiry.email}
+                    onChange={(e) => setNewInquiry({ ...newInquiry, email: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
+                    placeholder="john.doe@example.com"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-white font-medium mb-2">Project Type</label>
+                    <select
+                      value={newInquiry.projectType}
+                      onChange={(e) => setNewInquiry({ ...newInquiry, projectType: e.target.value })}
+                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                    >
+                      <option>Landing Page</option>
+                      <option>Small Business Website</option>
+                      <option>Premium Brand Site</option>
+                      <option>E-commerce Website</option>
+                      <option>Custom Web App</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Priority</label>
+                    <select
+                      value={newInquiry.priority}
+                      onChange={(e) => setNewInquiry({ ...newInquiry, priority: e.target.value as ContactSubmission['priority'] })}
+                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-white font-medium mb-2">Source</label>
+                  <select
+                    value={newInquiry.source}
+                    onChange={(e) => setNewInquiry({ ...newInquiry, source: e.target.value as any })}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                  >
+                    <option value="manual">Manual Entry</option>
+                    <option value="referral">Referral</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-white font-medium mb-2">Project Details *</label>
+                  <textarea
+                    value={newInquiry.message}
+                    onChange={(e) => setNewInquiry({ ...newInquiry, message: e.target.value })}
+                    rows={5}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
+                    placeholder="Enter client's project requirements, goals, and any other relevant information..."
+                    required
+                  />
+                </div>
+
+                {/* Error Message */}
+                {saveError && (
+                  <div className="p-4 bg-red-600/20 border border-red-500/50 text-red-400 rounded-lg">
+                    <p className="text-sm">{saveError}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex justify-end gap-4 pt-6 border-t border-slate-700/50">
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false)
+                      setSaveError(null)
+                    }}
+                    className="px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateInquiry}
+                    disabled={isSaving}
+                    className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    <Plus className="w-4 h-4 inline mr-2" />
+                    {isSaving ? 'Creating...' : 'Create Inquiry'}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
