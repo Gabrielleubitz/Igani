@@ -1,5 +1,8 @@
 import { Language, SiteContent } from '@/types/i18n'
 
+// Re-export types for convenience
+export type { Language, SiteContent } from '@/types/i18n'
+
 export const siteContent: SiteContent = {
   navigation: {
     home: { en: 'Home', he: 'בית' },
@@ -154,20 +157,24 @@ export function getLocalizedPath(pathname: string, targetLanguage: Language): st
 }
 
 export function getText(key: keyof SiteContent, language: Language, nestedKey?: string): string {
-  const section = siteContent[key]
-  if (!section) return ''
-  
-  if (nestedKey) {
-    const nested = (section as any)[nestedKey]
-    if (nested && typeof nested === 'object' && nested[language]) {
-      return nested[language]
+  try {
+    const section = siteContent[key] as any
+    if (!section) return ''
+    
+    if (nestedKey) {
+      const nested = section[nestedKey]
+      if (nested && typeof nested === 'object' && nested[language]) {
+        return nested[language]
+      }
+      return ''
     }
+    
+    if (typeof section === 'object' && section[language]) {
+      return section[language]
+    }
+    
+    return ''
+  } catch (error) {
     return ''
   }
-  
-  if (typeof section === 'object' && section[language]) {
-    return (section as any)[language]
-  }
-  
-  return ''
 }
