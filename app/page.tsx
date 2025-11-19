@@ -11,6 +11,7 @@ import { defaultSettings } from '@/data/defaultSettings'
 import { getWebsites, getSettings, saveContactSubmission, getTestimonials } from '@/lib/firestore'
 import { Website, SiteSettings, Testimonial } from '@/types'
 import { siteContent } from '@/lib/i18n'
+import { useLanguage } from '@/contexts/LanguageContext'
 import {
   Mail,
   Phone,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react'
 
 export default function HomePage() {
+  const { language } = useLanguage()
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -40,7 +42,7 @@ export default function HomePage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // English content
+  // Localized content based on current language
   const content = siteContent.home
   const nav = siteContent.navigation
   const projectTypes = siteContent.projectTypes
@@ -141,7 +143,7 @@ export default function HomePage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
-{content.heroTagline.en}
+{content.heroTagline[language]}
               </span>
             </motion.div>
 
@@ -164,7 +166,7 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.3 }}
               className="text-lg md:text-xl text-slate-300 mb-8 leading-relaxed max-w-3xl mx-auto"
             >
-              {content.heroSubtitle.en}
+              {content.heroSubtitle[language]}
             </motion.p>
 
             <motion.div
@@ -178,14 +180,14 @@ export default function HomePage() {
                 size="large"
                 onClick={() => window.location.href = '/contact'}
               >
-{content.ctaFreeConsultation.en}
+{content.ctaFreeConsultation[language]}
               </AnimatedButton>
               <AnimatedButton
                 variant="secondary"
                 size="large"
                 onClick={() => document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })}
               >
-{content.ctaViewWork.en}
+{content.ctaViewWork[language]}
               </AnimatedButton>
             </motion.div>
           </div>
@@ -364,7 +366,7 @@ export default function HomePage() {
                   onClick={() => window.location.href = '/contact'}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-xl shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-105"
                 >
-  {content.ctaFreeConsultation.en}
+  {content.ctaFreeConsultation[language]}
                   <Send className="w-5 h-5" />
                 </button>
               </motion.div>
