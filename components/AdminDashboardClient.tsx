@@ -4,17 +4,17 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
-import { ContactSubmissionsManager } from './ContactSubmissionsManager'
+import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
 import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial } from '@/types'
 
-type TabType = 'websites' | 'contacts' | 'testimonials' | 'packages' | 'about' | 'settings'
+type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings'
 
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<TabType>('websites')
   const [websites, setWebsites] = useState<Website[]>([])
-  const [contacts, setContacts] = useState<ContactSubmission[]>([])
+  const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
@@ -26,13 +26,13 @@ export default function AdminDashboardClient() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [websitesData, contactsData, testimonialsData] = await Promise.all([
+      const [websitesData, inquiriesData, testimonialsData] = await Promise.all([
         getWebsites(),
         getContactSubmissions(),
         getTestimonials()
       ])
       setWebsites(websitesData)
-      setContacts(contactsData)
+      setInquiries(inquiriesData)
       setTestimonials(testimonialsData)
     } catch (error) {
       console.error('Error loading data:', error)
@@ -95,15 +95,15 @@ export default function AdminDashboardClient() {
             Websites ({websites.length})
           </button>
           <button
-            onClick={() => setActiveTab('contacts')}
+            onClick={() => setActiveTab('inquiries')}
             className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-              activeTab === 'contacts'
+              activeTab === 'inquiries'
                 ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
                 : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
             }`}
           >
             <Mail className="w-5 h-5" />
-            Contact Submissions ({contacts.length})
+            Customer Inquiries ({inquiries.length})
           </button>
           <button
             onClick={() => setActiveTab('testimonials')}
@@ -156,8 +156,8 @@ export default function AdminDashboardClient() {
           <WebsiteManager websites={websites} onUpdate={loadData} />
         )}
 
-        {activeTab === 'contacts' && (
-          <ContactSubmissionsManager contacts={contacts} onUpdate={loadData} />
+        {activeTab === 'inquiries' && (
+          <TicketManager contacts={inquiries} onUpdate={loadData} />
         )}
 
         {activeTab === 'testimonials' && (

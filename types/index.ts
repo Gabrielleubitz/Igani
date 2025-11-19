@@ -46,6 +46,16 @@ export interface ContactSubmission {
   assignedTo?: string;
   cancellationReason?: string;
   statusUpdatedAt?: string;
+  // Ticket management fields
+  linkedPackageId?: string;
+  linkedPackageName?: string;
+  quotedPrice?: number;
+  currency?: string;
+  notes?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  estimatedDelivery?: string;
+  clientBudget?: string;
+  followUpDate?: string;
 }
 
 export interface Testimonial {
