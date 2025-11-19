@@ -135,32 +135,16 @@ export const siteContent: SiteContent = {
   }
 }
 
-// Language detection utilities
-export function getLanguageFromPath(pathname: string): Language {
-  return pathname.startsWith('/he') ? 'he' : 'en'
-}
-
+// Language utilities
 export function isRtlLanguage(language: Language): boolean {
   return language === 'he'
-}
-
-export function getLocalizedPath(pathname: string, targetLanguage: Language): string {
-  const currentLanguage = getLanguageFromPath(pathname)
-  
-  if (currentLanguage === targetLanguage) return pathname
-  
-  // Remove current language prefix if exists
-  let cleanPath = pathname.startsWith('/he') ? pathname.slice(3) : pathname
-  
-  // Add new language prefix if needed
-  return targetLanguage === 'he' ? `/he${cleanPath || '/'}` : (cleanPath || '/')
 }
 
 export function getText(key: keyof SiteContent, language: Language, nestedKey?: string): string {
   try {
     const section = siteContent[key] as any
     if (!section) return ''
-    
+
     if (nestedKey) {
       const nested = section[nestedKey]
       if (nested && typeof nested === 'object' && nested[language]) {
@@ -168,11 +152,11 @@ export function getText(key: keyof SiteContent, language: Language, nestedKey?: 
       }
       return ''
     }
-    
+
     if (typeof section === 'object' && section[language]) {
       return section[language]
     }
-    
+
     return ''
   } catch (error) {
     return ''
