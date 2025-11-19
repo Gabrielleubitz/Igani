@@ -204,10 +204,10 @@ export default function HomePage() {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                What We Deliver
+                {content.servicesTitle[language]}
               </h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Comprehensive web development services designed to drive your business growth
+                {content.servicesSubtitle[language]}
               </p>
             </motion.div>
 
@@ -225,9 +225,9 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">Custom Web Development</h3>
+                <h3 className="text-2xl font-bold mb-3 text-white">{content.customWebDevTitle[language]}</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Enterprise-grade web applications engineered with React, Next.js, and Node.js to scale with your business demands.
+                  {content.customWebDevDescription[language]}
                 </p>
               </motion.div>
 
@@ -244,9 +244,9 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">Strategic UI/UX Design</h3>
+                <h3 className="text-2xl font-bold mb-3 text-white">{content.uiUxDesignTitle[language]}</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Data-driven design solutions that convert visitors into customers. Professional wireframes and pixel-perfect interfaces optimized for engagement.
+                  {content.uiUxDesignDescription[language]}
                 </p>
               </motion.div>
             </div>
@@ -260,10 +260,10 @@ export default function HomePage() {
               className="text-center mb-12"
             >
               <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Our Proven Process
+                {content.processTitle[language]}
               </h3>
               <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                A systematic approach ensuring on-time delivery and exceptional results
+                {content.processSubtitle[language]}
               </p>
             </motion.div>
 
@@ -278,36 +278,36 @@ export default function HomePage() {
                   {[
                     {
                       step: '01',
-                      title: 'Strategic Consultation',
-                      description: 'In-depth analysis of your business objectives, target audience, and competitive landscape to develop a comprehensive digital strategy.',
+                      title: content.step1Title[language],
+                      description: content.step1Description[language],
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
                       gradient: 'from-cyan-500 to-blue-500'
                     },
                     {
                       step: '02',
-                      title: 'Design & Architecture',
-                      description: 'Professional wireframes and high-fidelity prototypes with detailed technical specifications. Complete visual and functional approval before development begins.',
+                      title: content.step2Title[language],
+                      description: content.step2Description[language],
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
                       gradient: 'from-blue-500 to-indigo-500'
                     },
                     {
                       step: '03',
-                      title: 'Development & Integration',
-                      description: 'Agile development with modern frameworks and best practices. Regular milestone deliveries with full transparency and progress tracking.',
+                      title: content.step3Title[language],
+                      description: content.step3Description[language],
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>,
                       gradient: 'from-indigo-500 to-purple-500'
                     },
                     {
                       step: '04',
-                      title: 'Quality Assurance',
-                      description: 'Rigorous testing across devices and browsers. Comprehensive review cycles ensuring flawless functionality and optimal performance.',
+                      title: content.step4Title[language],
+                      description: content.step4Description[language],
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
                       gradient: 'from-purple-500 to-pink-500'
                     },
                     {
                       step: '05',
-                      title: 'Deployment & Ongoing Support',
-                      description: 'Seamless launch with zero downtime. Continuous monitoring, maintenance, and dedicated support to ensure sustained success.',
+                      title: content.step5Title[language],
+                      description: content.step5Description[language],
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>,
                       gradient: 'from-pink-500 to-rose-500'
                     }
@@ -384,9 +384,9 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-12"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Client Success Stories</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{content.portfolioTitle[language]}</h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Proven results across industries. Explore the high-performance websites and applications we've delivered.
+                {content.portfolioSubtitle[language]}
               </p>
             </motion.div>
 
@@ -547,9 +547,9 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Let's Build Together</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{content.contactTitle[language]}</h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Take the first step toward a powerful web presence. Connect with our team to discuss your requirements.
+                {content.contactSubtitle[language]}
               </p>
             </motion.div>
 
@@ -562,7 +562,7 @@ export default function HomePage() {
                 className="space-y-8"
               >
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-6">Contact Information</h3>
+                  <h3 className="text-2xl font-bold text-white mb-6">{content.contactInfo[language]}</h3>
                   <div className="space-y-6">
                     {[
                       { icon: Mail, label: 'Email', value: settings.contactEmail },
@@ -599,7 +599,7 @@ export default function HomePage() {
                 <form onSubmit={handleSubmit} className="space-y-6 bg-slate-800/60 p-8 rounded-2xl border border-slate-700/50 shadow-xl shadow-slate-950/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-white mb-2">First Name</label>
+                      <label className="block text-sm font-semibold text-white mb-2">{content.firstName[language]}</label>
                       <input
                         type="text"
                         name="firstName"
@@ -610,7 +610,7 @@ export default function HomePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-white mb-2">Last Name</label>
+                      <label className="block text-sm font-semibold text-white mb-2">{content.lastName[language]}</label>
                       <input
                         type="text"
                         name="lastName"
@@ -622,7 +622,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Email</label>
+                    <label className="block text-sm font-semibold text-white mb-2">{content.email[language]}</label>
                     <input
                       type="email"
                       name="email"
@@ -633,7 +633,7 @@ export default function HomePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Project Type</label>
+                    <label className="block text-sm font-semibold text-white mb-2">{content.projectType[language]}</label>
                     <select
                       name="projectType"
                       value={formData.projectType}
@@ -648,7 +648,7 @@ export default function HomePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Project Details</label>
+                    <label className="block text-sm font-semibold text-white mb-2">{content.projectDetails[language]}</label>
                     <textarea
                       rows={5}
                       name="message"
@@ -688,7 +688,7 @@ export default function HomePage() {
                     className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-5 h-5 mr-2" />
-                    {isSubmitting ? 'Submitting...' : 'Start Free Consultation'}
+                    {isSubmitting ? content.submitting[language] : content.submitButton[language]}
                   </AnimatedButton>
                 </form>
               </motion.div>
