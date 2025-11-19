@@ -1,8 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
+import LanguageToggle from '@/components/LanguageToggle'
+import { getLanguageFromPath, siteContent } from '@/lib/i18n'
 import {
   Menu,
   X,
@@ -23,26 +26,34 @@ interface HeaderProps {
 
 export default function Header({ 
   showBackButton = false, 
-  backButtonText = "Back to Home",
+  backButtonText,
   backButtonHref = "/",
   onBackClick
 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const pathname = usePathname()
+  const currentLanguage = getLanguageFromPath(pathname)
+  
+  // Get localized text
+  const nav = siteContent.navigation
+  const defaultBackButtonText = backButtonText || nav.backToHome[currentLanguage]
 
   const scrollToSection = (sectionId: string) => {
-    if (window.location.pathname === '/') {
+    const basePath = currentLanguage === 'he' ? '/he' : ''
+    if (window.location.pathname === `${basePath}/` || window.location.pathname === basePath) {
       // If on homepage, scroll to section
       document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
     } else {
       // If on another page, navigate to homepage first
-      window.location.href = `/#${sectionId}`
+      window.location.href = `${basePath}/#${sectionId}`
     }
     setIsMenuOpen(false)
   }
 
   const handleContactClick = () => {
-    // Always go to dedicated contact page
-    window.location.href = '/contact'
+    // Always go to dedicated contact page with language prefix
+    const basePath = currentLanguage === 'he' ? '/he' : ''
+    window.location.href = `${basePath}/contact`
   }
 
   const handleBackClick = () => {
@@ -54,8 +65,17 @@ export default function Header({
   }
 
   const handleLogoClick = () => {
-    window.location.href = '/'
+    const basePath = currentLanguage === 'he' ? '/he' : ''
+    window.location.href = `${basePath}/`
   }
+
+  // Navigation items with localization
+  const navigationItems = [
+    { id: 'home', label: nav.home[currentLanguage], icon: Home, type: 'section' as const },
+    { id: 'portfolio', label: nav.portfolio[currentLanguage], icon: Folder, type: 'section' as const },
+    { id: 'packages', label: nav.packages[currentLanguage], icon: Package, type: 'page' as const, href: `${currentLanguage === 'he' ? '/he' : ''}/packages` },
+    { id: 'about', label: nav.about[currentLanguage], icon: Info, type: 'page' as const, href: `${currentLanguage === 'he' ? '/he' : ''}/about` }
+  ]
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-900/95 border-b border-slate-700/50">
@@ -69,7 +89,7 @@ export default function Header({
                 className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">{backButtonText}</span>
+                <span className="hidden sm:inline">{defaultBackButtonText}</span>
               </button>
             )}
             <div className="group cursor-pointer" onClick={handleLogoClick}>
@@ -78,13 +98,9 @@ export default function Header({
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
-            {[
-              { id: 'home', label: 'Home', icon: Home, type: 'section' },
-              { id: 'portfolio', label: 'Portfolio', icon: Folder, type: 'section' },
-              { id: 'packages', label: 'Packages', icon: Package, type: 'page', href: '/packages' },
-              { id: 'about', label: 'About', icon: Info, type: 'page', href: '/about' }
-            ].map(item => (
+          <div className="hidden lg:flex items-center space-x-4">
+            <nav className="flex items-center space-x-1">
+              {navigationItems.map(item => (
               item.type === 'page' ? (
                 <a
                   key={item.id}
@@ -105,16 +121,20 @@ export default function Header({
                 </button>
               )
             ))}
+            </nav>
+            
+            {/* Language Toggle */}
+            <LanguageToggle />
             
             {/* Special CTA Contact Button */}
             <button
               onClick={handleContactClick}
-              className="relative ml-3 px-6 py-2 text-sm font-medium bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-cyan-500/25 transform hover:scale-105"
+              className="relative px-6 py-2 text-sm font-medium bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-cyan-500/25 transform hover:scale-105"
             >
               <MessageSquare className="w-4 h-4 inline mr-2" />
-              Free Consultation
+              {nav.freeConsultation[currentLanguage]}
             </button>
-          </nav>
+          </div>
 
           {/* Mobile menu button */}
           <button
@@ -140,15 +160,10 @@ export default function Header({
                   className="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all group"
                 >
                   <ArrowLeft className="w-5 h-5" />
-                  <span>{backButtonText}</span>
+                  <span>{defaultBackButtonText}</span>
                 </button>
               )}
-              {[
-                { id: 'home', label: 'Home', icon: Home, type: 'section' },
-                { id: 'portfolio', label: 'Portfolio', icon: Folder, type: 'section' },
-                { id: 'packages', label: 'Packages', icon: Package, type: 'page', href: '/packages' },
-                { id: 'about', label: 'About', icon: Info, type: 'page', href: '/about' }
-              ].map(item => (
+              {navigationItems.map(item => (
                 item.type === 'page' ? (
                   <a
                     key={item.id}
@@ -170,13 +185,18 @@ export default function Header({
                 )
               ))}
               
+              {/* Language Toggle for Mobile */}
+              <div className="mt-6 pt-4 border-t border-slate-700/50">
+                <LanguageToggle variant="mobile" />
+              </div>
+              
               {/* Special CTA Contact Button for Mobile */}
               <button
                 onClick={handleContactClick}
                 className="flex items-center gap-3 w-full px-4 py-3 mt-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all shadow-lg"
               >
                 <MessageSquare className="w-5 h-5" />
-                <span>Free Consultation</span>
+                <span>{nav.freeConsultation[currentLanguage]}</span>
               </button>
             </div>
           </motion.div>

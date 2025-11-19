@@ -48,4 +48,95 @@
   p {
     @apply leading-7 [&:not(:first-child)]:mt-6;
   }
+
+  /* Font family support using CSS variable */
+  .font-sans {
+    font-family: var(--font-outfit), system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* RTL Support */
+@layer components {
+  .rtl {
+    direction: rtl;
+  }
+
+  /* RTL-specific adjustments */
+  [dir="rtl"] .rtl-flip-x {
+    transform: scaleX(-1);
+  }
+
+  /* Header adjustments for RTL */
+  [dir="rtl"] .header-logo {
+    margin-right: 0;
+    margin-left: auto;
+  }
+
+  /* Form adjustments for RTL */
+  [dir="rtl"] input,
+  [dir="rtl"] textarea,
+  [dir="rtl"] select {
+    text-align: right;
+  }
+
+  [dir="rtl"] input::placeholder,
+  [dir="rtl"] textarea::placeholder {
+    text-align: right;
+  }
+
+  /* Flex direction adjustments for RTL */
+  [dir="rtl"] .rtl-flex-reverse {
+    flex-direction: row-reverse;
+  }
+
+  /* Text alignment for RTL */
+  [dir="rtl"] .text-left {
+    text-align: right;
+  }
+
+  [dir="rtl"] .text-right {
+    text-align: left;
+  }
+
+  /* Margin and padding adjustments for RTL */
+  [dir="rtl"] .ml-auto {
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+  [dir="rtl"] .mr-auto {
+    margin-right: 0;
+    margin-left: auto;
+  }
+
+  /* Icon positioning for RTL */
+  [dir="rtl"] .icon-left {
+    order: 1;
+  }
+
+  [dir="rtl"] .icon-right {
+    order: -1;
+  }
+
+  /* Timeline adjustments for RTL */
+  [dir="rtl"] .timeline-content {
+    text-align: right;
+  }
+
+  /* Grid and flexbox utilities for RTL */
+  [dir="rtl"] .rtl-space-reverse > * + * {
+    margin-right: var(--tw-space-x-reverse);
+    margin-left: calc(var(--tw-space-x-reverse) * -1);
+  }
+
+  /* Button icon spacing for RTL */
+  [dir="rtl"] .btn-icon-left {
+    margin-left: 0.5rem;
+    margin-right: 0;
+  }
+
+  [dir="rtl"] .btn-icon-right {
+    margin-right: 0.5rem;
+    margin-left: 0;
+  }
 }

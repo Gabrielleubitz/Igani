@@ -23,7 +23,7 @@ import {
   Star
 } from 'lucide-react'
 
-export default function HomePage() {
+export default function HebrewHomePage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -40,7 +40,7 @@ export default function HomePage() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // English content
+  // Hebrew content
   const content = siteContent.home
   const nav = siteContent.navigation
   const projectTypes = siteContent.projectTypes
@@ -137,11 +137,11 @@ export default function HomePage() {
               transition={{ duration: 0.6 }}
               className="mb-6"
             >
-              <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-md border border-cyan-500/40 rounded-full text-cyan-400 text-sm font-semibold shadow-lg shadow-cyan-500/20">
+              <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-md border border-cyan-500/40 rounded-full text-cyan-400 text-sm font-semibold shadow-lg shadow-cyan-500/20 rtl-flex-reverse">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                 </svg>
-{content.heroTagline.en}
+                {content.heroTagline.he}
               </span>
             </motion.div>
 
@@ -151,10 +151,10 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.1 }}
               className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-5 leading-[1.1]"
             >
-              Elevate Your Brand
+              הרם את המותג שלך
               <br />
               <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                With a Personal Developer
+                עם מפתח אישי
               </span>
             </motion.h1>
 
@@ -164,28 +164,28 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.3 }}
               className="text-lg md:text-xl text-slate-300 mb-8 leading-relaxed max-w-3xl mx-auto"
             >
-              {content.heroSubtitle.en}
+              {content.heroSubtitle.he}
             </motion.p>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.5 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center rtl-flex-reverse"
             >
               <AnimatedButton
                 variant="primary"
                 size="large"
-                onClick={() => window.location.href = '/contact'}
+                onClick={() => window.location.href = '/he/contact'}
               >
-{content.ctaFreeConsultation.en}
+                {content.ctaFreeConsultation.he}
               </AnimatedButton>
               <AnimatedButton
                 variant="secondary"
                 size="large"
                 onClick={() => document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })}
               >
-{content.ctaViewWork.en}
+                {content.ctaViewWork.he}
               </AnimatedButton>
             </motion.div>
           </div>
@@ -202,10 +202,10 @@ export default function HomePage() {
               className="text-center mb-16"
             >
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                What We Deliver
+                {content.servicesTitle.he}
               </h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Comprehensive web development services designed to drive your business growth
+                {content.servicesSubtitle.he}
               </p>
             </motion.div>
 
@@ -223,9 +223,9 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">Custom Web Development</h3>
+                <h3 className="text-2xl font-bold mb-3 text-white">{content.customWebDevTitle.he}</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Enterprise-grade web applications engineered with React, Next.js, and Node.js to scale with your business demands.
+                  {content.customWebDevDescription.he}
                 </p>
               </motion.div>
 
@@ -242,14 +242,14 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">Strategic UI/UX Design</h3>
+                <h3 className="text-2xl font-bold mb-3 text-white">{content.uiUxDesignTitle.he}</h3>
                 <p className="text-slate-400 leading-relaxed">
-                  Data-driven design solutions that convert visitors into customers. Professional wireframes and pixel-perfect interfaces optimized for engagement.
+                  {content.uiUxDesignDescription.he}
                 </p>
               </motion.div>
             </div>
 
-            {/* Process Timeline */}
+            {/* Process Timeline - RTL adjusted */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -258,10 +258,10 @@ export default function HomePage() {
               className="text-center mb-12"
             >
               <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Our Proven Process
+                {content.processTitle.he}
               </h3>
               <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                A systematic approach ensuring on-time delivery and exceptional results
+                {content.processSubtitle.he}
               </p>
             </motion.div>
 
@@ -276,60 +276,60 @@ export default function HomePage() {
                   {[
                     {
                       step: '01',
-                      title: 'Strategic Consultation',
-                      description: 'In-depth analysis of your business objectives, target audience, and competitive landscape to develop a comprehensive digital strategy.',
+                      title: content.step1Title.he,
+                      description: content.step1Description.he,
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
                       gradient: 'from-cyan-500 to-blue-500'
                     },
                     {
                       step: '02',
-                      title: 'Design & Architecture',
-                      description: 'Professional wireframes and high-fidelity prototypes with detailed technical specifications. Complete visual and functional approval before development begins.',
+                      title: content.step2Title.he,
+                      description: content.step2Description.he,
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
                       gradient: 'from-blue-500 to-indigo-500'
                     },
                     {
                       step: '03',
-                      title: 'Development & Integration',
-                      description: 'Agile development with modern frameworks and best practices. Regular milestone deliveries with full transparency and progress tracking.',
+                      title: content.step3Title.he,
+                      description: content.step3Description.he,
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>,
                       gradient: 'from-indigo-500 to-purple-500'
                     },
                     {
                       step: '04',
-                      title: 'Quality Assurance',
-                      description: 'Rigorous testing across devices and browsers. Comprehensive review cycles ensuring flawless functionality and optimal performance.',
+                      title: content.step4Title.he,
+                      description: content.step4Description.he,
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
                       gradient: 'from-purple-500 to-pink-500'
                     },
                     {
                       step: '05',
-                      title: 'Deployment & Ongoing Support',
-                      description: 'Seamless launch with zero downtime. Continuous monitoring, maintenance, and dedicated support to ensure sustained success.',
+                      title: content.step5Title.he,
+                      description: content.step5Description.he,
                       icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>,
                       gradient: 'from-pink-500 to-rose-500'
                     }
                   ].map((item, index) => (
                     <motion.div
                       key={index}
-                      initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
+                      initial={{ opacity: 0, x: index % 2 === 0 ? 50 : -50 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.6, delay: index * 0.1 }}
                       viewport={{ once: true }}
                       className={`relative flex items-center gap-8 ${
-                        index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
+                        index % 2 === 0 ? 'md:flex-row-reverse' : 'md:flex-row'
                       }`}
                     >
                       {/* Content Card */}
                       <div className="flex-1 md:w-[calc(50%-3rem)]">
-                        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/10">
-                          <div className="flex items-center gap-4 mb-4">
+                        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/10 timeline-content">
+                          <div className="flex items-center gap-4 mb-4 rtl-flex-reverse">
                             <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-xl flex items-center justify-center text-2xl`}>
                               {item.icon}
                             </div>
                             <div>
                               <div className={`text-xs font-bold bg-gradient-to-r ${item.gradient} bg-clip-text text-transparent mb-1`}>
-                                STEP {item.step}
+                                שלב {item.step}
                               </div>
                               <h4 className="text-xl font-bold text-white">{item.title}</h4>
                             </div>
@@ -361,10 +361,10 @@ export default function HomePage() {
                 className="text-center mt-16"
               >
                 <button
-                  onClick={() => window.location.href = '/contact'}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-xl shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-105"
+                  onClick={() => window.location.href = '/he/contact'}
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-xl shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-105 rtl-flex-reverse"
                 >
-  {content.ctaFreeConsultation.en}
+                  {content.ctaFreeConsultation.he}
                   <Send className="w-5 h-5" />
                 </button>
               </motion.div>
@@ -382,9 +382,9 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-12"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Client Success Stories</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{content.portfolioTitle.he}</h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Proven results across industries. Explore the high-performance websites and applications we've delivered.
+                {content.portfolioSubtitle.he}
               </p>
             </motion.div>
 
@@ -392,9 +392,9 @@ export default function HomePage() {
             {/* Featured Projects */}
             {featuredWebsites.length > 0 && (
               <div className="mb-20">
-                <div className="flex items-center gap-3 mb-8">
+                <div className="flex items-center gap-3 mb-8 rtl-flex-reverse">
                   <div className="w-1 h-8 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
-                  <h3 className="text-2xl font-bold text-white">Featured Projects</h3>
+                  <h3 className="text-2xl font-bold text-white">{content.featuredProjects.he}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {featuredWebsites.map((website, index) => (
@@ -419,7 +419,7 @@ export default function HomePage() {
                         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
                         <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/0 to-blue-600/0 group-hover:from-cyan-600/20 group-hover:to-blue-600/20 transition-all duration-500"></div>
                         <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-xl backdrop-blur-sm">
-                          Featured
+                          {content.featured.he}
                         </div>
                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           <div className="bg-cyan-600 text-white p-4 rounded-full shadow-2xl transform group-hover:scale-110 transition-transform duration-300">
@@ -456,18 +456,18 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{settings.aboutTitle}</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{content.aboutTitle.he}</h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                {settings.aboutDescription}
+                {content.aboutDescription.he}
               </p>
             </motion.div>
 
             {/* Testimonials */}
             {testimonials.length > 0 && testimonials.filter(t => t.featured).length > 0 && (
               <div className="mb-20">
-                <div className="flex items-center gap-3 mb-8">
+                <div className="flex items-center gap-3 mb-8 rtl-flex-reverse">
                   <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-                  <h3 className="text-2xl font-bold text-white">What Our Clients Say</h3>
+                  <h3 className="text-2xl font-bold text-white">{content.testimonialsTitle.he}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {testimonials.filter(t => t.featured).slice(0, 6).map((testimonial, index) => (
@@ -481,7 +481,7 @@ export default function HomePage() {
                       className="group bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-cyan-500/50 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-xl hover:shadow-cyan-500/10"
                     >
                       {/* Rating */}
-                      <div className="flex items-center gap-1 mb-4">
+                      <div className="flex items-center gap-1 mb-4 rtl-flex-reverse">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
@@ -503,7 +503,7 @@ export default function HomePage() {
                       </blockquote>
 
                       {/* Author */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 rtl-flex-reverse">
                         {testimonial.image ? (
                           <img
                             src={testimonial.image}
@@ -522,7 +522,7 @@ export default function HomePage() {
                             {testimonial.name}
                           </h4>
                           <p className="text-slate-400 text-xs">
-                            {testimonial.role} at {testimonial.company}
+                            {testimonial.role} ב{testimonial.company}
                           </p>
                         </div>
                       </div>
@@ -545,27 +545,27 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">Let's Build Together</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{content.contactTitle.he}</h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
-                Take the first step toward a powerful web presence. Connect with our team to discuss your requirements.
+                {content.contactSubtitle.he}
               </p>
             </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
               <motion.div
-                initial={{ opacity: 0, x: -30 }}
+                initial={{ opacity: 0, x: 30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
                 className="space-y-8"
               >
                 <div>
-                  <h3 className="text-2xl font-bold text-white mb-6">Contact Information</h3>
+                  <h3 className="text-2xl font-bold text-white mb-6">{content.contactInfo.he}</h3>
                   <div className="space-y-6">
                     {[
-                      { icon: Mail, label: 'Email', value: settings.contactEmail },
-                      { icon: Phone, label: 'Phone', value: settings.contactPhone },
-                      { icon: MapPin, label: 'Location', value: settings.contactLocation }
+                      { icon: Mail, label: 'אימייל', value: settings.contactEmail },
+                      { icon: Phone, label: 'טלפון', value: settings.contactPhone },
+                      { icon: MapPin, label: 'מיקום', value: settings.contactLocation }
                     ].map((contact, index) => (
                       <motion.div
                         key={contact.label}
@@ -573,7 +573,7 @@ export default function HomePage() {
                         whileInView={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: index * 0.1 }}
                         viewport={{ once: true }}
-                        className="flex items-start space-x-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md shadow-slate-950/50 hover:shadow-lg hover:shadow-cyan-500/10"
+                        className="flex items-start space-x-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md shadow-slate-950/50 hover:shadow-lg hover:shadow-cyan-500/10 rtl-space-reverse"
                       >
                         <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
                           <contact.icon className="w-6 h-6 text-cyan-400" />
@@ -589,7 +589,7 @@ export default function HomePage() {
               </motion.div>
 
               <motion.div
-                initial={{ opacity: 0, x: 30 }}
+                initial={{ opacity: 0, x: -30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
@@ -597,7 +597,7 @@ export default function HomePage() {
                 <form onSubmit={handleSubmit} className="space-y-6 bg-slate-800/60 p-8 rounded-2xl border border-slate-700/50 shadow-xl shadow-slate-950/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-white mb-2">First Name</label>
+                      <label className="block text-sm font-semibold text-white mb-2">{content.firstName.he}</label>
                       <input
                         type="text"
                         name="firstName"
@@ -608,7 +608,7 @@ export default function HomePage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-white mb-2">Last Name</label>
+                      <label className="block text-sm font-semibold text-white mb-2">{content.lastName.he}</label>
                       <input
                         type="text"
                         name="lastName"
@@ -620,7 +620,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Email</label>
+                    <label className="block text-sm font-semibold text-white mb-2">{content.email.he}</label>
                     <input
                       type="email"
                       name="email"
@@ -631,29 +631,29 @@ export default function HomePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Project Type</label>
+                    <label className="block text-sm font-semibold text-white mb-2">{content.projectType.he}</label>
                     <select
                       name="projectType"
                       value={formData.projectType}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white transition-all duration-300"
                     >
-                      <option>Landing Page</option>
-                      <option>Small Business Website</option>
-                      <option>Premium Brand Site</option>
-                      <option>E-commerce Website</option>
-                      <option>Custom Web App</option>
+                      <option>{projectTypes.landingPage.he}</option>
+                      <option>{projectTypes.smallBusiness.he}</option>
+                      <option>{projectTypes.premiumBrand.he}</option>
+                      <option>{projectTypes.ecommerce.he}</option>
+                      <option>{projectTypes.customWebApp.he}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Project Details</label>
+                    <label className="block text-sm font-semibold text-white mb-2">{content.projectDetails.he}</label>
                     <textarea
                       rows={5}
                       name="message"
                       value={formData.message}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 resize-none transition-all duration-300"
-                      placeholder="Describe your business needs and project goals..."
+                      placeholder={content.projectDetailsPlaceholder.he}
                       required
                     ></textarea>
                   </div>
@@ -664,7 +664,7 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-green-600/20 border border-green-500/50 text-green-400 p-4 rounded-lg font-medium"
                     >
-                      Thank you for reaching out. We will respond to your inquiry within 24 hours.
+                      {content.successMessage.he}
                     </motion.div>
                   )}
 
@@ -674,7 +674,7 @@ export default function HomePage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-red-600/20 border border-red-500/50 text-red-400 p-4 rounded-lg font-medium"
                     >
-                      An error occurred. Please try again or contact us directly.
+                      {content.errorMessage.he}
                     </motion.div>
                   )}
 
@@ -683,10 +683,10 @@ export default function HomePage() {
                     size="large"
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full disabled:opacity-50 disabled:cursor-not-allowed rtl-flex-reverse"
                   >
-                    <Send className="w-5 h-5 mr-2" />
-                    {isSubmitting ? 'Submitting...' : 'Start Free Consultation'}
+                    <Send className="w-5 h-5 mr-2 btn-icon-left" />
+                    {isSubmitting ? content.submitting.he : content.submitButton.he}
                   </AnimatedButton>
                 </form>
               </motion.div>
@@ -702,7 +702,7 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="flex flex-col md:flex-row justify-between items-center gap-6"
+              className="flex flex-col md:flex-row justify-between items-center gap-6 rtl-flex-reverse"
             >
               <div className="group">
                 <IganiLogo className="w-44 h-14" />
@@ -711,11 +711,11 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="text-center md:text-right">
-                <p className="text-slate-400 mb-2">© 2025 {settings.siteName}. All rights reserved.</p>
-                <div className="flex gap-4 justify-center md:justify-end">
-                  <a href="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Privacy</a>
-                  <a href="/terms" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Terms</a>
-                  <a href="/contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">Contact</a>
+                <p className="text-slate-400 mb-2">© 2025 {settings.siteName}. {footer.allRightsReserved.he}.</p>
+                <div className="flex gap-4 justify-center md:justify-end rtl-flex-reverse">
+                  <a href="/he/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.privacy.he}</a>
+                  <a href="/he/terms" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.terms.he}</a>
+                  <a href="/he/contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.contact.he}</a>
                 </div>
               </div>
             </motion.div>
