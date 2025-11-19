@@ -98,18 +98,38 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
       if (status === 'read' as any) status = 'pending';
       if (status === 'replied' as any) status = 'in-progress';
 
+      // Helper function to safely convert timestamp to ISO string
+      const toISOString = (timestamp: any): string => {
+        if (!timestamp) return new Date().toISOString();
+        if (typeof timestamp === 'string') return timestamp;
+        if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+          return timestamp.toDate().toISOString();
+        }
+        return new Date(timestamp).toISOString();
+      };
+
       submissions.push({
         id: doc.id,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        projectType: data.projectType,
-        message: data.message,
-        submittedAt: data.submittedAt.toDate().toISOString(),
+        firstName: data.firstName || '',
+        lastName: data.lastName || '',
+        email: data.email || '',
+        projectType: data.projectType || '',
+        message: data.message || '',
+        submittedAt: toISOString(data.submittedAt),
         status: status,
         assignedTo: data.assignedTo,
         cancellationReason: data.cancellationReason,
-        statusUpdatedAt: data.statusUpdatedAt?.toDate().toISOString()
+        statusUpdatedAt: data.statusUpdatedAt ? toISOString(data.statusUpdatedAt) : undefined,
+        // Add the new ticket management fields
+        linkedPackageId: data.linkedPackageId,
+        linkedPackageName: data.linkedPackageName,
+        quotedPrice: data.quotedPrice,
+        currency: data.currency,
+        notes: data.notes,
+        priority: data.priority,
+        estimatedDelivery: data.estimatedDelivery,
+        clientBudget: data.clientBudget,
+        followUpDate: data.followUpDate
       });
     });
 
@@ -165,6 +185,40 @@ export const deleteContactSubmission = async (id: string): Promise<void> => {
     await deleteDoc(doc(db, CONTACT_SUBMISSIONS_COLLECTION, id));
   } catch (error) {
     console.error('Error deleting submission:', error);
+    throw error;
+  }
+};
+
+// Helper function to remove undefined values from an object
+const cleanObjectForFirestore = (obj: Record<string, any>): Record<string, any> => {
+  const cleaned: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  
+  return cleaned;
+};
+
+export const updateContactSubmission = async (submission: ContactSubmission): Promise<void> => {
+  try {
+    const submissionRef = doc(db, CONTACT_SUBMISSIONS_COLLECTION, submission.id);
+    
+    // Create update data excluding id and adding timestamp
+    const { id, ...updateData } = submission;
+    const dataWithTimestamp = {
+      ...updateData,
+      updatedAt: Timestamp.now()
+    };
+    
+    // Clean undefined values before sending to Firestore
+    const finalUpdateData = cleanObjectForFirestore(dataWithTimestamp);
+    
+    await updateDoc(submissionRef, finalUpdateData);
+  } catch (error) {
+    console.error('Error updating contact submission:', error);
     throw error;
   }
 };
