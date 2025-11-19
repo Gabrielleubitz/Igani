@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
 import LanguageToggle from '@/components/LanguageToggle'
-import { getLanguageFromPath, siteContent } from '@/lib/i18n'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { siteContent } from '@/lib/i18n'
 import {
   Menu,
   X,
@@ -24,36 +24,32 @@ interface HeaderProps {
   onBackClick?: () => void
 }
 
-export default function Header({ 
-  showBackButton = false, 
+export default function Header({
+  showBackButton = false,
   backButtonText,
   backButtonHref = "/",
   onBackClick
 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const pathname = usePathname()
-  const currentLanguage = getLanguageFromPath(pathname)
+  const { language: currentLanguage } = useLanguage()
   
   // Get localized text
   const nav = siteContent.navigation
   const defaultBackButtonText = backButtonText || nav.backToHome[currentLanguage]
 
   const scrollToSection = (sectionId: string) => {
-    const basePath = currentLanguage === 'he' ? '/he' : ''
-    if (window.location.pathname === `${basePath}/` || window.location.pathname === basePath) {
+    if (window.location.pathname === '/') {
       // If on homepage, scroll to section
       document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
     } else {
       // If on another page, navigate to homepage first
-      window.location.href = `${basePath}/#${sectionId}`
+      window.location.href = `/#${sectionId}`
     }
     setIsMenuOpen(false)
   }
 
   const handleContactClick = () => {
-    // Always go to dedicated contact page with language prefix
-    const basePath = currentLanguage === 'he' ? '/he' : ''
-    window.location.href = `${basePath}/contact`
+    window.location.href = '/contact'
   }
 
   const handleBackClick = () => {
@@ -65,16 +61,15 @@ export default function Header({
   }
 
   const handleLogoClick = () => {
-    const basePath = currentLanguage === 'he' ? '/he' : ''
-    window.location.href = `${basePath}/`
+    window.location.href = '/'
   }
 
   // Navigation items with localization
   const navigationItems = [
     { id: 'home', label: nav.home[currentLanguage], icon: Home, type: 'section' as const },
     { id: 'portfolio', label: nav.portfolio[currentLanguage], icon: Folder, type: 'section' as const },
-    { id: 'packages', label: nav.packages[currentLanguage], icon: Package, type: 'page' as const, href: `${currentLanguage === 'he' ? '/he' : ''}/packages` },
-    { id: 'about', label: nav.about[currentLanguage], icon: Info, type: 'page' as const, href: `${currentLanguage === 'he' ? '/he' : ''}/about` }
+    { id: 'packages', label: nav.packages[currentLanguage], icon: Package, type: 'page' as const, href: '/packages' },
+    { id: 'about', label: nav.about[currentLanguage], icon: Info, type: 'page' as const, href: '/about' }
   ]
 
   return (

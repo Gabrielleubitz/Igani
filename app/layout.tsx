@@ -1,7 +1,8 @@
 import './globals.css'
 import { Outfit } from 'next/font/google'
+import { LanguageProvider } from '@/contexts/LanguageContext'
 
-const outfit = Outfit({ 
+const outfit = Outfit({
   subsets: ['latin'],
   variable: '--font-outfit',
 })
@@ -22,10 +23,13 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // English layout (default)
   return (
     <html lang="en" dir="ltr">
-      <body className={`${outfit.variable} font-sans`}>{children}</body>
+      <body className={`${outfit.variable} font-sans`}>
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
+      </body>
     </html>
   )
 }

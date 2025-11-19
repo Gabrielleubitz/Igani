@@ -1,28 +1,24 @@
 'use client'
 
-import { useRouter, usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Languages } from 'lucide-react'
-import { Language, getLanguageFromPath, getLocalizedPath } from '@/lib/i18n'
+import { Language } from '@/lib/i18n'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface LanguageToggleProps {
   className?: string
   variant?: 'desktop' | 'mobile'
 }
 
-export default function LanguageToggle({ 
-  className = '', 
-  variant = 'desktop' 
+export default function LanguageToggle({
+  className = '',
+  variant = 'desktop'
 }: LanguageToggleProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const currentLanguage = getLanguageFromPath(pathname)
+  const { language: currentLanguage, setLanguage } = useLanguage()
 
   const handleLanguageChange = (targetLanguage: Language) => {
     if (targetLanguage === currentLanguage) return
-    
-    const newPath = getLocalizedPath(pathname, targetLanguage)
-    router.push(newPath)
+    setLanguage(targetLanguage)
   }
 
   const languages = [
