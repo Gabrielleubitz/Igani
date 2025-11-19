@@ -1,7 +1,10 @@
 import './globals.css'
 import { Outfit } from 'next/font/google'
 
-const outfit = Outfit({ subsets: ['latin'] })
+const outfit = Outfit({ 
+  subsets: ['latin'],
+  variable: '--font-outfit',
+})
 
 export const metadata = {
   title: 'Igani - Premium Website Development',
@@ -19,9 +22,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // English layout (default)
   return (
-    <html lang="en">
-      <body className={outfit.className}>{children}</body>
+    <html lang="en" dir="ltr">
+      <body className={`${outfit.variable} font-sans`}>{children}</body>
     </html>
   )
 }
