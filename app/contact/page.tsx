@@ -11,8 +11,10 @@ import { AnimatedButton } from '@/components/ui/animated-button'
 import { saveContactSubmission } from '@/lib/firestore'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { useTranslate } from '@/hooks/useTranslate'
 
 export default function ContactPage() {
+  const { useT } = useTranslate()
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -78,9 +80,11 @@ export default function ContactPage() {
           className="max-w-6xl mx-auto"
         >
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Get In Touch</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              {useT("Get In Touch")}
+            </h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              Ready to start your project? Contact us today for a free consultation.
+              {useT("Ready to start your project? Contact us today for a free consultation.")}
             </p>
           </div>
 
@@ -93,14 +97,14 @@ export default function ContactPage() {
               className="space-y-6"
             >
               <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-slate-950/50">
-                <h2 className="text-2xl font-bold text-white mb-6">Contact Information</h2>
+                <h2 className="text-2xl font-bold text-white mb-6">{useT("Contact Information")}</h2>
                 <div className="space-y-6">
                   <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
                     <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
                       <Mail className="w-6 h-6 text-cyan-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-white mb-1">Email</p>
+                      <p className="font-semibold text-white mb-1">{useT("Email")}</p>
                       <a href="mailto:info@igani.co" className="text-slate-400 hover:text-cyan-400 transition-colors">
                         info@igani.co
                       </a>
