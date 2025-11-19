@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Check, ChevronDown, ChevronUp, Calendar, Mail, ArrowRight } from 'lucide-react'
-import { 
-  getPackages, 
-  getMaintenancePlans, 
-  getPackageFAQs, 
-  getPackageSettings 
+import {
+  getPackages,
+  getMaintenancePlans,
+  getPackageFAQs,
+  getPackageSettings
 } from '@/lib/firestore'
 import { Package, MaintenancePlan, PackageFAQ, PackageSettings } from '@/types'
 import { StarryBackground } from '@/components/ui/starry-background'
@@ -15,6 +15,7 @@ import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { T } from '@/components/T'
 
 export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([])
@@ -80,7 +81,7 @@ export default function PackagesPage() {
       <div className="min-h-screen bg-slate-900 relative">
         <StarryBackground />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-slate-400">Loading packages...</div>
+          <div className="text-slate-400"><T>Loading packages...</T></div>
         </div>
       </div>
     )
@@ -96,12 +97,12 @@ export default function PackagesPage() {
       </div>
       
       {/* Header with Back Button */}
-      <Header 
-        showBackButton={true} 
+      <Header
+        showBackButton={true}
         backButtonText="Back to Home"
         backButtonHref="/"
       />
-      
+
       <div className="relative z-10">
         {/* Hero Section */}
         <section className="pt-32 pb-16 px-4">
@@ -112,7 +113,7 @@ export default function PackagesPage() {
               transition={{ duration: 0.8 }}
               className="text-5xl md:text-6xl font-bold text-white mb-6"
             >
-              Packages
+              <T>Packages</T>
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -120,7 +121,7 @@ export default function PackagesPage() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="text-xl text-slate-400 max-w-2xl mx-auto"
             >
-              Choose the perfect package for your project. From simple landing pages to complex web applications.
+              <T>Choose the perfect package for your project. From simple landing pages to complex web applications.</T>
             </motion.p>
           </div>
         </section>
@@ -146,13 +147,13 @@ export default function PackagesPage() {
                       <p className="text-cyan-400 mb-4">{pkg.tagline}</p>
                       <p className="text-slate-400 text-sm">{pkg.bestFor}</p>
                       <div className="mt-3 px-3 py-2 bg-gradient-to-r from-cyan-600/10 to-blue-600/10 rounded-lg border border-cyan-500/20">
-                        <p className="text-cyan-300 text-sm font-medium">Pricing discussed in consultation</p>
+                        <p className="text-cyan-300 text-sm font-medium"><T>Pricing discussed in consultation</T></p>
                       </div>
                     </div>
 
                     {/* Includes */}
                     <div className="mb-6">
-                      <h4 className="text-white font-semibold mb-3">Includes:</h4>
+                      <h4 className="text-white font-semibold mb-3"><T>Includes:</T></h4>
                       <ul className="space-y-2">
                         {pkg.includes.map((item, i) => (
                           <li key={i} className="flex items-start gap-2 text-slate-300 text-sm">
@@ -170,7 +171,7 @@ export default function PackagesPage() {
                           onClick={() => toggleAddOns(pkg.id)}
                           className="flex items-center gap-2 text-white font-semibold mb-3 hover:text-cyan-400 transition-colors"
                         >
-                          Add-ons
+                          <T>Add-ons</T>
                           {expandedAddOns[pkg.id] ? (
                             <ChevronUp className="w-4 h-4" />
                           ) : (
@@ -198,7 +199,7 @@ export default function PackagesPage() {
                   {/* Bottom Section - always at bottom */}
                   <div className="text-center pt-6 border-t border-slate-700/50 mt-auto">
                     <p className="text-slate-400 text-sm mb-4">
-                      <strong>Delivery:</strong> {pkg.delivery}
+                      <strong><T>Delivery:</T></strong> {pkg.delivery}
                     </p>
                     <AnimatedButton
                       variant="secondary"
@@ -206,7 +207,7 @@ export default function PackagesPage() {
                       className="w-full"
                       onClick={() => window.location.href = '/contact'}
                     >
-                      Get Started
+                      <T>Get Started</T>
                     </AnimatedButton>
                   </div>
                 </motion.div>
@@ -221,10 +222,10 @@ export default function PackagesPage() {
             <div className="max-w-7xl mx-auto">
               <div className="text-center mb-12">
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                  Maintenance & Care Plans
+                  <T>Maintenance & Care Plans</T>
                 </h2>
                 <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-                  Keep your website secure, updated, and performing at its best
+                  <T>Keep your website secure, updated, and performing at its best</T>
                 </p>
               </div>
 
@@ -243,7 +244,7 @@ export default function PackagesPage() {
                       <div className="text-center mb-6">
                         <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
                         <div className="px-3 py-2 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-lg border border-purple-500/20">
-                          <p className="text-purple-300 text-sm font-medium">Pricing discussed in consultation</p>
+                          <p className="text-purple-300 text-sm font-medium"><T>Pricing discussed in consultation</T></p>
                         </div>
                       </div>
 
@@ -264,7 +265,7 @@ export default function PackagesPage() {
                       className="w-full"
                       onClick={() => window.location.href = '/contact'}
                     >
-                      Choose Plan
+                      <T>Choose Plan</T>
                     </AnimatedButton>
                   </motion.div>
                 ))}
@@ -279,7 +280,7 @@ export default function PackagesPage() {
             <div className="max-w-4xl mx-auto">
               <div className="text-center mb-12">
                 <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                  Frequently Asked Questions
+                  <T>Frequently Asked Questions</T>
                 </h2>
               </div>
 
@@ -329,10 +330,10 @@ export default function PackagesPage() {
               className="mb-8"
             >
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to Start Your Project?
+                <T>Ready to Start Your Project?</T>
               </h2>
               <p className="text-lg text-slate-300 mb-8">
-                Let's discuss your needs and find the perfect solution for your business.
+                <T>Let's discuss your needs and find the perfect solution for your business.</T>
               </p>
             </motion.div>
 
@@ -362,7 +363,7 @@ export default function PackagesPage() {
                 size="large"
                 onClick={() => window.location.href = `mailto:${settings.contactEmail}?subject=General Inquiry`}
               >
-                Contact Us
+                <T>Contact Us</T>
                 <ArrowRight className="w-5 h-5 ml-2" />
               </AnimatedButton>
             </div>

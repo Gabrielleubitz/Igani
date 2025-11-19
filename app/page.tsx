@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { AnimatedButton } from '@/components/ui/animated-button'
@@ -12,6 +13,7 @@ import { getWebsites, getSettings, saveContactSubmission, getTestimonials } from
 import { Website, SiteSettings, Testimonial } from '@/types'
 import { siteContent } from '@/lib/i18n'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { T } from '@/components/T'
 import {
   Mail,
   Phone,
@@ -151,12 +153,13 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white mb-5 leading-[1.1]"
+              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold mb-5 leading-[1.1]"
             >
-              Elevate Your Brand
-              <br />
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent">
-                With a Personal Developer
+              <span className="text-white block mb-2">
+                {language === 'en' ? 'Elevate Your Brand' : 'הרם את המותג שלך'}
+              </span>
+              <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent block">
+                {language === 'en' ? 'With a Personal Developer' : 'עם מפתח אישי'}
               </span>
             </motion.h1>
 
@@ -400,17 +403,13 @@ export default function HomePage() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {featuredWebsites.map((website, index) => (
-                    <motion.a
+                    <motion.div
                       key={website.id}
-                      href={website.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       initial={{ opacity: 0, y: 30 }}
                       whileInView={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
                       viewport={{ once: true }}
-                      whileHover={{ y: -12 }}
-                      className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-500 hover:border-cyan-500/60 cursor-pointer"
+                      className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-500 hover:border-cyan-500/60"
                     >
                       <div className="relative h-64 overflow-hidden">
                         <img
@@ -423,22 +422,38 @@ export default function HomePage() {
                         <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-xl backdrop-blur-sm">
                           {content.featured[language]}
                         </div>
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <div className="bg-cyan-600 text-white p-4 rounded-full shadow-2xl transform group-hover:scale-110 transition-transform duration-300">
-                            <ExternalLink className="w-6 h-6" />
-                          </div>
-                        </div>
+                        {/* External Link Button */}
+                        <a
+                          href={website.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="absolute top-4 left-4 bg-slate-800/90 hover:bg-slate-700 text-white p-3 rounded-full shadow-2xl backdrop-blur-sm transition-all duration-300 hover:scale-110 z-10 border border-slate-600/50"
+                          title="Visit Live Site"
+                        >
+                          <ExternalLink className="w-5 h-5" />
+                        </a>
                       </div>
                       <div className="p-6">
                         <span className="inline-block bg-cyan-500/10 text-cyan-400 text-xs px-3 py-1.5 rounded-full font-bold border border-cyan-500/30 mb-3">
                           {website.category}
                         </span>
                         <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors duration-300">{website.title}</h3>
-                        <p className="text-slate-400 leading-relaxed text-sm line-clamp-2">
+                        <p className="text-slate-400 leading-relaxed text-sm line-clamp-2 mb-4">
                           {website.description}
                         </p>
+                        <Link
+                          href={`/preview/${website.id}`}
+                          className="flex items-center justify-center space-x-2 w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-4 py-3 rounded-xl hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30 font-semibold group/btn"
+                        >
+                          <span><T>View Preview</T></span>
+                          <svg className="w-5 h-5 transform group-hover/btn:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </Link>
                       </div>
-                    </motion.a>
+                    </motion.div>
                   ))}
                 </div>
               </div>
@@ -458,9 +473,9 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-16"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{settings.aboutTitle}</h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4"><T>{settings.aboutTitle}</T></h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                {settings.aboutDescription}
+                <T>{settings.aboutDescription}</T>
               </p>
             </motion.div>
 
@@ -469,7 +484,7 @@ export default function HomePage() {
               <div className="mb-20">
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-                  <h3 className="text-2xl font-bold text-white">What Our Clients Say</h3>
+                  <h3 className="text-2xl font-bold text-white">{content.testimonialsTitle[language]}</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {testimonials.filter(t => t.featured).slice(0, 6).map((testimonial, index) => (

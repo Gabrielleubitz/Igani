@@ -11,10 +11,9 @@ import { AnimatedButton } from '@/components/ui/animated-button'
 import { saveContactSubmission } from '@/lib/firestore'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { useTranslate } from '@/hooks/useTranslate'
+import { T } from '@/components/T'
 
 export default function ContactPage() {
-  const { useT } = useTranslate()
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -81,10 +80,10 @@ export default function ContactPage() {
         >
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              {useT("Get In Touch")}
+              <T>Get In Touch</T>
             </h1>
             <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              {useT("Ready to start your project? Contact us today for a free consultation.")}
+              <T>Ready to start your project? Contact us today for a free consultation.</T>
             </p>
           </div>
 
@@ -97,14 +96,14 @@ export default function ContactPage() {
               className="space-y-6"
             >
               <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-slate-950/50">
-                <h2 className="text-2xl font-bold text-white mb-6">{useT("Contact Information")}</h2>
+                <h2 className="text-2xl font-bold text-white mb-6"><T>Contact Information</T></h2>
                 <div className="space-y-6">
                   <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
                     <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
                       <Mail className="w-6 h-6 text-cyan-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-white mb-1">{useT("Email")}</p>
+                      <p className="font-semibold text-white mb-1"><T>Email</T></p>
                       <a href="mailto:info@igani.co" className="text-slate-400 hover:text-cyan-400 transition-colors">
                         info@igani.co
                       </a>
@@ -116,7 +115,7 @@ export default function ContactPage() {
                       <Phone className="w-6 h-6 text-cyan-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-white mb-1">Phone</p>
+                      <p className="font-semibold text-white mb-1"><T>Phone</T></p>
                       <a href="tel:+972584477757" className="text-slate-400 hover:text-cyan-400 transition-colors">
                         +972 58 44 77757
                       </a>
@@ -128,18 +127,18 @@ export default function ContactPage() {
                       <MapPin className="w-6 h-6 text-cyan-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-white mb-1">Location</p>
+                      <p className="font-semibold text-white mb-1"><T>Location</T></p>
                       <p className="text-slate-400">Netanya, Israel</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-8 p-6 bg-gradient-to-r from-cyan-600/10 to-blue-600/10 border border-cyan-500/30 rounded-xl">
-                  <h3 className="text-lg font-bold text-white mb-2">Business Hours</h3>
+                  <h3 className="text-lg font-bold text-white mb-2"><T>Business Hours</T></h3>
                   <div className="space-y-1 text-slate-300">
-                    <p>Sunday - Thursday: 9:00 AM - 6:00 PM</p>
-                    <p>Friday: 9:00 AM - 2:00 PM</p>
-                    <p>Saturday: Closed</p>
+                    <p><T>Sunday - Thursday: 9:00 AM - 6:00 PM</T></p>
+                    <p><T>Friday: 9:00 AM - 2:00 PM</T></p>
+                    <p><T>Saturday: Closed</T></p>
                   </div>
                 </div>
               </div>
@@ -152,12 +151,12 @@ export default function ContactPage() {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               <form onSubmit={handleSubmit} className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-slate-950/50">
-                <h2 className="text-2xl font-bold text-white mb-6">Send Us a Message</h2>
+                <h2 className="text-2xl font-bold text-white mb-6"><T>Send Us a Message</T></h2>
 
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-semibold text-white mb-2">First Name</label>
+                      <label className="block text-sm font-semibold text-white mb-2"><T>First Name</T></label>
                       <input
                         type="text"
                         name="firstName"
@@ -168,7 +167,7 @@ export default function ContactPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-white mb-2">Last Name</label>
+                      <label className="block text-sm font-semibold text-white mb-2"><T>Last Name</T></label>
                       <input
                         type="text"
                         name="lastName"
@@ -181,7 +180,7 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Email</label>
+                    <label className="block text-sm font-semibold text-white mb-2"><T>Email</T></label>
                     <input
                       type="email"
                       name="email"
@@ -193,23 +192,23 @@ export default function ContactPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Project Type</label>
+                    <label className="block text-sm font-semibold text-white mb-2"><T>Project Type</T></label>
                     <select
                       name="projectType"
                       value={formData.projectType}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white transition-all duration-300"
                     >
-                      <option>Landing Page</option>
-                      <option>Small Business Website</option>
-                      <option>Premium Brand Site</option>
-                      <option>E-commerce Website</option>
-                      <option>Custom Web App</option>
+                      <option><T>Landing Page</T></option>
+                      <option><T>Small Business Website</T></option>
+                      <option><T>Premium Brand Site</T></option>
+                      <option><T>E-commerce Website</T></option>
+                      <option><T>Custom Web App</T></option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-semibold text-white mb-2">Project Details</label>
+                    <label className="block text-sm font-semibold text-white mb-2"><T>Project Details</T></label>
                     <textarea
                       rows={5}
                       name="message"
@@ -227,7 +226,7 @@ export default function ContactPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-green-600/20 border border-green-500/50 text-green-400 p-4 rounded-lg font-medium"
                     >
-                      Thank you for reaching out. We will respond to your inquiry within 24 hours.
+                      <T>Thank you for reaching out. We will respond to your inquiry within 24 hours.</T>
                     </motion.div>
                   )}
 
@@ -237,7 +236,7 @@ export default function ContactPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="bg-red-600/20 border border-red-500/50 text-red-400 p-4 rounded-lg font-medium"
                     >
-                      An error occurred. Please try again or contact us directly.
+                      <T>An error occurred. Please try again or contact us directly.</T>
                     </motion.div>
                   )}
 
@@ -249,7 +248,7 @@ export default function ContactPage() {
                     className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-5 h-5 mr-2" />
-                    {isSubmitting ? 'Submitting...' : 'Start Free Consultation'}
+                    {isSubmitting ? <T>Submitting...</T> : <T>Start Free Consultation</T>}
                   </AnimatedButton>
                 </div>
               </form>

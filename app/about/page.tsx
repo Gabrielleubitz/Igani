@@ -10,6 +10,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { getAboutUsSections, getAboutUsSettings } from '@/lib/firestore'
 import { AboutUsSection, AboutUsSettings } from '@/types'
+import { T } from '@/components/T'
 
 export default function AboutPage() {
   const [sections, setSections] = useState<AboutUsSection[]>([])
@@ -61,7 +62,7 @@ export default function AboutPage() {
         <StarryBackground />
         <SplashCursor />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-slate-400">Loading about us...</div>
+          <div className="text-slate-400"><T>Loading about us...</T></div>
         </div>
       </div>
     )
@@ -77,8 +78,8 @@ export default function AboutPage() {
       </div>
       
       {/* Header with Back Button */}
-      <Header 
-        showBackButton={true} 
+      <Header
+        showBackButton={true}
         backButtonText="Back to Home"
         backButtonHref="/"
       />
@@ -157,18 +158,15 @@ export default function AboutPage() {
                       <Target className="w-6 h-6 text-cyan-400" />
                     </div>
                     <h2 className="text-3xl md:text-4xl font-bold text-white">
-                      Our Mission
+                      <T>Our Mission</T>
                     </h2>
                   </div>
                   <div className="text-lg text-slate-300 leading-relaxed">
                     <p className="mb-4">
-                      At IGANI, we're passionate about creating exceptional digital experiences that drive real business results. 
-                      We believe that great design and flawless functionality should go hand in hand, delivering websites and 
-                      applications that not only look stunning but perform beautifully.
+                      <T>At IGANI, we're passionate about creating exceptional digital experiences that drive real business results. We believe that great design and flawless functionality should go hand in hand, delivering websites and applications that not only look stunning but perform beautifully.</T>
                     </p>
                     <p>
-                      Our team combines technical expertise with creative vision to help businesses establish a powerful 
-                      online presence that sets them apart from the competition.
+                      <T>Our team combines technical expertise with creative vision to help businesses establish a powerful online presence that sets them apart from the competition.</T>
                     </p>
                   </div>
                 </motion.div>
@@ -185,21 +183,18 @@ export default function AboutPage() {
                       <Heart className="w-6 h-6 text-cyan-400" />
                     </div>
                     <h2 className="text-3xl md:text-4xl font-bold text-white">
-                      Our Values
+                      <T>Our Values</T>
                     </h2>
                   </div>
                   <div className="text-lg text-slate-300 leading-relaxed">
                     <p className="mb-4">
-                      <strong className="text-white">Quality First:</strong> We never compromise on quality, ensuring every 
-                      project meets the highest standards of design and development.
+                      <strong className="text-white"><T>Quality First:</T></strong> <T>We never compromise on quality, ensuring every project meets the highest standards of design and development.</T>
                     </p>
                     <p className="mb-4">
-                      <strong className="text-white">Client Partnership:</strong> We work closely with our clients as true 
-                      partners, understanding their vision and bringing it to life.
+                      <strong className="text-white"><T>Client Partnership:</T></strong> <T>We work closely with our clients as true partners, understanding their vision and bringing it to life.</T>
                     </p>
                     <p>
-                      <strong className="text-white">Innovation:</strong> We stay at the forefront of technology and design 
-                      trends to deliver cutting-edge solutions.
+                      <strong className="text-white"><T>Innovation:</T></strong> <T>We stay at the forefront of technology and design trends to deliver cutting-edge solutions.</T>
                     </p>
                   </div>
                 </motion.div>
@@ -218,10 +213,10 @@ export default function AboutPage() {
               className="mb-8"
             >
               <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                Ready to Work Together?
+                <T>Ready to Work Together?</T>
               </h2>
               <p className="text-lg text-slate-300 mb-8">
-                Let's discuss your project and create something amazing together.
+                <T>Let's discuss your project and create something amazing together.</T>
               </p>
             </motion.div>
 
@@ -231,15 +226,15 @@ export default function AboutPage() {
                 size="large"
                 onClick={() => window.location.href = '/contact'}
               >
-                Start Your Project
+                <T>Start Your Project</T>
               </AnimatedButton>
-              
+
               <AnimatedButton
                 variant="secondary"
                 size="large"
                 onClick={() => window.location.href = '/packages'}
               >
-                View Our Services
+                <T>View Our Services</T>
               </AnimatedButton>
             </div>
           </div>
