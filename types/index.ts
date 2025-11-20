@@ -90,6 +90,7 @@ export interface Package {
   roundsOfRevisions: number | null;
   order: number;
   published: boolean;
+  badge?: 'best-seller' | 'recommended' | 'popular' | 'new' | '';
   createdAt?: string;
   updatedAt?: string;
 }
