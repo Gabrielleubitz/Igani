@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Check, ChevronDown, ChevronUp, Calendar, Mail, ArrowRight } from 'lucide-react'
+import { Check, ChevronDown, ChevronUp, Calendar, Mail, ArrowRight, MessageSquare } from 'lucide-react'
 import {
   getPackages,
   getMaintenancePlans,
@@ -344,7 +344,7 @@ export default function PackagesPage() {
                   size="large"
                   onClick={() => window.open(settings.calendlyUrl, '_blank')}
                 >
-                  <Calendar className="w-5 h-5 mr-2" />
+                  <MessageSquare className="w-5 h-5 mr-2" />
                   {settings.contactCtaText}
                 </AnimatedButton>
               ) : (
@@ -353,7 +353,7 @@ export default function PackagesPage() {
                   size="large"
                   onClick={() => window.location.href = `mailto:${settings.contactEmail}?subject=Project Inquiry`}
                 >
-                  <Mail className="w-5 h-5 mr-2" />
+                  <MessageSquare className="w-5 h-5 mr-2" />
                   {settings.contactCtaText}
                 </AnimatedButton>
               )}
