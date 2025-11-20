@@ -73,7 +73,7 @@ export default function Header({
   ]
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-900/95 border-b border-slate-700/50">
+    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-900 lg:bg-slate-900/95 border-b border-slate-700/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Back Button or Logo */}
@@ -146,7 +146,7 @@ export default function Header({
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="lg:hidden absolute left-0 right-0 top-20 bg-slate-900/98 backdrop-blur-xl border-b border-slate-700/50 shadow-xl"
+            className="lg:hidden absolute left-0 right-0 top-20 bg-slate-900 backdrop-blur-xl border-b border-slate-700/50 shadow-xl"
           >
             <div className="px-4 py-6 space-y-2">
               {showBackButton && (
