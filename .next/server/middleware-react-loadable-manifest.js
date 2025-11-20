@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"app/admin/page.tsx -> @/components/AdminDashboardClient\":{\"id\":\"app/admin/page.tsx -> @/components/AdminDashboardClient\",\"files\":[\"static/chunks/_app-pages-browser_components_AdminDashboardClient_tsx.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST="{}"
