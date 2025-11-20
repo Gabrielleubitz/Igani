@@ -268,7 +268,8 @@ export default function AdminPackagesPage() {
       delivery: '',
       roundsOfRevisions: null,
       order: Math.max(...packages.map(p => p.order), 0) + 1,
-      published: true
+      published: true,
+      badge: ''
     })
     setMaintenanceForm({
       name: '',
@@ -691,6 +692,21 @@ export default function AdminPackagesPage() {
                             ) : (
                               <span className="text-xs bg-slate-600 text-slate-300 px-2 py-1 rounded">
                                 Draft
+                              </span>
+                            )}
+                            {pkg.badge && pkg.badge !== '' && (
+                              <span className={`text-xs px-2 py-1 rounded font-semibold ${
+                                pkg.badge === 'best-seller' ? 'bg-orange-600 text-white' :
+                                pkg.badge === 'recommended' ? 'bg-green-600 text-white' :
+                                pkg.badge === 'popular' ? 'bg-purple-600 text-white' :
+                                pkg.badge === 'new' ? 'bg-blue-600 text-white' :
+                                'bg-slate-600 text-white'
+                              }`}>
+                                {pkg.badge === 'best-seller' ? 'BEST SELLER' :
+                                 pkg.badge === 'recommended' ? 'RECOMMENDED' :
+                                 pkg.badge === 'popular' ? 'POPULAR' :
+                                 pkg.badge === 'new' ? 'NEW' :
+                                 pkg.badge.toUpperCase()}
                               </span>
                             )}
                           </div>
