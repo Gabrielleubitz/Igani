@@ -23,7 +23,8 @@ import {
   Award,
   Users,
   Clock,
-  Star
+  Star,
+  MessageSquare
 } from 'lucide-react'
 
 export default function HomePage() {
@@ -183,7 +184,8 @@ export default function HomePage() {
                 size="large"
                 onClick={() => window.location.href = '/contact'}
               >
-{content.ctaFreeConsultation[language]}
+                <MessageSquare className="w-5 h-5 mr-2" />
+                {content.ctaFreeConsultation[language]}
               </AnimatedButton>
               <AnimatedButton
                 variant="secondary"
@@ -369,8 +371,8 @@ export default function HomePage() {
                   onClick={() => window.location.href = '/contact'}
                   className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-xl shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-105"
                 >
-  {content.ctaFreeConsultation[language]}
-                  <Send className="w-5 h-5" />
+                  <MessageSquare className="w-5 h-5" />
+                  {content.ctaFreeConsultation[language]}
                 </button>
               </motion.div>
             </div>
