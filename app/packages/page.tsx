@@ -137,7 +137,7 @@ export default function PackagesPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 hover:border-cyan-500/50 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-xl hover:shadow-cyan-500/10 flex flex-col h-full"
+                  className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 md:p-8 hover:border-cyan-500/50 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-xl hover:shadow-cyan-500/10 flex flex-col h-full"
                 >
                   {/* Content Area - grows to fill available space */}
                   <div className="flex-1">
