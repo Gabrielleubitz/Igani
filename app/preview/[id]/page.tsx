@@ -82,11 +82,11 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
   const getFrameClasses = () => {
     switch (viewMode) {
       case 'mobile':
-        return 'w-80 h-[640px]'
+        return 'w-full max-w-[320px] h-[640px]'
       case 'tablet':
-        return 'w-[768px] h-[900px]'
+        return 'w-full max-w-[768px] h-[900px]'
       default:
-        return 'w-full h-[800px]'
+        return 'w-full h-[600px] sm:h-[700px] md:h-[800px]'
     }
   }
 
@@ -138,42 +138,42 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex items-center justify-center space-x-4 mb-8"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:space-x-4 mb-8"
           >
             {/* Device Toggle */}
-            <div className="flex items-center space-x-1 bg-slate-800/60 backdrop-blur-sm rounded-xl p-1.5 border border-slate-700/50 shadow-lg">
+            <div className="flex items-center justify-center space-x-1 bg-slate-800/60 backdrop-blur-sm rounded-xl p-1.5 border border-slate-700/50 shadow-lg">
               <button
                 onClick={() => setViewMode('desktop')}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ${
+                className={`flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2.5 rounded-lg transition-all duration-300 flex-1 sm:flex-initial ${
                   viewMode === 'desktop'
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 shadow-lg'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
                 <Monitor className="w-4 h-4" />
-                <span className="text-sm font-semibold hidden sm:inline"><T>Desktop</T></span>
+                <span className="text-xs sm:text-sm font-semibold"><T>Desktop</T></span>
               </button>
               <button
                 onClick={() => setViewMode('tablet')}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ${
+                className={`flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2.5 rounded-lg transition-all duration-300 flex-1 sm:flex-initial ${
                   viewMode === 'tablet'
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 shadow-lg'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
                 <Tablet className="w-4 h-4" />
-                <span className="text-sm font-semibold hidden sm:inline"><T>Tablet</T></span>
+                <span className="text-xs sm:text-sm font-semibold"><T>Tablet</T></span>
               </button>
               <button
                 onClick={() => setViewMode('mobile')}
-                className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-300 ${
+                className={`flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2.5 rounded-lg transition-all duration-300 flex-1 sm:flex-initial ${
                   viewMode === 'mobile'
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30 shadow-lg'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                 }`}
               >
                 <Smartphone className="w-4 h-4" />
-                <span className="text-sm font-semibold hidden sm:inline"><T>Mobile</T></span>
+                <span className="text-xs sm:text-sm font-semibold"><T>Mobile</T></span>
               </button>
             </div>
 
@@ -184,7 +184,7 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
               rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="flex items-center space-x-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 border border-cyan-500/30 shadow-xl shadow-cyan-500/20 font-semibold"
+              className="flex items-center justify-center space-x-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 border border-cyan-500/30 shadow-xl shadow-cyan-500/20 font-semibold"
             >
               <ExternalLink className="w-5 h-5" />
               <span><T>Visit Live Site</T></span>

@@ -24,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" dir="ltr">
-      <body className={`${outfit.variable} font-sans`}>
+    <html lang="en" dir="ltr" className="overflow-x-hidden">
+      <body className={`${outfit.variable} font-sans overflow-x-hidden`}>
         <LanguageProvider>
           {children}
         </LanguageProvider>
