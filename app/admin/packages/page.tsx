@@ -76,7 +76,8 @@ const packageSchema = z.object({
   })),
   roundsOfRevisions: z.number().nullable(),
   order: z.number().min(1),
-  published: z.boolean()
+  published: z.boolean(),
+  badge: z.enum(['best-seller', 'recommended', 'popular', 'new', '']).optional()
 }).refine(data => data.priceMax >= data.priceMin, {
   message: "Price Max must be greater than or equal to Price Min",
   path: ["priceMax"]
@@ -169,7 +170,8 @@ export default function AdminPackagesPage() {
     delivery: '',
     roundsOfRevisions: null as number | null,
     order: 1,
-    published: true
+    published: true,
+    badge: '' as 'best-seller' | 'recommended' | 'popular' | 'new' | ''
   })
 
   const [maintenanceForm, setMaintenanceForm] = useState({
@@ -300,7 +302,8 @@ export default function AdminPackagesPage() {
       delivery: pkg.delivery,
       roundsOfRevisions: pkg.roundsOfRevisions,
       order: pkg.order,
-      published: pkg.published
+      published: pkg.published,
+      badge: pkg.badge || ''
     })
     setEditingItem(pkg)
     setActiveTab('packages')
@@ -1160,6 +1163,25 @@ export default function AdminPackagesPage() {
                         placeholder="Leave empty for unlimited"
                       />
                     </div>
+                  </div>
+
+                  {/* Badge Selector */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Badge (optional)
+                    </label>
+                    <select
+                      value={packageForm.badge}
+                      onChange={(e) => setPackageForm(prev => ({ ...prev, badge: e.target.value as any }))}
+                      className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                    >
+                      <option value="">No Badge</option>
+                      <option value="best-seller">Best Seller</option>
+                      <option value="recommended">Recommended</option>
+                      <option value="popular">Popular</option>
+                      <option value="new">New</option>
+                    </select>
+                    <p className="text-slate-400 text-xs mt-1">Add a badge to highlight this package</p>
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-slate-700">
