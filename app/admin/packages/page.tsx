@@ -359,13 +359,15 @@ export default function AdminPackagesPage() {
 
   const handleSubmitPackage = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     // Clean up form data
     const cleanedForm = {
       ...packageForm,
       includes: packageForm.includes.filter(item => item.trim() !== ''),
       addOns: packageForm.addOns.filter(addon => addon.name.trim() !== '' && addon.priceNote.trim() !== '')
     }
+
+    console.log('Submitting package with badge:', cleanedForm.badge)
 
     if (!validateForm(packageSchema, cleanedForm)) {
       return
@@ -375,11 +377,13 @@ export default function AdminPackagesPage() {
 
     try {
       if (editingItem) {
+        console.log('Updating package:', { ...editingItem, ...cleanedForm })
         await updatePackage({
           ...editingItem,
           ...cleanedForm
         })
       } else {
+        console.log('Creating new package:', cleanedForm)
         await savePackage(cleanedForm)
       }
       

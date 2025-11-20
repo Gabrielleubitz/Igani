@@ -44,7 +44,10 @@ export default function PackagesPage() {
           getPackageSettings()
         ])
 
-        setPackages(packagesData.filter(p => p.published))
+        const publishedPackages = packagesData.filter(p => p.published)
+        console.log('Loaded packages:', publishedPackages)
+        console.log('Package badges:', publishedPackages.map(p => ({ name: p.name, badge: p.badge })))
+        setPackages(publishedPackages)
         setMaintenancePlans(plansData.filter(p => p.published))
         setFAQs(faqsData.filter(f => f.published))
         

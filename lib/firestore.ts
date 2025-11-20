@@ -416,6 +416,7 @@ export const getPackages = async (): Promise<Package[]> => {
         roundsOfRevisions: data.roundsOfRevisions,
         order: data.order,
         published: data.published || false,
+        badge: data.badge || '',
         createdAt: data.createdAt,
         updatedAt: data.updatedAt
       });
@@ -444,6 +445,7 @@ export const updatePackage = async (packageData: Package): Promise<void> => {
       delivery: packageData.delivery,
       roundsOfRevisions: packageData.roundsOfRevisions,
       order: packageData.order,
+      badge: packageData.badge || '',
       published: packageData.published,
       updatedAt: Timestamp.now()
     });
