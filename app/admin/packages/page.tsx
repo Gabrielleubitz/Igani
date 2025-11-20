@@ -698,7 +698,7 @@ export default function AdminPackagesPage() {
                                 Draft
                               </span>
                             )}
-                            {pkg.badge && pkg.badge !== '' && (
+                            {pkg.badge && (
                               <span className={`text-xs px-2 py-1 rounded font-semibold ${
                                 pkg.badge === 'best-seller' ? 'bg-orange-600 text-white' :
                                 pkg.badge === 'recommended' ? 'bg-green-600 text-white' :

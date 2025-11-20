@@ -143,7 +143,7 @@ export default function PackagesPage() {
                   className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 md:p-8 hover:border-cyan-500/50 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-xl hover:shadow-cyan-500/10 flex flex-col h-full relative"
                 >
                   {/* Badge */}
-                  {pkg.badge && pkg.badge !== '' && (
+                  {pkg.badge && (
                     <div className="absolute top-4 right-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg ${
                         pkg.badge === 'best-seller' ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' :
