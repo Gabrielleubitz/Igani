@@ -90,7 +90,9 @@ export interface Package {
   roundsOfRevisions: number | null;
   order: number;
   published: boolean;
-  badge?: 'best-seller' | 'recommended' | 'popular' | 'new' | '' | undefined;
+  badge?: 'best-seller' | 'recommended' | 'popular' | 'new' | 'custom' | '' | undefined;
+  customBadgeText?: string;
+  customBadgeGradient?: string;
   createdAt?: string;
   updatedAt?: string;
 }
