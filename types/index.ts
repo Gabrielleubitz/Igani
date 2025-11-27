@@ -148,10 +148,13 @@ export interface PromoBannerSettings {
   // Content
   title: string;
   subtitle?: string;
+  accentWord?: string; // Word to highlight with accent color
 
   // CTA
   ctaLabel?: string;
   ctaUrl?: string;
+  ctaStyle?: 'pill' | 'default';
+  ctaColor?: string;
 
   // Image
   image?: string;
@@ -159,16 +162,19 @@ export interface PromoBannerSettings {
 
   // Styling
   backgroundColor: string;
+  backgroundGradient?: string; // Optional gradient override
   textColor: string;
+  accentColor?: string; // For highlighted words
   fontSize: 'small' | 'medium' | 'large';
-  fontWeight: 'regular' | 'bold';
+  fontWeight: '400' | '500' | '600' | '700';
   textAlign: 'left' | 'center';
-  padding: 'compact' | 'normal' | 'spacious';
-  height: 'auto' | 'fixed';
+  glowEffect?: boolean; // Soft glow behind banner
+  textGlow?: boolean; // Text highlight effect
 
   // Animation
-  animationType: 'none' | 'slide' | 'marquee';
-  animationSpeed: 'slow' | 'normal' | 'fast';
+  animationType: 'none' | 'fade' | 'slide' | 'marquee';
+  animationSpeed: 'slow' | 'medium' | 'fast';
+  marqueeDirection?: 'left' | 'right';
 
   // Behavior
   dismissible: boolean;
