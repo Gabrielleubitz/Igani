@@ -192,20 +192,40 @@ export function PromoBanner() {
 
   const isMarquee = shouldAnimate && settings.animationType === 'marquee'
 
+  // Calculate banner height for spacer
+  const getBannerHeight = () => {
+    if (!isVisible) return 0
+    switch (settings.padding) {
+      case 'compact':
+        return 48 // py-2 * 2 + content ~40-48px
+      case 'spacious':
+        return 96 // py-6 * 2 + content ~88-96px
+      default:
+        return 72 // py-4 * 2 + content ~64-72px
+    }
+  }
+
   return (
-    <AnimatePresence>
+    <>
+      {/* Spacer to prevent content from being hidden behind fixed banner */}
       {isVisible && (
-        <motion.div
-          {...getAnimationVariants()}
-          transition={{ duration: getAnimationDuration() }}
-          style={{
-            backgroundColor: settings.backgroundColor,
-            color: settings.textColor
-          }}
-          className={`relative w-full ${getPadding()} overflow-hidden`}
-        >
-          <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 max-w-7xl mx-auto">
+        <div style={{ height: `${getBannerHeight()}px` }} className="w-full" />
+      )}
+
+      <AnimatePresence>
+        {isVisible && (
+          <motion.div
+            {...getAnimationVariants()}
+            transition={{ duration: getAnimationDuration() }}
+            style={{
+              backgroundColor: settings.backgroundColor,
+              color: settings.textColor,
+              top: '80px'
+            }}
+            className={`fixed left-0 right-0 w-full ${getPadding()} overflow-hidden z-40 shadow-lg`}
+          >
+            <div className="w-full px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 max-w-7xl mx-auto">
               {/* Banner Content */}
               <div className="flex-1 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
                 {/* Image - Inline */}
@@ -306,5 +326,6 @@ export function PromoBanner() {
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   )
 }
