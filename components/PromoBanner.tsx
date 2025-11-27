@@ -47,9 +47,9 @@ export function PromoBanner() {
         if (!isPreview) {
           const now = new Date()
           const isWithinDateRange = checkDateRange(
+            now,
             bannerSettings.startDate,
-            bannerSettings.endDate,
-            now
+            bannerSettings.endDate
           )
           if (!isWithinDateRange) {
             setIsLoading(false)
@@ -73,7 +73,7 @@ export function PromoBanner() {
     }
   }
 
-  const checkDateRange = (startDate?: string, endDate?: string, now: Date): boolean => {
+  const checkDateRange = (now: Date, startDate?: string, endDate?: string): boolean => {
     if (!startDate && !endDate) return true
 
     const nowTime = now.getTime()
