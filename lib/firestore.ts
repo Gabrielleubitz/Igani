@@ -419,6 +419,8 @@ export const getPackages = async (): Promise<Package[]> => {
         order: data.order,
         published: data.published || false,
         badge: data.badge || '',
+        customBadgeText: data.customBadgeText,
+        customBadgeGradient: data.customBadgeGradient,
         createdAt: data.createdAt,
         updatedAt: data.updatedAt
       });
@@ -448,6 +450,8 @@ export const updatePackage = async (packageData: Package): Promise<void> => {
       roundsOfRevisions: packageData.roundsOfRevisions,
       order: packageData.order,
       badge: packageData.badge || '',
+      customBadgeText: packageData.customBadgeText,
+      customBadgeGradient: packageData.customBadgeGradient,
       published: packageData.published,
       updatedAt: Timestamp.now()
     });
