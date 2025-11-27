@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '@/lib/firebase'
+import { saveContactSubmission } from '@/lib/firestore'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,19 +14,22 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save to Firestore
+    // Split name into first and last name (simple approach)
+    const nameParts = name.trim().split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+
+    // Transform funnel data to match contact submission format
     const submissionData = {
-      name,
+      firstName,
+      lastName,
       email,
-      phone: phone || '',
-      businessType,
-      message,
-      source: 'funnels-page',
-      submittedAt: serverTimestamp(),
-      status: 'new'
+      projectType: businessType, // Map businessType to projectType
+      message: `[Funnel Lead - ${businessType}]\n${phone ? `Phone: ${phone}\n` : ''}${message}`
     }
 
-    await addDoc(collection(db, 'funnel-submissions'), submissionData)
+    // Use the same function as contact form to save to contactSubmissions collection
+    await saveContactSubmission(submissionData)
 
     // TODO: Send email notification (optional)
     // You can integrate with Mailjet, SendGrid, or another email service here
