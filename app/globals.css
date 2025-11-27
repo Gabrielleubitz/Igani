@@ -139,4 +139,82 @@
     margin-right: 0.5rem;
     margin-left: 0;
   }
+
+  /* Hamburger Menu Styles */
+  .hamburger-menu {
+    width: 50px;
+    height: 50px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: transform 0.2s ease;
+  }
+
+  .hamburger-menu:hover {
+    transform: scale(1.1);
+  }
+
+  .hamburger-menu:active {
+    transform: scale(0.95);
+  }
+
+  .hamburger-menu svg {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* Oval animations */
+  .hamburger-menu .oval-back,
+  .hamburger-menu .oval-front {
+    transition: opacity 0.3s ease;
+  }
+
+  .hamburger-menu.open .oval-back,
+  .hamburger-menu.open .oval-front {
+    opacity: 0;
+  }
+
+  /* Pillar group transforms */
+  .hamburger-menu .pillar-group-left,
+  .hamburger-menu .pillar-group-right {
+    transform-origin: 53px 49px; /* Center of the logo */
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Open state - form X shape */
+  .hamburger-menu.open .pillar-group-left {
+    transform: rotate(45deg);
+  }
+
+  .hamburger-menu.open .pillar-group-right {
+    transform: rotate(-45deg);
+  }
+
+  /* Optional: Add a subtle background on hover */
+  .hamburger-menu::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .hamburger-menu:hover::before {
+    opacity: 1;
+  }
+
+  /* Focus styles for accessibility */
+  .hamburger-menu:focus-visible {
+    outline: 2px solid #8FB7F9;
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
 }
