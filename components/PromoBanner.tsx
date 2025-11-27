@@ -303,10 +303,15 @@ export function PromoBanner() {
                         </motion.div>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center gap-3">
+                      <div className="flex flex-col items-center justify-center gap-1">
                         <h3 className={`${getFontSize()} ${getFontWeight()} leading-none`}>
                           {renderTitle(settings.title)}
                         </h3>
+                        {settings.subtitle && (
+                          <p className="text-xs sm:text-sm opacity-80 leading-tight">
+                            {settings.subtitle}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

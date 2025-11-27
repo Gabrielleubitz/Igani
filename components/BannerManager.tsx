@@ -213,6 +213,17 @@ export function BannerManager() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">Subtitle (Optional)</label>
+            <input
+              type="text"
+              value={settings.subtitle || ''}
+              onChange={(e) => setSettings({ ...settings, subtitle: e.target.value })}
+              className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
+              placeholder="Limited time offer - Shop now!"
+            />
+          </div>
+
           <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-300 mb-2">Accent Word (to highlight)</label>
@@ -590,7 +601,7 @@ export function BannerManager() {
                         <span className="text-xs opacity-50">(will scroll on live site)</span>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center gap-3">
+                      <div className="flex flex-col items-center justify-center gap-1">
                         <span
                           style={{ color: settings.textColor }}
                           className={`${
@@ -601,6 +612,14 @@ export function BannerManager() {
                         >
                           {renderPreviewTitle(settings.title || 'Your banner title will appear here...')}
                         </span>
+                        {settings.subtitle && (
+                          <span
+                            style={{ color: settings.textColor }}
+                            className="text-xs sm:text-sm opacity-80"
+                          >
+                            {settings.subtitle}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
