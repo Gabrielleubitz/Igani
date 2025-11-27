@@ -231,23 +231,4 @@
     outline-offset: 2px;
     border-radius: 12px;
   }
-
-  /* Pulse animation to draw attention */
-  @keyframes pulse-menu {
-    0%, 100% {
-      box-shadow: 0 0 0 0 rgba(139, 183, 249, 0.4);
-    }
-    50% {
-      box-shadow: 0 0 0 8px rgba(139, 183, 249, 0);
-    }
-  }
-
-  .hamburger-menu:not(.open) {
-    animation: pulse-menu 2s ease-in-out infinite;
-  }
-
-  .hamburger-menu:hover,
-  .hamburger-menu.open {
-    animation: none;
-  }
 }
