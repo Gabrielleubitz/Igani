@@ -212,6 +212,9 @@ export function PromoBanner() {
   const isMarquee = shouldAnimate && settings.animationType === 'marquee'
   const isClickable = Boolean(settings.ctaUrl)
 
+  // Dynamic height based on whether subtitle exists
+  const bannerHeight = settings.subtitle && !isMarquee ? '65px' : '50px'
+
   // Highlight accent word in title
   const renderTitle = (text: string) => {
     if (!settings.accentWord || !settings.accentColor) {
@@ -243,7 +246,7 @@ export function PromoBanner() {
     <>
       {/* Spacer to prevent content from being hidden behind fixed banner */}
       {isVisible && (
-        <div style={{ height: '50px' }} className="w-full" />
+        <div style={{ height: bannerHeight }} className="w-full" />
       )}
 
       <AnimatePresence>
@@ -256,9 +259,10 @@ export function PromoBanner() {
               ...backgroundStyle,
               color: settings.textColor,
               top: '80px',
-              cursor: isClickable ? 'pointer' : 'default'
+              cursor: isClickable ? 'pointer' : 'default',
+              height: bannerHeight
             }}
-            className={`fixed left-0 right-0 w-full h-[50px] overflow-hidden z-40 ${
+            className={`fixed left-0 right-0 w-full overflow-hidden z-40 ${
               settings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
             } ${isClickable ? 'hover:opacity-95 transition-opacity duration-200' : ''}`}
           >
