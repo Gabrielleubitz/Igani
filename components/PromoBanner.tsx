@@ -42,8 +42,8 @@ export function PromoBanner() {
       const bannerSettings = await getPromoBannerSettings()
 
       if (bannerSettings && bannerSettings.enabled) {
-        // Check if banner was dismissed
-        const dismissedBanner = localStorage.getItem('promoBannerDismissed')
+        // Check if banner was dismissed (only for current session)
+        const dismissedBanner = sessionStorage.getItem('promoBannerDismissed')
         if (dismissedBanner === 'true' && !isPreview) {
           setIsLoading(false)
           return
@@ -107,7 +107,8 @@ export function PromoBanner() {
     e.stopPropagation() // Prevent banner click when closing
     setIsVisible(false)
     if (settings?.dismissible) {
-      localStorage.setItem('promoBannerDismissed', 'true')
+      // Save dismissal only for current session (not permanent)
+      sessionStorage.setItem('promoBannerDismissed', 'true')
     }
   }
 
