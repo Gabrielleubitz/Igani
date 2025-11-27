@@ -159,9 +159,28 @@ export default function PackagesPage() {
                       <p className="text-slate-400 text-sm">{pkg.bestFor}</p>
                       {pkg.showPricing ? (
                         <div className="mt-3">
-                          <p className="text-3xl font-bold text-white">
-                            <T>Starting from</T> {settings.currencySymbol}{pkg.price.toLocaleString()}
-                          </p>
+                          {pkg.showDiscount && pkg.originalPrice && pkg.originalPrice > pkg.price ? (
+                            <div className="space-y-2">
+                              <div className="flex items-baseline gap-2 flex-wrap">
+                                <span className="text-lg text-slate-500 line-through">
+                                  {settings.currencySymbol}{pkg.originalPrice.toLocaleString()}
+                                </span>
+                                <span className="text-3xl font-bold text-white">
+                                  {settings.currencySymbol}{pkg.price.toLocaleString()}
+                                </span>
+                                <span className="px-2 py-1 bg-green-500/20 text-green-400 text-sm font-bold rounded-md">
+                                  {Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100)}% OFF
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-400">
+                                <T>Starting from</T>
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-3xl font-bold text-white">
+                              <T>Starting from</T> {settings.currencySymbol}{pkg.price.toLocaleString()}
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <div className="mt-3 px-3 py-2 bg-gradient-to-r from-cyan-600/10 to-blue-600/10 rounded-lg border border-cyan-500/20">
