@@ -122,6 +122,20 @@ interface SortableItemProps {
   children: React.ReactNode
 }
 
+// Helper function to get currency symbol from priceUnit
+function getCurrencySymbol(priceUnit: string): string {
+  switch (priceUnit) {
+    case 'USD':
+      return '$'
+    case 'EUR':
+      return '€'
+    case 'NIS':
+      return '₪'
+    default:
+      return '₪'
+  }
+}
+
 function SortableItem({ id, children }: SortableItemProps) {
   const {
     attributes,
@@ -1072,7 +1086,7 @@ export default function AdminPackagesPage() {
                               <p className="text-red-400 text-xs mt-1">{validationErrors.price}</p>
                             )}
                             <p className="text-slate-400 text-xs mt-1">
-                              {packageForm.showDiscount ? 'Discounted price' : 'Will display as "Starting from ₪X"'}
+                              {packageForm.showDiscount ? 'Discounted price' : `Will display as "Starting from ${getCurrencySymbol(packageForm.priceUnit)}X"`}
                             </p>
                           </div>
                           <div>
@@ -1133,10 +1147,10 @@ export default function AdminPackagesPage() {
                                   <p className="text-xs text-slate-400 mb-1">Preview:</p>
                                   <div className="flex items-baseline gap-2">
                                     <span className="text-slate-400 line-through text-sm">
-                                      ₪{packageForm.originalPrice.toLocaleString()}
+                                      {getCurrencySymbol(packageForm.priceUnit)}{packageForm.originalPrice.toLocaleString()}
                                     </span>
                                     <span className="text-2xl font-bold text-white">
-                                      ₪{packageForm.price.toLocaleString()}
+                                      {getCurrencySymbol(packageForm.priceUnit)}{packageForm.price.toLocaleString()}
                                     </span>
                                     <span className="text-green-400 text-sm font-semibold">
                                       {Math.round(((packageForm.originalPrice - packageForm.price) / packageForm.originalPrice) * 100)}% OFF
