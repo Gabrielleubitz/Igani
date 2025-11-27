@@ -126,13 +126,6 @@ export default function FunnelsPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 relative overflow-hidden">
-      {/* Starry Night Background */}
-      <StarryBackground />
-
-      {/* Splash Cursor Animation */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <SplashCursor />
-      </div>
 
       {/* Mobile Sticky CTA */}
       {showStickyCTA && (
@@ -302,7 +295,7 @@ export default function FunnelsPage() {
                         disabled={isSubmitting}
                         className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black py-4 px-6 rounded-lg text-xl transition-colors disabled:opacity-50 shadow-xl"
                       >
-                        {isSubmitting ? 'SUBMITTING...' : 'GET MY BLACK FRIDAY WEBSITE OFFER'}
+                        {isSubmitting ? 'SUBMITTING...' : 'SECURE MY 50% DISCOUNT NOW'}
                       </button>
                     )}
                     
@@ -355,7 +348,7 @@ export default function FunnelsPage() {
               className="text-center mb-12"
             >
               <h2 className="text-4xl font-black text-white mb-4">
-                What Igani Builds vs. DIY Disasters
+                Wix and DIY Websites vs What Igani Builds
               </h2>
               <p className="text-xl text-slate-300">
                 Stop wasting months on Wix. Get a real website that works.
@@ -583,15 +576,11 @@ export default function FunnelsPage() {
                 },
                 {
                   q: "What if I don't like the website?",
-                  a: "Unlimited revisions during the 7-day build. We don't stop until you're happy."
+                  a: "Multiple revisions during the 7-day build. We don't stop until you're happy."
                 },
                 {
                   q: "Do you handle hosting and domains?",
                   a: "Yes. Everything is included. You get a complete, live website."
-                },
-                {
-                  q: "Is this really 50% off?",
-                  a: "Yes. Regular price is $2,997. Black Friday price is $1,497. Offer expires in 24 hours."
                 }
               ].map((faq, index) => (
                 <motion.div
