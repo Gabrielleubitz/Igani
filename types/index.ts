@@ -83,6 +83,8 @@ export interface Package {
   price: number;
   priceUnit: string;
   showPricing: boolean;
+  showDiscount?: boolean;
+  originalPrice?: number;
   bestFor: string;
   includes: string[];
   addOns: PackageAddOn[];

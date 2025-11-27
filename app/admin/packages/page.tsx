@@ -68,6 +68,8 @@ const packageSchema = z.object({
   price: z.number().min(0, 'Price must be positive'),
   priceUnit: z.string().min(1, 'Price Unit is required'),
   showPricing: z.boolean(),
+  showDiscount: z.boolean().optional(),
+  originalPrice: z.number().min(0, 'Original price must be positive').optional(),
   delivery: z.string().min(1, 'Delivery is required'),
   includes: z.array(z.string().min(1)).min(1, 'At least one include is required'),
   addOns: z.array(z.object({
@@ -88,6 +90,14 @@ const packageSchema = z.object({
 }, {
   message: "Custom badge text is required when badge is set to custom",
   path: ["customBadgeText"]
+}).refine(data => {
+  if (data.showDiscount && (!data.originalPrice || data.originalPrice <= data.price)) {
+    return false
+  }
+  return true
+}, {
+  message: "Original price must be greater than current price when showing discount",
+  path: ["originalPrice"]
 })
 
 const maintenanceSchema = z.object({
@@ -171,6 +181,8 @@ export default function AdminPackagesPage() {
     price: 0,
     priceUnit: 'NIS',
     showPricing: true,
+    showDiscount: false,
+    originalPrice: 0,
     bestFor: '',
     includes: [''],
     addOns: [] as { name: string; priceNote: string }[],
@@ -271,6 +283,8 @@ export default function AdminPackagesPage() {
       price: 0,
       priceUnit: 'NIS',
       showPricing: true,
+      showDiscount: false,
+      originalPrice: 0,
       bestFor: '',
       includes: [''],
       addOns: [],
@@ -308,6 +322,8 @@ export default function AdminPackagesPage() {
       price: pkg.price,
       priceUnit: pkg.priceUnit,
       showPricing: pkg.showPricing !== undefined ? pkg.showPricing : true,
+      showDiscount: pkg.showDiscount || false,
+      originalPrice: pkg.originalPrice || 0,
       bestFor: pkg.bestFor,
       includes: pkg.includes,
       addOns: pkg.addOns,
@@ -1036,40 +1052,100 @@ export default function AdminPackagesPage() {
                     </div>
 
                     {packageForm.showPricing && (
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Starting Price *
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={packageForm.price}
-                            onChange={(e) => setPackageForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
-                            className={`w-full px-3 py-2 bg-slate-900/60 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-white ${
-                              validationErrors.price ? 'border-red-500' : 'border-slate-600'
-                            }`}
-                            required
-                          />
-                          {validationErrors.price && (
-                            <p className="text-red-400 text-xs mt-1">{validationErrors.price}</p>
-                          )}
-                          <p className="text-slate-400 text-xs mt-1">Will display as "Starting from ₪X"</p>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                              {packageForm.showDiscount ? 'Current Price *' : 'Starting Price *'}
+                            </label>
+                            <input
+                              type="number"
+                              min="0"
+                              value={packageForm.price}
+                              onChange={(e) => setPackageForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                              className={`w-full px-3 py-2 bg-slate-900/60 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-white ${
+                                validationErrors.price ? 'border-red-500' : 'border-slate-600'
+                              }`}
+                              required
+                            />
+                            {validationErrors.price && (
+                              <p className="text-red-400 text-xs mt-1">{validationErrors.price}</p>
+                            )}
+                            <p className="text-slate-400 text-xs mt-1">
+                              {packageForm.showDiscount ? 'Discounted price' : 'Will display as "Starting from ₪X"'}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                              Currency *
+                            </label>
+                            <select
+                              value={packageForm.priceUnit}
+                              onChange={(e) => setPackageForm(prev => ({ ...prev, priceUnit: e.target.value }))}
+                              className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                              required
+                            >
+                              <option value="NIS">NIS (₪)</option>
+                              <option value="USD">USD ($)</option>
+                              <option value="EUR">EUR (€)</option>
+                            </select>
+                          </div>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Currency *
-                          </label>
-                          <select
-                            value={packageForm.priceUnit}
-                            onChange={(e) => setPackageForm(prev => ({ ...prev, priceUnit: e.target.value }))}
-                            className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
-                            required
-                          >
-                            <option value="NIS">NIS (₪)</option>
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                          </select>
+
+                        {/* Discount Option */}
+                        <div className="pt-2">
+                          <div className="flex items-center gap-2 mb-3">
+                            <input
+                              type="checkbox"
+                              id="showDiscount"
+                              checked={packageForm.showDiscount}
+                              onChange={(e) => setPackageForm(prev => ({ ...prev, showDiscount: e.target.checked }))}
+                              className="w-4 h-4 text-cyan-600 bg-slate-900 border-slate-600 rounded focus:ring-cyan-500"
+                            />
+                            <label htmlFor="showDiscount" className="text-sm font-medium text-slate-300">
+                              Show discount (crossed-off original price)
+                            </label>
+                          </div>
+
+                          {packageForm.showDiscount && (
+                            <div>
+                              <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Original Price *
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={packageForm.originalPrice}
+                                onChange={(e) => setPackageForm(prev => ({ ...prev, originalPrice: parseInt(e.target.value) || 0 }))}
+                                className={`w-full px-3 py-2 bg-slate-900/60 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-white ${
+                                  validationErrors.originalPrice ? 'border-red-500' : 'border-slate-600'
+                                }`}
+                                required
+                              />
+                              {validationErrors.originalPrice && (
+                                <p className="text-red-400 text-xs mt-1">{validationErrors.originalPrice}</p>
+                              )}
+                              <p className="text-slate-400 text-xs mt-1">Must be greater than current price</p>
+
+                              {/* Preview */}
+                              {packageForm.originalPrice > packageForm.price && packageForm.price > 0 && (
+                                <div className="mt-3 p-3 bg-slate-900/60 rounded-lg border border-cyan-500/30">
+                                  <p className="text-xs text-slate-400 mb-1">Preview:</p>
+                                  <div className="flex items-baseline gap-2">
+                                    <span className="text-slate-400 line-through text-sm">
+                                      ₪{packageForm.originalPrice.toLocaleString()}
+                                    </span>
+                                    <span className="text-2xl font-bold text-white">
+                                      ₪{packageForm.price.toLocaleString()}
+                                    </span>
+                                    <span className="text-green-400 text-sm font-semibold">
+                                      {Math.round(((packageForm.originalPrice - packageForm.price) / packageForm.originalPrice) * 100)}% OFF
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
