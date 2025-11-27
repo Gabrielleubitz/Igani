@@ -571,47 +571,13 @@ export default function HomePage() {
             </motion.div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-                className="space-y-8"
-              >
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-6">{content.contactInfo[language]}</h3>
-                  <div className="space-y-6">
-                    {[
-                      { icon: Mail, label: 'Email', value: settings.contactEmail },
-                      { icon: Phone, label: 'Phone', value: settings.contactPhone },
-                      { icon: MapPin, label: 'Location', value: settings.contactLocation }
-                    ].map((contact, index) => (
-                      <motion.div
-                        key={contact.label}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: index * 0.1 }}
-                        viewport={{ once: true }}
-                        className="flex items-start space-x-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md shadow-slate-950/50 hover:shadow-lg hover:shadow-cyan-500/10"
-                      >
-                        <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                          <contact.icon className="w-6 h-6 text-cyan-400" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white mb-1">{contact.label}</p>
-                          <p className="text-slate-400">{contact.value}</p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-
+              {/* Contact Form - appears first on mobile, second on desktop */}
               <motion.div
                 initial={{ opacity: 0, x: 30 }}
                 whileInView={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
+                className="order-1 lg:order-2"
               >
                 <form onSubmit={handleSubmit} className="space-y-6 bg-slate-800/60 p-8 rounded-2xl border border-slate-700/50 shadow-xl shadow-slate-950/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -708,6 +674,43 @@ export default function HomePage() {
                     {isSubmitting ? content.submitting[language] : content.submitButton[language]}
                   </AnimatedButton>
                 </form>
+              </motion.div>
+
+              {/* Contact Info - appears second on mobile, first on desktop */}
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+                className="space-y-8 order-2 lg:order-1"
+              >
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-6">{content.contactInfo[language]}</h3>
+                  <div className="space-y-6">
+                    {[
+                      { icon: Mail, label: 'Email', value: settings.contactEmail },
+                      { icon: Phone, label: 'Phone', value: settings.contactPhone },
+                      { icon: MapPin, label: 'Location', value: settings.contactLocation }
+                    ].map((contact, index) => (
+                      <motion.div
+                        key={contact.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: index * 0.1 }}
+                        viewport={{ once: true }}
+                        className="flex items-start space-x-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md shadow-slate-950/50 hover:shadow-lg hover:shadow-cyan-500/10"
+                      >
+                        <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
+                          <contact.icon className="w-6 h-6 text-cyan-400" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white mb-1">{contact.label}</p>
+                          <p className="text-slate-400">{contact.value}</p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
               </motion.div>
             </div>
           </div>
