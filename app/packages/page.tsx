@@ -6,10 +6,9 @@ import { Check, ChevronDown, ChevronUp, Calendar, Mail, ArrowRight, MessageSquar
 import {
   getPackages,
   getMaintenancePlans,
-  getPackageFAQs,
   getPackageSettings
 } from '@/lib/firestore'
-import { Package, MaintenancePlan, PackageFAQ, PackageSettings } from '@/types'
+import { Package, MaintenancePlan, PackageSettings } from '@/types'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
@@ -20,7 +19,6 @@ import { T } from '@/components/T'
 export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [maintenancePlans, setMaintenancePlans] = useState<MaintenancePlan[]>([])
-  const [faqs, setFAQs] = useState<PackageFAQ[]>([])
   const [settings, setSettings] = useState<PackageSettings>({
     currencySymbol: '₪',
     showComparison: true,
@@ -29,18 +27,16 @@ export default function PackagesPage() {
     calendlyUrl: ''
   })
   const [expandedAddOns, setExpandedAddOns] = useState<{ [key: string]: boolean }>({})
-  const [expandedFAQ, setExpandedFAQ] = useState<{ [key: string]: boolean }>({})
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true)
-        
-        const [packagesData, plansData, faqsData, settingsData] = await Promise.all([
+
+        const [packagesData, plansData, settingsData] = await Promise.all([
           getPackages(),
           getMaintenancePlans(),
-          getPackageFAQs(),
           getPackageSettings()
         ])
 
@@ -49,8 +45,7 @@ export default function PackagesPage() {
         console.log('Package badges:', publishedPackages.map(p => ({ name: p.name, badge: p.badge })))
         setPackages(publishedPackages)
         setMaintenancePlans(plansData.filter(p => p.published))
-        setFAQs(faqsData.filter(f => f.published))
-        
+
         if (settingsData) {
           setSettings(settingsData)
         }
@@ -68,13 +63,6 @@ export default function PackagesPage() {
     setExpandedAddOns(prev => ({
       ...prev,
       [packageId]: !prev[packageId]
-    }))
-  }
-
-  const toggleFAQ = (faqId: string) => {
-    setExpandedFAQ(prev => ({
-      ...prev,
-      [faqId]: !prev[faqId]
     }))
   }
 
@@ -287,52 +275,6 @@ export default function PackagesPage() {
                     >
                       <T>Choose Plan</T>
                     </AnimatedButton>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* FAQ Section */}
-        {faqs.length > 0 && (
-          <section className="py-16 px-4">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                  <T>Frequently Asked Questions</T>
-                </h2>
-              </div>
-
-              <div className="space-y-4">
-                {faqs.map((faq) => (
-                  <motion.div
-                    key={faq.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden"
-                  >
-                    <button
-                      onClick={() => toggleFAQ(faq.id)}
-                      className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors"
-                    >
-                      <h3 className="text-white font-semibold">{faq.question}</h3>
-                      {expandedFAQ[faq.id] ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
-                    </button>
-                    {expandedFAQ[faq.id] && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="px-6 pb-4"
-                      >
-                        <p className="text-slate-300 leading-relaxed">{faq.answer}</p>
-                      </motion.div>
-                    )}
                   </motion.div>
                 ))}
               </div>
