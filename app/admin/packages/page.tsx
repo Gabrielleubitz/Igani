@@ -380,10 +380,15 @@ export default function AdminPackagesPage() {
     const cleanedForm = {
       ...packageForm,
       includes: packageForm.includes.filter(item => item.trim() !== ''),
-      addOns: packageForm.addOns.filter(addon => addon.name.trim() !== '' && addon.priceNote.trim() !== '')
+      addOns: packageForm.addOns.filter(addon => addon.name.trim() !== '' && addon.priceNote.trim() !== ''),
+      // Only include custom badge fields if badge is 'custom'
+      customBadgeText: packageForm.badge === 'custom' ? packageForm.customBadgeText : undefined,
+      customBadgeGradient: packageForm.badge === 'custom' ? packageForm.customBadgeGradient : undefined
     }
 
     console.log('Submitting package with badge:', cleanedForm.badge)
+    console.log('Custom badge text:', cleanedForm.customBadgeText)
+    console.log('Custom badge gradient:', cleanedForm.customBadgeGradient)
 
     if (!validateForm(packageSchema, cleanedForm)) {
       return
@@ -402,7 +407,7 @@ export default function AdminPackagesPage() {
         console.log('Creating new package:', cleanedForm)
         await savePackage(cleanedForm)
       }
-      
+
       await loadData()
       resetForms()
     } catch (error) {
