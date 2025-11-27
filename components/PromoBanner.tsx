@@ -123,7 +123,7 @@ export function PromoBanner() {
   // Get animation config (respect reduced motion)
   const shouldAnimate = !prefersReducedMotion && settings.animationType !== 'none'
 
-  const getAnimationVariants = () => {
+  const getEntranceAnimation = () => {
     if (!shouldAnimate) {
       return {
         initial: { opacity: 1 },
@@ -132,201 +132,216 @@ export function PromoBanner() {
       }
     }
 
-    if (settings.animationType === 'slide') {
-      return {
-        initial: { y: -100, opacity: 0 },
-        animate: { y: 0, opacity: 1 },
-        exit: { y: -100, opacity: 0 }
-      }
-    }
-
-    return {
-      initial: { opacity: 1 },
-      animate: { opacity: 1 },
-      exit: { opacity: 0 }
+    switch (settings.animationType) {
+      case 'fade':
+        return {
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          exit: { opacity: 0 }
+        }
+      case 'slide':
+        return {
+          initial: { y: -60, opacity: 0 },
+          animate: { y: 0, opacity: 1 },
+          exit: { y: -60, opacity: 0 }
+        }
+      default:
+        return {
+          initial: { opacity: 1 },
+          animate: { opacity: 1 },
+          exit: { opacity: 0 }
+        }
     }
   }
 
   const getAnimationDuration = () => {
     if (!shouldAnimate) return 0.3
-
-    switch (settings.animationSpeed) {
-      case 'slow':
-        return 0.8
-      case 'fast':
-        return 0.3
-      default:
-        return 0.5
-    }
+    return 0.5
   }
 
   const getFontSize = () => {
     switch (settings.fontSize) {
       case 'small':
-        return 'text-sm md:text-base'
+        return 'text-sm sm:text-base'
       case 'large':
-        return 'text-lg md:text-xl'
+        return 'text-lg sm:text-xl lg:text-2xl'
       default:
-        return 'text-base md:text-lg'
+        return 'text-base sm:text-lg lg:text-xl'
     }
-  }
-
-  const getPadding = () => {
-    switch (settings.padding) {
-      case 'compact':
-        return 'py-2'
-      case 'spacious':
-        return 'py-6'
-      default:
-        return 'py-4'
-    }
-  }
-
-  const getTextAlign = () => {
-    return settings.textAlign === 'left' ? 'text-left' : 'text-center'
   }
 
   const getFontWeight = () => {
-    return settings.fontWeight === 'bold' ? 'font-bold' : 'font-medium'
+    return `font-${settings.fontWeight === '400' ? 'normal' : settings.fontWeight === '500' ? 'medium' : settings.fontWeight === '600' ? 'semibold' : 'bold'}`
+  }
+
+  const getMarqueeSpeed = () => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+    const baseSpeed = isMobile ? 1.3 : 1 // Slower on mobile
+
+    switch (settings.animationSpeed) {
+      case 'slow':
+        return 25 * baseSpeed
+      case 'fast':
+        return 8 * baseSpeed
+      default:
+        return 15 * baseSpeed
+    }
   }
 
   const isMarquee = shouldAnimate && settings.animationType === 'marquee'
 
-  // Calculate banner height for spacer
-  const getBannerHeight = () => {
-    if (!isVisible) return 0
-    switch (settings.padding) {
-      case 'compact':
-        return 48 // py-2 * 2 + content ~40-48px
-      case 'spacious':
-        return 96 // py-6 * 2 + content ~88-96px
-      default:
-        return 72 // py-4 * 2 + content ~64-72px
+  // Highlight accent word in title
+  const renderTitle = (text: string) => {
+    if (!settings.accentWord || !settings.accentColor) {
+      return text
     }
+
+    const parts = text.split(new RegExp(`(${settings.accentWord})`, 'gi'))
+    return parts.map((part, index) => {
+      if (part.toLowerCase() === settings.accentWord?.toLowerCase()) {
+        return (
+          <span
+            key={index}
+            style={{ color: settings.accentColor }}
+            className={settings.textGlow ? 'drop-shadow-[0_0_8px_currentColor]' : ''}
+          >
+            {part}
+          </span>
+        )
+      }
+      return part
+    })
   }
+
+  const backgroundStyle = settings.backgroundGradient
+    ? { background: settings.backgroundGradient }
+    : { backgroundColor: settings.backgroundColor }
 
   return (
     <>
       {/* Spacer to prevent content from being hidden behind fixed banner */}
       {isVisible && (
-        <div style={{ height: `${getBannerHeight()}px` }} className="w-full" />
+        <div style={{ height: '50px' }} className="w-full" />
       )}
 
       <AnimatePresence>
         {isVisible && (
           <motion.div
-            {...getAnimationVariants()}
-            transition={{ duration: getAnimationDuration() }}
+            {...getEntranceAnimation()}
+            transition={{ duration: getAnimationDuration(), ease: 'easeOut' }}
             style={{
-              backgroundColor: settings.backgroundColor,
+              ...backgroundStyle,
               color: settings.textColor,
               top: '80px'
             }}
-            className={`fixed left-0 right-0 w-full ${getPadding()} overflow-hidden z-40 shadow-lg`}
+            className={`fixed left-0 right-0 w-full h-[50px] overflow-hidden z-40 ${
+              settings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
+            }`}
           >
-            <div className="w-full px-4 sm:px-6 lg:px-8">
-              <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 max-w-7xl mx-auto">
-              {/* Banner Content */}
-              <div className="flex-1 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
-                {/* Image - Inline */}
-                {settings.image && settings.imagePosition === 'inline' && !isMarquee && (
-                  <div className="flex-shrink-0">
-                    <img
-                      src={settings.image}
-                      alt=""
-                      className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded"
-                    />
-                  </div>
-                )}
+            <div className="w-full h-full px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-center h-full gap-4 max-w-7xl mx-auto">
+                {/* Banner Content */}
+                <div className="flex-1 flex items-center justify-center gap-4 min-w-0">
+                  {/* Image - Inline */}
+                  {settings.image && settings.imagePosition === 'inline' && !isMarquee && (
+                    <div className="flex-shrink-0">
+                      <img
+                        src={settings.image}
+                        alt=""
+                        className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
+                      />
+                    </div>
+                  )}
 
-                {/* Text Content */}
-                <div className={`flex-1 w-full ${getTextAlign()}`}>
-                  {isMarquee ? (
-                    <div className="relative w-full overflow-hidden">
-                      <motion.div
-                        animate={{ x: ['0%', '-33.33%'] }}
-                        transition={{
-                          duration: settings.animationSpeed === 'fast' ? 10 : settings.animationSpeed === 'slow' ? 30 : 20,
-                          repeat: Infinity,
-                          ease: 'linear',
-                          repeatType: 'loop'
-                        }}
-                        className="flex whitespace-nowrap"
-                      >
-                        {[...Array(6)].map((_, i) => (
-                          <div key={i} className="mx-8 inline-block">
-                            <h3 className={`${getFontSize()} ${getFontWeight()}`}>
-                              {settings.title}
-                            </h3>
-                            {settings.subtitle && (
-                              <p className="text-sm opacity-90 mt-0.5">
-                                {settings.subtitle}
-                              </p>
-                            )}
-                          </div>
-                        ))}
-                      </motion.div>
+                  {/* Text Content */}
+                  <div className={`flex-1 ${settings.textAlign === 'center' ? 'text-center' : 'text-left'}`}>
+                    {isMarquee ? (
+                      <div className="relative w-full overflow-hidden">
+                        <motion.div
+                          animate={{
+                            x: settings.marqueeDirection === 'right' ? ['0%', '33.33%'] : ['0%', '-33.33%']
+                          }}
+                          transition={{
+                            duration: getMarqueeSpeed(),
+                            repeat: Infinity,
+                            ease: 'linear',
+                            repeatType: 'loop'
+                          }}
+                          className="flex whitespace-nowrap"
+                        >
+                          {[...Array(6)].map((_, i) => (
+                            <div key={i} className="inline-flex items-center mx-12 sm:mx-16">
+                              <span className={`${getFontSize()} ${getFontWeight()} leading-none`}>
+                                {renderTitle(settings.title)}
+                              </span>
+                            </div>
+                          ))}
+                        </motion.div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-3">
+                        <h3 className={`${getFontSize()} ${getFontWeight()} leading-none`}>
+                          {renderTitle(settings.title)}
+                        </h3>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Image - Right */}
+                  {settings.image && settings.imagePosition === 'right' && !isMarquee && (
+                    <div className="flex-shrink-0 hidden lg:block">
+                      <img
+                        src={settings.image}
+                        alt=""
+                        className="h-8 w-8 object-contain"
+                      />
                     </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <h3 className={`${getFontSize()} ${getFontWeight()} leading-tight`}>
-                        {settings.title}
-                      </h3>
-                      {settings.subtitle && (
-                        <p className="text-xs sm:text-sm opacity-90">
-                          {settings.subtitle}
-                        </p>
-                      )}
-                    </div>
+                  )}
+
+                  {/* CTA Button */}
+                  {settings.ctaLabel && settings.ctaUrl && !isMarquee && (
+                    <motion.a
+                      href={settings.ctaUrl}
+                      onClick={handleCTAClick}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.98 }}
+                      style={{
+                        backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.15)',
+                        color: settings.textColor
+                      }}
+                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap hover:border-white/40 hover:shadow-lg ${
+                        settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
+                      }`}
+                    >
+                      {settings.ctaLabel}
+                    </motion.a>
                   )}
                 </div>
 
-                {/* Image - Right */}
-                {settings.image && settings.imagePosition === 'right' && !isMarquee && (
-                  <div className="flex-shrink-0 hidden lg:block">
-                    <img
-                      src={settings.image}
-                      alt=""
-                      className="h-12 w-12 object-contain rounded"
-                    />
-                  </div>
-                )}
-
-                {/* CTA Button */}
-                {settings.ctaLabel && settings.ctaUrl && !isMarquee && (
-                  <a
-                    href={settings.ctaUrl}
-                    onClick={handleCTAClick}
-                    className="flex-shrink-0 px-4 sm:px-6 py-2 sm:py-2.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/30 whitespace-nowrap shadow-lg hover:shadow-xl"
-                    style={{ color: settings.textColor }}
+                {/* Dismiss Button */}
+                {settings.dismissible && (
+                  <motion.button
+                    onClick={handleDismiss}
+                    whileHover={{ scale: 1.1, rotate: 90 }}
+                    whileTap={{ scale: 0.9 }}
+                    className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors duration-200"
+                    aria-label="Dismiss banner"
                   >
-                    {settings.ctaLabel}
-                  </a>
+                    <X className="w-4 h-4" style={{ color: settings.textColor }} />
+                  </motion.button>
                 )}
               </div>
-
-              {/* Dismiss Button */}
-              {settings.dismissible && (
-                <button
-                  onClick={handleDismiss}
-                  className="flex-shrink-0 p-2 hover:bg-white/10 rounded-full transition-colors duration-200 absolute top-2 right-2 sm:static"
-                  aria-label="Dismiss banner"
-                >
-                  <X className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: settings.textColor }} />
-                </button>
-              )}
             </div>
-          </div>
 
-          {/* Preview Mode Indicator */}
-          {isPreviewMode && (
-            <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-1 rounded-bl-md font-bold z-10">
-              PREVIEW
-            </div>
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
+            {/* Preview Mode Indicator */}
+            {isPreviewMode && (
+              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-bl-md font-bold z-10">
+                PREVIEW
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   )
 }
