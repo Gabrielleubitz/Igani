@@ -556,56 +556,85 @@ export function BannerManager() {
           <div className="border border-slate-600 rounded-lg overflow-hidden">
             <div
               style={backgroundStyle}
-              className={`h-[50px] flex items-center justify-center px-4 ${
+              className={`h-[50px] flex items-center justify-center px-4 sm:px-6 ${
                 settings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
-              }`}
+              } ${settings.ctaUrl ? 'cursor-pointer hover:opacity-95 transition-opacity' : ''}`}
             >
-              <div className="flex items-center justify-center gap-4 max-w-4xl mx-auto">
-                {settings.image && settings.imagePosition === 'inline' && (
-                  <img
-                    src={settings.image}
-                    alt=""
-                    className="h-6 w-6 object-contain"
-                  />
-                )}
+              <div className="flex items-center justify-center gap-4 max-w-7xl mx-auto w-full">
+                <div className="flex-1 flex items-center justify-center gap-4 min-w-0">
+                  {/* Image - Inline */}
+                  {settings.image && settings.imagePosition === 'inline' && settings.animationType !== 'marquee' && (
+                    <div className="flex-shrink-0">
+                      <img
+                        src={settings.image}
+                        alt=""
+                        className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
+                      />
+                    </div>
+                  )}
 
-                <div className="flex-1 text-center">
-                  <span
-                    style={{ color: settings.textColor }}
-                    className={`${
-                      settings.fontSize === 'small' ? 'text-sm' : settings.fontSize === 'large' ? 'text-lg' : 'text-base'
-                    } font-${
-                      settings.fontWeight === '400' ? 'normal' : settings.fontWeight === '500' ? 'medium' : settings.fontWeight === '600' ? 'semibold' : 'bold'
-                    } leading-none`}
-                  >
-                    {renderPreviewTitle(settings.title || 'Your banner title will appear here...')}
-                  </span>
+                  {/* Text Content */}
+                  <div className={`flex-1 ${settings.textAlign === 'center' ? 'text-center' : 'text-left'}`}>
+                    {settings.animationType === 'marquee' ? (
+                      <div className="flex items-center justify-center gap-3 text-center">
+                        <span
+                          style={{ color: settings.textColor }}
+                          className={`${
+                            settings.fontSize === 'small' ? 'text-sm' : settings.fontSize === 'large' ? 'text-lg' : 'text-base'
+                          } font-${
+                            settings.fontWeight === '400' ? 'normal' : settings.fontWeight === '500' ? 'medium' : settings.fontWeight === '600' ? 'semibold' : 'bold'
+                          } leading-none`}
+                        >
+                          {renderPreviewTitle(settings.title || 'Your banner title will appear here...')}
+                        </span>
+                        <span className="text-xs opacity-50">(will scroll on live site)</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center gap-3">
+                        <span
+                          style={{ color: settings.textColor }}
+                          className={`${
+                            settings.fontSize === 'small' ? 'text-sm sm:text-base' : settings.fontSize === 'large' ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'
+                          } font-${
+                            settings.fontWeight === '400' ? 'normal' : settings.fontWeight === '500' ? 'medium' : settings.fontWeight === '600' ? 'semibold' : 'bold'
+                          } leading-none`}
+                        >
+                          {renderPreviewTitle(settings.title || 'Your banner title will appear here...')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Image - Right */}
+                  {settings.image && settings.imagePosition === 'right' && settings.animationType !== 'marquee' && (
+                    <div className="flex-shrink-0 hidden lg:block">
+                      <img
+                        src={settings.image}
+                        alt=""
+                        className="h-8 w-8 object-contain"
+                      />
+                    </div>
+                  )}
+
+                  {/* CTA Button - Always shown when configured */}
+                  {settings.ctaLabel && settings.ctaUrl && (
+                    <span
+                      style={{
+                        backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.15)',
+                        color: settings.textColor
+                      }}
+                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold backdrop-blur-sm border border-white/20 whitespace-nowrap ${
+                        settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
+                      }`}
+                    >
+                      {settings.ctaLabel}
+                    </span>
+                  )}
                 </div>
 
-                {settings.image && settings.imagePosition === 'right' && (
-                  <img
-                    src={settings.image}
-                    alt=""
-                    className="h-6 w-6 object-contain"
-                  />
-                )}
-
-                {settings.ctaLabel && (
-                  <span
-                    style={{
-                      backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.15)',
-                      color: settings.textColor
-                    }}
-                    className={`px-4 py-1.5 text-sm font-semibold backdrop-blur-sm border border-white/20 ${
-                      settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
-                    }`}
-                  >
-                    {settings.ctaLabel}
-                  </span>
-                )}
-
+                {/* Dismiss Button */}
                 {settings.dismissible && (
-                  <button className="p-1.5 hover:bg-white/10 rounded-full">
+                  <button className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors">
                     <X className="w-4 h-4" style={{ color: settings.textColor }} />
                   </button>
                 )}
@@ -614,6 +643,7 @@ export function BannerManager() {
           </div>
           <p className="text-slate-400 text-sm mt-3">
             💡 Tip: Click "Preview" button to see the banner on your actual site with <code className="bg-slate-700 px-1 rounded">?previewBanner=true</code>
+            {settings.ctaUrl && <><br/>✨ Banner will be clickable and open: <span className="text-cyan-400">{settings.ctaUrl}</span></>}
           </p>
         </div>
       </div>
