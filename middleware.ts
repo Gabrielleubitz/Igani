@@ -1,9 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export function middleware(request: NextRequest) {
+  const hostname = request.headers.get('host') || ''
+
+  // Redirect funnels subdomain to /funnels page
+  if (hostname.startsWith('funnels.')) {
+    // If they're not already on the /funnels page, redirect them
+    if (request.nextUrl.pathname !== '/funnels') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/funnels'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Security headers
   const response = NextResponse.next()
-  
+
   // Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-Frame-Options', 'DENY')
