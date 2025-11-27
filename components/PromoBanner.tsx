@@ -97,14 +97,28 @@ export function PromoBanner() {
     return true
   }
 
-  const handleDismiss = () => {
+  const handleDismiss = (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent banner click when closing
     setIsVisible(false)
     if (settings?.dismissible) {
       localStorage.setItem('promoBannerDismissed', 'true')
     }
   }
 
-  const handleCTAClick = () => {
+  const handleBannerClick = () => {
+    if (settings?.ctaUrl) {
+      // Simple analytics hook: log banner click
+      console.log('[Banner Analytics] Banner Click:', {
+        timestamp: new Date().toISOString(),
+        title: settings.title,
+        ctaUrl: settings.ctaUrl
+      })
+      window.open(settings.ctaUrl, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const handleCTAClick = (e: React.MouseEvent) => {
+    e.stopPropagation() // Prevent double navigation from banner click
     if (settings) {
       // Simple analytics hook: log CTA click
       console.log('[Banner Analytics] CTA Click:', {
@@ -189,6 +203,7 @@ export function PromoBanner() {
   }
 
   const isMarquee = shouldAnimate && settings.animationType === 'marquee'
+  const isClickable = Boolean(settings.ctaUrl)
 
   // Highlight accent word in title
   const renderTitle = (text: string) => {
@@ -229,16 +244,18 @@ export function PromoBanner() {
           <motion.div
             {...getEntranceAnimation()}
             transition={{ duration: getAnimationDuration(), ease: 'easeOut' }}
+            onClick={isClickable ? handleBannerClick : undefined}
             style={{
               ...backgroundStyle,
               color: settings.textColor,
-              top: '80px'
+              top: '80px',
+              cursor: isClickable ? 'pointer' : 'default'
             }}
             className={`fixed left-0 right-0 w-full h-[50px] overflow-hidden z-40 ${
               settings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
-            }`}
+            } ${isClickable ? 'hover:opacity-95 transition-opacity duration-200' : ''}`}
           >
-            <div className="w-full h-full px-4 sm:px-6 lg:px-8">
+            <div className="w-full h-full px-4 sm:px-6 lg:px-8 pointer-events-auto">
               <div className="flex items-center justify-center h-full gap-4 max-w-7xl mx-auto">
                 {/* Banner Content */}
                 <div className="flex-1 flex items-center justify-center gap-4 min-w-0">
@@ -298,10 +315,12 @@ export function PromoBanner() {
                     </div>
                   )}
 
-                  {/* CTA Button */}
-                  {settings.ctaLabel && settings.ctaUrl && !isMarquee && (
+                  {/* CTA Button - Always show when configured, even with marquee */}
+                  {settings.ctaLabel && settings.ctaUrl && (
                     <motion.a
                       href={settings.ctaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       onClick={handleCTAClick}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.98 }}
@@ -309,7 +328,7 @@ export function PromoBanner() {
                         backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.15)',
                         color: settings.textColor
                       }}
-                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap hover:border-white/40 hover:shadow-lg ${
+                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap hover:border-white/40 hover:shadow-lg pointer-events-auto ${
                         settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
                       }`}
                     >
@@ -324,7 +343,7 @@ export function PromoBanner() {
                     onClick={handleDismiss}
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
-                    className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors duration-200"
+                    className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors duration-200 pointer-events-auto"
                     aria-label="Dismiss banner"
                   >
                     <X className="w-4 h-4" style={{ color: settings.textColor }} />
@@ -335,7 +354,7 @@ export function PromoBanner() {
 
             {/* Preview Mode Indicator */}
             {isPreviewMode && (
-              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-bl-md font-bold z-10">
+              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-bl-md font-bold z-10 pointer-events-none">
                 PREVIEW
               </div>
             )}
