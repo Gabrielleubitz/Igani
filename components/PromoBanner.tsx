@@ -202,25 +202,25 @@ export function PromoBanner() {
             backgroundColor: settings.backgroundColor,
             color: settings.textColor
           }}
-          className={`relative w-full ${getPadding()}`}
+          className={`relative w-full ${getPadding()} overflow-hidden`}
         >
-          <div className="container mx-auto px-4">
-            <div className="flex items-center justify-between gap-4">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-3 sm:gap-4 max-w-7xl mx-auto">
               {/* Banner Content */}
-              <div className="flex-1 flex items-center gap-4 min-w-0">
+              <div className="flex-1 flex flex-col sm:flex-row items-center gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
                 {/* Image - Inline */}
-                {settings.image && settings.imagePosition === 'inline' && (
-                  <div className="flex-shrink-0 hidden sm:block">
+                {settings.image && settings.imagePosition === 'inline' && !isMarquee && (
+                  <div className="flex-shrink-0">
                     <img
                       src={settings.image}
                       alt=""
-                      className="h-12 w-12 object-contain rounded"
+                      className="h-10 w-10 sm:h-12 sm:w-12 object-contain rounded"
                     />
                   </div>
                 )}
 
                 {/* Text Content */}
-                <div className={`flex-1 min-w-0 ${getTextAlign()}`}>
+                <div className={`flex-1 w-full ${getTextAlign()}`}>
                   {isMarquee ? (
                     <div className="relative w-full overflow-hidden">
                       <motion.div
@@ -247,22 +247,22 @@ export function PromoBanner() {
                       </motion.div>
                     </div>
                   ) : (
-                    <>
-                      <h3 className={`${getFontSize()} ${getFontWeight()}`}>
+                    <div className="space-y-1">
+                      <h3 className={`${getFontSize()} ${getFontWeight()} leading-tight`}>
                         {settings.title}
                       </h3>
                       {settings.subtitle && (
-                        <p className="text-sm opacity-90 mt-0.5">
+                        <p className="text-xs sm:text-sm opacity-90">
                           {settings.subtitle}
                         </p>
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
 
                 {/* Image - Right */}
                 {settings.image && settings.imagePosition === 'right' && !isMarquee && (
-                  <div className="flex-shrink-0 hidden sm:block">
+                  <div className="flex-shrink-0 hidden lg:block">
                     <img
                       src={settings.image}
                       alt=""
@@ -276,7 +276,7 @@ export function PromoBanner() {
                   <a
                     href={settings.ctaUrl}
                     onClick={handleCTAClick}
-                    className="flex-shrink-0 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap"
+                    className="flex-shrink-0 px-4 sm:px-6 py-2 sm:py-2.5 bg-white/20 hover:bg-white/30 rounded-lg text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/30 whitespace-nowrap shadow-lg hover:shadow-xl"
                     style={{ color: settings.textColor }}
                   >
                     {settings.ctaLabel}
@@ -288,10 +288,10 @@ export function PromoBanner() {
               {settings.dismissible && (
                 <button
                   onClick={handleDismiss}
-                  className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors duration-200"
+                  className="flex-shrink-0 p-2 hover:bg-white/10 rounded-full transition-colors duration-200 absolute top-2 right-2 sm:static"
                   aria-label="Dismiss banner"
                 >
-                  <X className="w-4 h-4" style={{ color: settings.textColor }} />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" style={{ color: settings.textColor }} />
                 </button>
               )}
             </div>
@@ -299,7 +299,7 @@ export function PromoBanner() {
 
           {/* Preview Mode Indicator */}
           {isPreviewMode && (
-            <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-1 rounded-bl-md font-bold">
+            <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-1 rounded-bl-md font-bold z-10">
               PREVIEW
             </div>
           )}

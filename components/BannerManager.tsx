@@ -445,24 +445,49 @@ export function BannerManager() {
                 backgroundColor: settings.backgroundColor,
                 color: settings.textColor
               }}
-              className={`p-4 ${settings.padding === 'compact' ? 'py-2' : settings.padding === 'spacious' ? 'py-6' : 'py-4'}`}
+              className={`px-4 ${settings.padding === 'compact' ? 'py-2' : settings.padding === 'spacious' ? 'py-6' : 'py-4'}`}
             >
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-center gap-4 max-w-4xl mx-auto">
+                {/* Image - Inline */}
+                {settings.image && settings.imagePosition === 'inline' && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={settings.image}
+                      alt=""
+                      className="h-10 w-10 object-contain rounded"
+                    />
+                  </div>
+                )}
+
                 <div className={`flex-1 ${settings.textAlign === 'center' ? 'text-center' : 'text-left'}`}>
-                  <h3 className={`${settings.fontSize === 'small' ? 'text-sm' : settings.fontSize === 'large' ? 'text-lg' : 'text-base'} ${settings.fontWeight === 'bold' ? 'font-bold' : 'font-medium'}`}>
-                    {settings.title || 'Your banner title will appear here...'}
-                  </h3>
-                  {settings.subtitle && (
-                    <p className="text-sm opacity-90 mt-0.5">{settings.subtitle}</p>
-                  )}
+                  <div className="space-y-1">
+                    <h3 className={`${settings.fontSize === 'small' ? 'text-sm' : settings.fontSize === 'large' ? 'text-lg' : 'text-base'} ${settings.fontWeight === 'bold' ? 'font-bold' : 'font-medium'} leading-tight`}>
+                      {settings.title || 'Your banner title will appear here...'}
+                    </h3>
+                    {settings.subtitle && (
+                      <p className="text-sm opacity-90">{settings.subtitle}</p>
+                    )}
+                  </div>
                 </div>
+
+                {/* Image - Right */}
+                {settings.image && settings.imagePosition === 'right' && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={settings.image}
+                      alt=""
+                      className="h-10 w-10 object-contain rounded"
+                    />
+                  </div>
+                )}
+
                 {settings.ctaLabel && (
-                  <span className="px-4 py-2 bg-white/20 rounded-lg text-sm font-semibold whitespace-nowrap">
+                  <span className="px-4 py-2 bg-white/20 rounded-lg text-sm font-semibold whitespace-nowrap border border-white/30 shadow-lg">
                     {settings.ctaLabel}
                   </span>
                 )}
                 {settings.dismissible && (
-                  <button className="p-1.5 hover:bg-white/10 rounded-full flex-shrink-0">
+                  <button className="p-2 hover:bg-white/10 rounded-full flex-shrink-0">
                     <X className="w-4 h-4" style={{ color: settings.textColor }} />
                   </button>
                 )}
