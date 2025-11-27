@@ -93,7 +93,7 @@ export default function ContactPage() {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="space-y-6"
+              className="space-y-6 order-2 lg:order-1"
             >
               <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-slate-950/50">
                 <h2 className="text-2xl font-bold text-white mb-6"><T>Contact Information</T></h2>
@@ -149,6 +149,7 @@ export default function ContactPage() {
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.4 }}
+              className="order-1 lg:order-2"
             >
               <form onSubmit={handleSubmit} className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-slate-950/50">
                 <h2 className="text-2xl font-bold text-white mb-6"><T>Send Us a Message</T></h2>
