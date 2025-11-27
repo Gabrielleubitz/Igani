@@ -11,7 +11,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings } from '../types';
+import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings, PromoBanner } from '../types';
 
 // Collections
 const SETTINGS_COLLECTION = 'settings';
@@ -742,66 +742,267 @@ export const getAboutUsSettings = async (): Promise<AboutUsSettings | null> => {
 };
 
 // Promo Banner Functions
-export const savePromoBannerSettings = async (settings: PromoBannerSettings): Promise<void> => {
+export const createPromoBanner = async (banner: Omit<PromoBanner, 'id' | 'createdAt' | 'updatedAt' | 'analytics'>): Promise<string> => {
   try {
-    const bannerRef = doc(db, PROMO_BANNER_COLLECTION, 'main');
-    await updateDoc(bannerRef, {
-      ...settings,
-      updatedAt: Timestamp.now()
+    const docRef = await addDoc(collection(db, PROMO_BANNER_COLLECTION), {
+      ...banner,
+      analytics: {
+        views: 0,
+        dismissals: 0,
+        clicks: 0,
+        variantAViews: 0,
+        variantBViews: 0,
+        variantAClicks: 0,
+        variantBClicks: 0
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     });
+    return docRef.id;
   } catch (error) {
-    // If document doesn't exist, create it
-    try {
-      await addDoc(collection(db, PROMO_BANNER_COLLECTION), {
-        ...settings,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
-    } catch (createError) {
-      console.error('Error saving promo banner settings:', createError);
-      throw createError;
-    }
+    console.error('Error creating promo banner:', error);
+    throw error;
   }
 };
 
-export const getPromoBannerSettings = async (): Promise<PromoBannerSettings | null> => {
+export const updatePromoBanner = async (banner: PromoBanner): Promise<void> => {
   try {
-    const bannerRef = doc(db, PROMO_BANNER_COLLECTION, 'main');
-    const docSnap = await getDoc(bannerRef);
+    const bannerRef = doc(db, PROMO_BANNER_COLLECTION, banner.id);
+    const { id, ...updateData } = banner;
+    await updateDoc(bannerRef, {
+      ...updateData,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating promo banner:', error);
+    throw error;
+  }
+};
 
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
+export const getAllPromoBanners = async (): Promise<PromoBanner[]> => {
+  try {
+    const q = query(collection(db, PROMO_BANNER_COLLECTION), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const banners: PromoBanner[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      banners.push({
+        id: doc.id,
+        name: data.name || '',
         enabled: data.enabled || false,
-        text: data.text || '',
+        active: data.active || false,
+        variantA: data.variantA || { text: '' },
+        variantB: data.variantB,
+        enableABTesting: data.enableABTesting || false,
         backgroundColor: data.backgroundColor || '#000000',
         textColor: data.textColor || '#ffffff',
-        ctaLabel: data.ctaLabel || '',
-        ctaUrl: data.ctaUrl || '',
+        fontSize: data.fontSize || 'medium',
+        padding: data.padding || 'normal',
+        height: data.height || 'auto',
         animationType: data.animationType || 'none',
         animationSpeed: data.animationSpeed || 'normal',
+        dismissible: data.dismissible !== undefined ? data.dismissible : true,
+        clickableEntireBanner: data.clickableEntireBanner || false,
+        clickUrl: data.clickUrl || '',
         startDate: data.startDate || '',
         endDate: data.endDate || '',
-        dismissible: data.dismissible !== undefined ? data.dismissible : true
+        analytics: data.analytics || {
+          views: 0,
+          dismissals: 0,
+          clicks: 0,
+          variantAViews: 0,
+          variantBViews: 0,
+          variantAClicks: 0,
+          variantBClicks: 0
+        },
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt || new Date().toISOString()
+      });
+    });
+
+    return banners;
+  } catch (error) {
+    console.error('Error getting promo banners:', error);
+    return [];
+  }
+};
+
+export const getActiveBanner = async (): Promise<PromoBanner | null> => {
+  try {
+    const banners = await getAllPromoBanners();
+    const activeBanner = banners.find(b => b.active && b.enabled);
+    return activeBanner || null;
+  } catch (error) {
+    console.error('Error getting active banner:', error);
+    return null;
+  }
+};
+
+export const setActiveBanner = async (bannerId: string): Promise<void> => {
+  try {
+    // First, deactivate all banners
+    const banners = await getAllPromoBanners();
+    for (const banner of banners) {
+      if (banner.active) {
+        await updateDoc(doc(db, PROMO_BANNER_COLLECTION, banner.id), {
+          active: false,
+          updatedAt: new Date().toISOString()
+        });
+      }
+    }
+
+    // Then activate the selected banner
+    await updateDoc(doc(db, PROMO_BANNER_COLLECTION, bannerId), {
+      active: true,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error setting active banner:', error);
+    throw error;
+  }
+};
+
+export const deleteBanner = async (bannerId: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, PROMO_BANNER_COLLECTION, bannerId));
+  } catch (error) {
+    console.error('Error deleting banner:', error);
+    throw error;
+  }
+};
+
+export const trackBannerEvent = async (
+  bannerId: string,
+  eventType: 'view' | 'dismissal' | 'click',
+  variant?: 'A' | 'B'
+): Promise<void> => {
+  try {
+    const bannerRef = doc(db, PROMO_BANNER_COLLECTION, bannerId);
+    const bannerSnap = await getDoc(bannerRef);
+
+    if (!bannerSnap.exists()) return;
+
+    const analytics = bannerSnap.data().analytics || {
+      views: 0,
+      dismissals: 0,
+      clicks: 0,
+      variantAViews: 0,
+      variantBViews: 0,
+      variantAClicks: 0,
+      variantBClicks: 0
+    };
+
+    if (eventType === 'view') {
+      analytics.views++;
+      if (variant === 'A') analytics.variantAViews++;
+      if (variant === 'B') analytics.variantBViews++;
+    } else if (eventType === 'dismissal') {
+      analytics.dismissals++;
+    } else if (eventType === 'click') {
+      analytics.clicks++;
+      if (variant === 'A') analytics.variantAClicks++;
+      if (variant === 'B') analytics.variantBClicks++;
+    }
+
+    await updateDoc(bannerRef, {
+      analytics: {
+        ...analytics,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Error tracking banner event:', error);
+  }
+};
+
+// Legacy function for backward compatibility
+export const getPromoBannerSettings = async (): Promise<PromoBannerSettings | null> => {
+  try {
+    const activeBanner = await getActiveBanner();
+    if (!activeBanner) {
+      return {
+        enabled: false,
+        text: '',
+        backgroundColor: '#000000',
+        textColor: '#ffffff',
+        ctaLabel: '',
+        ctaUrl: '',
+        animationType: 'none',
+        animationSpeed: 'normal',
+        startDate: '',
+        endDate: '',
+        dismissible: true
       };
     }
 
-    // Return default settings if document doesn't exist
     return {
-      enabled: false,
-      text: '',
-      backgroundColor: '#000000',
-      textColor: '#ffffff',
-      ctaLabel: '',
-      ctaUrl: '',
-      animationType: 'none',
-      animationSpeed: 'normal',
-      startDate: '',
-      endDate: '',
-      dismissible: true
+      enabled: activeBanner.enabled,
+      text: activeBanner.variantA.text,
+      backgroundColor: activeBanner.backgroundColor,
+      textColor: activeBanner.textColor,
+      ctaLabel: activeBanner.variantA.ctaLabel,
+      ctaUrl: activeBanner.variantA.ctaUrl,
+      animationType: activeBanner.animationType,
+      animationSpeed: activeBanner.animationSpeed,
+      startDate: activeBanner.startDate,
+      endDate: activeBanner.endDate,
+      dismissible: activeBanner.dismissible
     };
   } catch (error) {
     console.error('Error getting promo banner settings:', error);
     return null;
+  }
+};
+
+export const savePromoBannerSettings = async (settings: PromoBannerSettings): Promise<void> => {
+  // Legacy function - converts old format to new
+  try {
+    const banners = await getAllPromoBanners();
+    let activeBanner = banners.find(b => b.active);
+
+    if (!activeBanner) {
+      // Create new banner
+      await createPromoBanner({
+        name: 'Main Banner',
+        enabled: settings.enabled,
+        active: true,
+        variantA: {
+          text: settings.text,
+          ctaLabel: settings.ctaLabel,
+          ctaUrl: settings.ctaUrl
+        },
+        enableABTesting: false,
+        backgroundColor: settings.backgroundColor,
+        textColor: settings.textColor,
+        fontSize: 'medium',
+        padding: 'normal',
+        height: 'auto',
+        animationType: settings.animationType,
+        animationSpeed: settings.animationSpeed,
+        dismissible: settings.dismissible,
+        clickableEntireBanner: false,
+        startDate: settings.startDate,
+        endDate: settings.endDate
+      });
+    } else {
+      // Update existing banner
+      activeBanner.enabled = settings.enabled;
+      activeBanner.variantA.text = settings.text;
+      activeBanner.variantA.ctaLabel = settings.ctaLabel;
+      activeBanner.variantA.ctaUrl = settings.ctaUrl;
+      activeBanner.backgroundColor = settings.backgroundColor;
+      activeBanner.textColor = settings.textColor;
+      activeBanner.animationType = settings.animationType;
+      activeBanner.animationSpeed = settings.animationSpeed;
+      activeBanner.dismissible = settings.dismissible;
+      activeBanner.startDate = settings.startDate;
+      activeBanner.endDate = settings.endDate;
+
+      await updatePromoBanner(activeBanner);
+    }
+  } catch (error) {
+    console.error('Error saving promo banner settings:', error);
+    throw error;
   }
 };
