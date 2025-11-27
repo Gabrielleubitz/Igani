@@ -409,7 +409,7 @@ export const getPackages = async (): Promise<Package[]> => {
         name: data.name,
         tagline: data.tagline,
         price: data.price || data.priceMin || 0,
-        priceUnit: data.priceUnit,
+        priceUnit: data.priceUnit || 'NIS',
         showPricing: data.showPricing !== undefined ? data.showPricing : true,
         showDiscount: data.showDiscount || false,
         originalPrice: data.originalPrice,
