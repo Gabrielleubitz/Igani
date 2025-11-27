@@ -234,6 +234,9 @@ export function BannerManager() {
                 className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
                 placeholder="e.g., 'Sale' or '50%'"
               />
+              <p className="text-slate-500 text-xs mt-1">
+                Highlights a specific word in your title with a different color. Example: if title is "Black Friday Sale - 50% OFF", set accent word to "50%" to make it stand out.
+              </p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-300 mb-2">Accent Color</label>
@@ -567,7 +570,7 @@ export function BannerManager() {
           <div className="border border-slate-600 rounded-lg overflow-hidden">
             <div
               style={backgroundStyle}
-              className={`h-[50px] flex items-center justify-center px-4 sm:px-6 ${
+              className={`${settings.subtitle && settings.animationType !== 'marquee' ? 'h-[65px]' : 'h-[50px]'} flex items-center justify-center px-4 sm:px-6 ${
                 settings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
               } ${settings.ctaUrl ? 'cursor-pointer hover:opacity-95 transition-opacity' : ''}`}
             >
