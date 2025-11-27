@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Send, CheckCircle2, Clock, TrendingUp, Users, Zap, ArrowRight } from 'lucide-react'
+import { Send, CheckCircle2, Clock, Timer, Phone, ExternalLink, Star } from 'lucide-react'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
@@ -12,16 +12,54 @@ export default function FunnelsPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
-    businessType: '',
-    message: ''
+    phone: ''
+  })
+  const [formData2, setFormData2] = useState({
+    name: '',
+    email: '',
+    phone: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting2, setIsSubmitting2] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [submitStatus2, setSubmitStatus2] = useState<'idle' | 'success' | 'error'>('idle')
+  const [timeLeft, setTimeLeft] = useState(86400) // 24 hours in seconds
+  const [showStickyCTA, setShowStickyCTA] = useState(false)
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Sticky CTA visibility on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowStickyCTA(window.scrollY > 400)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = seconds % 60
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const handleInputChange2 = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData2({
+      ...formData2,
       [e.target.name]: e.target.value
     })
   }
@@ -31,22 +69,19 @@ export default function FunnelsPage() {
     setIsSubmitting(true)
 
     try {
-      // Submit to your API endpoint
       const response = await fetch('/api/funnel-submission', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          source: 'Black Friday Hero Form',
+          message: 'Black Friday landing page submission - Hero form'
+        })
       })
 
       if (response.ok) {
         setSubmitStatus('success')
-        setFormData({
-          name: '',
-          email: '',
-          phone: '',
-          businessType: '',
-          message: ''
-        })
+        setFormData({ name: '', email: '', phone: '' })
       } else {
         setSubmitStatus('error')
       }
@@ -56,6 +91,36 @@ export default function FunnelsPage() {
     } finally {
       setIsSubmitting(false)
       setTimeout(() => setSubmitStatus('idle'), 5000)
+    }
+  }
+
+  const handleSubmit2 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsSubmitting2(true)
+
+    try {
+      const response = await fetch('/api/funnel-submission', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData2,
+          source: 'Black Friday Secondary Form',
+          message: 'Black Friday landing page submission - Secondary form'
+        })
+      })
+
+      if (response.ok) {
+        setSubmitStatus2('success')
+        setFormData2({ name: '', email: '', phone: '' })
+      } else {
+        setSubmitStatus2('error')
+      }
+    } catch (error) {
+      console.error('Form submission failed:', error)
+      setSubmitStatus2('error')
+    } finally {
+      setIsSubmitting2(false)
+      setTimeout(() => setSubmitStatus2('idle'), 5000)
     }
   }
 
@@ -69,358 +134,487 @@ export default function FunnelsPage() {
         <SplashCursor />
       </div>
 
+      {/* Mobile Sticky CTA */}
+      {showStickyCTA && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-yellow-400 p-4 shadow-2xl"
+        >
+          <button
+            onClick={() => document.getElementById('hero-form')?.scrollIntoView({ behavior: 'smooth' })}
+            className="w-full bg-slate-800 text-yellow-400 font-bold py-3 px-6 rounded-lg text-lg hover:bg-slate-700 transition-colors"
+          >
+            Get Black Friday Offer
+          </button>
+        </motion.div>
+      )}
+
       {/* Header */}
-      <header className="relative z-20 px-4 py-6">
+      <header className="relative z-20 px-4 py-4">
         <div className="max-w-7xl mx-auto">
-          <IganiLogo className="w-40 h-12" />
+          <IganiLogo className="w-32 h-10" />
         </div>
       </header>
 
       {/* Main Content */}
       <div className="relative z-10">
-        {/* Hero Section */}
-        <section className="pt-12 pb-16 px-4">
-          <div className="max-w-6xl mx-auto text-center">
+        {/* Hero Section - Above the Fold Only */}
+        <section className="pt-4 pb-12 px-4 min-h-screen flex items-center">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+              {/* Left Column - Headlines & Copy */}
+              <div className="order-2 lg:order-1">
+                {/* Black Friday Urgency Badge */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.6 }}
+                  className="mb-6"
+                >
+                  <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-slate-900 font-bold rounded-full text-sm uppercase tracking-wide shadow-2xl">
+                    <Timer className="w-4 h-4" />
+                    Limited 24h Black Friday Offer
+                  </span>
+                </motion.div>
+
+                <motion.h1
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.1 }}
+                  className="text-4xl sm:text-5xl lg:text-6xl font-black mb-4 leading-tight"
+                >
+                  <span className="text-white block mb-2">
+                    Stop Losing Customers
+                  </span>
+                  <span className="text-blue-400 block">
+                    Every Single Day
+                  </span>
+                </motion.h1>
+
+                <motion.p
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="text-xl text-slate-300 mb-6 leading-relaxed"
+                >
+                  Your competitors get customers while you lose them to amateur websites
+                </motion.p>
+
+                {/* Bullet Points */}
+                <motion.ul
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                  className="space-y-3 mb-8"
+                >
+                  {[
+                    'Professional website that converts visitors into paying customers',
+                    'Built in 7 days (not 7 weeks like agencies)',
+                    'Costs 80% less than hiring a full agency'
+                  ].map((point, index) => (
+                    <li key={index} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-purple-400 mt-1 flex-shrink-0" />
+                      <span className="text-slate-300 text-lg">{point}</span>
+                    </li>
+                  ))}
+                </motion.ul>
+
+                {/* Countdown Timer */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                  className="bg-yellow-400/20 border-2 border-yellow-400 rounded-lg p-4 mb-6"
+                >
+                  <div className="text-white font-bold text-sm mb-2">OFFER EXPIRES IN:</div>
+                  <div className="text-3xl font-black text-yellow-400 font-mono tracking-wider">
+                    {formatTime(timeLeft)}
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Right Column - Lead Form */}
+              <div className="order-2 lg:order-2">
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  id="hero-form"
+                  className="bg-white/95 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border-4 border-blue-400"
+                >
+                  <div className="text-center mb-6">
+                    <div className="bg-yellow-400 text-slate-900 font-bold py-2 px-4 rounded-full text-sm mb-3">
+                      BLACK FRIDAY SPECIAL
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-800 mb-2">
+                      Get Your Website Built Now
+                    </h3>
+                    <p className="text-slate-600 font-bold">
+                      Limited Time Black Friday Offer
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-4 border-2 border-slate-300 rounded-lg focus:border-blue-400 focus:outline-none text-slate-800 font-medium"
+                        placeholder="Your Full Name"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-4 border-2 border-slate-300 rounded-lg focus:border-blue-400 focus:outline-none text-slate-800 font-medium"
+                        placeholder="Your Phone Number"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-4 border-2 border-slate-300 rounded-lg focus:border-blue-400 focus:outline-none text-slate-800 font-medium"
+                        placeholder="Your Email Address"
+                        required
+                      />
+                    </div>
+
+                    {submitStatus === 'success' ? (
+                      <div className="bg-green-100 border-2 border-green-500 text-green-800 p-4 rounded-lg text-center font-bold">
+                        Success! We'll call you today.
+                      </div>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="w-full bg-blue-500 hover:bg-blue-600 text-white font-black py-4 px-6 rounded-lg text-xl transition-colors disabled:opacity-50 shadow-xl"
+                      >
+                        {isSubmitting ? 'SUBMITTING...' : 'GET MY BLACK FRIDAY WEBSITE OFFER'}
+                      </button>
+                    )}
+                    
+                    <div className="text-center text-sm text-slate-600 font-medium">
+                      ✓ We'll contact you today.<br />
+                      ✓ No obligation. Just a quick call.
+                    </div>
+                  </form>
+                </motion.div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Social Proof Under Hero */}
+        <section className="py-12 px-4 bg-slate-800/30">
+          <div className="max-w-5xl mx-auto">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6 }}
-              className="mb-6"
-            >
-              <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-md border border-cyan-500/40 rounded-full text-cyan-400 text-sm font-semibold shadow-lg shadow-cyan-500/20">
-                <Zap className="w-4 h-4" />
-                Transform Your Business Online
-              </span>
-            </motion.div>
-
-            <motion.h1
               initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1]"
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
             >
-              <span className="text-white block mb-2">
-                Get Your Professional
-              </span>
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent block">
-                Website in 7 Days
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-lg md:text-xl text-slate-300 mb-8 leading-relaxed max-w-3xl mx-auto"
-            >
-              A stunning, high-converting website built specifically for your business.
-              No templates. No compromises. Just results.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
-              className="flex justify-center mb-12"
-            >
-              <AnimatedButton
-                variant="primary"
-                size="large"
-                onClick={() => document.getElementById('contact-form')?.scrollIntoView({ behavior: 'smooth' })}
-              >
-                Get Your Free Quote
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </AnimatedButton>
+              {[
+                "Got 12 new customers in first month with my new site",
+                "Sales increased 300% after launch, worth every penny",
+                "Finally have a website I'm proud to show people",
+                "Booked solid for 3 months straight now"
+              ].map((testimonial, index) => (
+                <div key={index} className="bg-slate-700/50 p-4 rounded-lg border border-slate-600/50">
+                  <div className="flex items-center mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-slate-300 text-sm italic">"{testimonial}"</p>
+                </div>
+              ))}
             </motion.div>
           </div>
         </section>
 
-        {/* Benefits Section */}
+        {/* What They Get Section */}
         <section className="py-16 px-4">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid md:grid-cols-3 gap-8">
+          <div className="max-w-4xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-4xl font-black text-white mb-4">
+                What Igani Builds vs. DIY Disasters
+              </h2>
+              <p className="text-xl text-slate-300">
+                Stop wasting months on Wix. Get a real website that works.
+              </p>
+            </motion.div>
+
+            <div className="grid lg:grid-cols-2 gap-8 mb-12">
+              {/* DIY Disasters - Shows first on mobile */}
+              <div className="bg-red-900/20 border-2 border-red-500 p-6 rounded-lg order-1 lg:order-2">
+                <h3 className="text-2xl font-bold text-red-400 mb-4 text-center">Your Current Website</h3>
+                <ul className="space-y-3">
+                  {[
+                    'Looks cheap (customers judge in 3 seconds)',
+                    'Takes 3+ months to build (if you finish)',
+                    'Slow loading times (customers leave)',
+                    'Broken on mobile devices',
+                    'Generic copy that says nothing',
+                    'Invisible on Google search'
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center mt-0.5 flex-shrink-0">
+                        <span className="text-white text-xs font-bold">✗</span>
+                      </div>
+                      <span className="text-slate-300">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* What Igani Builds - Shows second on mobile */}
+              <div className="bg-green-900/20 border-2 border-green-500 p-6 rounded-lg order-2 lg:order-1">
+                <h3 className="text-2xl font-bold text-green-400 mb-4 text-center">Igani Website</h3>
+                <ul className="space-y-3">
+                  {[
+                    'Converts visitors into customers (proven psychology)',
+                    'Built in 7 days by a professional developer', 
+                    'Loads in under 2 seconds (Google loves this)',
+                    'Mobile-first design that actually works',
+                    'Professional copywriting that sells',
+                    'SEO optimized to rank on Google'
+                  ].map((item, i) => (
+                    <li key={i} className="flex items-start gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-slate-300">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="text-center">
+              <p className="text-lg text-slate-300 mb-2">
+                <strong className="text-white">How fast:</strong> 7 days from payment to live website
+              </p>
+              <p className="text-lg text-slate-300 mb-2">
+                <strong className="text-white">Why it converts:</strong> Built using psychology and proven formulas
+              </p>
+              <p className="text-lg text-slate-300">
+                <strong className="text-white">Better than DIY:</strong> Professional developer vs. you guessing
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Mini Portfolio Section */}
+        <section className="py-16 px-4 bg-slate-800/20">
+          <div className="max-w-6xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-4xl font-black text-white mb-4">
+                Real Results From Real Businesses
+              </h2>
+              <p className="text-xl text-slate-300">
+                See what happens when you get a professional website
+              </p>
+            </motion.div>
+
+            <div className="grid lg:grid-cols-3 gap-8">
               {[
                 {
-                  icon: <Clock className="w-8 h-8" />,
-                  title: 'Fast Delivery',
-                  description: 'Get your website live in just 7 days. No endless delays or missed deadlines.',
-                  gradient: 'from-cyan-500 to-blue-500'
+                  title: "Local Restaurant",
+                  result: "+180% online orders in 30 days",
+                  description: "Clean menu display, easy ordering system, mobile-first design"
                 },
                 {
-                  icon: <TrendingUp className="w-8 h-8" />,
-                  title: 'Conversion Focused',
-                  description: 'Built to turn visitors into customers with proven design principles and psychology.',
-                  gradient: 'from-blue-500 to-purple-500'
+                  title: "Dental Practice", 
+                  result: "+95% appointment bookings",
+                  description: "Professional trust-building design, simple booking form, patient testimonials"
                 },
                 {
-                  icon: <Users className="w-8 h-8" />,
-                  title: 'Personal Touch',
-                  description: 'Work directly with your developer. No agencies, no middlemen, just great results.',
-                  gradient: 'from-purple-500 to-pink-500'
+                  title: "Construction Company",
+                  result: "+240% quote requests",
+                  description: "Portfolio showcase, before/after photos, clear contact forms"
                 }
-              ].map((benefit, index) => (
+              ].map((item, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  whileHover={{ y: -8 }}
-                  className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/20"
+                  className="bg-slate-700/50 border border-slate-600/50 p-6 rounded-lg"
                 >
-                  <div className={`w-16 h-16 bg-gradient-to-br ${benefit.gradient} bg-opacity-20 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                    <div className="text-cyan-400">
-                      {benefit.icon}
-                    </div>
-                  </div>
-                  <h3 className="text-2xl font-bold mb-3 text-white">{benefit.title}</h3>
-                  <p className="text-slate-400 leading-relaxed">
-                    {benefit.description}
-                  </p>
+                  <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                  <div className="text-2xl font-black text-green-400 mb-3">{item.result}</div>
+                  <p className="text-slate-300">{item.description}</p>
                 </motion.div>
               ))}
             </div>
           </div>
         </section>
 
-        {/* What You Get Section */}
-        <section className="py-16 px-4 bg-slate-800/20">
-          <div className="max-w-4xl mx-auto">
+        {/* Secondary CTA Section */}
+        <section className="py-20 px-4 bg-yellow-400">
+          <div className="max-w-4xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="text-center mb-12"
+              className="mb-8"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                What's Included
+              <div className="bg-black text-yellow-400 font-bold py-2 px-6 rounded-full text-lg mb-6 inline-block">
+                ⚠️ {formatTime(timeLeft)} LEFT
+              </div>
+              <h2 className="text-4xl lg:text-6xl font-black text-white mb-6">
+                Don't Let Your Competition Win Again
               </h2>
-              <p className="text-lg text-slate-400">
-                Everything you need for a successful online presence
+              <p className="text-xl text-slate-900 mb-2">
+                <strong>Only 12 spots left at this price.</strong>
+              </p>
+              <p className="text-xl text-slate-900 mb-8">
+                Prices return to normal after Black Friday.
               </p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              {[
-                'Custom responsive design',
-                'Mobile-optimized',
-                'Lightning-fast performance',
-                'SEO optimized',
-                'Contact form integration',
-                'Social media links',
-                'Google Analytics setup',
-                'SSL certificate included',
-                '30 days of support',
-                'Easy content updates',
-                'Professional copywriting help',
-                'Unlimited revisions during build'
-              ].map((feature, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -20 : 20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.05 }}
-                  viewport={{ once: true }}
-                  className="flex items-start gap-3 bg-slate-800/40 p-4 rounded-lg border border-slate-700/30"
-                >
-                  <CheckCircle2 className="w-5 h-5 text-cyan-400 mt-0.5 flex-shrink-0" />
-                  <span className="text-slate-300">{feature}</span>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Contact Form Section */}
-        <section id="contact-form" className="py-16 px-4 scroll-mt-20">
-          <div className="max-w-3xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                Ready to Get Started?
-              </h2>
-              <p className="text-lg text-slate-400">
-                Fill out the form below and we'll get back to you within 24 hours with a custom quote
-              </p>
-            </motion.div>
-
+            {/* Second Lead Form */}
             <motion.div
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
               viewport={{ once: true }}
+              className="bg-white p-8 rounded-2xl shadow-2xl max-w-md mx-auto"
             >
-              <form onSubmit={handleSubmit} className="bg-slate-800/60 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 shadow-xl shadow-slate-950/50">
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
-                      placeholder="John Doe"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
-                      placeholder="john@example.com"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
-                      placeholder="+1 (555) 123-4567"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">
-                      Business Type *
-                    </label>
-                    <select
-                      name="businessType"
-                      value={formData.businessType}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white transition-all duration-300"
-                      required
-                    >
-                      <option value="">Select your business type</option>
-                      <option value="restaurant">Restaurant / Cafe</option>
-                      <option value="retail">Retail / E-commerce</option>
-                      <option value="services">Professional Services</option>
-                      <option value="healthcare">Healthcare / Medical</option>
-                      <option value="real-estate">Real Estate</option>
-                      <option value="fitness">Fitness / Wellness</option>
-                      <option value="creative">Creative / Agency</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">
-                      Tell Us About Your Project *
-                    </label>
-                    <textarea
-                      rows={5}
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 resize-none transition-all duration-300"
-                      placeholder="Describe your business and what you're looking for in a website..."
-                      required
-                    ></textarea>
-                  </div>
-
-                  {submitStatus === 'success' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-green-600/20 border border-green-500/50 text-green-400 p-4 rounded-lg font-medium text-center"
-                    >
-                      Thanks for reaching out! We'll get back to you within 24 hours with your custom quote.
-                    </motion.div>
-                  )}
-
-                  {submitStatus === 'error' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-red-600/20 border border-red-500/50 text-red-400 p-4 rounded-lg font-medium text-center"
-                    >
-                      Something went wrong. Please try again or email us directly at info@igani.co
-                    </motion.div>
-                  )}
-
-                  <AnimatedButton
-                    variant="primary"
-                    size="large"
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-5 h-5 mr-2" />
-                    {isSubmitting ? 'Sending...' : 'Get Your Free Quote'}
-                  </AnimatedButton>
-
-                  <p className="text-slate-500 text-xs text-center">
-                    By submitting this form, you agree to our privacy policy. We'll never share your information.
-                  </p>
+              <h3 className="text-2xl font-black text-slate-800 mb-6">
+                Last Chance: 50% Off Website
+              </h3>
+              
+              <form onSubmit={handleSubmit2} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData2.name}
+                    onChange={handleInputChange2}
+                    className="w-full px-4 py-4 border-2 border-slate-300 rounded-lg focus:border-blue-400 focus:outline-none text-slate-800 font-medium"
+                    placeholder="Your Full Name"
+                    required
+                  />
                 </div>
+
+                <div>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData2.phone}
+                    onChange={handleInputChange2}
+                    className="w-full px-4 py-4 border-2 border-slate-300 rounded-lg focus:border-blue-400 focus:outline-none text-slate-800 font-medium"
+                    placeholder="Your Phone Number"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData2.email}
+                    onChange={handleInputChange2}
+                    className="w-full px-4 py-4 border-2 border-slate-300 rounded-lg focus:border-blue-400 focus:outline-none text-slate-800 font-medium"
+                    placeholder="Your Email Address"
+                    required
+                  />
+                </div>
+
+                {submitStatus2 === 'success' ? (
+                  <div className="bg-green-100 border-2 border-green-500 text-green-800 p-4 rounded-lg text-center font-bold">
+                    Success! We'll call you today.
+                  </div>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting2}
+                    className="w-full bg-black hover:bg-slate-800 text-white font-black py-4 px-6 rounded-lg text-xl transition-colors disabled:opacity-50 shadow-xl"
+                  >
+                    {isSubmitting2 ? 'SUBMITTING...' : 'SECURE MY 50% DISCOUNT NOW'}
+                  </button>
+                )}
               </form>
             </motion.div>
           </div>
         </section>
 
-        {/* Trust Indicators */}
-        <section className="py-16 px-4 bg-slate-800/20">
-          <div className="max-w-5xl mx-auto">
+        {/* FAQ Section */}
+        <section className="py-16 px-4">
+          <div className="max-w-4xl mx-auto">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-center"
+              className="text-center mb-12"
             >
-              <h3 className="text-2xl md:text-3xl font-bold text-white mb-8">
-                Why Choose IGANI?
-              </h3>
-              <div className="grid md:grid-cols-3 gap-8 text-center">
-                <div>
-                  <div className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent mb-2">
-                    100%
-                  </div>
-                  <p className="text-slate-400">Customer Satisfaction</p>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-2">
-                    7 Days
-                  </div>
-                  <p className="text-slate-400">Average Delivery Time</p>
-                </div>
-                <div>
-                  <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent mb-2">
-                    24/7
-                  </div>
-                  <p className="text-slate-400">Support Available</p>
-                </div>
-              </div>
+              <h2 className="text-4xl font-black text-white mb-4">
+                Common Questions
+              </h2>
             </motion.div>
+
+            <div className="space-y-6">
+              {[
+                {
+                  q: "How fast will you really build my website?",
+                  a: "7 days from payment to live website. Not 7 weeks like agencies."
+                },
+                {
+                  q: "What if I don't like the website?",
+                  a: "Unlimited revisions during the 7-day build. We don't stop until you're happy."
+                },
+                {
+                  q: "Do you handle hosting and domains?",
+                  a: "Yes. Everything is included. You get a complete, live website."
+                },
+                {
+                  q: "Is this really 50% off?",
+                  a: "Yes. Regular price is $2,997. Black Friday price is $1,497. Offer expires in 24 hours."
+                }
+              ].map((faq, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className="bg-slate-800/50 border border-slate-700/50 p-6 rounded-lg"
+                >
+                  <h3 className="text-xl font-bold text-white mb-3">{faq.q}</h3>
+                  <p className="text-slate-300 text-lg">{faq.a}</p>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* Footer */}
-        <footer className="bg-transparent border-t border-slate-700/50 py-8">
+        <footer className="bg-slate-800 border-t border-slate-700/50 py-6">
           <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-slate-400 text-sm">
-              © 2025 IGANI. All rights reserved.
+              © 2025 IGANI. All rights reserved. • <a href="mailto:info@igani.co" className="text-purple-400 hover:text-purple-300">info@igani.co</a>
             </p>
           </div>
         </footer>
