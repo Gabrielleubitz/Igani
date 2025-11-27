@@ -2,6 +2,7 @@ import './globals.css'
 import { Outfit } from 'next/font/google'
 import Script from 'next/script'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { PromoBanner } from '@/components/PromoBanner'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -51,6 +52,7 @@ export default function RootLayout({
         />
       </head>
       <body className={`${outfit.variable} font-sans overflow-x-hidden`}>
+        <PromoBanner />
         <LanguageProvider>
           {children}
         </LanguageProvider>

@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info } from 'lucide-react'
+import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
+import { BannerManager } from './BannerManager'
 import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
-type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings'
+type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner'
 
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<TabType>('websites')
@@ -75,74 +76,93 @@ export default function AdminDashboardClient() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Tabs */}
-        <div className="flex gap-2 mb-8">
-          <button
-            onClick={() => setActiveTab('websites')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-              activeTab === 'websites'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <Globe className="w-5 h-5" />
-            Websites ({websites.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('inquiries')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-              activeTab === 'inquiries'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <Mail className="w-5 h-5" />
-            Customer Inquiries ({inquiries.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('testimonials')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-              activeTab === 'testimonials'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <Star className="w-5 h-5" />
-            Testimonials ({testimonials.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('packages')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-              activeTab === 'packages'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <Package className="w-5 h-5" />
-            Packages
-          </button>
-          <button
-            onClick={() => setActiveTab('about')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-              activeTab === 'about'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <Info className="w-5 h-5" />
-            About Us
-          </button>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
-              activeTab === 'settings'
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <SettingsIcon className="w-5 h-5" />
-            Settings
-          </button>
+        {/* Tabs - Responsive Horizontal Scroll */}
+        <div className="mb-8 -mx-4 px-4 overflow-x-auto">
+          <div className="flex gap-2 min-w-max pb-2">
+            <button
+              onClick={() => setActiveTab('websites')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'websites'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Globe className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden sm:inline">Websites</span>
+              <span className="sm:hidden">Sites</span>
+              <span className="text-xs opacity-75">({websites.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('inquiries')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'inquiries'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Mail className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden sm:inline">Inquiries</span>
+              <span className="sm:hidden">Mail</span>
+              <span className="text-xs opacity-75">({inquiries.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('testimonials')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'testimonials'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Star className="w-5 h-5 flex-shrink-0" />
+              <span className="hidden sm:inline">Testimonials</span>
+              <span className="sm:hidden">Reviews</span>
+              <span className="text-xs opacity-75">({testimonials.length})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('packages')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'packages'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Package className="w-5 h-5 flex-shrink-0" />
+              <span>Packages</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('about')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'about'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Info className="w-5 h-5 flex-shrink-0" />
+              <span>About</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('banner')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'banner'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Megaphone className="w-5 h-5 flex-shrink-0" />
+              <span>Banner</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'settings'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <SettingsIcon className="w-5 h-5 flex-shrink-0" />
+              <span>Settings</span>
+            </button>
+          </div>
         </div>
 
         {/* Tab Content */}
@@ -188,6 +208,10 @@ export default function AdminDashboardClient() {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'banner' && (
+          <BannerManager />
         )}
 
         {activeTab === 'about' && (
