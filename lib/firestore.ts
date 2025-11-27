@@ -11,7 +11,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings } from '../types';
+import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings } from '../types';
 
 // Collections
 const SETTINGS_COLLECTION = 'settings';
@@ -22,6 +22,7 @@ const PACKAGES_COLLECTION = 'packages';
 const MAINTENANCE_PLANS_COLLECTION = 'maintenancePlans';
 const PACKAGE_FAQS_COLLECTION = 'faqs';
 const ABOUT_US_SECTIONS_COLLECTION = 'aboutUsSections';
+const PROMO_BANNER_COLLECTION = 'promoBanner';
 
 // Settings Functions
 export const saveSettings = async (settings: SiteSettings): Promise<void> => {
@@ -723,7 +724,7 @@ export const getAboutUsSettings = async (): Promise<AboutUsSettings | null> => {
   try {
     const settingsRef = doc(db, SETTINGS_COLLECTION, 'aboutUs');
     const docSnap = await getDoc(settingsRef);
-    
+
     if (docSnap.exists()) {
       const data = docSnap.data();
       return {
@@ -736,6 +737,71 @@ export const getAboutUsSettings = async (): Promise<AboutUsSettings | null> => {
     return null;
   } catch (error) {
     console.error('Error getting about us settings:', error);
+    return null;
+  }
+};
+
+// Promo Banner Functions
+export const savePromoBannerSettings = async (settings: PromoBannerSettings): Promise<void> => {
+  try {
+    const bannerRef = doc(db, PROMO_BANNER_COLLECTION, 'main');
+    await updateDoc(bannerRef, {
+      ...settings,
+      updatedAt: Timestamp.now()
+    });
+  } catch (error) {
+    // If document doesn't exist, create it
+    try {
+      await addDoc(collection(db, PROMO_BANNER_COLLECTION), {
+        ...settings,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+    } catch (createError) {
+      console.error('Error saving promo banner settings:', createError);
+      throw createError;
+    }
+  }
+};
+
+export const getPromoBannerSettings = async (): Promise<PromoBannerSettings | null> => {
+  try {
+    const bannerRef = doc(db, PROMO_BANNER_COLLECTION, 'main');
+    const docSnap = await getDoc(bannerRef);
+
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        enabled: data.enabled || false,
+        text: data.text || '',
+        backgroundColor: data.backgroundColor || '#000000',
+        textColor: data.textColor || '#ffffff',
+        ctaLabel: data.ctaLabel || '',
+        ctaUrl: data.ctaUrl || '',
+        animationType: data.animationType || 'none',
+        animationSpeed: data.animationSpeed || 'normal',
+        startDate: data.startDate || '',
+        endDate: data.endDate || '',
+        dismissible: data.dismissible !== undefined ? data.dismissible : true
+      };
+    }
+
+    // Return default settings if document doesn't exist
+    return {
+      enabled: false,
+      text: '',
+      backgroundColor: '#000000',
+      textColor: '#ffffff',
+      ctaLabel: '',
+      ctaUrl: '',
+      animationType: 'none',
+      animationSpeed: 'normal',
+      startDate: '',
+      endDate: '',
+      dismissible: true
+    };
+  } catch (error) {
+    console.error('Error getting promo banner settings:', error);
     return null;
   }
 };

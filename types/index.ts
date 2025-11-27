@@ -141,3 +141,17 @@ export interface AboutUsSettings {
   heroImage?: string;
   metaDescription: string;
 }
+
+export interface PromoBannerSettings {
+  enabled: boolean;
+  text: string;
+  backgroundColor: string;
+  textColor: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  animationType: 'none' | 'slide' | 'fade' | 'marquee';
+  animationSpeed: 'slow' | 'normal' | 'fast';
+  startDate?: string;
+  endDate?: string;
+  dismissible: boolean;
+}
