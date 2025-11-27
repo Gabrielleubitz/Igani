@@ -142,79 +142,38 @@ export interface AboutUsSettings {
   metaDescription: string;
 }
 
-export interface BannerVariant {
-  text: string;
+export interface PromoBannerSettings {
+  enabled: boolean;
+
+  // Content
+  title: string;
+  subtitle?: string;
+
+  // CTA
   ctaLabel?: string;
   ctaUrl?: string;
-  backgroundImage?: string;
-  inlineImage?: string;
-  translations?: {
-    [languageCode: string]: {
-      text: string;
-      ctaLabel?: string;
-    };
-  };
-}
 
-export interface BannerAnalytics {
-  views: number;
-  dismissals: number;
-  clicks: number;
-  variantAViews: number;
-  variantBViews: number;
-  variantAClicks: number;
-  variantBClicks: number;
-  lastUpdated?: string;
-}
-
-export interface PromoBanner {
-  id: string;
-  name: string;
-  enabled: boolean;
-  active: boolean;
-
-  // Variants for A/B testing
-  variantA: BannerVariant;
-  variantB?: BannerVariant;
-  enableABTesting: boolean;
+  // Image
+  image?: string;
+  imagePosition?: 'inline' | 'right';
 
   // Styling
   backgroundColor: string;
   textColor: string;
   fontSize: 'small' | 'medium' | 'large';
+  fontWeight: 'regular' | 'bold';
+  textAlign: 'left' | 'center';
   padding: 'compact' | 'normal' | 'spacious';
   height: 'auto' | 'fixed';
 
-  // Behavior
-  animationType: 'none' | 'slide' | 'fade' | 'marquee';
+  // Animation
+  animationType: 'none' | 'slide' | 'marquee';
   animationSpeed: 'slow' | 'normal' | 'fast';
+
+  // Behavior
   dismissible: boolean;
-  clickableEntireBanner: boolean;
-  clickUrl?: string;
 
   // Scheduling
   startDate?: string;
   endDate?: string;
-
-  // Analytics
-  analytics: BannerAnalytics;
-
-  // Metadata
-  createdAt: string;
-  updatedAt: string;
-}
-
-// For backward compatibility - points to active banner
-export interface PromoBannerSettings {
-  enabled: boolean;
-  text: string;
-  backgroundColor: string;
-  textColor: string;
-  ctaLabel?: string;
-  ctaUrl?: string;
-  animationType: 'none' | 'slide' | 'fade' | 'marquee';
-  animationSpeed: 'slow' | 'normal' | 'fast';
-  startDate?: string;
-  endDate?: string;
-  dismissible: boolean;
 }
