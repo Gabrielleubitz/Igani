@@ -77,10 +77,20 @@ const packageSchema = z.object({
   roundsOfRevisions: z.number().nullable(),
   order: z.number().min(1),
   published: z.boolean(),
-  badge: z.enum(['best-seller', 'recommended', 'popular', 'new', '']).optional()
+  badge: z.enum(['best-seller', 'recommended', 'popular', 'new', 'custom', '']).optional(),
+  customBadgeText: z.string().optional(),
+  customBadgeGradient: z.string().optional()
 }).refine(data => data.priceMax >= data.priceMin, {
   message: "Price Max must be greater than or equal to Price Min",
   path: ["priceMax"]
+}).refine(data => {
+  if (data.badge === 'custom' && !data.customBadgeText) {
+    return false
+  }
+  return true
+}, {
+  message: "Custom badge text is required when badge is set to custom",
+  path: ["customBadgeText"]
 })
 
 const maintenanceSchema = z.object({
@@ -171,7 +181,9 @@ export default function AdminPackagesPage() {
     roundsOfRevisions: null as number | null,
     order: 1,
     published: true,
-    badge: '' as 'best-seller' | 'recommended' | 'popular' | 'new' | ''
+    badge: '' as 'best-seller' | 'recommended' | 'popular' | 'new' | 'custom' | '',
+    customBadgeText: '',
+    customBadgeGradient: 'from-pink-500 to-purple-500'
   })
 
   const [maintenanceForm, setMaintenanceForm] = useState({
@@ -269,7 +281,9 @@ export default function AdminPackagesPage() {
       roundsOfRevisions: null,
       order: Math.max(...packages.map(p => p.order), 0) + 1,
       published: true,
-      badge: ''
+      badge: '',
+      customBadgeText: '',
+      customBadgeGradient: 'from-pink-500 to-purple-500'
     })
     setMaintenanceForm({
       name: '',
@@ -304,7 +318,9 @@ export default function AdminPackagesPage() {
       roundsOfRevisions: pkg.roundsOfRevisions,
       order: pkg.order,
       published: pkg.published,
-      badge: pkg.badge || ''
+      badge: pkg.badge || '',
+      customBadgeText: pkg.customBadgeText || '',
+      customBadgeGradient: pkg.customBadgeGradient || 'from-pink-500 to-purple-500'
     })
     setEditingItem(pkg)
     setActiveTab('packages')
@@ -698,14 +714,17 @@ export default function AdminPackagesPage() {
                                 Draft
                               </span>
                             )}
-                            {(pkg.badge === 'best-seller' || pkg.badge === 'recommended' || pkg.badge === 'popular' || pkg.badge === 'new') && (
+                            {(pkg.badge === 'best-seller' || pkg.badge === 'recommended' || pkg.badge === 'popular' || pkg.badge === 'new' || pkg.badge === 'custom') && (
                               <span className={`text-xs px-2 py-1 rounded font-semibold ${
-                                pkg.badge === 'best-seller' ? 'bg-orange-600 text-white' :
-                                pkg.badge === 'recommended' ? 'bg-green-600 text-white' :
-                                pkg.badge === 'popular' ? 'bg-purple-600 text-white' :
-                                'bg-blue-600 text-white'
+                                pkg.badge === 'custom'
+                                  ? `bg-gradient-to-r ${pkg.customBadgeGradient || 'from-pink-500 to-purple-500'} text-white`
+                                  : pkg.badge === 'best-seller' ? 'bg-orange-600 text-white' :
+                                  pkg.badge === 'recommended' ? 'bg-green-600 text-white' :
+                                  pkg.badge === 'popular' ? 'bg-purple-600 text-white' :
+                                  'bg-blue-600 text-white'
                               }`}>
-                                {pkg.badge === 'best-seller' ? 'BEST SELLER' :
+                                {pkg.badge === 'custom' && pkg.customBadgeText ? pkg.customBadgeText.toUpperCase() :
+                                 pkg.badge === 'best-seller' ? 'BEST SELLER' :
                                  pkg.badge === 'recommended' ? 'RECOMMENDED' :
                                  pkg.badge === 'popular' ? 'POPULAR' :
                                  'NEW'}
@@ -1198,9 +1217,65 @@ export default function AdminPackagesPage() {
                       <option value="recommended">Recommended</option>
                       <option value="popular">Popular</option>
                       <option value="new">New</option>
+                      <option value="custom">Custom</option>
                     </select>
                     <p className="text-slate-400 text-xs mt-1">Add a badge to highlight this package</p>
                   </div>
+
+                  {/* Custom Badge Fields */}
+                  {packageForm.badge === 'custom' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-900/60 rounded-lg border border-cyan-500/30">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Custom Badge Text *
+                        </label>
+                        <input
+                          type="text"
+                          value={packageForm.customBadgeText}
+                          onChange={(e) => setPackageForm(prev => ({ ...prev, customBadgeText: e.target.value }))}
+                          className={`w-full px-3 py-2 bg-slate-900/60 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-white ${
+                            validationErrors.customBadgeText ? 'border-red-500' : 'border-slate-600'
+                          }`}
+                          placeholder="e.g., LIMITED TIME"
+                          required
+                        />
+                        {validationErrors.customBadgeText && (
+                          <p className="text-red-400 text-xs mt-1">{validationErrors.customBadgeText}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Gradient Colors
+                        </label>
+                        <select
+                          value={packageForm.customBadgeGradient}
+                          onChange={(e) => setPackageForm(prev => ({ ...prev, customBadgeGradient: e.target.value }))}
+                          className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                        >
+                          <option value="from-pink-500 to-purple-500">Pink to Purple</option>
+                          <option value="from-cyan-500 to-blue-500">Cyan to Blue</option>
+                          <option value="from-green-500 to-emerald-500">Green to Emerald</option>
+                          <option value="from-orange-500 to-red-500">Orange to Red</option>
+                          <option value="from-yellow-500 to-orange-500">Yellow to Orange</option>
+                          <option value="from-indigo-500 to-purple-500">Indigo to Purple</option>
+                          <option value="from-rose-500 to-pink-500">Rose to Pink</option>
+                          <option value="from-teal-500 to-cyan-500">Teal to Cyan</option>
+                        </select>
+                        <p className="text-slate-400 text-xs mt-1">Choose your badge gradient</p>
+                      </div>
+                      {/* Badge Preview */}
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                          Preview
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span className={`bg-gradient-to-r ${packageForm.customBadgeGradient} text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg`}>
+                            {packageForm.customBadgeText || 'YOUR TEXT'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between pt-4 border-t border-slate-700">
                     <div className="flex items-center gap-2">

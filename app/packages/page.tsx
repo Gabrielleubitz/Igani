@@ -131,15 +131,18 @@ export default function PackagesPage() {
                   className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 md:p-8 hover:border-cyan-500/50 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-xl hover:shadow-cyan-500/10 flex flex-col h-full relative"
                 >
                   {/* Badge */}
-                  {(pkg.badge === 'best-seller' || pkg.badge === 'recommended' || pkg.badge === 'popular' || pkg.badge === 'new') && (
+                  {(pkg.badge === 'best-seller' || pkg.badge === 'recommended' || pkg.badge === 'popular' || pkg.badge === 'new' || pkg.badge === 'custom') && (
                     <div className="absolute top-4 right-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-bold shadow-lg ${
-                        pkg.badge === 'best-seller' ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' :
-                        pkg.badge === 'recommended' ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' :
-                        pkg.badge === 'popular' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' :
-                        'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
+                        pkg.badge === 'custom'
+                          ? `bg-gradient-to-r ${pkg.customBadgeGradient || 'from-pink-500 to-purple-500'} text-white`
+                          : pkg.badge === 'best-seller' ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' :
+                          pkg.badge === 'recommended' ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white' :
+                          pkg.badge === 'popular' ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' :
+                          'bg-gradient-to-r from-blue-500 to-cyan-500 text-white'
                       }`}>
-                        {pkg.badge === 'best-seller' ? 'BEST SELLER' :
+                        {pkg.badge === 'custom' && pkg.customBadgeText ? pkg.customBadgeText.toUpperCase() :
+                         pkg.badge === 'best-seller' ? 'BEST SELLER' :
                          pkg.badge === 'recommended' ? 'RECOMMENDED' :
                          pkg.badge === 'popular' ? 'POPULAR' :
                          'NEW'}
