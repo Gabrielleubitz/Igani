@@ -244,16 +244,17 @@ export function PromoBanner() {
                   {isMarquee ? (
                     <div className="relative w-full overflow-hidden">
                       <motion.div
-                        animate={{ x: [-1000, 0] }}
+                        animate={{ x: ['0%', '-33.33%'] }}
                         transition={{
                           duration: settings.animationSpeed === 'fast' ? 10 : settings.animationSpeed === 'slow' ? 30 : 20,
                           repeat: Infinity,
-                          ease: 'linear'
+                          ease: 'linear',
+                          repeatType: 'loop'
                         }}
                         className="flex whitespace-nowrap"
                       >
-                        {[...Array(3)].map((_, i) => (
-                          <div key={i} className="mx-8">
+                        {[...Array(6)].map((_, i) => (
+                          <div key={i} className="mx-8 inline-block">
                             <h3 className={`${getFontSize()} ${getFontWeight()}`}>
                               {settings.title}
                             </h3>
