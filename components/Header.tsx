@@ -3,12 +3,11 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
+import { HamburgerMenu } from '@/components/HamburgerMenu'
 import LanguageToggle from '@/components/LanguageToggle'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
 import {
-  Menu,
-  X,
   Home,
   Folder,
   Info,
@@ -132,12 +131,12 @@ export default function Header({
           </div>
 
           {/* Mobile menu button */}
-          <button
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="lg:hidden p-2 rounded-lg bg-slate-800/60 text-slate-300 hover:text-white transition-colors"
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          <div className="lg:hidden">
+            <HamburgerMenu
+              isOpen={isMenuOpen}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            />
+          </div>
         </div>
 
         {/* Mobile Navigation Menu */}
