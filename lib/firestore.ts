@@ -380,11 +380,12 @@ export const deleteTestimonial = async (id: string): Promise<void> => {
 // Package Functions
 export const savePackage = async (packageData: Omit<Package, 'id' | 'createdAt' | 'updatedAt'>): Promise<void> => {
   try {
-    const docRef = await addDoc(collection(db, PACKAGES_COLLECTION), {
+    const cleanData = cleanObjectForFirestore({
       ...packageData,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now()
     });
+    const docRef = await addDoc(collection(db, PACKAGES_COLLECTION), cleanData);
   } catch (error) {
     console.error('Error saving package:', error);
     throw error;
@@ -438,7 +439,7 @@ export const getPackages = async (): Promise<Package[]> => {
 export const updatePackage = async (packageData: Package): Promise<void> => {
   try {
     const packageRef = doc(db, PACKAGES_COLLECTION, packageData.id);
-    await updateDoc(packageRef, {
+    const updateData = cleanObjectForFirestore({
       slug: packageData.slug,
       name: packageData.name,
       tagline: packageData.tagline,
@@ -459,6 +460,7 @@ export const updatePackage = async (packageData: Package): Promise<void> => {
       published: packageData.published,
       updatedAt: Timestamp.now()
     });
+    await updateDoc(packageRef, updateData);
   } catch (error) {
     console.error('Error updating package:', error);
     throw error;
