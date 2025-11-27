@@ -16,6 +16,20 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { T } from '@/components/T'
 
+// Helper function to get currency symbol from priceUnit
+function getCurrencySymbol(priceUnit: string): string {
+  switch (priceUnit) {
+    case 'USD':
+      return '$'
+    case 'EUR':
+      return '€'
+    case 'NIS':
+      return '₪'
+    default:
+      return '₪'
+  }
+}
+
 export default function PackagesPage() {
   const [packages, setPackages] = useState<Package[]>([])
   const [maintenancePlans, setMaintenancePlans] = useState<MaintenancePlan[]>([])
@@ -163,10 +177,10 @@ export default function PackagesPage() {
                             <div className="space-y-2">
                               <div className="flex items-baseline gap-2 flex-wrap">
                                 <span className="text-lg text-slate-500 line-through">
-                                  {settings.currencySymbol}{pkg.originalPrice.toLocaleString()}
+                                  {getCurrencySymbol(pkg.priceUnit)}{pkg.originalPrice.toLocaleString()}
                                 </span>
                                 <span className="text-3xl font-bold text-white">
-                                  {settings.currencySymbol}{pkg.price.toLocaleString()}
+                                  {getCurrencySymbol(pkg.priceUnit)}{pkg.price.toLocaleString()}
                                 </span>
                                 <span className="px-2 py-1 bg-green-500/20 text-green-400 text-sm font-bold rounded-md">
                                   {Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100)}% OFF
@@ -178,7 +192,7 @@ export default function PackagesPage() {
                             </div>
                           ) : (
                             <p className="text-3xl font-bold text-white">
-                              <T>Starting from</T> {settings.currencySymbol}{pkg.price.toLocaleString()}
+                              <T>Starting from</T> {getCurrencySymbol(pkg.priceUnit)}{pkg.price.toLocaleString()}
                             </p>
                           )}
                         </div>
