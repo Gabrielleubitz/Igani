@@ -80,9 +80,9 @@ export interface Package {
   slug: string;
   name: string;
   tagline: string;
-  priceMin: number;
-  priceMax: number;
+  price: number;
   priceUnit: string;
+  showPricing: boolean;
   bestFor: string;
   includes: string[];
   addOns: PackageAddOn[];

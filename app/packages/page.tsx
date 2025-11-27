@@ -157,9 +157,17 @@ export default function PackagesPage() {
                       <h3 className="text-2xl font-bold text-white mb-2">{pkg.name}</h3>
                       <p className="text-cyan-400 mb-4">{pkg.tagline}</p>
                       <p className="text-slate-400 text-sm">{pkg.bestFor}</p>
-                      <div className="mt-3 px-3 py-2 bg-gradient-to-r from-cyan-600/10 to-blue-600/10 rounded-lg border border-cyan-500/20">
-                        <p className="text-cyan-300 text-sm font-medium"><T>Pricing discussed in consultation</T></p>
-                      </div>
+                      {pkg.showPricing ? (
+                        <div className="mt-3">
+                          <p className="text-3xl font-bold text-white">
+                            <T>Starting from</T> {settings.currencySymbol}{pkg.price.toLocaleString()}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-3 px-3 py-2 bg-gradient-to-r from-cyan-600/10 to-blue-600/10 rounded-lg border border-cyan-500/20">
+                          <p className="text-cyan-300 text-sm font-medium"><T>Contact for pricing</T></p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Includes */}
