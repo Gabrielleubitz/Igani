@@ -65,9 +65,9 @@ const packageSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   tagline: z.string().min(1, 'Tagline is required'),
   bestFor: z.string().min(1, 'Best For is required'),
-  priceMin: z.number().min(0, 'Price Min must be positive'),
-  priceMax: z.number().min(0, 'Price Max must be positive'),
+  price: z.number().min(0, 'Price must be positive'),
   priceUnit: z.string().min(1, 'Price Unit is required'),
+  showPricing: z.boolean(),
   delivery: z.string().min(1, 'Delivery is required'),
   includes: z.array(z.string().min(1)).min(1, 'At least one include is required'),
   addOns: z.array(z.object({
@@ -80,9 +80,6 @@ const packageSchema = z.object({
   badge: z.enum(['best-seller', 'recommended', 'popular', 'new', 'custom', '']).optional(),
   customBadgeText: z.string().optional(),
   customBadgeGradient: z.string().optional()
-}).refine(data => data.priceMax >= data.priceMin, {
-  message: "Price Max must be greater than or equal to Price Min",
-  path: ["priceMax"]
 }).refine(data => {
   if (data.badge === 'custom' && !data.customBadgeText) {
     return false
@@ -171,9 +168,9 @@ export default function AdminPackagesPage() {
     slug: '',
     name: '',
     tagline: '',
-    priceMin: 0,
-    priceMax: 0,
+    price: 0,
     priceUnit: 'NIS',
+    showPricing: true,
     bestFor: '',
     includes: [''],
     addOns: [] as { name: string; priceNote: string }[],
@@ -271,9 +268,9 @@ export default function AdminPackagesPage() {
       slug: '',
       name: '',
       tagline: '',
-      priceMin: 0,
-      priceMax: 0,
+      price: 0,
       priceUnit: 'NIS',
+      showPricing: true,
       bestFor: '',
       includes: [''],
       addOns: [],
@@ -308,9 +305,9 @@ export default function AdminPackagesPage() {
       slug: pkg.slug,
       name: pkg.name,
       tagline: pkg.tagline,
-      priceMin: pkg.priceMin,
-      priceMax: pkg.priceMax,
+      price: pkg.price,
       priceUnit: pkg.priceUnit,
+      showPricing: pkg.showPricing !== undefined ? pkg.showPricing : true,
       bestFor: pkg.bestFor,
       includes: pkg.includes,
       addOns: pkg.addOns,
@@ -739,7 +736,11 @@ export default function AdminPackagesPage() {
                           <p className="text-cyan-400 text-sm mb-2">{pkg.tagline}</p>
                           <p className="text-slate-400 text-sm mb-2">{pkg.bestFor}</p>
                           <div className="text-xl font-bold text-white mb-2">
-                            {settings.currencySymbol}{pkg.priceMin.toLocaleString()} - {settings.currencySymbol}{pkg.priceMax.toLocaleString()}
+                            {pkg.showPricing ? (
+                              <>Starting from {settings.currencySymbol}{pkg.price.toLocaleString()}</>
+                            ) : (
+                              <span className="text-slate-400">Contact for pricing</span>
+                            )}
                           </div>
                           <div className="text-xs text-slate-500">
                             {pkg.includes.length} includes • {pkg.addOns.length} add-ons • {pkg.delivery}
@@ -1019,58 +1020,59 @@ export default function AdminPackagesPage() {
                     )}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Price Min *
-                      </label>
+                  {/* Pricing Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
                       <input
-                        type="number"
-                        min="0"
-                        value={packageForm.priceMin}
-                        onChange={(e) => setPackageForm(prev => ({ ...prev, priceMin: parseInt(e.target.value) || 0 }))}
-                        className={`w-full px-3 py-2 bg-slate-900/60 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-white ${
-                          validationErrors.priceMin ? 'border-red-500' : 'border-slate-600'
-                        }`}
-                        required
+                        type="checkbox"
+                        id="showPricing"
+                        checked={packageForm.showPricing}
+                        onChange={(e) => setPackageForm(prev => ({ ...prev, showPricing: e.target.checked }))}
+                        className="w-4 h-4 text-cyan-600 bg-slate-900 border-slate-600 rounded focus:ring-cyan-500"
                       />
-                      {validationErrors.priceMin && (
-                        <p className="text-red-400 text-xs mt-1">{validationErrors.priceMin}</p>
-                      )}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Price Max *
+                      <label htmlFor="showPricing" className="text-sm font-medium text-slate-300">
+                        Show pricing on package
                       </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={packageForm.priceMax}
-                        onChange={(e) => setPackageForm(prev => ({ ...prev, priceMax: parseInt(e.target.value) || 0 }))}
-                        className={`w-full px-3 py-2 bg-slate-900/60 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-white ${
-                          validationErrors.priceMax ? 'border-red-500' : 'border-slate-600'
-                        }`}
-                        required
-                      />
-                      {validationErrors.priceMax && (
-                        <p className="text-red-400 text-xs mt-1">{validationErrors.priceMax}</p>
-                      )}
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Currency *
-                      </label>
-                      <select
-                        value={packageForm.priceUnit}
-                        onChange={(e) => setPackageForm(prev => ({ ...prev, priceUnit: e.target.value }))}
-                        className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
-                        required
-                      >
-                        <option value="NIS">NIS (₪)</option>
-                        <option value="USD">USD ($)</option>
-                        <option value="EUR">EUR (€)</option>
-                      </select>
-                    </div>
+
+                    {packageForm.showPricing && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Starting Price *
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={packageForm.price}
+                            onChange={(e) => setPackageForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                            className={`w-full px-3 py-2 bg-slate-900/60 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-white ${
+                              validationErrors.price ? 'border-red-500' : 'border-slate-600'
+                            }`}
+                            required
+                          />
+                          {validationErrors.price && (
+                            <p className="text-red-400 text-xs mt-1">{validationErrors.price}</p>
+                          )}
+                          <p className="text-slate-400 text-xs mt-1">Will display as "Starting from ₪X"</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Currency *
+                          </label>
+                          <select
+                            value={packageForm.priceUnit}
+                            onChange={(e) => setPackageForm(prev => ({ ...prev, priceUnit: e.target.value }))}
+                            className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                            required
+                          >
+                            <option value="NIS">NIS (₪)</option>
+                            <option value="USD">USD ($)</option>
+                            <option value="EUR">EUR (€)</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>
