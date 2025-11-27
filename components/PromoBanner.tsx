@@ -14,6 +14,12 @@ export function PromoBanner() {
   const [isPreviewMode, setIsPreviewMode] = useState(false)
 
   useEffect(() => {
+    // Don't show banner on admin pages
+    if (window.location.pathname.startsWith('/admin')) {
+      setIsLoading(false)
+      return
+    }
+
     // Check for preview mode
     const urlParams = new URLSearchParams(window.location.search)
     const preview = urlParams.get('previewBanner') === 'true'
@@ -328,7 +334,7 @@ export function PromoBanner() {
                         backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.15)',
                         color: settings.textColor
                       }}
-                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap hover:border-white/40 hover:shadow-lg pointer-events-auto ${
+                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap hover:border-white/40 hover:shadow-lg pointer-events-auto relative z-50 ${
                         settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
                       }`}
                     >
@@ -343,8 +349,9 @@ export function PromoBanner() {
                     onClick={handleDismiss}
                     whileHover={{ scale: 1.1, rotate: 90 }}
                     whileTap={{ scale: 0.9 }}
-                    className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors duration-200 pointer-events-auto"
+                    className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors duration-200 pointer-events-auto relative z-50"
                     aria-label="Dismiss banner"
+                    style={{ touchAction: 'auto' }}
                   >
                     <X className="w-4 h-4" style={{ color: settings.textColor }} />
                   </motion.button>
