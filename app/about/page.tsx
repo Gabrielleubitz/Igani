@@ -298,10 +298,7 @@ export default function AboutPage() {
         </section>
         
         {/* Footer */}
-        <Footer 
-          siteName="IGANI" 
-          tagline="Premium web development with a personal touch" 
-        />
+        <Footer />
       </div>
     </div>
   )

@@ -3,26 +3,43 @@ import { Outfit } from 'next/font/google'
 import Script from 'next/script'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { PromoBanner } from '@/components/PromoBanner'
+import { getSiteSettings } from '@/lib/getSiteSettings'
+import { Metadata } from 'next'
 
 const outfit = Outfit({
   subsets: ['latin'],
   variable: '--font-outfit',
 })
 
-export const metadata = {
-  title: 'Igani - Premium Website Development',
-  description: 'Transform your vision into a stunning digital presence with custom website development',
-  icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' }
-    ],
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
-    ],
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings()
+
+  return {
+    title: settings.metaTitle || 'IGANI - Premium Website Development',
+    description: settings.metaDescription || 'Transform your vision into a stunning digital presence with custom website development',
+    keywords: settings.metaKeywords || 'web development, design, websites, digital solutions',
+    icons: {
+      icon: [
+        { url: '/favicon.ico', sizes: 'any' },
+        { url: '/favicon.svg', type: 'image/svg+xml' },
+        { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+        { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' }
+      ],
+      apple: [
+        { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
+      ],
+    },
+    openGraph: {
+      title: settings.metaTitle || 'IGANI - Premium Website Development',
+      description: settings.metaDescription || 'Transform your vision into a stunning digital presence with custom website development',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: settings.metaTitle || 'IGANI - Premium Website Development',
+      description: settings.metaDescription || 'Transform your vision into a stunning digital presence with custom website development',
+    }
+  }
 }
 
 export default function RootLayout({
