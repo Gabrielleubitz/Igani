@@ -1,4 +1,4 @@
-// File: /Users/gabriel/Downloads/igani/app/funnels/page.tsx
+// File: /Users/GabrielLeubitz/Downloads/igani/app/funnels/page.tsx
 import * as entry from '../../../../app/funnels/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

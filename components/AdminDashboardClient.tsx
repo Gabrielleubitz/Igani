@@ -9,6 +9,7 @@ import TestimonialsManager from './TestimonialsManager'
 import { BannerManager } from './BannerManager'
 import { LeadsManager } from './LeadsManager'
 import { OfferSettingsManager } from './OfferSettingsManager'
+import { SiteSettingsManager } from './SiteSettingsManager'
 import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
@@ -244,13 +245,7 @@ export default function AdminDashboardClient() {
 
             {activeTab === 'settings' && (
               <div className="animate-in fade-in duration-300">
-                <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
-                  <iframe
-                    src="/admin/settings"
-                    className="w-full h-[calc(100vh-200px)] border-0 rounded-lg"
-                    title="Settings Manager"
-                  />
-                </div>
+                <SiteSettingsManager />
               </div>
             )}
 

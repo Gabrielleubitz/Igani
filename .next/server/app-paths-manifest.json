@@ -1,7 +1,26 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/admin/about/page": "app/admin/about/page.js",
   "/admin/page": "app/admin/page.js",
-  "/page": "app/page.js",
+  "/about/page": "app/about/page.js",
+  "/api/admin/site-settings/route": "app/api/admin/site-settings/route.js",
+  "/api/admin/offer-settings/route": "app/api/admin/offer-settings/route.js",
+  "/admin/packages/page": "app/admin/packages/page.js",
+  "/api/funnel-submission/route": "app/api/funnel-submission/route.js",
+  "/checkout/page": "app/checkout/page.js",
+  "/funnels/page": "app/funnels/page.js",
+  "/api/leads/route": "app/api/leads/route.js",
+  "/contact/page": "app/contact/page.js",
   "/packages/page": "app/packages/page.js",
-  "/funnels/page": "app/funnels/page.js"
+  "/page": "app/page.js",
+  "/preview/[id]/page": "app/preview/[id]/page.js",
+  "/privacy/page": "app/privacy/page.js",
+  "/terms/page": "app/terms/page.js",
+  "/api/create-repo/route": "app/api/create-repo/route.js",
+  "/api/download/[orderId]/route": "app/api/download/[orderId]/route.js",
+  "/admin/debug/page": "app/admin/debug/page.js",
+  "/api/health/route": "app/api/health/route.js",
+  "/api/generate-copy/route": "app/api/generate-copy/route.js",
+  "/orders/[id]/page": "app/orders/[id]/page.js",
+  "/api/stripe/webhook/route": "app/api/stripe/webhook/route.js"
 }
