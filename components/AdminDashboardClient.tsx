@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock } from 'lucide-react'
+import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Menu, X, Home, BarChart3 } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
@@ -21,6 +21,7 @@ export default function AdminDashboardClient() {
   const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
@@ -49,237 +50,222 @@ export default function AdminDashboardClient() {
     router.push('/')
   }
 
+  const navigationItems = [
+    { id: 'websites', label: 'Websites', icon: Globe, count: websites.length, color: 'cyan' },
+    { id: 'inquiries', label: 'Inquiries', icon: Mail, count: inquiries.length, color: 'blue' },
+    { id: 'leads', label: 'Leads', icon: Users, color: 'purple' },
+    { id: 'testimonials', label: 'Testimonials', icon: Star, count: testimonials.length, color: 'yellow' },
+    { id: 'packages', label: 'Packages', icon: Package, color: 'green' },
+    { id: 'about', label: 'About Us', icon: Info, color: 'indigo' },
+    { id: 'banner', label: 'Promo Banner', icon: Megaphone, color: 'pink' },
+    { id: 'offers', label: 'Offer Timer', icon: Clock, color: 'orange' },
+    { id: 'settings', label: 'Settings', icon: SettingsIcon, color: 'slate' },
+  ]
+
+  const getPageTitle = () => {
+    const item = navigationItems.find(item => item.id === activeTab)
+    return item?.label || 'Dashboard'
+  }
+
+  const getPageIcon = () => {
+    const item = navigationItems.find(item => item.id === activeTab)
+    const Icon = item?.icon || BarChart3
+    return Icon
+  }
+
   if (isLoading) {
     return <LoadingScreen message="Loading admin panel..." />
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
-      <div className="border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-xl sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-white mb-1">
-                Admin Dashboard
-              </h1>
-              <p className="text-slate-400 text-sm">
-                Manage your website content and settings
-              </p>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Top Header */}
+      <div className="fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 z-30">
+        <div className="h-full px-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <button
-              onClick={handleBackToHome}
-              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors duration-300"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 hover:bg-slate-800 rounded-lg transition-colors lg:hidden"
             >
-              <LogOut className="w-4 h-4" />
-              Back to Home
+              {sidebarOpen ? (
+                <X className="w-5 h-5 text-slate-300" />
+              ) : (
+                <Menu className="w-5 h-5 text-slate-300" />
+              )}
             </button>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="hidden lg:block p-2 hover:bg-slate-800 rounded-lg transition-colors"
+            >
+              <Menu className="w-5 h-5 text-slate-300" />
+            </button>
+            <div>
+              <h1 className="text-lg font-bold text-white">IGANI Admin</h1>
+            </div>
+          </div>
+          <button
+            onClick={handleBackToHome}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-all duration-300 hover:scale-105"
+          >
+            <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">Home</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sidebar */}
+      <div
+        className={`fixed top-16 left-0 bottom-0 w-64 bg-slate-900/95 backdrop-blur-xl border-r border-slate-700/50 transition-transform duration-300 z-20 ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="h-full overflow-y-auto p-4">
+          <div className="space-y-1">
+            {navigationItems.map((item) => {
+              const Icon = item.icon
+              const isActive = activeTab === item.id
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id as TabType)
+                    // Close sidebar on mobile after selection
+                    if (window.innerWidth < 1024) {
+                      setSidebarOpen(false)
+                    }
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                    isActive
+                      ? `bg-gradient-to-r from-${item.color}-600 to-${item.color}-500 text-white shadow-lg shadow-${item.color}-500/25`
+                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span className="flex-1 text-left">{item.label}</span>
+                  {item.count !== undefined && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      isActive ? 'bg-white/20' : 'bg-slate-800'
+                    }`}>
+                      {item.count}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Tabs - Responsive Horizontal Scroll */}
-        <div className="mb-8 -mx-4 px-4 overflow-x-auto">
-          <div className="flex gap-2 min-w-max pb-2">
-            <button
-              onClick={() => setActiveTab('websites')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'websites'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Globe className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden sm:inline">Websites</span>
-              <span className="sm:hidden">Sites</span>
-              <span className="text-xs opacity-75">({websites.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('inquiries')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'inquiries'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Mail className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden sm:inline">Inquiries</span>
-              <span className="sm:hidden">Mail</span>
-              <span className="text-xs opacity-75">({inquiries.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('testimonials')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'testimonials'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Star className="w-5 h-5 flex-shrink-0" />
-              <span className="hidden sm:inline">Testimonials</span>
-              <span className="sm:hidden">Reviews</span>
-              <span className="text-xs opacity-75">({testimonials.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('packages')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'packages'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Package className="w-5 h-5 flex-shrink-0" />
-              <span>Packages</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('about')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'about'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Info className="w-5 h-5 flex-shrink-0" />
-              <span>About</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('banner')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'banner'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Megaphone className="w-5 h-5 flex-shrink-0" />
-              <span>Banner</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('leads')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'leads'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Users className="w-5 h-5 flex-shrink-0" />
-              <span>Leads</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('offers')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'offers'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <Clock className="w-5 h-5 flex-shrink-0" />
-              <span>Offers</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                activeTab === 'settings'
-                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
-                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
-              }`}
-            >
-              <SettingsIcon className="w-5 h-5 flex-shrink-0" />
-              <span>Settings</span>
-            </button>
+      {/* Overlay for mobile */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-10 lg:hidden top-16"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main Content */}
+      <div
+        className={`pt-16 transition-all duration-300 ${
+          sidebarOpen ? 'lg:pl-64' : 'pl-0'
+        }`}
+      >
+        <div className="p-6 lg:p-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-2">
+              {(() => {
+                const PageIcon = getPageIcon()
+                return <PageIcon className="w-8 h-8 text-cyan-400" />
+              })()}
+              <h2 className="text-3xl font-bold text-white">{getPageTitle()}</h2>
+            </div>
+            <p className="text-slate-400">
+              Manage your {getPageTitle().toLowerCase()} and content
+            </p>
+          </div>
+
+          {/* Content Area */}
+          <div className="max-w-7xl">
+            {activeTab === 'websites' && (
+              <div className="animate-in fade-in duration-300">
+                <WebsiteManager
+                  websites={websites}
+                  onWebsitesChange={(newWebsites) => setWebsites(newWebsites)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'inquiries' && (
+              <div className="animate-in fade-in duration-300">
+                <TicketManager
+                  inquiries={inquiries}
+                  onInquiriesChange={(newInquiries) => setInquiries(newInquiries)}
+                />
+              </div>
+            )}
+
+            {activeTab === 'testimonials' && (
+              <div className="animate-in fade-in duration-300">
+                <TestimonialsManager />
+              </div>
+            )}
+
+            {activeTab === 'packages' && (
+              <div className="animate-in fade-in duration-300">
+                <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
+                  <iframe
+                    src="/admin/packages"
+                    className="w-full h-[calc(100vh-200px)] border-0 rounded-lg"
+                    title="Packages Manager"
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'about' && (
+              <div className="animate-in fade-in duration-300">
+                <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
+                  <iframe
+                    src="/admin/about"
+                    className="w-full h-[calc(100vh-200px)] border-0 rounded-lg"
+                    title="About Manager"
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="animate-in fade-in duration-300">
+                <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
+                  <iframe
+                    src="/admin/settings"
+                    className="w-full h-[calc(100vh-200px)] border-0 rounded-lg"
+                    title="Settings Manager"
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'banner' && (
+              <div className="animate-in fade-in duration-300">
+                <BannerManager />
+              </div>
+            )}
+
+            {activeTab === 'leads' && (
+              <div className="animate-in fade-in duration-300">
+                <LeadsManager />
+              </div>
+            )}
+
+            {activeTab === 'offers' && (
+              <div className="animate-in fade-in duration-300">
+                <OfferSettingsManager />
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Tab Content */}
-        {activeTab === 'websites' && (
-          <WebsiteManager websites={websites} onUpdate={loadData} />
-        )}
-
-        {activeTab === 'inquiries' && (
-          <TicketManager contacts={inquiries} onUpdate={loadData} />
-        )}
-
-        {activeTab === 'testimonials' && (
-          <TestimonialsManager />
-        )}
-
-        {activeTab === 'packages' && (
-          <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">Packages Management</h2>
-              <a
-                href="/admin/packages"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300"
-              >
-                <Package className="w-4 h-4" />
-                Go to Packages Editor
-              </a>
-            </div>
-            <p className="text-slate-400 mb-4">
-              Manage your packages, maintenance plans, and FAQs. Click the button above to access the full packages editor.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
-                <h3 className="text-white font-semibold mb-2">Packages</h3>
-                <p className="text-slate-300 text-sm">Create and manage service packages</p>
-              </div>
-              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
-                <h3 className="text-white font-semibold mb-2">Maintenance Plans</h3>
-                <p className="text-slate-300 text-sm">Manage ongoing maintenance offerings</p>
-              </div>
-              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
-                <h3 className="text-white font-semibold mb-2">FAQs</h3>
-                <p className="text-slate-300 text-sm">Manage frequently asked questions</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'banner' && (
-          <BannerManager />
-        )}
-
-        {activeTab === 'about' && (
-          <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">About Us Management</h2>
-              <a
-                href="/admin/about"
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300"
-              >
-                <Info className="w-4 h-4" />
-                Go to About Us Editor
-              </a>
-            </div>
-            <p className="text-slate-400 mb-4">
-              Manage your About Us page content, sections, and settings. Click the button above to access the full About Us editor.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
-                <h3 className="text-white font-semibold mb-2">Page Settings</h3>
-                <p className="text-slate-300 text-sm">Configure page title, subtitle, and meta description</p>
-              </div>
-              <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
-                <h3 className="text-white font-semibold mb-2">Content Sections</h3>
-                <p className="text-slate-300 text-sm">Create and manage mission, values, team, and custom sections</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'leads' && (
-          <LeadsManager />
-        )}
-
-        {activeTab === 'offers' && (
-          <OfferSettingsManager />
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-8">
-            <h2 className="text-xl font-bold text-white mb-4">Site Settings</h2>
-            <p className="text-slate-400">Settings management coming soon...</p>
-          </div>
-        )}
       </div>
     </div>
   )
