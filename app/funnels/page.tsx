@@ -23,16 +23,53 @@ export default function FunnelsPage() {
   const [isSubmitting2, setIsSubmitting2] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [submitStatus2, setSubmitStatus2] = useState<'idle' | 'success' | 'error'>('idle')
-  const [timeLeft, setTimeLeft] = useState(86400) // 24 hours in seconds
+  const [offerEndDate, setOfferEndDate] = useState<Date | null>(null)
+  const [offerExpired, setOfferExpired] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(0)
   const [showStickyCTA, setShowStickyCTA] = useState(false)
 
-  // Countdown timer
+  // Fetch offer end date on component mount
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
-    }, 1000)
-    return () => clearInterval(timer)
+    const fetchOfferEndDate = async () => {
+      try {
+        const response = await fetch('/api/admin/offer-settings')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.endDate) {
+            setOfferEndDate(new Date(data.endDate))
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching offer end date:', error)
+      }
+    }
+
+    fetchOfferEndDate()
   }, [])
+
+  // Real-time countdown timer
+  useEffect(() => {
+    if (!offerEndDate) return
+
+    const updateCountdown = () => {
+      const now = new Date()
+      const timeDiff = offerEndDate.getTime() - now.getTime()
+
+      if (timeDiff <= 0) {
+        setOfferExpired(true)
+        setTimeLeft(0)
+        return
+      }
+
+      setOfferExpired(false)
+      setTimeLeft(Math.floor(timeDiff / 1000))
+    }
+
+    updateCountdown()
+    const timer = setInterval(updateCountdown, 1000)
+
+    return () => clearInterval(timer)
+  }, [offerEndDate])
 
   // Sticky CTA visibility on scroll
   useEffect(() => {
@@ -44,9 +81,14 @@ export default function FunnelsPage() {
   }, [])
 
   const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600)
-    const minutes = Math.floor((seconds % 3600) / 60)
+    const days = Math.floor(seconds / (24 * 60 * 60))
+    const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60))
+    const minutes = Math.floor((seconds % (60 * 60)) / 60)
     const secs = seconds % 60
+
+    if (days > 0) {
+      return `${days}d ${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+    }
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
@@ -69,12 +111,17 @@ export default function FunnelsPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/funnel-submission', {
+      const response = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          source: 'Black Friday Hero Form',
+          source: 'landing_page',
+          sourceDetails: {
+            page: '/funnels',
+            form: 'hero',
+            campaign: 'black_friday'
+          },
           message: 'Black Friday landing page submission - Hero form'
         })
       })
@@ -99,12 +146,17 @@ export default function FunnelsPage() {
     setIsSubmitting2(true)
 
     try {
-      const response = await fetch('/api/funnel-submission', {
+      const response = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData2,
-          source: 'Black Friday Secondary Form',
+          source: 'landing_page',
+          sourceDetails: {
+            page: '/funnels',
+            form: 'secondary',
+            campaign: 'black_friday'
+          },
           message: 'Black Friday landing page submission - Secondary form'
         })
       })
@@ -220,10 +272,21 @@ export default function FunnelsPage() {
                   transition={{ duration: 0.8, delay: 0.4 }}
                   className="bg-yellow-400/20 border-2 border-yellow-400 rounded-lg p-4 mb-6"
                 >
-                  <div className="text-white font-bold text-sm mb-2">OFFER EXPIRES IN:</div>
-                  <div className="text-3xl font-black text-yellow-400 font-mono tracking-wider">
-                    {formatTime(timeLeft)}
-                  </div>
+                  {offerExpired ? (
+                    <div className="text-center">
+                      <div className="text-white font-bold text-sm mb-2">BLACK FRIDAY OFFER:</div>
+                      <div className="text-2xl font-black text-red-400">
+                        Offer has ended
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-white font-bold text-sm mb-2">OFFER EXPIRES IN:</div>
+                      <div className="text-3xl font-black text-yellow-400 font-mono tracking-wider">
+                        {formatTime(timeLeft)}
+                      </div>
+                    </>
+                  )}
                 </motion.div>
               </div>
 
@@ -310,33 +373,6 @@ export default function FunnelsPage() {
           </div>
         </section>
 
-        {/* Social Proof Under Hero */}
-        <section className="py-12 px-4 bg-slate-800/30">
-          <div className="max-w-5xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
-            >
-              {[
-                "Got 12 new customers in first month with my new site",
-                "Sales increased 300% after launch, worth every penny",
-                "Finally have a website I'm proud to show people",
-                "Booked solid for 3 months straight now"
-              ].map((testimonial, index) => (
-                <div key={index} className="bg-slate-700/50 p-4 rounded-lg border border-slate-600/50">
-                  <div className="flex items-center mb-2">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-slate-300 text-sm italic">"{testimonial}"</p>
-                </div>
-              ))}
-            </motion.div>
-          </div>
-        </section>
 
         {/* What They Get Section */}
         <section className="py-16 px-4">
@@ -462,6 +498,30 @@ export default function FunnelsPage() {
                 </motion.div>
               ))}
             </div>
+
+            {/* Testimonials Section - Moved Here */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mt-12"
+            >
+              {[
+                "Got 12 new customers in first month with my new site",
+                "Sales increased 300% after launch, worth every penny",
+                "Finally have a website I'm proud to show people",
+                "Booked solid for 3 months straight now"
+              ].map((testimonial, index) => (
+                <div key={index} className="bg-slate-700/50 p-4 rounded-lg border border-slate-600/50">
+                  <div className="flex items-center mb-2">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-slate-300 text-sm italic">"{testimonial}"</p>
+                </div>
+              ))}
+            </motion.div>
           </div>
         </section>
 
@@ -475,7 +535,11 @@ export default function FunnelsPage() {
               className="mb-8"
             >
               <div className="bg-black text-yellow-400 font-bold py-2 px-6 rounded-full text-lg mb-6 inline-block">
-                ⚠️ {formatTime(timeLeft)} LEFT
+                {offerExpired ? (
+                  "⚠️ OFFER ENDED"
+                ) : (
+                  `⚠️ ${formatTime(timeLeft)} LEFT`
+                )}
               </div>
               <h2 className="text-4xl lg:text-6xl font-black text-white mb-6">
                 Don't Let Your Competition Win Again
