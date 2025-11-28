@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import Script from 'next/script'
 import { Send, CheckCircle2, Clock, Timer, Phone, ExternalLink, Star } from 'lucide-react'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
@@ -212,6 +213,23 @@ export default function FunnelsPage() {
 
   return (
     <div className="min-h-screen bg-slate-900 relative overflow-hidden">
+      {/* Hotjar Tracking Code for igani.co */}
+      <Script
+        id="hotjar"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+            (function(h,o,t,j,a,r){
+              h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+              h._hjSettings={hjid:6586485,hjsv:6};
+              a=o.getElementsByTagName('head')[0];
+              r=o.createElement('script');r.async=1;
+              r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+              a.appendChild(r);
+            })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+          `,
+        }}
+      />
 
       {/* Mobile Sticky CTA */}
       {showStickyCTA && (
