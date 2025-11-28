@@ -36,7 +36,12 @@ export default function FunnelsPage() {
   useEffect(() => {
     const fetchOfferEndDate = async () => {
       try {
-        const response = await fetch('/api/admin/offer-settings')
+        // Construct API URL - use main domain if on subdomain
+        const apiUrl = typeof window !== 'undefined' && window.location.hostname.includes('funnels.')
+          ? 'https://www.igani.co/api/admin/offer-settings'
+          : '/api/admin/offer-settings'
+
+        const response = await fetch(apiUrl)
         if (response.ok) {
           const data = await response.json()
           if (data.title) {
@@ -130,7 +135,12 @@ export default function FunnelsPage() {
     setIsSubmitting(true)
 
     try {
-      const response = await fetch('/api/leads', {
+      // Construct API URL - use main domain if on subdomain
+      const apiUrl = typeof window !== 'undefined' && window.location.hostname.includes('funnels.')
+        ? 'https://www.igani.co/api/leads'
+        : '/api/leads'
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -165,7 +175,12 @@ export default function FunnelsPage() {
     setIsSubmitting2(true)
 
     try {
-      const response = await fetch('/api/leads', {
+      // Construct API URL - use main domain if on subdomain
+      const apiUrl = typeof window !== 'undefined' && window.location.hostname.includes('funnels.')
+        ? 'https://www.igani.co/api/leads'
+        : '/api/leads'
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
