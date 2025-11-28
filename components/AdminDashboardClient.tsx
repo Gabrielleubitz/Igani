@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3 } from 'lucide-react'
-import { HamburgerMenu } from './HamburgerMenu'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
@@ -84,18 +83,29 @@ export default function AdminDashboardClient() {
       <div className="fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 z-30">
         <div className="h-full px-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="lg:hidden">
-              <HamburgerMenu
-                isOpen={sidebarOpen}
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              />
-            </div>
-            <div className="hidden lg:block">
-              <HamburgerMenu
-                isOpen={sidebarOpen}
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-              />
-            </div>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="relative w-10 h-10 flex items-center justify-center rounded-lg hover:bg-slate-800/50 transition-all group"
+              aria-label="Toggle menu"
+            >
+              <div className="w-6 h-5 relative flex flex-col justify-between">
+                <span
+                  className={`block h-0.5 w-full bg-slate-300 rounded transition-all duration-300 group-hover:bg-cyan-400 ${
+                    sidebarOpen ? 'rotate-45 translate-y-2' : ''
+                  }`}
+                />
+                <span
+                  className={`block h-0.5 w-full bg-slate-300 rounded transition-all duration-300 group-hover:bg-cyan-400 ${
+                    sidebarOpen ? 'opacity-0' : ''
+                  }`}
+                />
+                <span
+                  className={`block h-0.5 w-full bg-slate-300 rounded transition-all duration-300 group-hover:bg-cyan-400 ${
+                    sidebarOpen ? '-rotate-45 -translate-y-2' : ''
+                  }`}
+                />
+              </div>
+            </button>
             <div>
               <h1 className="text-lg font-bold text-white">IGANI Admin</h1>
             </div>
