@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Menu, X, Home, BarChart3 } from 'lucide-react'
+import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3 } from 'lucide-react'
+import { HamburgerMenu } from './HamburgerMenu'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
@@ -83,22 +84,18 @@ export default function AdminDashboardClient() {
       <div className="fixed top-0 left-0 right-0 h-16 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 z-30">
         <div className="h-full px-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 hover:bg-slate-800 rounded-lg transition-colors lg:hidden"
-            >
-              {sidebarOpen ? (
-                <X className="w-5 h-5 text-slate-300" />
-              ) : (
-                <Menu className="w-5 h-5 text-slate-300" />
-              )}
-            </button>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hidden lg:block p-2 hover:bg-slate-800 rounded-lg transition-colors"
-            >
-              <Menu className="w-5 h-5 text-slate-300" />
-            </button>
+            <div className="lg:hidden">
+              <HamburgerMenu
+                isOpen={sidebarOpen}
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              />
+            </div>
+            <div className="hidden lg:block">
+              <HamburgerMenu
+                isOpen={sidebarOpen}
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+              />
+            </div>
             <div>
               <h1 className="text-lg font-bold text-white">IGANI Admin</h1>
             </div>
