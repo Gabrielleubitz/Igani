@@ -18,6 +18,7 @@ interface Lead {
   }
   submittedAt: string
   message?: string
+  status?: 'new' | 'contacted' | 'converted' | 'cancelled' | 'not_interested'
   createdAt: string
 }
 
@@ -43,6 +44,7 @@ async function getLeads(): Promise<Lead[]> {
         sourceDetails: data.sourceDetails,
         submittedAt: data.submittedAt,
         message: data.message,
+        status: data.status || 'new',
         createdAt: data.createdAt
       })
     })
@@ -114,6 +116,7 @@ export async function POST(request: Request) {
       sourceDetails,
       submittedAt,
       message,
+      status: 'new',
       createdAt: new Date().toISOString()
     }
 
@@ -124,6 +127,71 @@ export async function POST(request: Request) {
     console.error('Error saving lead:', error)
     return NextResponse.json(
       { error: 'Failed to save lead' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    console.log('API request from', process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'server', ': /api/leads (PUT)')
+
+    const body = await request.json()
+    const { id, status } = body
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Lead ID is required' },
+        { status: 400 }
+      )
+    }
+
+    if (!status) {
+      return NextResponse.json(
+        { error: 'Status is required' },
+        { status: 400 }
+      )
+    }
+
+    // Update lead status in Firestore
+    const { doc, updateDoc } = await import('firebase/firestore')
+    const leadRef = doc(db, LEADS_COLLECTION, id)
+    await updateDoc(leadRef, { status })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error updating lead:', error)
+    return NextResponse.json(
+      { error: 'Failed to update lead' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    console.log('API request from', process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'server', ': /api/leads (DELETE)')
+
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Lead ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Delete lead from Firestore
+    const { doc, deleteDoc } = await import('firebase/firestore')
+    const leadRef = doc(db, LEADS_COLLECTION, id)
+    await deleteDoc(leadRef)
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error deleting lead:', error)
+    return NextResponse.json(
+      { error: 'Failed to delete lead' },
       { status: 500 }
     )
   }
