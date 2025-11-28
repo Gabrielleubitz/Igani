@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search, Mail, Phone, Calendar, MapPin, Filter, Download } from 'lucide-react'
+import { Search, Mail, Phone, Calendar, MapPin, Filter, Download, Trash2, CheckCircle, XCircle, Clock, UserX } from 'lucide-react'
 
 interface Lead {
   id: string
@@ -17,6 +17,7 @@ interface Lead {
   }
   submittedAt: string
   message?: string
+  status?: 'new' | 'contacted' | 'converted' | 'cancelled' | 'not_interested'
   createdAt: string
 }
 
@@ -25,12 +26,15 @@ export function LeadsManager() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [sourceFilter, setSourceFilter] = useState<'all' | 'landing_page' | 'main_site'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'contacted' | 'converted' | 'cancelled' | 'not_interested'>('all')
   const [stats, setStats] = useState({
     total: 0,
     landing_page: 0,
     main_site: 0,
     today: 0,
-    thisWeek: 0
+    thisWeek: 0,
+    new: 0,
+    converted: 0
   })
 
   useEffect(() => {
@@ -66,21 +70,24 @@ export function LeadsManager() {
       landing_page: leads.filter(lead => lead.source === 'landing_page').length,
       main_site: leads.filter(lead => lead.source === 'main_site').length,
       today: leads.filter(lead => new Date(lead.createdAt) >= today).length,
-      thisWeek: leads.filter(lead => new Date(lead.createdAt) >= weekAgo).length
+      thisWeek: leads.filter(lead => new Date(lead.createdAt) >= weekAgo).length,
+      new: leads.filter(lead => (lead.status || 'new') === 'new').length,
+      converted: leads.filter(lead => lead.status === 'converted').length
     }
 
     setStats(stats)
   }
 
   const filteredLeads = leads.filter(lead => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.phone && lead.phone.includes(searchTerm))
-    
+
     const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter
-    
-    return matchesSearch && matchesSource
+    const matchesStatus = statusFilter === 'all' || (lead.status || 'new') === statusFilter
+
+    return matchesSearch && matchesSource && matchesStatus
   })
 
   const formatDate = (dateString: string) => {
@@ -98,14 +105,87 @@ export function LeadsManager() {
     }
   }
 
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'new':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+      case 'contacted':
+        return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
+      case 'converted':
+        return 'bg-green-500/20 text-green-400 border-green-500/30'
+      case 'cancelled':
+        return 'bg-red-500/20 text-red-400 border-red-500/30'
+      case 'not_interested':
+        return 'bg-slate-500/20 text-slate-400 border-slate-500/30'
+      default:
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'new':
+        return <Clock className="w-3 h-3" />
+      case 'contacted':
+        return <Mail className="w-3 h-3" />
+      case 'converted':
+        return <CheckCircle className="w-3 h-3" />
+      case 'cancelled':
+        return <XCircle className="w-3 h-3" />
+      case 'not_interested':
+        return <UserX className="w-3 h-3" />
+      default:
+        return <Clock className="w-3 h-3" />
+    }
+  }
+
+  const handleStatusChange = async (leadId: string, newStatus: string) => {
+    try {
+      const response = await fetch('/api/leads', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: leadId, status: newStatus })
+      })
+
+      if (response.ok) {
+        // Update local state
+        setLeads(leads.map(lead =>
+          lead.id === leadId ? { ...lead, status: newStatus as any } : lead
+        ))
+      }
+    } catch (error) {
+      console.error('Error updating lead status:', error)
+    }
+  }
+
+  const handleDelete = async (leadId: string) => {
+    if (!confirm('Are you sure you want to delete this lead?')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/leads?id=${leadId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Update local state
+        setLeads(leads.filter(lead => lead.id !== leadId))
+      }
+    } catch (error) {
+      console.error('Error deleting lead:', error)
+    }
+  }
+
   const exportLeads = () => {
     const csvContent = [
-      ['Name', 'Email', 'Phone', 'Source', 'Submitted At', 'Message'].join(','),
+      ['Name', 'Email', 'Phone', 'Source', 'Status', 'Submitted At', 'Message'].join(','),
       ...filteredLeads.map(lead => [
         lead.name,
         lead.email,
         lead.phone || '',
         lead.source,
+        lead.status || 'new',
         lead.submittedAt,
         (lead.message || '').replace(/"/g, '""')
       ].map(field => `"${field}"`).join(','))
@@ -151,22 +231,30 @@ export function LeadsManager() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-4 mb-6">
         <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50">
           <div className="text-2xl font-bold text-white">{stats.total}</div>
-          <div className="text-slate-300 text-sm">Total Leads</div>
+          <div className="text-slate-300 text-sm">Total</div>
+        </div>
+        <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20">
+          <div className="text-2xl font-bold text-blue-400">{stats.new}</div>
+          <div className="text-blue-300 text-sm">New</div>
+        </div>
+        <div className="bg-green-500/10 rounded-lg p-4 border border-green-500/20">
+          <div className="text-2xl font-bold text-green-400">{stats.converted}</div>
+          <div className="text-green-300 text-sm">Converted</div>
         </div>
         <div className="bg-orange-500/10 rounded-lg p-4 border border-orange-500/20">
           <div className="text-2xl font-bold text-orange-400">{stats.landing_page}</div>
-          <div className="text-orange-300 text-sm">Landing Page</div>
+          <div className="text-orange-300 text-sm">Landing</div>
         </div>
-        <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20">
-          <div className="text-2xl font-bold text-blue-400">{stats.main_site}</div>
-          <div className="text-blue-300 text-sm">Main Site</div>
+        <div className="bg-cyan-500/10 rounded-lg p-4 border border-cyan-500/20">
+          <div className="text-2xl font-bold text-cyan-400">{stats.main_site}</div>
+          <div className="text-cyan-300 text-sm">Main Site</div>
         </div>
-        <div className="bg-green-500/10 rounded-lg p-4 border border-green-500/20">
-          <div className="text-2xl font-bold text-green-400">{stats.today}</div>
-          <div className="text-green-300 text-sm">Today</div>
+        <div className="bg-emerald-500/10 rounded-lg p-4 border border-emerald-500/20">
+          <div className="text-2xl font-bold text-emerald-400">{stats.today}</div>
+          <div className="text-emerald-300 text-sm">Today</div>
         </div>
         <div className="bg-purple-500/10 rounded-lg p-4 border border-purple-500/20">
           <div className="text-2xl font-bold text-purple-400">{stats.thisWeek}</div>
@@ -197,6 +285,18 @@ export function LeadsManager() {
             <option value="landing_page">Landing Page</option>
             <option value="main_site">Main Site</option>
           </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as any)}
+            className="px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-400"
+          >
+            <option value="all">All Statuses</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="converted">Converted</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="not_interested">Not Interested</option>
+          </select>
         </div>
       </div>
 
@@ -213,35 +313,62 @@ export function LeadsManager() {
               key={lead.id}
               className="bg-slate-700/50 rounded-lg p-4 border border-slate-600/50 hover:bg-slate-700/70 transition-colors duration-200"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-white font-semibold">{lead.name}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSourceBadgeColor(lead.source)}`}>
-                      {lead.source === 'landing_page' ? 'Landing Page' : 'Main Site'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-slate-300 text-sm">
-                    <div className="flex items-center gap-1">
-                      <Mail className="w-4 h-4" />
-                      {lead.email}
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <h3 className="text-white font-semibold">{lead.name}</h3>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getSourceBadgeColor(lead.source)}`}>
+                        {lead.source === 'landing_page' ? 'Landing Page' : 'Main Site'}
+                      </span>
+                      <span className={`px-2 py-1 rounded-md text-xs font-medium border flex items-center gap-1 ${getStatusBadgeColor(lead.status || 'new')}`}>
+                        {getStatusIcon(lead.status || 'new')}
+                        {(lead.status || 'new').replace('_', ' ').charAt(0).toUpperCase() + (lead.status || 'new').replace('_', ' ').slice(1)}
+                      </span>
                     </div>
-                    {lead.phone && (
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-slate-300 text-sm">
                       <div className="flex items-center gap-1">
-                        <Phone className="w-4 h-4" />
-                        {lead.phone}
+                        <Mail className="w-4 h-4" />
+                        {lead.email}
                       </div>
-                    )}
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {formatDate(lead.createdAt)}
+                      {lead.phone && (
+                        <div className="flex items-center gap-1">
+                          <Phone className="w-4 h-4" />
+                          {lead.phone}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {formatDate(lead.createdAt)}
+                      </div>
                     </div>
+                    {lead.message && (
+                      <p className="text-slate-400 text-sm mt-2 line-clamp-2">
+                        {lead.message}
+                      </p>
+                    )}
                   </div>
-                  {lead.message && (
-                    <p className="text-slate-400 text-sm mt-2 line-clamp-2">
-                      {lead.message}
-                    </p>
-                  )}
+                  <button
+                    onClick={() => handleDelete(lead.id)}
+                    className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
+                    title="Delete lead"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-slate-400 text-sm">Status:</label>
+                  <select
+                    value={lead.status || 'new'}
+                    onChange={(e) => handleStatusChange(lead.id, e.target.value)}
+                    className="px-3 py-1 bg-slate-900/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="new">New</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="converted">Converted</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="not_interested">Not Interested</option>
+                  </select>
                 </div>
               </div>
             </div>
