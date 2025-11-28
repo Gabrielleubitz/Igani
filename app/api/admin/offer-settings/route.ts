@@ -47,9 +47,9 @@ async function saveOfferSettings(settings: OfferSettings): Promise<void> {
 export async function GET() {
   try {
     console.log('API request from', process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'server', ': /api/admin/offer-settings')
-    
+
     const settings = await getOfferSettings()
-    
+
     if (!settings) {
       const defaultEndDate = new Date()
       defaultEndDate.setDate(defaultEndDate.getDate() + 7)
@@ -62,10 +62,22 @@ export async function GET() {
       }
 
       await saveOfferSettings(defaultSettings)
-      return NextResponse.json(defaultSettings)
+      return NextResponse.json(defaultSettings, {
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        }
+      })
     }
-    
-    return NextResponse.json(settings)
+
+    return NextResponse.json(settings, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    })
   } catch (error) {
     console.error('Error fetching offer settings:', error)
     return NextResponse.json(
@@ -114,12 +126,36 @@ export async function POST(request: Request) {
 
     await saveOfferSettings(settings)
 
-    return NextResponse.json(settings)
+    return NextResponse.json(settings, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    })
   } catch (error) {
     console.error('Error saving offer settings:', error)
     return NextResponse.json(
       { error: 'Failed to save offer settings' },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type'
+        }
+      }
     )
   }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type'
+    }
+  })
 }
