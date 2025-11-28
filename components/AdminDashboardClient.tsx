@@ -2,16 +2,18 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone } from 'lucide-react'
+import { LogOut, Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
 import { BannerManager } from './BannerManager'
+import { LeadsManager } from './LeadsManager'
+import { OfferSettingsManager } from './OfferSettingsManager'
 import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
-type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner'
+type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers'
 
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<TabType>('websites')
@@ -152,6 +154,28 @@ export default function AdminDashboardClient() {
               <span>Banner</span>
             </button>
             <button
+              onClick={() => setActiveTab('leads')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'leads'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Users className="w-5 h-5 flex-shrink-0" />
+              <span>Leads</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('offers')}
+              className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
+                activeTab === 'offers'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                  : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <Clock className="w-5 h-5 flex-shrink-0" />
+              <span>Offers</span>
+            </button>
+            <button
               onClick={() => setActiveTab('settings')}
               className={`flex items-center gap-2 px-4 md:px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
                 activeTab === 'settings'
@@ -240,6 +264,14 @@ export default function AdminDashboardClient() {
               </div>
             </div>
           </div>
+        )}
+
+        {activeTab === 'leads' && (
+          <LeadsManager />
+        )}
+
+        {activeTab === 'offers' && (
+          <OfferSettingsManager />
         )}
 
         {activeTab === 'settings' && (
