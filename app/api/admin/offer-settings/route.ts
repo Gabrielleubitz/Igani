@@ -3,6 +3,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
 
 interface OfferSettings {
+  title: string
   endDate: string
   isActive: boolean
   lastUpdated: string
@@ -19,6 +20,7 @@ async function getOfferSettings(): Promise<OfferSettings | null> {
     if (docSnap.exists()) {
       const data = docSnap.data()
       return {
+        title: data.title || 'Black Friday Sale',
         endDate: data.endDate,
         isActive: data.isActive,
         lastUpdated: data.lastUpdated
@@ -51,13 +53,14 @@ export async function GET() {
     if (!settings) {
       const defaultEndDate = new Date()
       defaultEndDate.setDate(defaultEndDate.getDate() + 7)
-      
+
       const defaultSettings: OfferSettings = {
+        title: 'Black Friday Sale',
         endDate: defaultEndDate.toISOString(),
         isActive: true,
         lastUpdated: new Date().toISOString()
       }
-      
+
       await saveOfferSettings(defaultSettings)
       return NextResponse.json(defaultSettings)
     }
@@ -78,7 +81,14 @@ export async function POST(request: Request) {
     
     const body = await request.json()
     console.log('Received POST data:', body)
-    const { endDate, isActive } = body
+    const { title, endDate, isActive } = body
+
+    if (!title || !title.trim()) {
+      return NextResponse.json(
+        { error: 'Title is required' },
+        { status: 400 }
+      )
+    }
 
     if (!endDate) {
       return NextResponse.json(
@@ -96,6 +106,7 @@ export async function POST(request: Request) {
     }
 
     const settings: OfferSettings = {
+      title: title.trim(),
       endDate: endDateObj.toISOString(),
       isActive: isActive !== false,
       lastUpdated: new Date().toISOString()

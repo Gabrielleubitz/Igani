@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Calendar, Clock, Save, AlertCircle, CheckCircle } from 'lucide-react'
 
 interface OfferSettings {
+  title: string
   endDate: string
   isActive: boolean
   lastUpdated?: string
@@ -11,6 +12,7 @@ interface OfferSettings {
 
 export function OfferSettingsManager() {
   const [settings, setSettings] = useState<OfferSettings | null>(null)
+  const [newTitle, setNewTitle] = useState('Black Friday Sale')
   const [newEndDate, setNewEndDate] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -40,6 +42,9 @@ export function OfferSettingsManager() {
       if (response.ok) {
         const data = await response.json()
         setSettings(data)
+        if (data.title) {
+          setNewTitle(data.title)
+        }
         if (data.endDate) {
           setNewEndDate(new Date(data.endDate).toISOString().slice(0, 16))
         }
@@ -73,6 +78,10 @@ export function OfferSettingsManager() {
   }
 
   const handleSave = async () => {
+    if (!newTitle.trim()) {
+      setMessage({ type: 'error', text: 'Please enter a title' })
+      return
+    }
     if (!newEndDate) {
       setMessage({ type: 'error', text: 'Please select an end date' })
       return
@@ -88,6 +97,7 @@ export function OfferSettingsManager() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          title: newTitle,
           endDate: new Date(newEndDate).toISOString(),
           isActive: true
         })
@@ -132,7 +142,7 @@ export function OfferSettingsManager() {
 
   return (
     <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
-      <h2 className="text-xl font-bold text-white mb-6">Black Friday Offer Settings</h2>
+      <h2 className="text-xl font-bold text-white mb-6">Offer Timer Settings</h2>
 
       {/* Current Status */}
       {settings && (
@@ -141,7 +151,7 @@ export function OfferSettingsManager() {
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-3 h-3 rounded-full ${isOfferExpired() ? 'bg-red-500' : 'bg-green-500'}`}></div>
               <h3 className="text-white font-semibold">
-                Current Status: {isOfferExpired() ? 'Expired' : 'Active'}
+                {settings.title}: {isOfferExpired() ? 'Expired' : 'Active'}
               </h3>
             </div>
             
@@ -170,7 +180,21 @@ export function OfferSettingsManager() {
       <div className="space-y-4">
         <div>
           <label className="block text-white font-medium mb-2">
-            Set New End Date & Time
+            Offer Title
+          </label>
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-900/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-cyan-400"
+            placeholder="e.g., Black Friday Sale, Summer Special, Holiday Promo"
+          />
+          <p className="text-slate-400 text-xs mt-1">This will appear in the offer timer on the landing page</p>
+        </div>
+
+        <div>
+          <label className="block text-white font-medium mb-2">
+            End Date & Time
           </label>
           <input
             type="datetime-local"
@@ -183,11 +207,11 @@ export function OfferSettingsManager() {
 
         <button
           onClick={handleSave}
-          disabled={isSaving || !newEndDate}
+          disabled={isSaving || !newEndDate || !newTitle.trim()}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Save className="w-4 h-4" />
-          {isSaving ? 'Saving...' : 'Update Offer End Date'}
+          {isSaving ? 'Saving...' : 'Update Offer Settings'}
         </button>
       </div>
 
