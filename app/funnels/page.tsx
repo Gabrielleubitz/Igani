@@ -7,6 +7,8 @@ import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import { IganiLogo } from '@/components/IganiLogo'
+import { getPromoBannerSettings } from '@/lib/firestore'
+import { PromoBannerSettings } from '@/types'
 
 export default function FunnelsPage() {
   const [formData, setFormData] = useState({
@@ -27,8 +29,9 @@ export default function FunnelsPage() {
   const [offerExpired, setOfferExpired] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showStickyCTA, setShowStickyCTA] = useState(false)
+  const [bannerSettings, setBannerSettings] = useState<PromoBannerSettings | null>(null)
 
-  // Fetch offer end date on component mount
+  // Fetch offer end date and banner settings on component mount
   useEffect(() => {
     const fetchOfferEndDate = async () => {
       try {
@@ -44,7 +47,19 @@ export default function FunnelsPage() {
       }
     }
 
+    const fetchBannerSettings = async () => {
+      try {
+        const settings = await getPromoBannerSettings()
+        if (settings && settings.enabled) {
+          setBannerSettings(settings)
+        }
+      } catch (error) {
+        console.error('Error fetching banner settings:', error)
+      }
+    }
+
     fetchOfferEndDate()
+    fetchBannerSettings()
   }, [])
 
   // Real-time countdown timer
@@ -201,6 +216,33 @@ export default function FunnelsPage() {
           <IganiLogo className="w-32 h-10" />
         </div>
       </header>
+
+      {/* Promo Banner Section */}
+      {bannerSettings && (
+        <div
+          className="relative z-20 py-3 px-4 text-center"
+          style={{
+            background: bannerSettings.backgroundGradient || bannerSettings.backgroundColor,
+            color: bannerSettings.textColor
+          }}
+        >
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-lg font-bold">
+                {bannerSettings.title}
+              </span>
+              {bannerSettings.ctaLabel && bannerSettings.ctaUrl && (
+                <a
+                  href={bannerSettings.ctaUrl}
+                  className="px-4 py-1 bg-white/20 hover:bg-white/30 rounded-full text-sm font-semibold transition-colors"
+                >
+                  {bannerSettings.ctaLabel}
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="relative z-10">
