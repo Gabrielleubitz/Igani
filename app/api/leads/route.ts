@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { kv } from '@vercel/kv'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -22,6 +23,7 @@ interface Lead {
   createdAt: string
 }
 
+// Fallback functions for local development
 async function ensureDataDir() {
   try {
     await fs.access(DATA_DIR)
@@ -30,7 +32,7 @@ async function ensureDataDir() {
   }
 }
 
-async function getLeads(): Promise<Lead[]> {
+async function getLeadsFromFile(): Promise<Lead[]> {
   try {
     await ensureDataDir()
     const data = await fs.readFile(DATA_FILE, 'utf-8')
@@ -43,9 +45,40 @@ async function getLeads(): Promise<Lead[]> {
   }
 }
 
-async function saveLeads(leads: Lead[]) {
+async function saveLeadsToFile(leads: Lead[]) {
   await ensureDataDir()
   await fs.writeFile(DATA_FILE, JSON.stringify(leads, null, 2))
+}
+
+// Main functions with KV fallback
+async function getLeads(): Promise<Lead[]> {
+  try {
+    // Try Vercel KV first (for production)
+    if (process.env.KV_REST_API_URL) {
+      const leads = await kv.get<Lead[]>('leads')
+      return leads || []
+    }
+  } catch (error) {
+    console.log('KV not available, using file system fallback:', error)
+  }
+
+  // Fallback to file system (for local development)
+  return await getLeadsFromFile()
+}
+
+async function saveLeads(leads: Lead[]) {
+  try {
+    // Try Vercel KV first (for production)
+    if (process.env.KV_REST_API_URL) {
+      await kv.set('leads', leads)
+      return
+    }
+  } catch (error) {
+    console.log('KV not available, using file system fallback:', error)
+  }
+
+  // Fallback to file system (for local development)
+  await saveLeadsToFile(leads)
 }
 
 export async function GET() {
