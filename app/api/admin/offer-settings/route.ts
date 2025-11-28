@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server'
-import { kv } from '@vercel/kv'
-import fs from 'fs/promises'
-import path from 'path'
-
-const DATA_DIR = path.join(process.cwd(), 'data')
-const DATA_FILE = path.join(DATA_DIR, 'offer-settings.json')
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 interface OfferSettings {
   endDate: string
@@ -12,62 +8,38 @@ interface OfferSettings {
   lastUpdated: string
 }
 
-// Fallback functions for local development
-async function ensureDataDir() {
-  try {
-    await fs.access(DATA_DIR)
-  } catch {
-    await fs.mkdir(DATA_DIR, { recursive: true })
-  }
-}
+const SETTINGS_COLLECTION = 'settings'
+const OFFER_SETTINGS_DOC = 'offerSettings'
 
-async function getOfferSettingsFromFile(): Promise<OfferSettings | null> {
-  try {
-    await ensureDataDir()
-    const data = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(data)
-  } catch (error) {
-    if ((error as any).code === 'ENOENT') {
-      return null
-    }
-    throw error
-  }
-}
-
-async function saveOfferSettingsToFile(settings: OfferSettings) {
-  await ensureDataDir()
-  await fs.writeFile(DATA_FILE, JSON.stringify(settings, null, 2))
-}
-
-// Main functions with KV fallback
 async function getOfferSettings(): Promise<OfferSettings | null> {
   try {
-    // Try Vercel KV first (for production)
-    if (process.env.KV_REST_API_URL) {
-      const settings = await kv.get<OfferSettings>('offer-settings')
-      return settings
-    }
-  } catch (error) {
-    console.log('KV not available, using file system fallback:', error)
-  }
+    const settingsRef = doc(db, SETTINGS_COLLECTION, OFFER_SETTINGS_DOC)
+    const docSnap = await getDoc(settingsRef)
 
-  // Fallback to file system (for local development)
-  return await getOfferSettingsFromFile()
+    if (docSnap.exists()) {
+      const data = docSnap.data()
+      return {
+        endDate: data.endDate,
+        isActive: data.isActive,
+        lastUpdated: data.lastUpdated
+      }
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error getting offer settings from Firestore:', error)
+    return null
+  }
 }
 
-async function saveOfferSettings(settings: OfferSettings) {
+async function saveOfferSettings(settings: OfferSettings): Promise<void> {
   try {
-    // Try Vercel KV first (for production)
-    if (process.env.KV_REST_API_URL) {
-      await kv.set('offer-settings', settings)
-      return
-    }
+    const settingsRef = doc(db, SETTINGS_COLLECTION, OFFER_SETTINGS_DOC)
+    await setDoc(settingsRef, settings)
   } catch (error) {
-    console.log('KV not available, using file system fallback:', error)
+    console.error('Error saving offer settings to Firestore:', error)
+    throw error
   }
-
-  // Fallback to file system (for local development)
-  await saveOfferSettingsToFile(settings)
 }
 
 export async function GET() {
