@@ -220,25 +220,150 @@ export default function FunnelsPage() {
       {/* Promo Banner Section */}
       {bannerSettings && (
         <div
-          className="relative z-20 py-3 px-4 text-center"
+          className={`relative z-20 overflow-hidden ${
+            bannerSettings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
+          }`}
           style={{
             background: bannerSettings.backgroundGradient || bannerSettings.backgroundColor,
-            color: bannerSettings.textColor
+            color: bannerSettings.textColor,
+            height: bannerSettings.subtitle && bannerSettings.animationType !== 'marquee' ? '65px' : '50px'
           }}
         >
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-center gap-3">
-              <span className="text-lg font-bold">
-                {bannerSettings.title}
-              </span>
-              {bannerSettings.ctaLabel && bannerSettings.ctaUrl && (
-                <a
-                  href={bannerSettings.ctaUrl}
-                  className="px-4 py-1 bg-white/20 hover:bg-white/30 rounded-full text-sm font-semibold transition-colors"
-                >
-                  {bannerSettings.ctaLabel}
-                </a>
-              )}
+          <div className="w-full h-full px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-center h-full gap-4 max-w-7xl mx-auto">
+              {/* Banner Content */}
+              <div className="flex-1 flex items-center justify-center gap-4 min-w-0">
+                {/* Image - Inline */}
+                {bannerSettings.image && bannerSettings.imagePosition === 'inline' && bannerSettings.animationType !== 'marquee' && (
+                  <div className="flex-shrink-0">
+                    <img
+                      src={bannerSettings.image}
+                      alt=""
+                      className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
+                    />
+                  </div>
+                )}
+
+                {/* Text Content */}
+                <div className={`flex-1 ${bannerSettings.textAlign === 'center' ? 'text-center' : 'text-left'}`}>
+                  {bannerSettings.animationType === 'marquee' ? (
+                    <div className="relative w-full overflow-hidden">
+                      <motion.div
+                        animate={{
+                          x: bannerSettings.marqueeDirection === 'right' ? ['0%', '33.33%'] : ['0%', '-33.33%']
+                        }}
+                        transition={{
+                          duration: bannerSettings.animationSpeed === 'slow' ? 25 : bannerSettings.animationSpeed === 'fast' ? 8 : 15,
+                          repeat: Infinity,
+                          ease: 'linear',
+                          repeatType: 'loop'
+                        }}
+                        className="flex whitespace-nowrap"
+                      >
+                        {[...Array(6)].map((_, i) => (
+                          <div key={i} className="inline-flex items-center mx-12 sm:mx-16">
+                            <span className={`${
+                              bannerSettings.fontSize === 'small' ? 'text-sm sm:text-base' :
+                              bannerSettings.fontSize === 'large' ? 'text-lg sm:text-xl lg:text-2xl' :
+                              'text-base sm:text-lg lg:text-xl'
+                            } font-${
+                              bannerSettings.fontWeight === '400' ? 'normal' :
+                              bannerSettings.fontWeight === '500' ? 'medium' :
+                              bannerSettings.fontWeight === '600' ? 'semibold' : 'bold'
+                            } leading-none`}>
+                              {bannerSettings.accentWord && bannerSettings.accentColor ? (
+                                <>
+                                  {bannerSettings.title.split(new RegExp(`(${bannerSettings.accentWord})`, 'gi')).map((part, idx) => {
+                                    if (part.toLowerCase() === bannerSettings.accentWord?.toLowerCase()) {
+                                      return (
+                                        <span
+                                          key={idx}
+                                          style={{ color: bannerSettings.accentColor }}
+                                          className={bannerSettings.textGlow ? 'drop-shadow-[0_0_8px_currentColor]' : ''}
+                                        >
+                                          {part}
+                                        </span>
+                                      )
+                                    }
+                                    return part
+                                  })}
+                                </>
+                              ) : bannerSettings.title}
+                            </span>
+                          </div>
+                        ))}
+                      </motion.div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-1">
+                      <h3 className={`${
+                        bannerSettings.fontSize === 'small' ? 'text-sm sm:text-base' :
+                        bannerSettings.fontSize === 'large' ? 'text-lg sm:text-xl lg:text-2xl' :
+                        'text-base sm:text-lg lg:text-xl'
+                      } font-${
+                        bannerSettings.fontWeight === '400' ? 'normal' :
+                        bannerSettings.fontWeight === '500' ? 'medium' :
+                        bannerSettings.fontWeight === '600' ? 'semibold' : 'bold'
+                      } leading-none`}>
+                        {bannerSettings.accentWord && bannerSettings.accentColor ? (
+                          <>
+                            {bannerSettings.title.split(new RegExp(`(${bannerSettings.accentWord})`, 'gi')).map((part, idx) => {
+                              if (part.toLowerCase() === bannerSettings.accentWord?.toLowerCase()) {
+                                return (
+                                  <span
+                                    key={idx}
+                                    style={{ color: bannerSettings.accentColor }}
+                                    className={bannerSettings.textGlow ? 'drop-shadow-[0_0_8px_currentColor]' : ''}
+                                  >
+                                    {part}
+                                  </span>
+                                )
+                              }
+                              return part
+                            })}
+                          </>
+                        ) : bannerSettings.title}
+                      </h3>
+                      {bannerSettings.subtitle && (
+                        <p className="text-xs sm:text-sm opacity-80 leading-tight">
+                          {bannerSettings.subtitle}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Image - Right */}
+                {bannerSettings.image && bannerSettings.imagePosition === 'right' && bannerSettings.animationType !== 'marquee' && (
+                  <div className="flex-shrink-0 hidden lg:block">
+                    <img
+                      src={bannerSettings.image}
+                      alt=""
+                      className="h-8 w-8 object-contain"
+                    />
+                  </div>
+                )}
+
+                {/* CTA Button */}
+                {bannerSettings.ctaLabel && bannerSettings.ctaUrl && (
+                  <motion.a
+                    href={bannerSettings.ctaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{
+                      backgroundColor: bannerSettings.ctaColor || 'rgba(255, 255, 255, 0.15)',
+                      color: bannerSettings.textColor
+                    }}
+                    className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap hover:border-white/40 hover:shadow-lg ${
+                      bannerSettings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
+                    }`}
+                  >
+                    {bannerSettings.ctaLabel}
+                  </motion.a>
+                )}
+              </div>
             </div>
           </div>
         </div>
