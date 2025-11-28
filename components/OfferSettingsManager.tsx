@@ -100,7 +100,9 @@ export function OfferSettingsManager() {
         
         setTimeout(() => setMessage(null), 3000)
       } else {
-        throw new Error('Failed to save settings')
+        const errorData = await response.text()
+        console.error('API Error Response:', response.status, errorData)
+        throw new Error(`Failed to save settings: ${response.status} - ${errorData}`)
       }
     } catch (error) {
       console.error('Error saving settings:', error)
