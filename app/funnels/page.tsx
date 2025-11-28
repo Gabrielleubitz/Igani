@@ -26,6 +26,7 @@ export default function FunnelsPage() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [submitStatus2, setSubmitStatus2] = useState<'idle' | 'success' | 'error'>('idle')
   const [offerEndDate, setOfferEndDate] = useState<Date | null>(null)
+  const [offerTitle, setOfferTitle] = useState('Limited Time Offer')
   const [offerExpired, setOfferExpired] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const [showStickyCTA, setShowStickyCTA] = useState(false)
@@ -38,6 +39,9 @@ export default function FunnelsPage() {
         const response = await fetch('/api/admin/offer-settings')
         if (response.ok) {
           const data = await response.json()
+          if (data.title) {
+            setOfferTitle(data.title)
+          }
           if (data.endDate) {
             setOfferEndDate(new Date(data.endDate))
           }
@@ -137,7 +141,7 @@ export default function FunnelsPage() {
             form: 'hero',
             campaign: 'black_friday'
           },
-          message: 'Black Friday landing page submission - Hero form'
+          message: `${offerTitle} landing page submission - Hero form`
         })
       })
 
@@ -172,7 +176,7 @@ export default function FunnelsPage() {
             form: 'secondary',
             campaign: 'black_friday'
           },
-          message: 'Black Friday landing page submission - Secondary form'
+          message: `${offerTitle} landing page submission - Secondary form`
         })
       })
 
@@ -205,7 +209,7 @@ export default function FunnelsPage() {
             onClick={() => document.getElementById('hero-form')?.scrollIntoView({ behavior: 'smooth' })}
             className="w-full bg-slate-800 text-yellow-400 font-bold py-3 px-6 rounded-lg text-lg hover:bg-slate-700 transition-colors"
           >
-            Get Black Friday Offer
+            Get {offerTitle}
           </button>
         </motion.div>
       )}
@@ -377,7 +381,7 @@ export default function FunnelsPage() {
             <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
               {/* Left Column - Headlines & Copy */}
               <div className="order-2 lg:order-1">
-                {/* Black Friday Urgency Badge */}
+                {/* Urgency Badge */}
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -386,7 +390,7 @@ export default function FunnelsPage() {
                 >
                   <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-400 text-slate-900 font-bold rounded-full text-sm uppercase tracking-wide shadow-2xl">
                     <Timer className="w-4 h-4" />
-                    Limited 24h Black Friday Offer
+                    Limited Time {offerTitle}
                   </span>
                 </motion.div>
 
@@ -441,7 +445,7 @@ export default function FunnelsPage() {
                 >
                   {offerExpired ? (
                     <div className="text-center">
-                      <div className="text-white font-bold text-sm mb-2">BLACK FRIDAY OFFER:</div>
+                      <div className="text-white font-bold text-sm mb-2">{offerTitle.toUpperCase()}:</div>
                       <div className="text-2xl font-black text-red-400">
                         Offer has ended
                       </div>
@@ -468,13 +472,13 @@ export default function FunnelsPage() {
                 >
                   <div className="text-center mb-6">
                     <div className="bg-yellow-400 text-slate-900 font-bold py-2 px-4 rounded-full text-sm mb-3">
-                      BLACK FRIDAY SPECIAL
+                      {offerTitle.toUpperCase()}
                     </div>
                     <h3 className="text-2xl font-black text-slate-800 mb-2">
                       Get Your Website Built Now
                     </h3>
                     <p className="text-slate-600 font-bold">
-                      Limited Time Black Friday Offer
+                      Limited Time {offerTitle}
                     </p>
                   </div>
 
@@ -715,7 +719,7 @@ export default function FunnelsPage() {
                 <strong>Only 12 spots left at this price.</strong>
               </p>
               <p className="text-xl text-slate-900 mb-8">
-                Prices return to normal after Black Friday.
+                Prices return to normal after {offerTitle}.
               </p>
             </motion.div>
 
