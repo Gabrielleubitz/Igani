@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server'
-import { kv } from '@vercel/kv'
-import fs from 'fs/promises'
-import path from 'path'
-
-const DATA_DIR = path.join(process.cwd(), 'data')
-const DATA_FILE = path.join(DATA_DIR, 'leads.json')
+import { collection, getDocs, addDoc, query, orderBy, Timestamp } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 
 interface Lead {
   id: string
@@ -17,68 +13,58 @@ interface Lead {
     utm_source?: string
     utm_campaign?: string
     referrer?: string
+    form?: string
+    campaign?: string
   }
   submittedAt: string
   message?: string
   createdAt: string
 }
 
-// Fallback functions for local development
-async function ensureDataDir() {
-  try {
-    await fs.access(DATA_DIR)
-  } catch {
-    await fs.mkdir(DATA_DIR, { recursive: true })
-  }
-}
+const LEADS_COLLECTION = 'leads'
 
-async function getLeadsFromFile(): Promise<Lead[]> {
-  try {
-    await ensureDataDir()
-    const data = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(data)
-  } catch (error) {
-    if ((error as any).code === 'ENOENT') {
-      return []
-    }
-    throw error
-  }
-}
-
-async function saveLeadsToFile(leads: Lead[]) {
-  await ensureDataDir()
-  await fs.writeFile(DATA_FILE, JSON.stringify(leads, null, 2))
-}
-
-// Main functions with KV fallback
 async function getLeads(): Promise<Lead[]> {
   try {
-    // Try Vercel KV first (for production)
-    if (process.env.KV_REST_API_URL) {
-      const leads = await kv.get<Lead[]>('leads')
-      return leads || []
-    }
-  } catch (error) {
-    console.log('KV not available, using file system fallback:', error)
-  }
+    const q = query(
+      collection(db, LEADS_COLLECTION),
+      orderBy('createdAt', 'desc')
+    )
+    const querySnapshot = await getDocs(q)
+    const leads: Lead[] = []
 
-  // Fallback to file system (for local development)
-  return await getLeadsFromFile()
+    querySnapshot.forEach((doc) => {
+      const data = doc.data()
+      leads.push({
+        id: doc.id,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        source: data.source || 'main_site',
+        sourceDetails: data.sourceDetails,
+        submittedAt: data.submittedAt,
+        message: data.message,
+        createdAt: data.createdAt
+      })
+    })
+
+    return leads
+  } catch (error) {
+    console.error('Error getting leads from Firestore:', error)
+    return []
+  }
 }
 
-async function saveLeads(leads: Lead[]) {
+async function saveLead(lead: Omit<Lead, 'id'>): Promise<string> {
   try {
-    // Try Vercel KV first (for production)
-    if (process.env.KV_REST_API_URL) {
-      await kv.set('leads', leads)
-      return
-    }
+    const docRef = await addDoc(collection(db, LEADS_COLLECTION), {
+      ...lead,
+      createdAt: new Date().toISOString()
+    })
+    return docRef.id
   } catch (error) {
-    console.log('KV not available, using file system fallback:', error)
+    console.error('Error saving lead to Firestore:', error)
+    throw error
   }
-
-  // Fallback to file system (for local development)
-  await saveLeadsToFile(leads)
 }
 
 export async function GET() {
@@ -99,7 +85,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     console.log('API request from', process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'server', ': /api/leads')
-    
+
     const body = await request.json()
     const { name, email, phone, source, sourceDetails, message } = body
 
@@ -110,8 +96,6 @@ export async function POST(request: Request) {
       )
     }
 
-    const leads = await getLeads()
-    
     const submittedAt = new Date().toLocaleString('en-US', {
       year: 'numeric',
       month: '2-digit',
@@ -122,8 +106,7 @@ export async function POST(request: Request) {
       timeZoneName: 'short'
     })
 
-    const lead: Lead = {
-      id: Date.now().toString(),
+    const leadData: Omit<Lead, 'id'> = {
       name,
       email,
       phone,
@@ -134,10 +117,9 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString()
     }
 
-    leads.unshift(lead)
-    await saveLeads(leads)
+    const leadId = await saveLead(leadData)
 
-    return NextResponse.json({ success: true, lead })
+    return NextResponse.json({ success: true, lead: { ...leadData, id: leadId } })
   } catch (error) {
     console.error('Error saving lead:', error)
     return NextResponse.json(
