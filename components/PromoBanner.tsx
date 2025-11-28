@@ -14,8 +14,8 @@ export function PromoBanner() {
   const [isPreviewMode, setIsPreviewMode] = useState(false)
 
   useEffect(() => {
-    // Don't show banner on admin pages
-    if (window.location.pathname.startsWith('/admin')) {
+    // Don't show banner on admin or funnels pages
+    if (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/funnels')) {
       setIsLoading(false)
       return
     }
