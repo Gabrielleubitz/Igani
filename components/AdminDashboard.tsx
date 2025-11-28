@@ -206,7 +206,7 @@ export function AdminDashboard({ orders }: AdminDashboardProps) {
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-xs text-slate-500">
-                      {new Date(order.createdAt).toLocaleDateString()}
+                      {new Date(order.createdAt).toLocaleDateString('en-GB')}
                     </p>
                   </td>
                   <td className="px-4 py-3">

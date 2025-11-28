@@ -159,7 +159,13 @@ export function OfferSettingsManager() {
               <div className="space-y-2 text-slate-300">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>End Date: {new Date(settings.endDate).toLocaleString()}</span>
+                  <span>End Date: {new Date(settings.endDate).toLocaleString('en-GB', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}</span>
                 </div>
                 
                 {timeRemaining && !isOfferExpired() && (

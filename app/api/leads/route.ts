@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const submittedAt = new Date().toLocaleString('en-US', {
+    const submittedAt = new Date().toLocaleString('en-GB', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',

@@ -424,7 +424,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                         </div>
                         <div className="flex items-center gap-2 text-slate-300">
                           <Calendar className="w-4 h-4 text-slate-500" />
-                          <span className="text-sm">{new Date(contact.submittedAt).toLocaleDateString()}</span>
+                          <span className="text-sm">{new Date(contact.submittedAt).toLocaleDateString('en-GB')}</span>
                         </div>
                         {linkedPackage && (
                           <div className="flex items-center gap-2 text-cyan-400">
@@ -538,7 +538,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                             {contact.followUpDate && (
                               <div className="flex items-center gap-2 text-slate-300">
                                 <Calendar className="w-4 h-4 text-slate-500" />
-                                <span>Follow-up: {new Date(contact.followUpDate).toLocaleDateString()}</span>
+                                <span>Follow-up: {new Date(contact.followUpDate).toLocaleDateString('en-GB')}</span>
                               </div>
                             )}
                           </div>

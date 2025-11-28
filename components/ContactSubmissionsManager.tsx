@@ -234,7 +234,7 @@ export function ContactSubmissionsManager({ contacts, onUpdate }: ContactSubmiss
                       </span>
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {new Date(contact.submittedAt).toLocaleDateString()}
+                        {new Date(contact.submittedAt).toLocaleDateString('en-GB')}
                       </span>
                     </div>
                   </div>

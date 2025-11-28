@@ -269,7 +269,7 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
                 </div>
                 <div className="flex items-center justify-between p-3 bg-slate-900/40 rounded-xl border border-slate-700/30">
                   <span className="text-slate-400 font-medium"><T>Launch Date</T></span>
-                  <span className="text-white font-semibold">{new Date(website.createdAt).toLocaleDateString()}</span>
+                  <span className="text-white font-semibold">{new Date(website.createdAt).toLocaleDateString('en-GB')}</span>
                 </div>
                 <div className="flex items-center justify-between p-3 bg-slate-900/40 rounded-xl border border-slate-700/30">
                   <span className="text-slate-400 font-medium"><T>Status</T></span>
