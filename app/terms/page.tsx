@@ -183,10 +183,7 @@ export default function TermsPage() {
 
       {/* Footer */}
       <div className="relative z-10">
-        <Footer 
-          siteName="IGANI" 
-          tagline="Premium web development with a personal touch" 
-        />
+        <Footer />
       </div>
     </div>
   )

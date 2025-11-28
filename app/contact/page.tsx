@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { ArrowLeft, Mail, Phone, MapPin, Send } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, MapPin, Send, MessageCircle } from 'lucide-react'
 import { IganiLogo } from '@/components/IganiLogo'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
@@ -12,8 +12,10 @@ import { saveContactSubmission } from '@/lib/firestore'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { T } from '@/components/T'
+import { useSiteSettings } from '@/hooks/useSiteSettings'
 
 export default function ContactPage() {
+  const { settings } = useSiteSettings()
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -98,39 +100,59 @@ export default function ContactPage() {
               <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-slate-950/50">
                 <h2 className="text-2xl font-bold text-white mb-6"><T>Contact Information</T></h2>
                 <div className="space-y-6">
-                  <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                      <Mail className="w-6 h-6 text-cyan-400" />
+                  {(settings.businessEmail || 'info@igani.co') && (
+                    <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
+                        <Mail className="w-6 h-6 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white mb-1"><T>Email</T></p>
+                        <a href={`mailto:${settings.businessEmail || 'info@igani.co'}`} className="text-slate-400 hover:text-cyan-400 transition-colors">
+                          {settings.businessEmail || 'info@igani.co'}
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-white mb-1"><T>Email</T></p>
-                      <a href="mailto:info@igani.co" className="text-slate-400 hover:text-cyan-400 transition-colors">
-                        info@igani.co
-                      </a>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                      <Phone className="w-6 h-6 text-cyan-400" />
+                  {(settings.businessPhone || '+972 58 44 77757') && (
+                    <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
+                        <Phone className="w-6 h-6 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white mb-1"><T>Phone</T></p>
+                        <a href={`tel:${settings.businessPhone || '+972584477757'}`} className="text-slate-400 hover:text-cyan-400 transition-colors">
+                          {settings.businessPhone || '+972 58 44 77757'}
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-white mb-1"><T>Phone</T></p>
-                      <a href="tel:+972584477757" className="text-slate-400 hover:text-cyan-400 transition-colors">
-                        +972 58 44 77757
-                      </a>
-                    </div>
-                  </div>
+                  )}
 
-                  <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
-                    <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                      <MapPin className="w-6 h-6 text-cyan-400" />
+                  {settings.whatsappNumber && (
+                    <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-lg flex items-center justify-center">
+                        <MessageCircle className="w-6 h-6 text-green-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white mb-1"><T>WhatsApp</T></p>
+                        <a href={`https://wa.me/${settings.whatsappNumber.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-green-400 transition-colors">
+                          {settings.whatsappNumber}
+                        </a>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-semibold text-white mb-1"><T>Location</T></p>
-                      <p className="text-slate-400">Netanya, Israel</p>
+                  )}
+
+                  {(settings.businessAddress || 'Netanya, Israel') && (
+                    <div className="flex items-start space-x-4 p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md hover:shadow-lg hover:shadow-cyan-500/10">
+                      <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
+                        <MapPin className="w-6 h-6 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-white mb-1"><T>Location</T></p>
+                        <p className="text-slate-400">{settings.businessAddress || 'Netanya, Israel'}</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="mt-8 p-6 bg-gradient-to-r from-cyan-600/10 to-blue-600/10 border border-cyan-500/30 rounded-xl">
@@ -260,10 +282,7 @@ export default function ContactPage() {
 
       {/* Footer */}
       <div className="relative z-10">
-        <Footer 
-          siteName="IGANI" 
-          tagline="Premium web development with a personal touch" 
-        />
+        <Footer />
       </div>
     </div>
   )
