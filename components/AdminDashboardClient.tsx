@@ -198,7 +198,7 @@ export default function AdminDashboardClient() {
               <div className="animate-in fade-in duration-300">
                 <WebsiteManager
                   websites={websites}
-                  onWebsitesChange={(newWebsites) => setWebsites(newWebsites)}
+                  onUpdate={loadData}
                 />
               </div>
             )}
@@ -206,8 +206,8 @@ export default function AdminDashboardClient() {
             {activeTab === 'inquiries' && (
               <div className="animate-in fade-in duration-300">
                 <TicketManager
-                  inquiries={inquiries}
-                  onInquiriesChange={(newInquiries) => setInquiries(newInquiries)}
+                  contacts={inquiries}
+                  onUpdate={loadData}
                 />
               </div>
             )}
