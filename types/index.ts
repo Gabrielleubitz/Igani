@@ -187,3 +187,15 @@ export interface PromoBannerSettings {
   startDate?: string;
   endDate?: string;
 }
+
+export interface Expense {
+  id: string;
+  amount: number;
+  currency: string;
+  description: string;
+  category: string;
+  date: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}

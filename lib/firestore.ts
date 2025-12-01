@@ -12,7 +12,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings } from '../types';
+import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings, Expense } from '../types';
 
 // Collections
 const SETTINGS_COLLECTION = 'settings';
@@ -24,6 +24,7 @@ const MAINTENANCE_PLANS_COLLECTION = 'maintenancePlans';
 const PACKAGE_FAQS_COLLECTION = 'faqs';
 const ABOUT_US_SECTIONS_COLLECTION = 'aboutUsSections';
 const PROMO_BANNER_COLLECTION = 'promoBanner';
+const EXPENSES_COLLECTION = 'expenses';
 
 // Settings Functions
 export const saveSettings = async (settings: SiteSettings): Promise<void> => {
@@ -843,5 +844,91 @@ export const getPromoBannerSettings = async (): Promise<PromoBannerSettings | nu
   } catch (error) {
     console.error('Error getting promo banner settings:', error);
     return null;
+  }
+};
+
+// Expense Functions
+export const saveExpense = async (
+  expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, EXPENSES_COLLECTION), {
+      ...expense,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving expense:', error);
+    throw error;
+  }
+};
+
+export const getExpenses = async (): Promise<Expense[]> => {
+  try {
+    const q = query(
+      collection(db, EXPENSES_COLLECTION),
+      orderBy('date', 'desc')
+    );
+
+    const querySnapshot = await getDocs(q);
+    const expenses: Expense[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+
+      // Helper function to safely convert timestamp to ISO string
+      const toISOString = (timestamp: any): string => {
+        if (!timestamp) return new Date().toISOString();
+        if (typeof timestamp === 'string') return timestamp;
+        if (timestamp.toDate && typeof timestamp.toDate === 'function') {
+          return timestamp.toDate().toISOString();
+        }
+        return new Date(timestamp).toISOString();
+      };
+
+      expenses.push({
+        id: doc.id,
+        amount: data.amount || 0,
+        currency: data.currency || '₪',
+        description: data.description || '',
+        category: data.category || '',
+        date: data.date || new Date().toISOString().split('T')[0],
+        notes: data.notes,
+        createdAt: data.createdAt ? toISOString(data.createdAt) : undefined,
+        updatedAt: data.updatedAt ? toISOString(data.updatedAt) : undefined
+      });
+    });
+
+    return expenses;
+  } catch (error) {
+    console.error('Error getting expenses:', error);
+    return [];
+  }
+};
+
+export const updateExpense = async (expense: Expense): Promise<void> => {
+  try {
+    const expenseRef = doc(db, EXPENSES_COLLECTION, expense.id);
+    const { id, createdAt, ...updateData } = expense;
+
+    const finalUpdateData = cleanObjectForFirestore({
+      ...updateData,
+      updatedAt: Timestamp.now()
+    });
+
+    await updateDoc(expenseRef, finalUpdateData);
+  } catch (error) {
+    console.error('Error updating expense:', error);
+    throw error;
+  }
+};
+
+export const deleteExpense = async (id: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, EXPENSES_COLLECTION, id));
+  } catch (error) {
+    console.error('Error deleting expense:', error);
+    throw error;
   }
 };
