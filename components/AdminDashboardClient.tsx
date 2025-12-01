@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3 } from 'lucide-react'
+import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
@@ -10,11 +10,12 @@ import { BannerManager } from './BannerManager'
 import { LeadsManager } from './LeadsManager'
 import { OfferSettingsManager } from './OfferSettingsManager'
 import { SiteSettingsManager } from './SiteSettingsManager'
+import { FinancialReportsManager } from './FinancialReportsManager'
 import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
-type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers'
+type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial'
 
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<TabType>('websites')
@@ -55,6 +56,7 @@ export default function AdminDashboardClient() {
     { id: 'websites', label: 'Websites', icon: Globe, count: websites.length, color: 'cyan' },
     { id: 'inquiries', label: 'Inquiries', icon: Mail, count: inquiries.length, color: 'blue' },
     { id: 'leads', label: 'Leads', icon: Users, color: 'purple' },
+    { id: 'financial', label: 'Financial Reports', icon: Receipt, color: 'emerald' },
     { id: 'testimonials', label: 'Testimonials', icon: Star, count: testimonials.length, color: 'yellow' },
     { id: 'packages', label: 'Packages', icon: Package, color: 'green' },
     { id: 'about', label: 'About Us', icon: Info, color: 'indigo' },
@@ -264,6 +266,12 @@ export default function AdminDashboardClient() {
             {activeTab === 'offers' && (
               <div className="animate-in fade-in duration-300">
                 <OfferSettingsManager />
+              </div>
+            )}
+
+            {activeTab === 'financial' && (
+              <div className="animate-in fade-in duration-300">
+                <FinancialReportsManager />
               </div>
             )}
           </div>

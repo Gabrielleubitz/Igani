@@ -8,7 +8,8 @@ import {
   assignSubmissionToDeveloper,
   updateContactSubmission,
   getPackages,
-  saveContactSubmission
+  saveContactSubmission,
+  deleteContactSubmission
 } from '@/lib/firestore'
 import {
   CheckCircle,
@@ -38,7 +39,8 @@ import {
   SortAsc,
   SortDesc,
   Eye,
-  EyeOff
+  EyeOff,
+  Trash2
 } from 'lucide-react'
 
 interface TicketManagerProps {
@@ -61,6 +63,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
   const [showTicketDetails, setShowTicketDetails] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newInquiry, setNewInquiry] = useState({
     firstName: '',
@@ -147,6 +150,11 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
       await updateContactSubmission(editingTicket)
       setEditingTicket(null)
       await onUpdate() // Make sure we wait for the update
+
+      // Show success message and scroll to top
+      setSaveSuccess('Inquiry updated successfully!')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => setSaveSuccess(null), 5000)
     } catch (error) {
       console.error('Error updating ticket:', error)
       setSaveError(error instanceof Error ? error.message : 'Failed to save ticket')
@@ -177,11 +185,28 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
         source: 'manual'
       })
       await onUpdate()
+
+      // Show success message and scroll to top
+      setSaveSuccess('Inquiry created successfully!')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => setSaveSuccess(null), 5000)
     } catch (error) {
       console.error('Error creating inquiry:', error)
       setSaveError(error instanceof Error ? error.message : 'Failed to create inquiry')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleDeleteTicket = async (id: string, clientName: string) => {
+    if (!confirm(`Are you sure you want to delete the inquiry from ${clientName}? This action cannot be undone.`)) return
+
+    try {
+      await deleteContactSubmission(id)
+      await onUpdate()
+    } catch (error) {
+      console.error('Error deleting inquiry:', error)
+      alert('Failed to delete inquiry. Please try again.')
     }
   }
 
@@ -232,6 +257,21 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
     })
 
 
+  // Currency conversion rates (to ILS)
+  const EXCHANGE_RATES: { [key: string]: number } = {
+    '₪': 1,
+    '$': 3.65,
+    '€': 4.0,
+    'USD': 3.65,
+    'EUR': 4.0,
+    'ILS': 1
+  }
+
+  const convertToILS = (amount: number, currency: string): number => {
+    const rate = EXCHANGE_RATES[currency] || EXCHANGE_RATES[currency.replace(/[^A-Z]/g, '')] || 1
+    return amount * rate
+  }
+
   // Analytics calculations
   const analytics = {
     total: contacts.length,
@@ -240,13 +280,39 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
     completed: contacts.filter(c => c.status === 'completed').length,
     cancelled: contacts.filter(c => c.status === 'cancelled').length,
     withPackages: contacts.filter(c => c.linkedPackageId).length,
-    totalQuotedValue: contacts.reduce((sum, c) => sum + (c.quotedPrice || 0), 0),
+    // Exclude cancelled projects from revenue calculation
+    totalQuotedValue: contacts
+      .filter(c => c.status !== 'cancelled')
+      .reduce((sum, c) => sum + convertToILS(c.quotedPrice || 0, c.currency || '₪'), 0),
     avgResponseTime: '2.3 days', // This would need real calculation
     urgentTickets: contacts.filter(c => c.priority === 'urgent').length
   }
 
   return (
     <div className="space-y-6">
+      {/* Success Message */}
+      <AnimatePresence>
+        {saveSuccess && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="bg-green-600/20 border border-green-500/50 text-green-400 p-4 rounded-lg flex items-center justify-between"
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">{saveSuccess}</span>
+            </div>
+            <button
+              onClick={() => setSaveSuccess(null)}
+              className="text-green-400 hover:text-green-300 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header with Search and Filters */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         <div>
@@ -286,38 +352,38 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
             className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6 mb-6"
           >
             <h3 className="text-lg font-bold text-white mb-4">Ticket Analytics</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
               <div className="bg-slate-900/60 rounded-lg p-4">
-                <div className="text-2xl font-bold text-white">{analytics.total}</div>
-                <div className="text-slate-400 text-sm">Total Tickets</div>
+                <div className="text-2xl font-bold text-white mb-1">{analytics.total}</div>
+                <div className="text-slate-400 text-xs leading-tight">Total Tickets</div>
               </div>
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
-                <div className="text-2xl font-bold text-yellow-400">{analytics.pending}</div>
-                <div className="text-slate-400 text-sm">Pending</div>
+                <div className="text-2xl font-bold text-yellow-400 mb-1">{analytics.pending}</div>
+                <div className="text-slate-400 text-xs leading-tight">Pending</div>
               </div>
               <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-400">{analytics.inProgress}</div>
-                <div className="text-slate-400 text-sm">In Progress</div>
+                <div className="text-2xl font-bold text-blue-400 mb-1">{analytics.inProgress}</div>
+                <div className="text-slate-400 text-xs leading-tight">In Progress</div>
               </div>
               <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-400">{analytics.completed}</div>
-                <div className="text-slate-400 text-sm">Completed</div>
+                <div className="text-2xl font-bold text-green-400 mb-1">{analytics.completed}</div>
+                <div className="text-slate-400 text-xs leading-tight">Completed</div>
               </div>
               <div className="bg-slate-900/60 rounded-lg p-4">
-                <div className="text-2xl font-bold text-cyan-400">{analytics.withPackages}</div>
-                <div className="text-slate-400 text-sm">Linked to Package</div>
+                <div className="text-2xl font-bold text-cyan-400 mb-1">{analytics.withPackages}</div>
+                <div className="text-slate-400 text-xs leading-tight">With Packages</div>
               </div>
               <div className="bg-slate-900/60 rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-400">₪{analytics.totalQuotedValue}</div>
-                <div className="text-slate-400 text-sm">Total Quoted</div>
+                <div className="text-xl font-bold text-green-400 mb-1">₪{analytics.totalQuotedValue.toFixed(0)}</div>
+                <div className="text-slate-400 text-xs leading-tight">Revenue (ILS)</div>
               </div>
               <div className="bg-slate-900/60 rounded-lg p-4">
-                <div className="text-2xl font-bold text-orange-400">{analytics.urgentTickets}</div>
-                <div className="text-slate-400 text-sm">Urgent</div>
+                <div className="text-2xl font-bold text-orange-400 mb-1">{analytics.urgentTickets}</div>
+                <div className="text-slate-400 text-xs leading-tight">Urgent</div>
               </div>
               <div className="bg-slate-900/60 rounded-lg p-4">
-                <div className="text-2xl font-bold text-purple-400">{analytics.avgResponseTime}</div>
-                <div className="text-slate-400 text-sm">Avg Response</div>
+                <div className="text-xl font-bold text-purple-400 mb-1">{analytics.avgResponseTime}</div>
+                <div className="text-slate-400 text-xs leading-tight">Avg Response</div>
               </div>
             </div>
           </motion.div>
@@ -442,6 +508,13 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                               {contact.currency || '₪'}{contact.quotedPrice}
                             </span>
                           </div>
+                          {contact.currency && contact.currency !== '₪' && (
+                            <div className="flex items-center gap-2 text-cyan-400">
+                              <span className="text-xs">
+                                ≈ ₪{convertToILS(contact.quotedPrice, contact.currency).toFixed(2)}
+                              </span>
+                            </div>
+                          )}
                           {contact.clientBudget && (
                             <div className="flex items-center gap-2 text-slate-300">
                               <Wallet className="w-4 h-4" />
@@ -471,6 +544,13 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                         title="Edit ticket"
                       >
                         <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTicket(contact.id, `${contact.firstName} ${contact.lastName}`)}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700/50 rounded-lg transition-all"
+                        title="Delete inquiry"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
@@ -569,6 +649,12 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-slate-800 rounded-xl border border-slate-700/50 p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+                  e.preventDefault()
+                  handleSaveTicket()
+                }
+              }}
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-white">Edit Ticket</h2>
@@ -810,6 +896,12 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-slate-800 rounded-xl border border-slate-700/50 p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey && (e.target as HTMLElement).tagName !== 'TEXTAREA') {
+                  e.preventDefault()
+                  handleCreateInquiry()
+                }
+              }}
             >
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-white">Create New Customer Inquiry</h2>
