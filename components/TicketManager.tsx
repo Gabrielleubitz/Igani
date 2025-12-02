@@ -147,7 +147,13 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
     setSaveError(null)
 
     try {
-      await updateContactSubmission(editingTicket)
+      // Auto-set completedAt if status is being set to completed
+      const ticketToSave = { ...editingTicket }
+      if (ticketToSave.status === 'completed' && !ticketToSave.completedAt) {
+        ticketToSave.completedAt = new Date().toISOString()
+      }
+
+      await updateContactSubmission(ticketToSave)
       setEditingTicket(null)
       await onUpdate() // Make sure we wait for the update
 
@@ -796,6 +802,48 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                     })}
                     className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
                   />
+                </div>
+
+                {/* Important Dates */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-white font-medium mb-2">Date Created</label>
+                    <input
+                      type="datetime-local"
+                      value={editingTicket.submittedAt ? editingTicket.submittedAt.substring(0, 16) : ''}
+                      onChange={(e) => setEditingTicket({
+                        ...editingTicket,
+                        submittedAt: e.target.value ? new Date(e.target.value).toISOString() : new Date().toISOString()
+                      })}
+                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                    />
+                    <p className="text-slate-400 text-xs mt-1">When the inquiry was received</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Date Completed</label>
+                    {editingTicket.completedAt ? (
+                      <div className="w-full px-4 py-3 bg-green-900/20 border border-green-500/30 rounded-lg text-green-400 flex items-center justify-between">
+                        <span>{new Date(editingTicket.completedAt).toLocaleDateString('en-GB')} {new Date(editingTicket.completedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingTicket({
+                            ...editingTicket,
+                            completedAt: undefined
+                          })}
+                          className="text-red-400 hover:text-red-300"
+                          title="Clear completion date"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg text-slate-500">
+                        {editingTicket.status === 'completed' ? 'Will be set on save' : 'Not completed yet'}
+                      </div>
+                    )}
+                    <p className="text-slate-400 text-xs mt-1">Auto-set when status is completed</p>
+                  </div>
                 </div>
 
                 {/* Notes */}

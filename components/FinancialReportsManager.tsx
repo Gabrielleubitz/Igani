@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ContactSubmission, Expense } from '@/types'
 import {
@@ -24,18 +24,18 @@ import {
   Receipt,
   Wallet,
   Calendar,
-  Tag,
-  FileText
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 
 interface FinancialReportsManagerProps {}
 
-// Currency conversion rates (you can update these or fetch from an API)
+// Currency conversion rates
 const EXCHANGE_RATES: { [key: string]: number } = {
   '₪': 1,
-  '$': 3.65, // 1 USD = 3.65 ILS (approximate)
-  '€': 4.0,  // 1 EUR = 4.0 ILS (approximate)
+  '$': 3.65,
+  '€': 4.0,
   'USD': 3.65,
   'EUR': 4.0,
   'ILS': 1
@@ -50,6 +50,13 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
+
+  // Month selection - default to current month
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
+
   const [newExpense, setNewExpense] = useState({
     amount: 0,
     currency: '₪',
@@ -79,32 +86,87 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
     }
   }
 
-  // Convert any currency to ILS
   const convertToILS = (amount: number, currency: string): number => {
     const rate = EXCHANGE_RATES[currency] || EXCHANGE_RATES[currency.replace(/[^A-Z]/g, '')] || 1
     return amount * rate
   }
 
-  // Calculate revenue from inquiries
-  const revenueData = inquiries
-    .filter(inquiry => inquiry.quotedPrice && inquiry.status === 'completed')
-    .map(inquiry => ({
-      ...inquiry,
-      amountInILS: convertToILS(inquiry.quotedPrice || 0, inquiry.currency || '₪')
-    }))
+  // Get all available months from data
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>()
 
-  const totalRevenueILS = revenueData.reduce((sum, item) => sum + item.amountInILS, 0)
+    // Add months from completed inquiries (use completedAt if available, otherwise submittedAt)
+    inquiries
+      .filter(inquiry => inquiry.status === 'completed' && inquiry.quotedPrice)
+      .forEach(inquiry => {
+        const date = inquiry.completedAt || inquiry.submittedAt
+        const month = date.substring(0, 7) // YYYY-MM
+        months.add(month)
+      })
 
-  // Calculate expenses
-  const expensesData = expenses.map(expense => ({
-    ...expense,
-    amountInILS: convertToILS(expense.amount, expense.currency)
-  }))
+    // Add months from expenses
+    expenses.forEach(expense => {
+      const month = expense.date.substring(0, 7)
+      months.add(month)
+    })
 
-  const totalExpensesILS = expensesData.reduce((sum, item) => sum + item.amountInILS, 0)
+    return Array.from(months).sort().reverse()
+  }, [inquiries, expenses])
 
-  // Net profit
-  const netProfitILS = totalRevenueILS - totalExpensesILS
+  // Filter data by selected month
+  const monthlyData = useMemo(() => {
+    // Revenue: use completedAt if available, otherwise fall back to submittedAt
+    const revenue = inquiries
+      .filter(inquiry => {
+        if (!inquiry.quotedPrice || inquiry.status !== 'completed') return false
+        const date = inquiry.completedAt || inquiry.submittedAt
+        return date.startsWith(selectedMonth)
+      })
+      .map(inquiry => ({
+        ...inquiry,
+        amountInILS: convertToILS(inquiry.quotedPrice || 0, inquiry.currency || '₪'),
+        displayDate: inquiry.completedAt || inquiry.submittedAt
+      }))
+
+    const monthExpenses = expenses
+      .filter(expense => expense.date.startsWith(selectedMonth))
+      .map(expense => ({
+        ...expense,
+        amountInILS: convertToILS(expense.amount, expense.currency)
+      }))
+
+    const totalRevenue = revenue.reduce((sum, item) => sum + item.amountInILS, 0)
+    const totalExpenses = monthExpenses.reduce((sum, item) => sum + item.amountInILS, 0)
+
+    return {
+      revenue,
+      expenses: monthExpenses,
+      totalRevenue,
+      totalExpenses,
+      netProfit: totalRevenue - totalExpenses
+    }
+  }, [inquiries, expenses, selectedMonth])
+
+  // Navigate months
+  const changeMonth = (direction: 'prev' | 'next') => {
+    const [year, month] = selectedMonth.split('-').map(Number)
+    const date = new Date(year, month - 1, 1)
+
+    if (direction === 'prev') {
+      date.setMonth(date.getMonth() - 1)
+    } else {
+      date.setMonth(date.getMonth() + 1)
+    }
+
+    const newMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    setSelectedMonth(newMonth)
+  }
+
+  const formatMonthDisplay = (monthStr: string) => {
+    const [year, month] = monthStr.split('-')
+    const date = new Date(parseInt(year), parseInt(month) - 1)
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+  }
 
   const handleSaveExpense = async () => {
     if (!newExpense.description || !newExpense.amount) {
@@ -128,7 +190,6 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       })
       await loadData()
 
-      // Show success message and scroll to top
       setSaveSuccess('Expense added successfully!')
       window.scrollTo({ top: 0, behavior: 'smooth' })
       setTimeout(() => setSaveSuccess(null), 5000)
@@ -151,7 +212,6 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       setEditingExpense(null)
       await loadData()
 
-      // Show success message and scroll to top
       setSaveSuccess('Expense updated successfully!')
       window.scrollTo({ top: 0, behavior: 'smooth' })
       setTimeout(() => setSaveSuccess(null), 5000)
@@ -174,130 +234,78 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
     }
   }
 
-  const exportToExcel = () => {
-    // Create a new workbook
+  const exportMonthToExcel = () => {
     const wb = XLSX.utils.book_new()
-
-    // Prepare data with proper structure
     const data: any[] = []
 
-    // Title Row
-    data.push(['IGANI - Financial Report'])
+    // Title
+    data.push([`IGANI - Financial Report - ${formatMonthDisplay(selectedMonth)}`])
     data.push([`Generated: ${new Date().toLocaleDateString('en-GB')} ${new Date().toLocaleTimeString('en-GB')}`])
-    data.push([]) // Empty row
+    data.push([])
 
     // REVENUE SECTION
-    data.push(['REVENUE', '', '', '', '', '', '', '', ''])
-    data.push(['Date', 'Project Type', 'Client Name', 'Email', 'Original Amount', 'Currency', 'Amount (ILS)', 'Status', 'Notes'])
+    data.push(['REVENUE', '', '', '', '', '', ''])
+    data.push(['Completion Date', 'Project Type', 'Client Name', 'Email', 'Original Amount', 'Currency', 'Amount (ILS)'])
 
-    revenueData.forEach(item => {
+    monthlyData.revenue.forEach(item => {
       data.push([
-        new Date(item.submittedAt).toLocaleDateString('en-GB'),
+        new Date(item.displayDate).toLocaleDateString('en-GB'),
         item.projectType,
         `${item.firstName} ${item.lastName}`,
         item.email,
         item.quotedPrice || 0,
         item.currency || '₪',
-        item.amountInILS,
-        item.status.toUpperCase(),
-        item.notes || ''
+        item.amountInILS.toFixed(2)
       ])
     })
 
-    // Subtotal row for revenue
     data.push([])
-    data.push(['', '', '', '', '', 'SUBTOTAL:', totalRevenueILS, '', ''])
-
-    data.push([]) // Empty row
+    data.push(['', '', '', '', 'SUBTOTAL:', monthlyData.totalRevenue.toFixed(2), ''])
+    data.push([])
 
     // EXPENSES SECTION
-    data.push(['EXPENSES', '', '', '', '', '', '', '', ''])
-    data.push(['Date', 'Description', 'Category', 'Original Amount', 'Currency', 'Amount (ILS)', 'Notes', '', ''])
+    data.push(['EXPENSES', '', '', '', '', '', ''])
+    data.push(['Date', 'Description', 'Category', 'Original Amount', 'Currency', 'Amount (ILS)', 'Notes'])
 
-    expensesData.forEach(item => {
+    monthlyData.expenses.forEach(item => {
       data.push([
         item.date,
         item.description,
         item.category,
         item.amount,
         item.currency,
-        item.amountInILS,
-        item.notes || '',
-        '',
-        ''
+        item.amountInILS.toFixed(2),
+        item.notes || ''
       ])
     })
 
-    // Subtotal row for expenses
     data.push([])
-    data.push(['', '', '', '', 'SUBTOTAL:', totalExpensesILS, '', '', ''])
-
-    data.push([]) // Empty row
-    data.push([]) // Empty row
-
-    // SUMMARY SECTION
-    data.push(['FINANCIAL SUMMARY', '', '', '', '', '', '', '', ''])
+    data.push(['', '', '', 'SUBTOTAL:', monthlyData.totalExpenses.toFixed(2), '', ''])
     data.push([])
-    data.push(['Total Revenue (ILS):', '', '', '', '', totalRevenueILS, '', '', ''])
-    data.push(['Total Expenses (ILS):', '', '', '', '', totalExpensesILS, '', '', ''])
-    data.push(['Net Profit/Loss (ILS):', '', '', '', '', netProfitILS, '', '', ''])
+    data.push([])
 
-    // Create worksheet
+    // SUMMARY
+    data.push(['MONTHLY SUMMARY', '', '', '', '', '', ''])
+    data.push([])
+    data.push(['Total Revenue (ILS):', '', '', '', '', monthlyData.totalRevenue.toFixed(2), ''])
+    data.push(['Total Expenses (ILS):', '', '', '', '', monthlyData.totalExpenses.toFixed(2), ''])
+    data.push(['Net Profit/Loss (ILS):', '', '', '', '', monthlyData.netProfit.toFixed(2), ''])
+
     const ws = XLSX.utils.aoa_to_sheet(data)
 
-    // Set column widths
     ws['!cols'] = [
-      { wch: 12 },  // Date
-      { wch: 25 },  // Description/Project
-      { wch: 20 },  // Client/Category
-      { wch: 25 },  // Email
-      { wch: 15 },  // Amount
-      { wch: 10 },  // Currency
-      { wch: 15 },  // Amount ILS
-      { wch: 12 },  // Status
-      { wch: 30 }   // Notes
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 20 },
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 30 }
     ]
 
-    // Apply styles using cell references
-    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+    XLSX.utils.book_append_sheet(wb, ws, formatMonthDisplay(selectedMonth).substring(0, 31))
 
-    // Style title (A1)
-    if (ws['A1']) {
-      ws['A1'].s = {
-        font: { bold: true, sz: 16, color: { rgb: '0D9488' } },
-        alignment: { horizontal: 'left' }
-      }
-    }
-
-    // Style headers
-    const revenueHeaderRow = 5
-    const expensesHeaderRow = revenueData.length + 9
-
-    for (let col = 0; col <= 8; col++) {
-      const cellRef = XLSX.utils.encode_cell({ r: revenueHeaderRow, c: col })
-      if (ws[cellRef]) {
-        ws[cellRef].s = {
-          font: { bold: true, color: { rgb: 'FFFFFF' } },
-          fill: { fgColor: { rgb: '059669' } },
-          alignment: { horizontal: 'center' }
-        }
-      }
-
-      const expCellRef = XLSX.utils.encode_cell({ r: expensesHeaderRow, c: col })
-      if (ws[expCellRef]) {
-        ws[expCellRef].s = {
-          font: { bold: true, color: { rgb: 'FFFFFF' } },
-          fill: { fgColor: { rgb: 'DC2626' } },
-          alignment: { horizontal: 'center' }
-        }
-      }
-    }
-
-    // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Financial Report')
-
-    // Generate file and download
-    const fileName = `IGANI_Financial_Report_${new Date().toISOString().split('T')[0]}.xlsx`
+    const fileName = `IGANI_Financial_${selectedMonth}.xlsx`
     XLSX.writeFile(wb, fileName)
   }
 
@@ -338,7 +346,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-white mb-2">Financial Reports</h2>
-          <p className="text-slate-400 text-sm">Track revenue, expenses, and export professional Excel reports for your accountant</p>
+          <p className="text-slate-400 text-sm">Track monthly revenue, expenses, and export reports</p>
         </div>
 
         <div className="flex items-center gap-4">
@@ -350,13 +358,55 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
             Add Expense
           </button>
           <button
-            onClick={exportToExcel}
+            onClick={exportMonthToExcel}
             className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all duration-300 shadow-lg shadow-green-500/20 font-semibold"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            Export Excel
+            Export Month
           </button>
         </div>
+      </div>
+
+      {/* Month Selector */}
+      <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 p-6">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => changeMonth('prev')}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          <div className="flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-2xl font-bold text-white">{formatMonthDisplay(selectedMonth)}</h3>
+          </div>
+
+          <button
+            onClick={() => changeMonth('next')}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
+
+        {availableMonths.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {availableMonths.map(month => (
+              <button
+                key={month}
+                onClick={() => setSelectedMonth(month)}
+                className={`px-3 py-1 text-sm rounded-lg transition-all ${
+                  month === selectedMonth
+                    ? 'bg-cyan-600 text-white'
+                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {formatMonthDisplay(month)}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -368,10 +418,10 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-2">
-            ₪{totalRevenueILS.toFixed(2)}
+            ₪{monthlyData.totalRevenue.toFixed(2)}
           </div>
-          <div className="text-slate-300 text-sm">Total Revenue (ILS)</div>
-          <div className="text-slate-400 text-xs mt-2">{revenueData.length} completed projects</div>
+          <div className="text-slate-300 text-sm">Monthly Revenue</div>
+          <div className="text-slate-400 text-xs mt-2">{monthlyData.revenue.length} completed projects</div>
         </div>
 
         <div className="bg-gradient-to-br from-red-600/20 to-red-500/10 border border-red-500/30 rounded-2xl p-6">
@@ -381,37 +431,25 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-2">
-            ₪{totalExpensesILS.toFixed(2)}
+            ₪{monthlyData.totalExpenses.toFixed(2)}
           </div>
-          <div className="text-slate-300 text-sm">Total Expenses (ILS)</div>
-          <div className="text-slate-400 text-xs mt-2">{expenses.length} recorded expenses</div>
+          <div className="text-slate-300 text-sm">Monthly Expenses</div>
+          <div className="text-slate-400 text-xs mt-2">{monthlyData.expenses.length} recorded expenses</div>
         </div>
 
-        <div className={`bg-gradient-to-br ${netProfitILS >= 0 ? 'from-cyan-600/20 to-blue-500/10 border-cyan-500/30' : 'from-orange-600/20 to-orange-500/10 border-orange-500/30'} border rounded-2xl p-6`}>
+        <div className={`bg-gradient-to-br ${monthlyData.netProfit >= 0 ? 'from-cyan-600/20 to-blue-500/10 border-cyan-500/30' : 'from-orange-600/20 to-orange-500/10 border-orange-500/30'} border rounded-2xl p-6`}>
           <div className="flex items-center justify-between mb-4">
-            <div className={`w-12 h-12 ${netProfitILS >= 0 ? 'bg-cyan-500/20' : 'bg-orange-500/20'} rounded-xl flex items-center justify-center`}>
-              <DollarSign className={`w-6 h-6 ${netProfitILS >= 0 ? 'text-cyan-400' : 'text-orange-400'}`} />
+            <div className={`w-12 h-12 ${monthlyData.netProfit >= 0 ? 'bg-cyan-500/20' : 'bg-orange-500/20'} rounded-xl flex items-center justify-center`}>
+              <DollarSign className={`w-6 h-6 ${monthlyData.netProfit >= 0 ? 'text-cyan-400' : 'text-orange-400'}`} />
             </div>
           </div>
           <div className="text-3xl font-bold text-white mb-2">
-            ₪{netProfitILS.toFixed(2)}
+            ₪{monthlyData.netProfit.toFixed(2)}
           </div>
-          <div className="text-slate-300 text-sm">Net Profit (ILS)</div>
+          <div className="text-slate-300 text-sm">Net Profit</div>
           <div className="text-slate-400 text-xs mt-2">
-            {netProfitILS >= 0 ? 'Positive balance' : 'Negative balance'}
+            {monthlyData.netProfit >= 0 ? 'Positive balance' : 'Negative balance'}
           </div>
-        </div>
-      </div>
-
-      {/* Exchange Rates Info */}
-      <div className="bg-slate-800/60 rounded-xl border border-slate-700/50 p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <FileSpreadsheet className="w-4 h-4 text-cyan-400" />
-          <h3 className="text-white font-medium text-sm">Currency Conversion Rates (to ILS)</h3>
-        </div>
-        <div className="flex gap-4 text-sm text-slate-300">
-          <span>1 USD = ₪3.65</span>
-          <span>1 EUR = ₪4.00</span>
         </div>
       </div>
 
@@ -419,16 +457,16 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Wallet className="w-5 h-5 text-green-400" />
-          Revenue Details
+          Revenue - {formatMonthDisplay(selectedMonth)}
         </h3>
         <div className="space-y-3">
-          {revenueData.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-8">No completed projects with revenue yet</p>
+          {monthlyData.revenue.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-8">No revenue this month</p>
           ) : (
-            revenueData.map((item) => (
+            monthlyData.revenue.map((item) => (
               <div
                 key={item.id}
-                className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/50"
+                className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/50 hover:border-green-500/30 transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -444,7 +482,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
                     <div className="flex items-center gap-4 text-sm text-slate-400">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {new Date(item.submittedAt).toLocaleDateString('en-GB')}
+                        {new Date(item.displayDate).toLocaleDateString('en-GB')}
                       </span>
                       <span className="flex items-center gap-1">
                         <Receipt className="w-4 h-4" />
@@ -453,7 +491,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-slate-400 mb-1">ILS Equivalent</div>
+                    <div className="text-sm text-slate-400 mb-1">ILS</div>
                     <div className="text-xl font-bold text-green-400">
                       ₪{item.amountInILS.toFixed(2)}
                     </div>
@@ -474,16 +512,16 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Receipt className="w-5 h-5 text-red-400" />
-          Expenses
+          Expenses - {formatMonthDisplay(selectedMonth)}
         </h3>
         <div className="space-y-3">
-          {expenses.length === 0 ? (
-            <p className="text-slate-400 text-sm text-center py-8">No expenses recorded yet</p>
+          {monthlyData.expenses.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-8">No expenses this month</p>
           ) : (
-            expensesData.map((expense) => (
+            monthlyData.expenses.map((expense) => (
               <div
                 key={expense.id}
-                className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/50"
+                className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/50 hover:border-red-500/30 transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
