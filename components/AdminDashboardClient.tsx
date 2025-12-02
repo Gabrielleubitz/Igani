@@ -11,6 +11,7 @@ import { LeadsManager } from './LeadsManager'
 import { OfferSettingsManager } from './OfferSettingsManager'
 import { SiteSettingsManager } from './SiteSettingsManager'
 import { FinancialReportsManager } from './FinancialReportsManager'
+import { PackagesManager } from './PackagesManager'
 import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
@@ -223,24 +224,24 @@ export default function AdminDashboardClient() {
 
             {activeTab === 'packages' && (
               <div className="animate-in fade-in duration-300">
-                <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
-                  <iframe
-                    src="/admin/packages"
-                    className="w-full h-[calc(100vh-200px)] border-0 rounded-lg"
-                    title="Packages Manager"
-                  />
-                </div>
+                <PackagesManager />
               </div>
             )}
 
             {activeTab === 'about' && (
               <div className="animate-in fade-in duration-300">
                 <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
-                  <iframe
-                    src="/admin/about"
-                    className="w-full h-[calc(100vh-200px)] border-0 rounded-lg"
-                    title="About Manager"
-                  />
+                  <p className="text-slate-300 text-center py-8">
+                    About Us management coming soon. For now, use{' '}
+                    <a
+                      href="/admin/about"
+                      target="_blank"
+                      className="text-cyan-400 hover:text-cyan-300 underline"
+                    >
+                      /admin/about
+                    </a>
+                    {' '}in a new tab.
+                  </p>
                 </div>
               </div>
             )}
