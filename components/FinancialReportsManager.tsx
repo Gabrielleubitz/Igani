@@ -51,7 +51,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
 
-  // Month selection - default to current month
+  // Month selection - default to current month, or 'all-time'
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -95,11 +95,11 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
   const availableMonths = useMemo(() => {
     const months = new Set<string>()
 
-    // Add months from completed inquiries (use completedAt if available, otherwise submittedAt)
+    // Add months from completed inquiries (use paidAt if available, otherwise completedAt or submittedAt)
     inquiries
       .filter(inquiry => inquiry.status === 'completed' && inquiry.quotedPrice)
       .forEach(inquiry => {
-        const date = inquiry.completedAt || inquiry.submittedAt
+        const date = inquiry.paidAt || inquiry.completedAt || inquiry.submittedAt
         const month = date.substring(0, 7) // YYYY-MM
         months.add(month)
       })
@@ -113,32 +113,37 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
     return Array.from(months).sort().reverse()
   }, [inquiries, expenses])
 
-  // Filter data by selected month
+  // Filter data by selected month or all-time
   const monthlyData = useMemo(() => {
-    // Revenue: use completedAt if available, otherwise fall back to submittedAt
+    const isAllTime = selectedMonth === 'all-time'
+
+    // Revenue: use paidAt if available, otherwise completedAt or submittedAt
     const revenue = inquiries
       .filter(inquiry => {
         if (!inquiry.quotedPrice || inquiry.status !== 'completed') return false
-        const date = inquiry.completedAt || inquiry.submittedAt
+        if (isAllTime) return true
+        const date = inquiry.paidAt || inquiry.completedAt || inquiry.submittedAt
         return date.startsWith(selectedMonth)
       })
       .map(inquiry => ({
         ...inquiry,
         amountInILS: convertToILS(inquiry.quotedPrice || 0, inquiry.currency || '₪'),
-        displayDate: inquiry.completedAt || inquiry.submittedAt
+        displayDate: inquiry.paidAt || inquiry.completedAt || inquiry.submittedAt,
+        paymentDate: inquiry.paidAt
       }))
 
-    // Potential Revenue: projects in progress with quoted prices (all months, not filtered by month)
+    // Potential Revenue: ALL projects in progress (always show all, not filtered by month)
     const potentialRevenue = inquiries
-      .filter(inquiry => inquiry.status === 'in-progress' && inquiry.quotedPrice)
+      .filter(inquiry => inquiry.status === 'in-progress')
       .map(inquiry => ({
         ...inquiry,
         amountInILS: convertToILS(inquiry.quotedPrice || 0, inquiry.currency || '₪'),
-        displayDate: inquiry.submittedAt
+        displayDate: inquiry.submittedAt,
+        needsPrice: !inquiry.quotedPrice
       }))
 
     const monthExpenses = expenses
-      .filter(expense => expense.date.startsWith(selectedMonth))
+      .filter(expense => isAllTime || expense.date.startsWith(selectedMonth))
       .map(expense => ({
         ...expense,
         amountInILS: convertToILS(expense.amount, expense.currency)
@@ -146,7 +151,9 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
 
     const totalRevenue = revenue.reduce((sum, item) => sum + item.amountInILS, 0)
     const totalExpenses = monthExpenses.reduce((sum, item) => sum + item.amountInILS, 0)
-    const totalPotentialRevenue = potentialRevenue.reduce((sum, item) => sum + item.amountInILS, 0)
+    const totalPotentialRevenue = potentialRevenue
+      .filter(item => !item.needsPrice)
+      .reduce((sum, item) => sum + item.amountInILS, 0)
 
     return {
       revenue,
@@ -175,6 +182,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
   }
 
   const formatMonthDisplay = (monthStr: string) => {
+    if (monthStr === 'all-time') return 'All Time'
     const [year, month] = monthStr.split('-')
     const date = new Date(parseInt(year), parseInt(month) - 1)
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
@@ -384,7 +392,10 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
         <div className="flex items-center justify-between">
           <button
             onClick={() => changeMonth('prev')}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all"
+            className={`p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all ${
+              selectedMonth === 'all-time' ? 'invisible' : ''
+            }`}
+            disabled={selectedMonth === 'all-time'}
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -396,29 +407,40 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
 
           <button
             onClick={() => changeMonth('next')}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all"
+            className={`p-2 text-slate-400 hover:text-white hover:bg-slate-700/50 rounded-lg transition-all ${
+              selectedMonth === 'all-time' ? 'invisible' : ''
+            }`}
+            disabled={selectedMonth === 'all-time'}
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
 
-        {availableMonths.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {availableMonths.map(month => (
-              <button
-                key={month}
-                onClick={() => setSelectedMonth(month)}
-                className={`px-3 py-1 text-sm rounded-lg transition-all ${
-                  month === selectedMonth
-                    ? 'bg-cyan-600 text-white'
-                    : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
-                }`}
-              >
-                {formatMonthDisplay(month)}
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedMonth('all-time')}
+            className={`px-4 py-1.5 text-sm font-semibold rounded-lg transition-all ${
+              selectedMonth === 'all-time'
+                ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg'
+                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+            }`}
+          >
+            All Time
+          </button>
+          {availableMonths.length > 0 && availableMonths.map(month => (
+            <button
+              key={month}
+              onClick={() => setSelectedMonth(month)}
+              className={`px-3 py-1 text-sm rounded-lg transition-all ${
+                month === selectedMonth
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              {formatMonthDisplay(month)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -446,7 +468,9 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
             ₪{monthlyData.totalPotentialRevenue.toFixed(2)}
           </div>
           <div className="text-slate-300 text-sm">Potential Revenue</div>
-          <div className="text-slate-400 text-xs mt-2">{monthlyData.potentialRevenue.length} in-progress projects</div>
+          <div className="text-slate-400 text-xs mt-2">
+            {monthlyData.potentialRevenue.filter(p => !p.needsPrice).length} quoted / {monthlyData.potentialRevenue.length} in progress
+          </div>
         </div>
 
         <div className="bg-gradient-to-br from-red-600/20 to-red-500/10 border border-red-500/30 rounded-2xl p-6">
@@ -482,7 +506,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Wallet className="w-5 h-5 text-green-400" />
-          Revenue - {formatMonthDisplay(selectedMonth)}
+          Revenue{selectedMonth === 'all-time' ? ' - All Time' : ` - ${formatMonthDisplay(selectedMonth)}`}
         </h3>
         <div className="space-y-3">
           {monthlyData.revenue.length === 0 ? (
@@ -508,6 +532,11 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {new Date(item.displayDate).toLocaleDateString('en-GB')}
+                        {item.paymentDate && (
+                          <span className="ml-1 text-xs px-1.5 py-0.5 bg-green-500/10 text-green-400 rounded border border-green-500/30" title="Payment date recorded">
+                            Paid
+                          </span>
+                        )}
                       </span>
                       <span className="flex items-center gap-1">
                         <Receipt className="w-4 h-4" />
@@ -577,14 +606,23 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-slate-400 mb-1">ILS</div>
-                    <div className="text-xl font-bold text-purple-400">
-                      ₪{item.amountInILS.toFixed(2)}
-                    </div>
-                    {item.currency !== '₪' && (
-                      <div className="text-xs text-slate-500 mt-1">
-                        ({item.currency}{item.quotedPrice})
+                    {item.needsPrice ? (
+                      <div className="text-sm text-orange-400 font-medium">
+                        <span className="block mb-1">⚠️ No Price Set</span>
+                        <span className="text-xs text-slate-400">Add quoted price to track</span>
                       </div>
+                    ) : (
+                      <>
+                        <div className="text-sm text-slate-400 mb-1">ILS</div>
+                        <div className="text-xl font-bold text-purple-400">
+                          ₪{item.amountInILS.toFixed(2)}
+                        </div>
+                        {item.currency !== '₪' && (
+                          <div className="text-xs text-slate-500 mt-1">
+                            ({item.currency}{item.quotedPrice})
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -598,7 +636,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
         <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
           <Receipt className="w-5 h-5 text-red-400" />
-          Expenses - {formatMonthDisplay(selectedMonth)}
+          Expenses{selectedMonth === 'all-time' ? ' - All Time' : ` - ${formatMonthDisplay(selectedMonth)}`}
         </h3>
         <div className="space-y-3">
           {monthlyData.expenses.length === 0 ? (
