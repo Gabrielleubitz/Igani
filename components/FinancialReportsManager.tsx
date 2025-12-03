@@ -128,6 +128,15 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
         displayDate: inquiry.completedAt || inquiry.submittedAt
       }))
 
+    // Potential Revenue: projects in progress with quoted prices (all months, not filtered by month)
+    const potentialRevenue = inquiries
+      .filter(inquiry => inquiry.status === 'in-progress' && inquiry.quotedPrice)
+      .map(inquiry => ({
+        ...inquiry,
+        amountInILS: convertToILS(inquiry.quotedPrice || 0, inquiry.currency || '₪'),
+        displayDate: inquiry.submittedAt
+      }))
+
     const monthExpenses = expenses
       .filter(expense => expense.date.startsWith(selectedMonth))
       .map(expense => ({
@@ -137,12 +146,15 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
 
     const totalRevenue = revenue.reduce((sum, item) => sum + item.amountInILS, 0)
     const totalExpenses = monthExpenses.reduce((sum, item) => sum + item.amountInILS, 0)
+    const totalPotentialRevenue = potentialRevenue.reduce((sum, item) => sum + item.amountInILS, 0)
 
     return {
       revenue,
+      potentialRevenue,
       expenses: monthExpenses,
       totalRevenue,
       totalExpenses,
+      totalPotentialRevenue,
       netProfit: totalRevenue - totalExpenses
     }
   }, [inquiries, expenses, selectedMonth])
@@ -410,7 +422,7 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-gradient-to-br from-green-600/20 to-green-500/10 border border-green-500/30 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
@@ -422,6 +434,19 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
           </div>
           <div className="text-slate-300 text-sm">Monthly Revenue</div>
           <div className="text-slate-400 text-xs mt-2">{monthlyData.revenue.length} completed projects</div>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-600/20 to-purple-500/10 border border-purple-500/30 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+              <Clock className="w-6 h-6 text-purple-400" />
+            </div>
+          </div>
+          <div className="text-3xl font-bold text-white mb-2">
+            ₪{monthlyData.totalPotentialRevenue.toFixed(2)}
+          </div>
+          <div className="text-slate-300 text-sm">Potential Revenue</div>
+          <div className="text-slate-400 text-xs mt-2">{monthlyData.potentialRevenue.length} in-progress projects</div>
         </div>
 
         <div className="bg-gradient-to-br from-red-600/20 to-red-500/10 border border-red-500/30 rounded-2xl p-6">
@@ -493,6 +518,67 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
                   <div className="text-right">
                     <div className="text-sm text-slate-400 mb-1">ILS</div>
                     <div className="text-xl font-bold text-green-400">
+                      ₪{item.amountInILS.toFixed(2)}
+                    </div>
+                    {item.currency !== '₪' && (
+                      <div className="text-xs text-slate-500 mt-1">
+                        ({item.currency}{item.quotedPrice})
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Potential Revenue Details */}
+      <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
+        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <Clock className="w-5 h-5 text-purple-400" />
+          Potential Revenue - In Progress Projects
+        </h3>
+        <div className="space-y-3">
+          {monthlyData.potentialRevenue.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-8">No in-progress projects at the moment</p>
+          ) : (
+            monthlyData.potentialRevenue.map((item) => (
+              <div
+                key={item.id}
+                className="bg-slate-900/60 rounded-lg p-4 border border-slate-700/50 hover:border-purple-500/30 transition-all"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h4 className="text-white font-semibold">
+                        {item.firstName} {item.lastName}
+                      </h4>
+                      <span className="text-xs px-2 py-1 bg-purple-500/10 text-purple-400 rounded-full border border-purple-500/30">
+                        In Progress
+                      </span>
+                    </div>
+                    <p className="text-slate-300 text-sm mb-2">{item.projectType}</p>
+                    <div className="flex items-center gap-4 text-sm text-slate-400">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        Started: {new Date(item.displayDate).toLocaleDateString('en-GB')}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Receipt className="w-4 h-4" />
+                        {item.currency}{item.quotedPrice}
+                      </span>
+                      {item.estimatedDelivery && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          Due: {new Date(item.estimatedDelivery).toLocaleDateString('en-GB')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-slate-400 mb-1">ILS</div>
+                    <div className="text-xl font-bold text-purple-400">
                       ₪{item.amountInILS.toFixed(2)}
                     </div>
                     {item.currency !== '₪' && (
