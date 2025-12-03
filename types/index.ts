@@ -47,6 +47,7 @@ export interface ContactSubmission {
   cancellationReason?: string;
   statusUpdatedAt?: string;
   completedAt?: string; // Date when project was actually completed
+  paidAt?: string; // Date when payment was received (for financial tracking)
   // Ticket management fields
   linkedPackageId?: string;
   linkedPackageName?: string;

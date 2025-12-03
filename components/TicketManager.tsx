@@ -846,6 +846,24 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                   </div>
                 </div>
 
+                {/* Payment Date */}
+                <div>
+                  <label className="block text-white font-medium mb-2 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-green-400" />
+                    Payment Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editingTicket.paidAt ? editingTicket.paidAt.substring(0, 10) : ''}
+                    onChange={(e) => setEditingTicket({
+                      ...editingTicket,
+                      paidAt: e.target.value ? new Date(e.target.value).toISOString() : undefined
+                    })}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                  />
+                  <p className="text-slate-400 text-xs mt-1">When payment was received (for financial reporting)</p>
+                </div>
+
                 {/* Notes */}
                 <div>
                   <label className="block text-white font-medium mb-2">Internal Notes</label>
