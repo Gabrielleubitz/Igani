@@ -64,7 +64,9 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
   const [quickEditingTicket, setQuickEditingTicket] = useState<string | null>(null)
   const [quickEditData, setQuickEditData] = useState<{ paidAt?: string; buildingFee?: number }>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [isQuickSaving, setIsQuickSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [quickEditError, setQuickEditError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newInquiry, setNewInquiry] = useState({
@@ -138,6 +140,8 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
   }
 
   const handleEditTicket = (ticket: ContactSubmission) => {
+    console.log('Opening edit modal with ticket:', ticket)
+    console.log('paidAt value:', ticket.paidAt)
     setEditingTicket({ ...ticket })
     setSaveError(null)
   }
@@ -227,28 +231,35 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
   }
 
   const handleSaveQuickEdit = async (contact: ContactSubmission) => {
-    setIsSaving(true)
-    setSaveError(null)
+    setIsQuickSaving(true)
+    setQuickEditError(null)
 
     try {
       const updatedContact = {
         ...contact,
-        paidAt: quickEditData.paidAt ? new Date(quickEditData.paidAt).toISOString() : undefined,
-        buildingFee: quickEditData.buildingFee
+        paidAt: quickEditData.paidAt && quickEditData.paidAt.trim() !== ''
+          ? new Date(quickEditData.paidAt).toISOString()
+          : undefined,
+        buildingFee: quickEditData.buildingFee || undefined
       }
 
+      console.log('Saving quick edit:', updatedContact)
       await updateContactSubmission(updatedContact)
+
+      // Close quick edit and refresh data
       setQuickEditingTicket(null)
+      setQuickEditData({})
       await onUpdate()
 
+      // Show success message
       setSaveSuccess('Payment info updated successfully!')
       window.scrollTo({ top: 0, behavior: 'smooth' })
       setTimeout(() => setSaveSuccess(null), 5000)
     } catch (error) {
       console.error('Error updating ticket:', error)
-      setSaveError(error instanceof Error ? error.message : 'Failed to save changes')
+      setQuickEditError(error instanceof Error ? error.message : 'Failed to save changes')
     } finally {
-      setIsSaving(false)
+      setIsQuickSaving(false)
     }
   }
 
@@ -683,9 +694,9 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                         </div>
                       </div>
 
-                      {saveError && (
+                      {quickEditError && (
                         <div className="mb-4 p-3 bg-red-600/20 border border-red-500/50 text-red-400 rounded-lg text-sm">
-                          {saveError}
+                          {quickEditError}
                         </div>
                       )}
 
@@ -693,19 +704,21 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                         <button
                           onClick={() => {
                             setQuickEditingTicket(null)
-                            setSaveError(null)
+                            setQuickEditData({})
+                            setQuickEditError(null)
                           }}
-                          className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                          disabled={isQuickSaving}
+                          className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={() => handleSaveQuickEdit(contact)}
-                          disabled={isSaving}
+                          disabled={isQuickSaving}
                           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-cyan-600 text-white rounded-lg hover:from-green-700 hover:to-cyan-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                         >
                           <Save className="w-4 h-4" />
-                          {isSaving ? 'Saving...' : 'Save Changes'}
+                          {isQuickSaving ? 'Saving...' : 'Save Changes'}
                         </button>
                       </div>
                     </motion.div>
