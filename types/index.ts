@@ -52,6 +52,7 @@ export interface ContactSubmission {
   linkedPackageId?: string;
   linkedPackageName?: string;
   quotedPrice?: number;
+  buildingFee?: number; // Separate building/setup fee
   currency?: string;
   notes?: string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';

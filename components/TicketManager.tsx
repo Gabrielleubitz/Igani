@@ -61,6 +61,8 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
   const [sortBy, setSortBy] = useState<'date' | 'name' | 'status' | 'priority'>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [showTicketDetails, setShowTicketDetails] = useState<string | null>(null)
+  const [quickEditingTicket, setQuickEditingTicket] = useState<string | null>(null)
+  const [quickEditData, setQuickEditData] = useState<{ paidAt?: string; buildingFee?: number }>({})
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null)
@@ -213,6 +215,40 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
     } catch (error) {
       console.error('Error deleting inquiry:', error)
       alert('Failed to delete inquiry. Please try again.')
+    }
+  }
+
+  const handleQuickEdit = (contact: ContactSubmission) => {
+    setQuickEditingTicket(contact.id)
+    setQuickEditData({
+      paidAt: contact.paidAt ? contact.paidAt.substring(0, 10) : '',
+      buildingFee: contact.buildingFee
+    })
+  }
+
+  const handleSaveQuickEdit = async (contact: ContactSubmission) => {
+    setIsSaving(true)
+    setSaveError(null)
+
+    try {
+      const updatedContact = {
+        ...contact,
+        paidAt: quickEditData.paidAt ? new Date(quickEditData.paidAt).toISOString() : undefined,
+        buildingFee: quickEditData.buildingFee
+      }
+
+      await updateContactSubmission(updatedContact)
+      setQuickEditingTicket(null)
+      await onUpdate()
+
+      setSaveSuccess('Payment info updated successfully!')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      setTimeout(() => setSaveSuccess(null), 5000)
+    } catch (error) {
+      console.error('Error updating ticket:', error)
+      setSaveError(error instanceof Error ? error.message : 'Failed to save changes')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -512,12 +548,15 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                             <DollarSign className="w-4 h-4" />
                             <span className="font-semibold">
                               {contact.currency || '₪'}{contact.quotedPrice}
+                              {contact.buildingFee && (
+                                <span className="text-cyan-400"> + {contact.currency || '₪'}{contact.buildingFee}</span>
+                              )}
                             </span>
                           </div>
                           {contact.currency && contact.currency !== '₪' && (
                             <div className="flex items-center gap-2 text-cyan-400">
                               <span className="text-xs">
-                                ≈ ₪{convertToILS(contact.quotedPrice, contact.currency).toFixed(2)}
+                                ≈ ₪{convertToILS((contact.quotedPrice || 0) + (contact.buildingFee || 0), contact.currency).toFixed(2)}
                               </span>
                             </div>
                           )}
@@ -543,6 +582,13 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                         title={isExpanded ? 'Hide details' : 'Show details'}
                       >
                         {isExpanded ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => handleQuickEdit(contact)}
+                        className="p-2 text-slate-400 hover:text-green-400 hover:bg-slate-700/50 rounded-lg transition-all"
+                        title="Quick edit payment info"
+                      >
+                        <DollarSign className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleEditTicket(contact)}
@@ -581,7 +627,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                           Follow-up Due
                         </span>
                       )}
-                      
+
                       <select
                         value={contact.status}
                         onChange={(e) => handleStatusChange(contact.id, e.target.value as ContactSubmission['status'])}
@@ -595,6 +641,76 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                     </div>
                   </div>
                 </div>
+
+                {/* Quick Edit Payment Info */}
+                <AnimatePresence>
+                  {quickEditingTicket === contact.id && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="border-t border-slate-700/50 p-6 bg-slate-900/40"
+                    >
+                      <h4 className="text-white font-medium mb-4 flex items-center gap-2">
+                        <DollarSign className="w-5 h-5 text-green-400" />
+                        Quick Edit Payment Info
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-white font-medium mb-2">Payment Date</label>
+                          <input
+                            type="date"
+                            value={quickEditData.paidAt || ''}
+                            onChange={(e) => setQuickEditData({ ...quickEditData, paidAt: e.target.value })}
+                            className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                          />
+                          <p className="text-slate-400 text-xs mt-1">
+                            {quickEditData.paidAt ? 'Payment recorded' : 'No payment date - not shown in financial reports'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-white font-medium mb-2">Building Fee ({contact.currency || '₪'})</label>
+                          <input
+                            type="number"
+                            value={quickEditData.buildingFee || ''}
+                            onChange={(e) => setQuickEditData({ ...quickEditData, buildingFee: parseFloat(e.target.value) || undefined })}
+                            className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
+                            placeholder="0"
+                            step="0.01"
+                          />
+                          <p className="text-slate-400 text-xs mt-1">Additional building/setup fee</p>
+                        </div>
+                      </div>
+
+                      {saveError && (
+                        <div className="mb-4 p-3 bg-red-600/20 border border-red-500/50 text-red-400 rounded-lg text-sm">
+                          {saveError}
+                        </div>
+                      )}
+
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={() => {
+                            setQuickEditingTicket(null)
+                            setSaveError(null)
+                          }}
+                          className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleSaveQuickEdit(contact)}
+                          disabled={isSaving}
+                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-cyan-600 text-white rounded-lg hover:from-green-700 hover:to-cyan-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                        >
+                          <Save className="w-4 h-4" />
+                          {isSaving ? 'Saving...' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 {/* Expanded Details */}
                 <AnimatePresence>
@@ -757,6 +873,25 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Building Fee */}
+                <div>
+                  <label className="block text-white font-medium mb-2 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-cyan-400" />
+                    Building Fee
+                  </label>
+                  <input
+                    type="number"
+                    value={editingTicket.buildingFee || ''}
+                    onChange={(e) => setEditingTicket({
+                      ...editingTicket,
+                      buildingFee: parseFloat(e.target.value) || undefined
+                    })}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
+                    placeholder="0"
+                  />
+                  <p className="text-slate-400 text-xs mt-1">Separate building/setup fee (same currency as quoted price)</p>
                 </div>
 
                 {/* Timeline and Budget */}
