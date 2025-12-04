@@ -96,12 +96,11 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
   const availableMonths = useMemo(() => {
     const months = new Set<string>()
 
-    // Add months from completed inquiries (use paidAt if available, otherwise completedAt or submittedAt)
+    // Add months from completed inquiries with payment dates
     inquiries
-      .filter(inquiry => inquiry.status === 'completed' && inquiry.quotedPrice)
+      .filter(inquiry => inquiry.status === 'completed' && inquiry.quotedPrice && inquiry.paidAt)
       .forEach(inquiry => {
-        const date = inquiry.paidAt || inquiry.completedAt || inquiry.submittedAt
-        const month = date.substring(0, 7) // YYYY-MM
+        const month = inquiry.paidAt!.substring(0, 7) // YYYY-MM
         months.add(month)
       })
 
@@ -118,30 +117,41 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
   const monthlyData = useMemo(() => {
     const isAllTime = selectedMonth === 'all-time'
 
-    // Revenue: use paidAt if available, otherwise completedAt or submittedAt
+    // Revenue: ONLY show inquiries with payment dates
     const revenue = inquiries
       .filter(inquiry => {
-        if (!inquiry.quotedPrice || inquiry.status !== 'completed') return false
+        if (!inquiry.quotedPrice || inquiry.status !== 'completed' || !inquiry.paidAt) return false
         if (isAllTime) return true
-        const date = inquiry.paidAt || inquiry.completedAt || inquiry.submittedAt
-        return date.startsWith(selectedMonth)
+        return inquiry.paidAt.startsWith(selectedMonth)
       })
-      .map(inquiry => ({
-        ...inquiry,
-        amountInILS: convertToILS(inquiry.quotedPrice || 0, inquiry.currency || '₪'),
-        displayDate: inquiry.paidAt || inquiry.completedAt || inquiry.submittedAt,
-        paymentDate: inquiry.paidAt
-      }))
+      .map(inquiry => {
+        const projectPrice = inquiry.quotedPrice || 0
+        const buildingFee = inquiry.buildingFee || 0
+        const totalPrice = projectPrice + buildingFee
+        return {
+          ...inquiry,
+          amountInILS: convertToILS(totalPrice, inquiry.currency || '₪'),
+          projectPriceInILS: convertToILS(projectPrice, inquiry.currency || '₪'),
+          buildingFeeInILS: convertToILS(buildingFee, inquiry.currency || '₪'),
+          displayDate: inquiry.paidAt!,
+          paymentDate: inquiry.paidAt
+        }
+      })
 
     // Potential Revenue: ALL projects in progress (always show all, not filtered by month)
     const potentialRevenue = inquiries
       .filter(inquiry => inquiry.status === 'in-progress')
-      .map(inquiry => ({
-        ...inquiry,
-        amountInILS: convertToILS(inquiry.quotedPrice || 0, inquiry.currency || '₪'),
-        displayDate: inquiry.submittedAt,
-        needsPrice: !inquiry.quotedPrice
-      }))
+      .map(inquiry => {
+        const projectPrice = inquiry.quotedPrice || 0
+        const buildingFee = inquiry.buildingFee || 0
+        const totalPrice = projectPrice + buildingFee
+        return {
+          ...inquiry,
+          amountInILS: convertToILS(totalPrice, inquiry.currency || '₪'),
+          displayDate: inquiry.submittedAt,
+          needsPrice: !inquiry.quotedPrice
+        }
+      })
 
     const monthExpenses = expenses
       .filter(expense => isAllTime || expense.date.startsWith(selectedMonth))
@@ -542,6 +552,11 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
                       <span className="flex items-center gap-1">
                         <Receipt className="w-4 h-4" />
                         {item.currency}{item.quotedPrice}
+                        {item.buildingFee && (
+                          <span className="text-xs text-cyan-400" title="Building fee">
+                            + {item.currency}{item.buildingFee}
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>
@@ -550,7 +565,12 @@ export function FinancialReportsManager({}: FinancialReportsManagerProps) {
                     <div className="text-xl font-bold text-green-400">
                       ₪{item.amountInILS.toFixed(2)}
                     </div>
-                    {item.currency !== '₪' && (
+                    {item.buildingFee && (
+                      <div className="text-xs text-cyan-400 mt-1">
+                        Project: ₪{item.projectPriceInILS.toFixed(2)} + Fee: ₪{item.buildingFeeInILS.toFixed(2)}
+                      </div>
+                    )}
+                    {item.currency !== '₪' && !item.buildingFee && (
                       <div className="text-xs text-slate-500 mt-1">
                         ({item.currency}{item.quotedPrice})
                       </div>
