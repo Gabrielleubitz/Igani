@@ -94,6 +94,7 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
 
     querySnapshot.forEach((doc) => {
       const data = doc.data();
+      console.log('[Firestore] Doc', doc.id, '- paidAt:', data.paidAt, 'buildingFee:', data.buildingFee);
 
       // Map old status values to new ones
       let status: ContactSubmission['status'] = data.status || 'pending';
@@ -123,10 +124,13 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
         assignedTo: data.assignedTo,
         cancellationReason: data.cancellationReason,
         statusUpdatedAt: data.statusUpdatedAt ? toISOString(data.statusUpdatedAt) : undefined,
+        completedAt: data.completedAt ? toISOString(data.completedAt) : undefined,
+        paidAt: data.paidAt ? toISOString(data.paidAt) : undefined,
         // Add the new ticket management fields
         linkedPackageId: data.linkedPackageId,
         linkedPackageName: data.linkedPackageName,
         quotedPrice: data.quotedPrice,
+        buildingFee: data.buildingFee,
         currency: data.currency,
         notes: data.notes,
         priority: data.priority,
@@ -207,21 +211,31 @@ const cleanObjectForFirestore = (obj: Record<string, any>): Record<string, any> 
 
 export const updateContactSubmission = async (submission: ContactSubmission): Promise<void> => {
   try {
+    console.log('[Firestore] updateContactSubmission called with:', submission);
     const submissionRef = doc(db, CONTACT_SUBMISSIONS_COLLECTION, submission.id);
-    
+
     // Create update data excluding id and adding timestamp
     const { id, ...updateData } = submission;
+    console.log('[Firestore] updateData (without id):', updateData);
+    console.log('[Firestore] paidAt in updateData:', updateData.paidAt);
+    console.log('[Firestore] buildingFee in updateData:', updateData.buildingFee);
+
     const dataWithTimestamp = {
       ...updateData,
       updatedAt: Timestamp.now()
     };
-    
+    console.log('[Firestore] dataWithTimestamp:', dataWithTimestamp);
+
     // Clean undefined values before sending to Firestore
     const finalUpdateData = cleanObjectForFirestore(dataWithTimestamp);
-    
+    console.log('[Firestore] finalUpdateData (after cleaning):', finalUpdateData);
+    console.log('[Firestore] paidAt in finalUpdateData:', finalUpdateData.paidAt);
+    console.log('[Firestore] buildingFee in finalUpdateData:', finalUpdateData.buildingFee);
+
     await updateDoc(submissionRef, finalUpdateData);
+    console.log('[Firestore] updateDoc completed successfully');
   } catch (error) {
-    console.error('Error updating contact submission:', error);
+    console.error('[Firestore] Error updating contact submission:', error);
     throw error;
   }
 };

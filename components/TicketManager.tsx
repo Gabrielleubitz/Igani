@@ -231,32 +231,58 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
   }
 
   const handleSaveQuickEdit = async (contact: ContactSubmission) => {
+    console.log('=== QUICK EDIT SAVE START ===')
+    console.log('1. Current contact:', contact)
+    console.log('2. Quick edit data:', quickEditData)
+    console.log('3. paidAt input value:', quickEditData.paidAt)
+    console.log('4. buildingFee input value:', quickEditData.buildingFee)
+
     setIsQuickSaving(true)
     setQuickEditError(null)
 
     try {
-      const updatedContact = {
-        ...contact,
-        paidAt: quickEditData.paidAt && quickEditData.paidAt.trim() !== ''
-          ? new Date(quickEditData.paidAt).toISOString()
-          : undefined,
-        buildingFee: quickEditData.buildingFee || undefined
+      // Process the paidAt date
+      let processedPaidAt: string | undefined = undefined
+      if (quickEditData.paidAt && quickEditData.paidAt.trim() !== '') {
+        processedPaidAt = new Date(quickEditData.paidAt).toISOString()
+        console.log('5. Processed paidAt (ISO):', processedPaidAt)
+      } else {
+        console.log('5. paidAt is empty, will not update')
       }
 
-      console.log('Saving quick edit:', updatedContact)
+      // Process building fee
+      const processedBuildingFee = quickEditData.buildingFee || undefined
+      console.log('6. Processed buildingFee:', processedBuildingFee)
+
+      const updatedContact = {
+        ...contact,
+        paidAt: processedPaidAt,
+        buildingFee: processedBuildingFee
+      }
+
+      console.log('7. Final updated contact object:', updatedContact)
+      console.log('8. Calling updateContactSubmission...')
+
       await updateContactSubmission(updatedContact)
+      console.log('9. updateContactSubmission completed successfully')
 
       // Close quick edit and refresh data
       setQuickEditingTicket(null)
       setQuickEditData({})
+
+      console.log('10. Calling onUpdate to refresh data...')
       await onUpdate()
+      console.log('11. onUpdate completed')
 
       // Show success message
       setSaveSuccess('Payment info updated successfully!')
       window.scrollTo({ top: 0, behavior: 'smooth' })
       setTimeout(() => setSaveSuccess(null), 5000)
+
+      console.log('=== QUICK EDIT SAVE SUCCESS ===')
     } catch (error) {
-      console.error('Error updating ticket:', error)
+      console.error('=== QUICK EDIT SAVE ERROR ===')
+      console.error('Error details:', error)
       setQuickEditError(error instanceof Error ? error.message : 'Failed to save changes')
     } finally {
       setIsQuickSaving(false)
