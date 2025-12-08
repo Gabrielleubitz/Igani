@@ -67,7 +67,7 @@ export default function RootLayout({
         product_id: 'igani',
         position: 'bottom-right',
         buttonText: 'What\\'s New',
-        widgetTitle: 'Product Updates',
+        widgetTitle: 'Igani Updates',
         primaryColor: '#2563eb',
         darkMode: false,
         showButton: true,
