@@ -70,7 +70,7 @@ export default function RootLayout({
       buttonText: 'What\\'s New',
       widgetTitle: 'Product Updates',
       primaryColor: '#2563eb',
-      darkMode: true,
+      darkMode: false,
       showButton: true,
       apiUrl: 'https://scotty-plum.vercel.app',
       firebaseConfig: {
@@ -106,8 +106,12 @@ export default function RootLayout({
       document.head.appendChild(script);
     }
 
-    // Load the widget script
-    loadScript('https://scotty-plum.vercel.app/widget.js');
+    // Load the widget script with cache busting
+    loadScript('https://scotty-plum.vercel.app/widget.js?v=1765193727484');
+    
+    // Debug logging (remove in production if desired)
+    console.log('ProductFlow: Widget config loaded', window.productflow_config);
+    console.log('ProductFlow: Loading widget script from', 'https://scotty-plum.vercel.app/widget.js');
   })();`;
 
   return (
