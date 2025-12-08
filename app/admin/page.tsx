@@ -26,7 +26,8 @@ export default function AdminPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (password === 'Trips123') {
+    const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ''
+    if (password === adminPassword && adminPassword) {
       setIsAuthenticated(true)
       sessionStorage.setItem('adminAuth', 'true')
       setError('')
