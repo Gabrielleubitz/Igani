@@ -47,8 +47,8 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Build ProductFlow widget script with environment variable
-  const productflowFirebaseApiKey = process.env.NEXT_PUBLIC_PRODUCTFLOW_FIREBASE_API_KEY || '';
+  // Build ProductFlow widget script with environment variable (fallback to hardcoded for development)
+  const productflowFirebaseApiKey = process.env.NEXT_PUBLIC_PRODUCTFLOW_FIREBASE_API_KEY || 'AIzaSyCOQBT98TQumcTJnCcXSKE1B0sycQkpoo0';
   const productflowScript = `
     (function() {
       // Scoped guard so multiple GTM tags don't double-load
@@ -133,15 +133,13 @@ export default function RootLayout({
           />
         )}
         {/* ProductFlow Changelog Widget */}
-        {productflowFirebaseApiKey && (
-          <Script
-            id="productflow-widget"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{
-              __html: productflowScript,
-            }}
-          />
-        )}
+        <Script
+          id="productflow-widget"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: productflowScript,
+          }}
+        />
       </head>
       <body className={`${outfit.variable} font-sans overflow-x-hidden`}>
         <PromoBanner />
