@@ -107,7 +107,7 @@ export default function RootLayout({
     }
 
     // Load the widget script with cache busting
-    loadScript('https://scotty-plum.vercel.app/widget.js?v=1765193727484');
+    loadScript('https://scotty-plum.vercel.app/widget.js?v=1765194302564');
     
     // Debug logging (remove in production if desired)
     console.log('ProductFlow: Widget config loaded', window.productflow_config);
