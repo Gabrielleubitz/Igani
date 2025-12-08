@@ -91,23 +91,24 @@ export default function RootLayout({
                   position: 'bottom-right',
                   buttonText: 'What\\'s New',
                   widgetTitle: 'Product Updates',
-                  primaryColor: '#7ea6fb',
+                  primaryColor: '#2563eb',
                   darkMode: false,
                   showButton: true,
                   apiUrl: 'https://scotty-plum.vercel.app',
                   firebaseConfig: {
-                    apiKey: 'AIzaSyD7tlbe2_A9JCOAcpS7QNRkn9wcoLQ6bE4',
-                    authDomain: 'scotty-acfe5.firebaseapp.com',
-                    projectId: 'scotty-acfe5',
-                    storageBucket: 'scotty-acfe5.firebasestorage.app',
-                    messagingSenderId: '1048370427467',
-                    appId: '1:1048370427467:web:90127c22dbebc20eacffce'
+                    apiKey: 'AIzaSyCOQBT98TQumcTJnCcXSKE1B0sycQkpoo0',
+                    authDomain: 'scotty-dccad.firebaseapp.com',
+                    projectId: 'scotty-dccad',
+                    storageBucket: 'scotty-dccad.firebasestorage.app',
+                    messagingSenderId: '966416224400',
+                    appId: '1:966416224400:web:d0476a8418665d42a0c815'
                   },
                   aiAgent: {
                     enabled: true,
                     apiUrl: 'https://api.openai.com/v1',
                     trackingUrl: 'https://scotty-plum.vercel.app'
-                  }
+                  },
+                  teamId: 'lHstPlacdVjgTcyrC7nh'
                 };
 
                 // Script loader with CSP and error handling
