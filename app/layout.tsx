@@ -67,9 +67,9 @@ export default function RootLayout({
         product_id: 'igani',
         position: 'bottom-right',
         buttonText: 'What\\'s New',
-        widgetTitle: 'Igani Updates',
+        widgetTitle: 'Product Updates',
         primaryColor: '#2563eb',
-        darkMode: false,
+        darkMode: true,
         showButton: true,
         apiUrl: 'https://scotty-plum.vercel.app',
         firebaseConfig: {
