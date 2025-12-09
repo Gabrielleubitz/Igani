@@ -51,8 +51,8 @@ export default function RootLayout({
   const productflowScript = `(function() {
     // Scoped guard so multiple GTM tags don't double-load
     window.__productflow_registry = window.__productflow_registry || new Set();
-    if (window.__productflow_registry.has('Igani.co')) return;
-    window.__productflow_registry.add('Igani.co');
+    if (window.__productflow_registry.has('igani test')) return;
+    window.__productflow_registry.add('igani test');
 
     // Inject critical YouTube interaction styles
     var style = document.createElement('style');
@@ -62,11 +62,11 @@ export default function RootLayout({
 
     // Widget Configuration
     window.productflow_config = {
-      product_id: 'Igani.co',
+      product_id: 'igani test',
       position: 'right-notch',
       buttonText: 'What\\'s New',
       widgetTitle: 'Product Updates',
-      primaryColor: '#2563eb',
+      primaryColor: '#00277a',
       darkMode: false,
       showButton: true,
       apiUrl: 'https://scotty-plum.vercel.app',
@@ -96,7 +96,7 @@ export default function RootLayout({
     }
 
     // Load the widget script with cache busting
-    loadScript('https://scotty-plum.vercel.app/widget.js?v=1765288489320');
+    loadScript('https://scotty-plum.vercel.app/widget.js?v=1765290048329');
     
     // Debug logging (remove in production if desired)
     console.log('ProductFlow: Widget config loaded', window.productflow_config);
