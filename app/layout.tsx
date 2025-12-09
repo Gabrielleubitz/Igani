@@ -47,15 +47,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Build ProductFlow widget script with environment variable (fallback to hardcoded for development)
-  const productflowFirebaseApiKey = process.env.NEXT_PUBLIC_PRODUCTFLOW_FIREBASE_API_KEY || 'AIzaSyCOQBT98TQumcTJnCcXSKE1B0sycQkpoo0';
-  
-  // Construct the script content with proper string interpolation
+  // Build ProductFlow widget script
   const productflowScript = `(function() {
     // Scoped guard so multiple GTM tags don't double-load
     window.__productflow_registry = window.__productflow_registry || new Set();
-    if (window.__productflow_registry.has('igani')) return;
-    window.__productflow_registry.add('igani');
+    if (window.__productflow_registry.has('Igani.co')) return;
+    window.__productflow_registry.add('Igani.co');
 
     // Inject critical YouTube interaction styles
     var style = document.createElement('style');
@@ -65,28 +62,20 @@ export default function RootLayout({
 
     // Widget Configuration
     window.productflow_config = {
-      product_id: 'igani',
-      position: 'bottom-right',
+      product_id: 'Igani.co',
+      position: 'right-notch',
       buttonText: 'What\\'s New',
       widgetTitle: 'Product Updates',
       primaryColor: '#2563eb',
       darkMode: false,
       showButton: true,
       apiUrl: 'https://scotty-plum.vercel.app',
-      firebaseConfig: {
-        apiKey: '${productflowFirebaseApiKey}',
-        authDomain: 'scotty-dccad.firebaseapp.com',
-        projectId: 'scotty-dccad',
-        storageBucket: 'scotty-dccad.firebasestorage.app',
-        messagingSenderId: '966416224400',
-        appId: '1:966416224400:web:d0476a8418665d42a0c815'
-      },
+      teamId: 'lHstPlacdVjgTcyrC7nh',
       aiAgent: {
         enabled: true,
         apiUrl: 'https://api.openai.com/v1',
         trackingUrl: 'https://scotty-plum.vercel.app'
-      },
-      teamId: 'lHstPlacdVjgTcyrC7nh'
+      }
     };
 
     // Script loader with CSP and error handling
@@ -107,7 +96,7 @@ export default function RootLayout({
     }
 
     // Load the widget script with cache busting
-    loadScript('https://scotty-plum.vercel.app/widget.js?v=1765194676841');
+    loadScript('https://scotty-plum.vercel.app/widget.js?v=1765287593373');
     
     // Debug logging (remove in production if desired)
     console.log('ProductFlow: Widget config loaded', window.productflow_config);
