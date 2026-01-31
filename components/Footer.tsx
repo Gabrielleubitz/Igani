@@ -62,7 +62,21 @@ export default function Footer() {
             <p className="text-slate-400 mb-2">
               {settings.copyrightText || `© 2024 IGANI. ${footer.allRightsReserved[language]}`}
             </p>
-            <div className="flex gap-4 justify-center md:justify-end flex-wrap">
+            <div className="flex gap-4 justify-center md:justify-end flex-wrap items-center">
+              <a
+                href="https://capital.igani.co"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-400 hover:text-emerald-300 font-medium transition-colors text-sm inline-flex items-center gap-2"
+              >
+                <img
+                  src="https://capital.igani.co/igani-logo.png"
+                  alt="Igani Capital"
+                  className="w-5 h-5 object-contain"
+                />
+                {footer.iganiCapital[language]}
+                <span className="text-slate-500 text-xs font-normal hidden sm:inline">— {footer.iganiCapitalTagline[language]}</span>
+              </a>
               <a href="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">
                 {footer.privacy[language]}
               </a>

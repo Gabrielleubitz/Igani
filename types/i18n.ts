@@ -20,6 +20,7 @@ export interface SiteContent {
     portfolio: I18nText
     packages: I18nText
     about: I18nText
+    iganiCapital: I18nText
     contact: I18nText
     freeConsultation: I18nText
     backToHome: I18nText
@@ -97,5 +98,24 @@ export interface SiteContent {
     privacy: I18nText
     terms: I18nText
     contact: I18nText
+    iganiCapital: I18nText
+    iganiCapitalTagline: I18nText
+  }
+
+  // About page (Igani Capital & Co-founders)
+  aboutPage: {
+    iganiCapitalTitle: I18nText
+    iganiCapitalIntro: I18nText
+    iganiCapitalWhatWeDo1: I18nText
+    iganiCapitalWhatWeDo2: I18nText
+    iganiCapitalWhatWeDo3: I18nText
+    iganiCapitalCta: I18nText
+    coFoundersTitle: I18nText
+    gabrielName: I18nText
+    gabrielRole: I18nText
+    gabrielBio: I18nText
+    amitayName: I18nText
+    amitayRole: I18nText
+    amitayBio: I18nText
   }
 }
