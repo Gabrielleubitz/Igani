@@ -9,6 +9,7 @@ export const siteContent: SiteContent = {
     portfolio: { en: 'Portfolio', he: 'תיק עבודות' },
     packages: { en: 'Packages', he: 'חבילות' },
     about: { en: 'About', he: 'אודות' },
+    iganiCapital: { en: 'Igani Capital', he: 'איגני קפיטל' },
     contact: { en: 'Contact', he: 'צור קשר' },
     freeConsultation: { en: 'Free Consultation', he: 'יעוץ חינמי' },
     backToHome: { en: 'Back to Home', he: 'חזור לעמוד הבית' }
@@ -131,7 +132,43 @@ export const siteContent: SiteContent = {
     allRightsReserved: { en: 'All rights reserved', he: 'כל הזכויות שמורות' },
     privacy: { en: 'Privacy', he: 'פרטיות' },
     terms: { en: 'Terms', he: 'תנאים' },
-    contact: { en: 'Contact', he: 'צור קשר' }
+    contact: { en: 'Contact', he: 'צור קשר' },
+    iganiCapital: { en: 'Igani Capital', he: 'איגני קפיטל' },
+    iganiCapitalTagline: { en: 'Investment analysis & portfolio tracking', he: 'ניתוח השקעות ומעקב תיקים' }
+  },
+
+  aboutPage: {
+    iganiCapitalTitle: { en: 'Igani Capital', he: 'איגני קפיטל' },
+    iganiCapitalIntro: {
+      en: 'Igani Capital is our investment platform—built to help you track portfolios, analyze stocks and crypto, and make smarter decisions with transparent research and AI-assisted insights.',
+      he: 'איגני קפיטל היא פלטפורמת ההשקעות שלנו—נבנתה כדי לעזור לך לעקוב אחר תיקים, לנתח מניות וקריפטו, ולקבל החלטות חכמות יותר עם מחקר שקוף ותובנות מבוססות AI.'
+    },
+    iganiCapitalWhatWeDo1: {
+      en: 'Portfolio tracking — Real-time stocks and crypto in one place with performance analytics.',
+      he: 'מעקב תיקים — מניות וקריפטו בזמן אמת במקום אחד עם אנליטיקת ביצועים.'
+    },
+    iganiCapitalWhatWeDo2: {
+      en: 'Research & analysis — Fundamental data, news, target prices, and AI research assistant.',
+      he: 'מחקר וניתוח — נתונים פונדמנטליים, חדשות, מחירי יעד ועוזר מחקר AI.'
+    },
+    iganiCapitalWhatWeDo3: {
+      en: 'Leagues & achievements — Compete with friends and level up with gamified investing.',
+      he: 'ליגות והישגים — התחרו עם חברים והתקדמו עם השקעות במשחוק.'
+    },
+    iganiCapitalCta: { en: 'Visit Igani Capital', he: 'היכנס לאיגני קפיטל' },
+    coFoundersTitle: { en: 'Co-Founders', he: 'מייסדים משותפים' },
+    gabrielName: { en: 'Gabriel Leubitz', he: 'גבריאל לוביץ' },
+    gabrielRole: { en: 'Co-Founder', he: 'מייסד משותף' },
+    gabrielBio: {
+      en: 'Gabriel drives product and engineering at Igani and Igani Capital, with a focus on building products that are both powerful and easy to use.',
+      he: 'גבריאל מוביל מוצר והנדסה באיגני ובאיגני קפיטל, עם דגש על בניית מוצרים שהם גם עוצמתיים וגם קלים לשימוש.'
+    },
+    amitayName: { en: 'Amitay Hanson', he: 'אמיתי הנסון' },
+    amitayRole: { en: 'Co-Founder', he: 'מייסד משותף' },
+    amitayBio: {
+      en: 'Amitay brings strategic vision and execution to Igani, ensuring we deliver solutions that create real value for our clients and users.',
+      he: 'אמיתי מביא חזון אסטרטגי ויישום לאיגני, ומבטיח שאנחנו מספקים פתרונות שיוצרים ערך אמיתי ללקוחות ולמשתמשים שלנו.'
+    }
   }
 }
 

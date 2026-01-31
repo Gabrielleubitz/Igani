@@ -11,8 +11,15 @@ import Footer from '@/components/Footer'
 import { getAboutUsSections, getAboutUsSettings, getPackageFAQs } from '@/lib/firestore'
 import { AboutUsSection, AboutUsSettings, PackageFAQ } from '@/types'
 import { T } from '@/components/T'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { siteContent } from '@/lib/i18n'
+import { TrendingUp } from 'lucide-react'
+
+const IGANI_CAPITAL_LOGO_URL = 'https://capital.igani.co/igani-logo.png'
+const IGANI_CAPITAL_URL = 'https://capital.igani.co'
 
 export default function AboutPage() {
+  const { language } = useLanguage()
   const [sections, setSections] = useState<AboutUsSection[]>([])
   const [faqs, setFAQs] = useState<PackageFAQ[]>([])
   const [settings, setSettings] = useState<AboutUsSettings>({
@@ -213,6 +220,128 @@ export default function AboutPage() {
             </div>
           </section>
         )}
+
+        {/* Igani Capital Section */}
+        <section className="py-16 px-4">
+          <div className="max-w-7xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 md:p-12 shadow-lg shadow-slate-950/50 overflow-hidden"
+            >
+              <div className="flex flex-col md:flex-row md:items-start gap-8">
+                <div className="flex-shrink-0 flex items-center justify-center md:justify-start">
+                  <a
+                    href={IGANI_CAPITAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-xl overflow-hidden ring-2 ring-emerald-500/30 hover:ring-emerald-400/50 transition-all"
+                  >
+                    <img
+                      src={IGANI_CAPITAL_LOGO_URL}
+                      alt="Igani Capital"
+                      className="w-32 h-32 md:w-40 md:h-40 object-contain bg-slate-900/80"
+                    />
+                  </a>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                      <TrendingUp className="w-5 h-5 text-emerald-400" />
+                    </div>
+                    <h2 className="text-3xl md:text-4xl font-bold text-white">
+                      {siteContent.aboutPage.iganiCapitalTitle[language]}
+                    </h2>
+                  </div>
+                  <p className="text-slate-300 text-lg mb-6 leading-relaxed">
+                    {siteContent.aboutPage.iganiCapitalIntro[language]}
+                  </p>
+                  <ul className="space-y-3 mb-8 text-slate-300">
+                    <li className="flex gap-3">
+                      <span className="text-emerald-400 mt-1">•</span>
+                      <span>{siteContent.aboutPage.iganiCapitalWhatWeDo1[language]}</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="text-emerald-400 mt-1">•</span>
+                      <span>{siteContent.aboutPage.iganiCapitalWhatWeDo2[language]}</span>
+                    </li>
+                    <li className="flex gap-3">
+                      <span className="text-emerald-400 mt-1">•</span>
+                      <span>{siteContent.aboutPage.iganiCapitalWhatWeDo3[language]}</span>
+                    </li>
+                  </ul>
+                  <a
+                    href={IGANI_CAPITAL_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors"
+                  >
+                    {siteContent.aboutPage.iganiCapitalCta[language]}
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
+        {/* Co-Founders Section */}
+        <section className="py-16 px-4">
+          <div className="max-w-7xl mx-auto">
+            <motion.h2
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              viewport={{ once: true }}
+              className="text-3xl md:text-4xl font-bold text-white mb-10 text-center"
+            >
+              {siteContent.aboutPage.coFoundersTitle[language]}
+            </motion.h2>
+            <div className="grid md:grid-cols-2 gap-8">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                viewport={{ once: true }}
+                className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                  <User className="w-7 h-7 text-cyan-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-1">
+                  {siteContent.aboutPage.gabrielName[language]}
+                </h3>
+                <p className="text-cyan-400 text-sm font-medium mb-3">
+                  {siteContent.aboutPage.gabrielRole[language]}
+                </p>
+                <p className="text-slate-300 leading-relaxed">
+                  {siteContent.aboutPage.gabrielBio[language]}
+                </p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                viewport={{ once: true }}
+                className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50"
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                  <User className="w-7 h-7 text-cyan-400" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-1">
+                  {siteContent.aboutPage.amitayName[language]}
+                </h3>
+                <p className="text-cyan-400 text-sm font-medium mb-3">
+                  {siteContent.aboutPage.amitayRole[language]}
+                </p>
+                <p className="text-slate-300 leading-relaxed">
+                  {siteContent.aboutPage.amitayBio[language]}
+                </p>
+              </motion.div>
+            </div>
+          </div>
+        </section>
 
         {/* FAQ Section */}
         {faqs.length > 0 && (

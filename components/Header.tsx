@@ -13,7 +13,8 @@ import {
   Info,
   MessageSquare,
   Package,
-  ArrowLeft
+  ArrowLeft,
+  TrendingUp
 } from 'lucide-react'
 
 interface HeaderProps {
@@ -68,7 +69,8 @@ export default function Header({
     { id: 'home', label: nav.home[currentLanguage], icon: Home, type: 'section' as const },
     { id: 'portfolio', label: nav.portfolio[currentLanguage], icon: Folder, type: 'section' as const },
     { id: 'packages', label: nav.packages[currentLanguage], icon: Package, type: 'page' as const, href: '/packages' },
-    { id: 'about', label: nav.about[currentLanguage], icon: Info, type: 'page' as const, href: '/about' }
+    { id: 'about', label: nav.about[currentLanguage], icon: Info, type: 'page' as const, href: '/about' },
+    { id: 'igani-capital', label: nav.iganiCapital[currentLanguage], icon: TrendingUp, type: 'external' as const, href: 'https://capital.igani.co' }
   ]
 
   return (
@@ -95,7 +97,23 @@ export default function Header({
           <div className="hidden lg:flex items-center space-x-4">
             <nav className="flex items-center space-x-1">
               {navigationItems.map(item => (
-              item.type === 'page' ? (
+              item.type === 'external' ? (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="relative px-4 py-2 text-sm font-medium transition-all rounded-lg group text-slate-300 hover:text-white hover:bg-slate-800/50 inline-flex items-center gap-2"
+                >
+                  <img
+                    src="https://capital.igani.co/igani-logo.png"
+                    alt="Igani Capital"
+                    className="w-5 h-5 object-contain"
+                  />
+                  {item.label}
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 w-0 group-hover:w-3/4"></span>
+                </a>
+              ) : item.type === 'page' ? (
                 <a
                   key={item.id}
                   href={item.href}
@@ -158,7 +176,22 @@ export default function Header({
                 </button>
               )}
               {navigationItems.map(item => (
-                item.type === 'page' ? (
+                item.type === 'external' ? (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all group"
+                  >
+                    <img
+                      src="https://capital.igani.co/igani-logo.png"
+                      alt="Igani Capital"
+                      className="w-5 h-5 object-contain"
+                    />
+                    <span>{item.label}</span>
+                  </a>
+                ) : item.type === 'page' ? (
                   <a
                     key={item.id}
                     href={item.href}
