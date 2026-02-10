@@ -98,6 +98,7 @@ export interface SiteContent {
     privacy: I18nText
     terms: I18nText
     contact: I18nText
+    help: I18nText
     iganiCapital: I18nText
     iganiCapitalTagline: I18nText
   }

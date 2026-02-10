@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt } from 'lucide-react'
+import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt, HelpCircle } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
@@ -12,16 +12,18 @@ import { OfferSettingsManager } from './OfferSettingsManager'
 import { SiteSettingsManager } from './SiteSettingsManager'
 import { FinancialReportsManager } from './FinancialReportsManager'
 import { PackagesManager } from './PackagesManager'
-import { getWebsites, getContactSubmissions, getTestimonials } from '@/lib/firestore'
-import { Website, ContactSubmission, Testimonial } from '@/types'
+import { SupportInquiriesManager } from './SupportInquiriesManager'
+import { getWebsites, getContactSubmissions, getTestimonials, getSupportInquiries } from '@/lib/firestore'
+import { Website, ContactSubmission, Testimonial, SupportInquiry } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
-type TabType = 'websites' | 'inquiries' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial'
+type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial'
 
 export default function AdminDashboardClient() {
   const [activeTab, setActiveTab] = useState<TabType>('websites')
   const [websites, setWebsites] = useState<Website[]>([])
   const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
+  const [supportInquiries, setSupportInquiries] = useState<SupportInquiry[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
@@ -34,14 +36,16 @@ export default function AdminDashboardClient() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [websitesData, inquiriesData, testimonialsData] = await Promise.all([
+      const [websitesData, inquiriesData, testimonialsData, supportData] = await Promise.all([
         getWebsites(),
         getContactSubmissions(),
-        getTestimonials()
+        getTestimonials(),
+        getSupportInquiries()
       ])
       setWebsites(websitesData)
       setInquiries(inquiriesData)
       setTestimonials(testimonialsData)
+      setSupportInquiries(supportData)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -56,6 +60,7 @@ export default function AdminDashboardClient() {
   const navigationItems = [
     { id: 'websites', label: 'Websites', icon: Globe, count: websites.length, color: 'cyan' },
     { id: 'inquiries', label: 'Inquiries', icon: Mail, count: inquiries.length, color: 'blue' },
+    { id: 'support', label: 'Help & Support', icon: HelpCircle, count: supportInquiries.length, color: 'amber' },
     { id: 'leads', label: 'Leads', icon: Users, color: 'purple' },
     { id: 'financial', label: 'Financial Reports', icon: Receipt, color: 'emerald' },
     { id: 'testimonials', label: 'Testimonials', icon: Star, count: testimonials.length, color: 'yellow' },
@@ -211,6 +216,15 @@ export default function AdminDashboardClient() {
               <div className="animate-in fade-in duration-300">
                 <TicketManager
                   contacts={inquiries}
+                  onUpdate={loadData}
+                />
+              </div>
+            )}
+
+            {activeTab === 'support' && (
+              <div className="animate-in fade-in duration-300">
+                <SupportInquiriesManager
+                  inquiries={supportInquiries}
                   onUpdate={loadData}
                 />
               </div>

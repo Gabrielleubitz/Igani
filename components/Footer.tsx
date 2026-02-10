@@ -86,6 +86,9 @@ export default function Footer() {
               <a href="/#contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">
                 {footer.contact[language]}
               </a>
+              <a href="/help" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">
+                {footer.help[language]}
+              </a>
             </div>
 
             {/* Business Contact Info */}

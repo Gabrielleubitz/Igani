@@ -12,11 +12,12 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings, Expense } from '../types';
+import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings, Expense, SupportInquiry } from '../types';
 
 // Collections
 const SETTINGS_COLLECTION = 'settings';
 const CONTACT_SUBMISSIONS_COLLECTION = 'contactSubmissions';
+const SUPPORT_INQUIRIES_COLLECTION = 'supportInquiries';
 const WEBSITES_COLLECTION = 'websites';
 const TESTIMONIALS_COLLECTION = 'testimonials';
 const PACKAGES_COLLECTION = 'packages';
@@ -236,6 +237,80 @@ export const updateContactSubmission = async (submission: ContactSubmission): Pr
     console.log('[Firestore] updateDoc completed successfully');
   } catch (error) {
     console.error('[Firestore] Error updating contact submission:', error);
+    throw error;
+  }
+};
+
+// Support Inquiries (Help & Support from igani.co/help)
+export const saveSupportInquiry = async (
+  inquiry: Omit<SupportInquiry, 'id' | 'submittedAt' | 'status' | 'statusUpdatedAt'>
+): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, SUPPORT_INQUIRIES_COLLECTION), {
+      ...inquiry,
+      submittedAt: Timestamp.now(),
+      status: 'new' as const,
+      statusUpdatedAt: Timestamp.now()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving support inquiry:', error);
+    throw error;
+  }
+};
+
+const toISOString = (timestamp: any): string => {
+  if (!timestamp) return new Date().toISOString();
+  if (typeof timestamp === 'string') return timestamp;
+  if (timestamp?.toDate && typeof timestamp.toDate === 'function') return timestamp.toDate().toISOString();
+  return new Date(timestamp).toISOString();
+};
+
+export const getSupportInquiries = async (): Promise<SupportInquiry[]> => {
+  try {
+    const q = query(
+      collection(db, SUPPORT_INQUIRIES_COLLECTION),
+      orderBy('submittedAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name ?? '',
+        email: data.email ?? '',
+        product: data.product ?? 'AlmaLinks',
+        issueType: data.issueType ?? 'feedback',
+        description: data.description ?? '',
+        stepsToReproduce: data.stepsToReproduce,
+        pageOrFeature: data.pageOrFeature,
+        attachmentUrl: data.attachmentUrl,
+        deviceType: data.deviceType,
+        browser: data.browser,
+        submittedAt: toISOString(data.submittedAt),
+        source: data.source ?? 'igani.co/help',
+        userAgent: data.userAgent,
+        status: (data.status as SupportInquiry['status']) ?? 'new',
+        statusUpdatedAt: data.statusUpdatedAt ? toISOString(data.statusUpdatedAt) : undefined
+      } as SupportInquiry;
+    });
+  } catch (error) {
+    console.error('Error getting support inquiries:', error);
+    return [];
+  }
+};
+
+export const updateSupportInquiryStatus = async (
+  id: string,
+  status: SupportInquiry['status']
+): Promise<void> => {
+  try {
+    await updateDoc(doc(db, SUPPORT_INQUIRIES_COLLECTION, id), {
+      status,
+      statusUpdatedAt: Timestamp.now()
+    });
+  } catch (error) {
+    console.error('Error updating support inquiry status:', error);
     throw error;
   }
 };

@@ -133,6 +133,7 @@ export const siteContent: SiteContent = {
     privacy: { en: 'Privacy', he: 'פרטיות' },
     terms: { en: 'Terms', he: 'תנאים' },
     contact: { en: 'Contact', he: 'צור קשר' },
+    help: { en: 'Help & Support', he: 'עזרה ותמיכה' },
     iganiCapital: { en: 'Igani Capital', he: 'איגני קפיטל' },
     iganiCapitalTagline: { en: 'Investment analysis & portfolio tracking', he: 'ניתוח השקעות ומעקב תיקים' }
   },
