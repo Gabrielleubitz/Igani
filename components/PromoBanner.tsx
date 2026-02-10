@@ -162,9 +162,9 @@ export function PromoBanner() {
         }
       case 'slide':
         return {
-          initial: { y: -60, opacity: 0 },
+          initial: { y: -100, opacity: 0 },
           animate: { y: 0, opacity: 1 },
-          exit: { y: -60, opacity: 0 }
+          exit: { y: -100, opacity: 0 }
         }
       default:
         return {
@@ -212,8 +212,9 @@ export function PromoBanner() {
   const isMarquee = shouldAnimate && settings.animationType === 'marquee'
   const isClickable = Boolean(settings.ctaUrl)
 
-  // Dynamic height based on whether subtitle exists
-  const bannerHeight = settings.subtitle && !isMarquee ? '65px' : '50px'
+  // Flexible height: enough padding so title + optional subtitle never clip
+  const hasSubtitle = Boolean(settings.subtitle?.trim()) && !isMarquee
+  const bannerMinHeight = hasSubtitle ? '72px' : '52px'
 
   // Highlight accent word in title
   const renderTitle = (text: string) => {
@@ -244,9 +245,9 @@ export function PromoBanner() {
 
   return (
     <>
-      {/* Spacer to prevent content from being hidden behind fixed banner */}
+      {/* Spacer so page content isn't hidden behind fixed banner */}
       {isVisible && (
-        <div style={{ height: bannerHeight }} className="w-full" />
+        <div style={{ minHeight: bannerMinHeight }} className="w-full" />
       )}
 
       <AnimatePresence>
@@ -260,106 +261,96 @@ export function PromoBanner() {
               color: settings.textColor,
               top: '80px',
               cursor: isClickable ? 'pointer' : 'default',
-              height: bannerHeight
+              minHeight: bannerMinHeight
             }}
-            className={`fixed left-0 right-0 w-full overflow-hidden z-40 ${
+            className={`fixed left-0 right-0 w-full z-40 flex items-stretch ${
               settings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
             } ${isClickable ? 'hover:opacity-95 transition-opacity duration-200' : ''}`}
           >
-            <div className="w-full h-full px-4 sm:px-6 lg:px-8 pointer-events-auto">
-              <div className="flex items-center justify-center h-full gap-4 max-w-7xl mx-auto">
-                {/* Banner Content */}
-                <div className="flex-1 flex items-center justify-center gap-4 min-w-0">
-                  {/* Image - Inline */}
-                  {settings.image && settings.imagePosition === 'inline' && !isMarquee && (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={settings.image}
-                        alt=""
-                        className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
-                      />
-                    </div>
-                  )}
+            <div className="w-full min-h-full py-3 px-4 sm:px-6 lg:px-8 pointer-events-auto flex items-center max-w-7xl mx-auto">
+              {/* Left: optional icon + message (flex-1, min-w-0 so text can truncate) */}
+              <div className="flex-1 flex items-center gap-3 min-w-0">
+                {settings.image && settings.imagePosition === 'inline' && !isMarquee && (
+                  <div className="flex-shrink-0 hidden sm:block">
+                    <img src={settings.image} alt="" className="h-6 w-6 sm:h-7 sm:w-7 object-contain opacity-90" />
+                  </div>
+                )}
 
-                  {/* Text Content */}
-                  <div className={`flex-1 ${settings.textAlign === 'center' ? 'text-center' : 'text-left'}`}>
-                    {isMarquee ? (
-                      <div className="relative w-full overflow-hidden">
-                        <motion.div
-                          animate={{
-                            x: settings.marqueeDirection === 'right' ? ['0%', '33.33%'] : ['0%', '-33.33%']
-                          }}
-                          transition={{
-                            duration: getMarqueeSpeed(),
-                            repeat: Infinity,
-                            ease: 'linear',
-                            repeatType: 'loop'
-                          }}
-                          className="flex whitespace-nowrap"
-                        >
-                          {[...Array(6)].map((_, i) => (
-                            <div key={i} className="inline-flex items-center mx-12 sm:mx-16">
-                              <span className={`${getFontSize()} ${getFontWeight()} leading-none`}>
-                                {renderTitle(settings.title)}
-                              </span>
-                            </div>
-                          ))}
-                        </motion.div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        <h3 className={`${getFontSize()} ${getFontWeight()} leading-none`}>
-                          {renderTitle(settings.title)}
-                        </h3>
-                        {settings.subtitle && (
-                          <p className="text-xs sm:text-sm opacity-80 leading-tight">
-                            {settings.subtitle}
-                          </p>
-                        )}
-                      </div>
+                {isMarquee ? (
+                  <div className="relative w-full overflow-hidden py-0.5">
+                    <motion.div
+                      animate={{
+                        x: settings.marqueeDirection === 'right' ? ['0%', '33.33%'] : ['0%', '-33.33%']
+                      }}
+                      transition={{
+                        duration: getMarqueeSpeed(),
+                        repeat: Infinity,
+                        ease: 'linear',
+                        repeatType: 'loop'
+                      }}
+                      className="flex whitespace-nowrap"
+                    >
+                      {[...Array(6)].map((_, i) => (
+                        <div key={i} className="inline-flex items-center mx-8 sm:mx-12">
+                          <span className={`${getFontSize()} ${getFontWeight()} leading-tight`}>
+                            {renderTitle(settings.title)}
+                          </span>
+                        </div>
+                      ))}
+                    </motion.div>
+                  </div>
+                ) : (
+                  <div
+                    className={`flex-1 min-w-0 ${settings.textAlign === 'center' ? 'text-center' : 'text-left'}`}
+                  >
+                    <p
+                      className={`${getFontSize()} ${getFontWeight()} leading-snug line-clamp-1`}
+                      title={settings.title}
+                    >
+                      {renderTitle(settings.title)}
+                    </p>
+                    {hasSubtitle && (
+                      <p className="text-xs sm:text-sm mt-0.5 opacity-90 leading-snug line-clamp-1" title={settings.subtitle ?? undefined}>
+                        {settings.subtitle}
+                      </p>
                     )}
                   </div>
+                )}
 
-                  {/* Image - Right */}
-                  {settings.image && settings.imagePosition === 'right' && !isMarquee && (
-                    <div className="flex-shrink-0 hidden lg:block">
-                      <img
-                        src={settings.image}
-                        alt=""
-                        className="h-8 w-8 object-contain"
-                      />
-                    </div>
-                  )}
+                {settings.image && settings.imagePosition === 'right' && !isMarquee && (
+                  <div className="flex-shrink-0 hidden lg:block">
+                    <img src={settings.image} alt="" className="h-7 w-7 object-contain opacity-90" />
+                  </div>
+                )}
+              </div>
 
-                  {/* CTA Button - Always show when configured, even with marquee */}
-                  {settings.ctaLabel && settings.ctaUrl && (
-                    <motion.a
-                      href={settings.ctaUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={handleCTAClick}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.98 }}
-                      style={{
-                        backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.15)',
-                        color: settings.textColor
-                      }}
-                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold transition-all duration-300 backdrop-blur-sm border border-white/20 whitespace-nowrap hover:border-white/40 hover:shadow-lg pointer-events-auto relative z-50 ${
-                        settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
-                      }`}
-                    >
-                      {settings.ctaLabel}
-                    </motion.a>
-                  )}
-                </div>
-
-                {/* Dismiss Button */}
+              {/* Right: CTA + close — fixed order, clear tap targets */}
+              <div className="flex-shrink-0 flex items-center gap-2 ml-3">
+                {settings.ctaLabel && settings.ctaUrl && (
+                  <motion.a
+                    href={settings.ctaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleCTAClick}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{
+                      backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.2)',
+                      color: settings.textColor
+                    }}
+                    className={`px-4 py-2 text-sm font-semibold whitespace-nowrap border border-white/25 hover:border-white/40 pointer-events-auto z-50 ${
+                      settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
+                    }`}
+                  >
+                    {settings.ctaLabel}
+                  </motion.a>
+                )}
                 {settings.dismissible && (
                   <motion.button
                     onClick={handleDismiss}
-                    whileHover={{ scale: 1.1, rotate: 90 }}
-                    whileTap={{ scale: 0.9 }}
-                    className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors duration-200 pointer-events-auto relative z-50"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex-shrink-0 p-2 hover:bg-white/10 rounded-full pointer-events-auto z-50"
                     aria-label="Dismiss banner"
                     style={{ touchAction: 'auto' }}
                   >
@@ -369,9 +360,8 @@ export function PromoBanner() {
               </div>
             </div>
 
-            {/* Preview Mode Indicator */}
             {isPreviewMode && (
-              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-bl-md font-bold z-10 pointer-events-none">
+              <div className="absolute top-0 right-0 bg-yellow-500 text-black text-xs px-2 py-0.5 rounded-bl font-medium z-[60] pointer-events-none">
                 PREVIEW
               </div>
             )}
