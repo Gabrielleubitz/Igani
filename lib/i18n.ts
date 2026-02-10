@@ -17,20 +17,20 @@ export const siteContent: SiteContent = {
   
   home: {
     heroTagline: { 
-      en: 'Apps, websites & SaaS — for ourselves and for clients', 
-      he: 'אפליקציות, אתרים ו-SaaS — לעצמנו וללקוחות' 
+      en: 'Professional Web Development Services', 
+      he: 'שירותי פיתוח אתרים מקצועיים' 
     },
     heroTitle: { 
-      en: 'Igani builds apps, websites, and SaaS.', 
-      he: 'איגני בונה אפליקציות, אתרים ו-SaaS.' 
+      en: 'We build apps, websites, and SaaS', 
+      he: 'אנחנו בונים אפליקציות, אתרים ו-SaaS' 
     },
     heroTitleLine2: { 
-      en: 'For ourselves and for clients.', 
-      he: 'לעצמנו וללקוחות.' 
+      en: 'As builders, operators, and partners.', 
+      he: 'כבונים, מפעילים ושותפים.' 
     },
     heroSubtitle: { 
-      en: 'We operate as owners across multiple fields. From small landing pages to full applications—we\'re approachable and ready to talk.', 
-      he: 'אנחנו פועלים כבעלים במגוון תחומים. מעמודי נחיתה קטנים ועד אפליקציות מלאות—אנחנו נגישים ומוכנים לשיחה.' 
+      en: 'Transform your vision into a stunning digital presence with custom website development', 
+      he: 'הפוך את החזון שלך לנוכחות דיגיטלית מרהיבה עם פיתוח אתרים מותאמים אישית' 
     },
     ctaFreeConsultation: { en: 'Book a call', he: 'קבע שיחה' },
     ctaViewWork: { en: 'See our work', he: 'ראה את העבודות שלנו' },
