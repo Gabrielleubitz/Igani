@@ -17,86 +17,90 @@ export const siteContent: SiteContent = {
   
   home: {
     heroTagline: { 
-      en: 'Professional Web Development Services', 
-      he: 'שירותי פיתוח אתרים מקצועיים' 
+      en: 'Apps, websites & SaaS — for ourselves and for clients', 
+      he: 'אפליקציות, אתרים ו-SaaS — לעצמנו וללקוחות' 
     },
     heroTitle: { 
-      en: 'Elevate Your Brand With a Personal Developer', 
-      he: 'הרם את המותג שלך עם מפתח אישי' 
+      en: 'Igani builds apps, websites, and SaaS.', 
+      he: 'איגני בונה אפליקציות, אתרים ו-SaaS.' 
+    },
+    heroTitleLine2: { 
+      en: 'For ourselves and for clients.', 
+      he: 'לעצמנו וללקוחות.' 
     },
     heroSubtitle: { 
-      en: 'Transform your vision into a stunning digital presence with custom website development', 
-      he: 'הפוך את החזון שלך לנוכחות דיגיטלית מרהיבה עם פיתוח אתרים מותאמים אישית' 
+      en: 'We operate as owners across multiple fields. From small landing pages to full applications—we\'re approachable and ready to talk.', 
+      he: 'אנחנו פועלים כבעלים במגוון תחומים. מעמודי נחיתה קטנים ועד אפליקציות מלאות—אנחנו נגישים ומוכנים לשיחה.' 
     },
-    ctaFreeConsultation: { en: 'Free Consultation', he: 'יעוץ חינמי' },
-    ctaViewWork: { en: 'View Our Work', he: 'ראה את העבודות שלנו' },
-    
-    servicesTitle: { en: 'What We Deliver', he: 'מה אנחנו מספקים' },
+    ctaFreeConsultation: { en: 'Book a call', he: 'קבע שיחה' },
+    ctaViewWork: { en: 'See our work', he: 'ראה את העבודות שלנו' },
+
+    servicesTitle: { en: 'What we build', he: 'מה אנחנו בונים' },
     servicesSubtitle: { 
-      en: 'Comprehensive web development services designed to drive your business growth', 
-      he: 'שירותי פיתוח אתרים מקיפים שמיועדים להניע את הצמיחה העסקית שלך' 
+      en: 'Websites, apps, and SaaS—for startups, businesses, and our own products.', 
+      he: 'אתרים, אפליקציות ו-SaaS—לסטארטאפים, עסקים ולמוצרים שלנו.' 
     },
-    customWebDevTitle: { en: 'Custom Web Development', he: 'פיתוח אתרים מותאם אישית' },
+    customWebDevTitle: { en: 'Websites & apps', he: 'אתרים ואפליקציות' },
     customWebDevDescription: { 
-      en: 'Enterprise-grade web applications engineered with React, Next.js, and Node.js to scale with your business demands.', 
-      he: 'אפליקציות ווב ברמת ארגונית המתוכננות עם React, Next.js ו-Node.js כדי לגדול עם הדרישות העסקיות שלך.' 
+      en: 'From landing pages to full web and mobile applications. Built to last and easy to iterate.', 
+      he: 'מעמודי נחיתה ועד אפליקציות ווב ומובייל מלאות. בנוי להחזיק לאורך זמן וקל לשפר.' 
     },
-    uiUxDesignTitle: { en: 'Strategic UI/UX Design', he: 'עיצוב UI/UX אסטרטגי' },
+    uiUxDesignTitle: { en: 'Design & build', he: 'עיצוב ובנייה' },
     uiUxDesignDescription: { 
-      en: 'Data-driven design solutions that convert visitors into customers. Professional wireframes and pixel-perfect interfaces optimized for engagement.', 
-      he: 'פתרונות עיצוב מונעי נתונים שהופכים מבקרים ללקוחות. מסגרות עבודה מקצועיות וממשקים מושלמים פיקסל אחר פיקסל המותאמים למעורבות.' 
+      en: 'Clear structure and interfaces. We design with the build in mind so nothing gets lost in translation.', 
+      he: 'מבנה וממשקים ברורים. אנחנו מעצבים עם הבנייה בראש כדי שלא יאבד דבר בתרגום.' 
     },
     
-    processTitle: { en: 'Our Proven Process', he: 'התהליך המוכח שלנו' },
+    processTitle: { en: 'How we work', he: 'איך אנחנו עובדים' },
     processSubtitle: { 
-      en: 'A systematic approach ensuring on-time delivery and exceptional results', 
-      he: 'גישה שיטתית המבטיחה אספקה בזמן ותוצאות יוצאות דופן' 
+      en: 'Discover, design, build, launch—with clear steps and no surprises.', 
+      he: 'גילוי, עיצוב, בנייה, השקה—עם צעדים ברורים ובלי הפתעות.' 
     },
-    step1Title: { en: 'Strategic Consultation', he: 'יעוץ אסטרטגי' },
+    step1Title: { en: 'Discover', he: 'גילוי' },
     step1Description: { 
-      en: 'In-depth analysis of your business objectives, target audience, and competitive landscape to develop a comprehensive digital strategy.', 
-      he: 'ניתוח מעמיק של יעדי העסק שלך, קהל היעד והנוף התחרותי כדי לפתח אסטרטגיה דיגיטלית מקיפה.' 
+      en: 'We align on goals, scope, and what success looks like.', 
+      he: 'מתאמים יעדים, היקף ומה נחשב להצלחה.' 
     },
-    step2Title: { en: 'Design & Architecture', he: 'עיצוב וארכיטקטורה' },
+    step2Title: { en: 'Design', he: 'עיצוב' },
     step2Description: { 
-      en: 'Professional wireframes and high-fidelity prototypes with detailed technical specifications. Complete visual and functional approval before development begins.', 
-      he: 'מסגרות עבודה מקצועיות ואבות טיפוס באיכות גבוהה עם מפרטים טכניים מפורטים. אישור חזותי ופונקציונלי מלא לפני תחילת הפיתוח.' 
+      en: 'Structure and visuals—approved before we build.', 
+      he: 'מבנה ועיצוב—מאושרים לפני הבנייה.' 
     },
-    step3Title: { en: 'Development & Integration', he: 'פיתוח ואינטגרציה' },
+    step3Title: { en: 'Build', he: 'בנייה' },
     step3Description: { 
-      en: 'Agile development with modern frameworks and best practices. Regular milestone deliveries with full transparency and progress tracking.', 
-      he: 'פיתוח זריז עם מסגרות עבודה מודרניות ושיטות עבודה מיטביות. אספקות בציוני דרך קבועים עם שקיפות מלאה ומעקב אחר ההתקדמות.' 
+      en: 'Iterative development with clear milestones.', 
+      he: 'פיתוח איטרטיבי עם ציוני דרך ברורים.' 
     },
-    step4Title: { en: 'Quality Assurance', he: 'הבטחת איכות' },
+    step4Title: { en: 'Quality & test', he: 'איכות ובדיקות' },
     step4Description: { 
-      en: 'Rigorous testing across devices and browsers. Comprehensive review cycles ensuring flawless functionality and optimal performance.', 
-      he: 'בדיקות קפדניות על פני מכשירים ודפדפנים שונים. מחזורי סקירה מקיפים המבטיחים פונקציונליות ללא רבב וביצועים אופטימליים.' 
+      en: 'Testing across devices so everything works.', 
+      he: 'בדיקות על פני מכשירים כדי שהכל יעבוד.' 
     },
-    step5Title: { en: 'Deployment & Ongoing Support', he: 'הפעלה ותמיכה שוטפת' },
+    step5Title: { en: 'Launch & support', he: 'השקה ותמיכה' },
     step5Description: { 
-      en: 'Seamless launch with zero downtime. Continuous monitoring, maintenance, and dedicated support to ensure sustained success.', 
-      he: 'השקה חלקה ללא זמן השבתה. ניטור רציף, תחזוקה ותמיכה ייעודית להבטחת הצלחה מתמשכת.' 
+      en: 'Go live, then iterate with you as needed.', 
+      he: 'עולים לאוויר, ואז משפרים איתך לפי הצורך.' 
     },
     
-    portfolioTitle: { en: 'Client Success Stories', he: 'סיפורי הצלחה של לקוחות' },
+    portfolioTitle: { en: 'Our work', he: 'העבודות שלנו' },
     portfolioSubtitle: { 
-      en: 'Proven results across industries. Explore the high-performance websites and applications we\'ve delivered.', 
-      he: 'תוצאות מוכחות בתעשיות שונות. חקרו את האתרים והאפליקציות בביצועים גבוהים שסיפקנו.' 
+      en: 'Projects we\'ve built for clients and for ourselves.', 
+      he: 'פרויקטים שבנינו ללקוחות ולעצמנו.' 
     },
     featuredProjects: { en: 'Featured Projects', he: 'פרויקטים מובילים' },
     featured: { en: 'Featured', he: 'מובלט' },
     
-    aboutTitle: { en: 'About Igani', he: 'אודות איגני' },
+    aboutTitle: { en: 'Why Igani', he: 'למה איגני' },
     aboutDescription: { 
-      en: 'We are passionate web developers dedicated to crafting exceptional digital experiences that drive business success.', 
-      he: 'אנחנו מפתחי ווב נלהבים המוקדשים ליצירת חוויות דיגיטליות יוצאות דופן המניעות הצלחה עסקית.' 
+      en: 'We build and run our own products as well as client work. One team, clear ownership, and a straightforward process from idea to launch.', 
+      he: 'אנחנו בונים ומפעילים מוצרים משלנו וגם עבודת לקוחות. צוות אחד, בעלות ברורה, ותהליך ישיר מרעיון להשקה.' 
     },
     testimonialsTitle: { en: 'What Our Clients Say', he: 'מה הלקוחות שלנו אומרים' },
     
-    contactTitle: { en: 'Let\'s Build Together', he: 'בואו נבנה יחד' },
+    contactTitle: { en: 'Get in touch', he: 'צור קשר' },
     contactSubtitle: { 
-      en: 'Take the first step toward a powerful web presence. Connect with our team to discuss your requirements.', 
-      he: 'קח את הצעד הראשון לקראת נוכחות ווב עוצמתית. התחבר לצוות שלנו כדי לדון בדרישות שלך.' 
+      en: 'Tell us about your project. We\'ll respond within 24 hours.', 
+      he: 'ספר לנו על הפרויקט שלך. נענה תוך 24 שעות.' 
     },
     contactInfo: { en: 'Contact Information', he: 'פרטי יצירת קשר' },
     firstName: { en: 'First Name', he: 'שם פרטי' },
@@ -108,7 +112,7 @@ export const siteContent: SiteContent = {
       en: 'Describe your business needs and project goals...', 
       he: 'תאר את הצרכים העסקיים ויעדי הפרויקט שלך...' 
     },
-    submitButton: { en: 'Start Free Consultation', he: 'התחל יעוץ חינמי' },
+    submitButton: { en: 'Send message', he: 'שלח הודעה' },
     submitting: { en: 'Submitting...', he: 'שולח...' },
     successMessage: { 
       en: 'Thank you for reaching out. We will respond to your inquiry within 24 hours.', 

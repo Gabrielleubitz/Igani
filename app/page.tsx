@@ -154,13 +154,13 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.1 }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-5 leading-[1.1] px-2"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold mb-3 leading-[1.1] px-2"
             >
               <span className="text-white block mb-2">
-                {language === 'en' ? 'Elevate Your Brand' : 'הרם את המותג שלך'}
+                {content.heroTitle[language]}
               </span>
               <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600 bg-clip-text text-transparent block">
-                {language === 'en' ? 'With a Personal Developer' : 'עם מפתח אישי'}
+                {content.heroTitleLine2[language]}
               </span>
             </motion.h1>
 
@@ -168,7 +168,7 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
-              className="text-lg md:text-xl text-slate-300 mb-8 leading-relaxed max-w-3xl mx-auto"
+              className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed max-w-3xl mx-auto"
             >
               {content.heroSubtitle[language]}
             </motion.p>
@@ -206,12 +206,12 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="text-center mb-16"
+              className="text-center mb-14"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">
                 {content.servicesTitle[language]}
               </h2>
-              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
+              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
                 {content.servicesSubtitle[language]}
               </p>
             </motion.div>
@@ -264,10 +264,10 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-12"
             >
-              <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              <h3 className="text-3xl md:text-4xl font-bold text-white mb-3">
                 {content.processTitle[language]}
               </h3>
-              <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+              <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
                 {content.processSubtitle[language]}
               </p>
             </motion.div>
@@ -389,8 +389,8 @@ export default function HomePage() {
               viewport={{ once: true }}
               className="text-center mb-12"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{content.portfolioTitle[language]}</h2>
-              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">{content.portfolioTitle[language]}</h2>
+              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
                 {content.portfolioSubtitle[language]}
               </p>
             </motion.div>
@@ -473,9 +473,9 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="text-center mb-16"
+              className="text-center mb-14"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4"><T>{settings.aboutTitle}</T></h2>
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3"><T>{settings.aboutTitle}</T></h2>
               <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
                 <T>{settings.aboutDescription}</T>
               </p>
@@ -562,10 +562,10 @@ export default function HomePage() {
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
               viewport={{ once: true }}
-              className="text-center mb-16"
+              className="text-center mb-14"
             >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">{content.contactTitle[language]}</h2>
-              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto">
+              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">{content.contactTitle[language]}</h2>
+              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
                 {content.contactSubtitle[language]}
               </p>
             </motion.div>
