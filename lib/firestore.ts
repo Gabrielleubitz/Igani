@@ -280,6 +280,8 @@ export const getSupportInquiries = async (): Promise<SupportInquiry[]> => {
         name: data.name ?? '',
         email: data.email ?? '',
         product: data.product ?? 'AlmaLinks',
+        productSlug: data.productSlug,
+        productName: data.productName,
         issueType: data.issueType ?? 'feedback',
         description: data.description ?? '',
         stepsToReproduce: data.stepsToReproduce,
@@ -289,9 +291,12 @@ export const getSupportInquiries = async (): Promise<SupportInquiry[]> => {
         browser: data.browser,
         submittedAt: toISOString(data.submittedAt),
         source: data.source ?? 'igani.co/help',
+        sourceUrl: data.sourceUrl,
+        referrer: data.referrer,
         userAgent: data.userAgent,
         status: (data.status as SupportInquiry['status']) ?? 'new',
-        statusUpdatedAt: data.statusUpdatedAt ? toISOString(data.statusUpdatedAt) : undefined
+        statusUpdatedAt: data.statusUpdatedAt ? toISOString(data.statusUpdatedAt) : undefined,
+        internalNotes: data.internalNotes
       } as SupportInquiry;
     });
   } catch (error) {
@@ -311,6 +316,25 @@ export const updateSupportInquiryStatus = async (
     });
   } catch (error) {
     console.error('Error updating support inquiry status:', error);
+    throw error;
+  }
+};
+
+export const updateSupportInquiry = async (
+  id: string,
+  updates: { status?: SupportInquiry['status']; internalNotes?: string }
+): Promise<void> => {
+  try {
+    const updateData: Record<string, unknown> = { updatedAt: Timestamp.now() };
+    if (updates.status !== undefined) {
+      updateData.status = updates.status;
+      updateData.statusUpdatedAt = Timestamp.now();
+    }
+    if (updates.internalNotes !== undefined) updateData.internalNotes = updates.internalNotes;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await updateDoc(doc(db, SUPPORT_INQUIRIES_COLLECTION, id), updateData as any);
+  } catch (error) {
+    console.error('Error updating support inquiry:', error);
     throw error;
   }
 };
