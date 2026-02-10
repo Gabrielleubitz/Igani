@@ -3,11 +3,11 @@ import { SiteSettings } from '../types';
 export const defaultSettings: SiteSettings = {
   siteName: 'Igani',
   companyName: 'Igani',
-  tagline: 'Crafting exceptional digital experiences',
-  heroTitle: 'Crafting Digital Experiences',
-  heroSubtitle: 'Transform your vision into stunning, high-performance websites that captivate users and drive results. Explore our portfolio of exceptional web solutions.',
-  aboutTitle: 'Why Choose Igani?',
-  aboutDescription: 'Personal ownership from start to finish. You get a single developer who partners with you, keeps momentum, and is reachable 24/7. Result: a site shaped for your brand—not a template.',
+  tagline: 'Apps, websites & SaaS — for ourselves and for clients',
+  heroTitle: 'Igani builds apps, websites, and SaaS.',
+  heroSubtitle: 'We operate as owners across multiple fields. From small landing pages to full applications—we\'re approachable and ready to talk.',
+  aboutTitle: 'Why Igani',
+  aboutDescription: 'We build and run our own products as well as client work. One team, clear ownership, and a straightforward process from idea to launch.',
   contactEmail: 'info@igani.co',
   contactPhone: '+972 58 44 77757',
   contactLocation: 'Netanya, Israel',
@@ -16,6 +16,6 @@ export const defaultSettings: SiteSettings = {
     linkedin: 'https://linkedin.com/company/igani',
     github: 'https://github.com/igani'
   },
-  seoTitle: 'Igani - Premium Web Development Services',
-  seoDescription: 'Professional web development and design services. We create stunning, high-performance websites that drive results for your business.'
+  seoTitle: 'Igani — Apps, websites & SaaS',
+  seoDescription: 'Igani builds apps, websites, and SaaS for ourselves and for clients. From landing pages to full applications.'
 };

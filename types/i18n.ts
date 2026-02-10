@@ -30,6 +30,7 @@ export interface SiteContent {
   home: {
     heroTagline: I18nText
     heroTitle: I18nText
+    heroTitleLine2: I18nText
     heroSubtitle: I18nText
     ctaFreeConsultation: I18nText
     ctaViewWork: I18nText
