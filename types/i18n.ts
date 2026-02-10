@@ -31,18 +31,39 @@ export interface SiteContent {
     heroTagline: I18nText
     heroTitle: I18nText
     heroSubtitle: I18nText
+    heroTrustLine: I18nText
     ctaFreeConsultation: I18nText
     ctaViewWork: I18nText
-    
-    // Services section
+    ctaBookCall: I18nText
+    ctaSeeWork: I18nText
+
+    // Services section (Websites, Apps, SaaS)
     servicesTitle: I18nText
     servicesSubtitle: I18nText
+    serviceWebsitesTitle: I18nText
+    serviceWebsitesDescription: I18nText
+    serviceAppsTitle: I18nText
+    serviceAppsDescription: I18nText
+    serviceSaaSTitle: I18nText
+    serviceSaaSDescription: I18nText
     customWebDevTitle: I18nText
     customWebDevDescription: I18nText
     uiUxDesignTitle: I18nText
     uiUxDesignDescription: I18nText
-    
-    // Process section
+
+    // How we work (4 steps)
+    howWeWorkTitle: I18nText
+    howWeWorkSubtitle: I18nText
+    howWeWorkStep1Title: I18nText
+    howWeWorkStep1Description: I18nText
+    howWeWorkStep2Title: I18nText
+    howWeWorkStep2Description: I18nText
+    howWeWorkStep3Title: I18nText
+    howWeWorkStep3Description: I18nText
+    howWeWorkStep4Title: I18nText
+    howWeWorkStep4Description: I18nText
+
+    // Process section (legacy)
     processTitle: I18nText
     processSubtitle: I18nText
     step1Title: I18nText
@@ -66,7 +87,17 @@ export interface SiteContent {
     aboutTitle: I18nText
     aboutDescription: I18nText
     testimonialsTitle: I18nText
-    
+
+    // Community / ownership
+    communityTitle: I18nText
+    communityDescription: I18nText
+    communityCta: I18nText
+
+    // Final CTA
+    finalCtaTitle: I18nText
+    finalCtaSubtext: I18nText
+    finalCtaButton: I18nText
+
     // Contact section
     contactTitle: I18nText
     contactSubtitle: I18nText
