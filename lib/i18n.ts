@@ -28,14 +28,23 @@ export const siteContent: SiteContent = {
       en: 'Transform your vision into a stunning digital presence with custom website development', 
       he: 'הפוך את החזון שלך לנוכחות דיגיטלית מרהיבה עם פיתוח אתרים מותאמים אישית' 
     },
+    heroTrustLine: { en: 'Products + client work', he: 'מוצרים + עבודת לקוחות' },
     ctaFreeConsultation: { en: 'Free Consultation', he: 'יעוץ חינמי' },
     ctaViewWork: { en: 'View Our Work', he: 'ראה את העבודות שלנו' },
-    
-    servicesTitle: { en: 'What We Deliver', he: 'מה אנחנו מספקים' },
+    ctaBookCall: { en: 'Book a call', he: 'קבע שיחה' },
+    ctaSeeWork: { en: 'See our work', he: 'ראה את העבודות שלנו' },
+
+    servicesTitle: { en: 'What We Build', he: 'מה אנחנו בונים' },
     servicesSubtitle: { 
-      en: 'Comprehensive web development services designed to drive your business growth', 
-      he: 'שירותי פיתוח אתרים מקיפים שמיועדים להניע את הצמיחה העסקית שלך' 
+      en: 'From small landing pages to full apps—we build for ourselves and for clients.', 
+      he: 'מעמודי נחיתה קטנים ועד אפליקציות מלאות—אנחנו בונים לעצמנו וללקוחות.' 
     },
+    serviceWebsitesTitle: { en: 'Websites', he: 'אתרים' },
+    serviceWebsitesDescription: { en: 'Landing pages, marketing sites, and brand homes that convert.', he: 'עמודי נחיתה, אתרי שיווק ובית למותג שממירים.' },
+    serviceAppsTitle: { en: 'Apps', he: 'אפליקציות' },
+    serviceAppsDescription: { en: 'Web and mobile applications built to scale with your users.', he: 'אפליקציות ווב ומובייל שנבנות להתרחב עם המשתמשים שלך.' },
+    serviceSaaSTitle: { en: 'SaaS', he: 'SaaS' },
+    serviceSaaSDescription: { en: 'Products and platforms you can run, iterate, and grow.', he: 'מוצרים ופלטפורמות שאפשר להפעיל, לשפר ולצמוח.' },
     customWebDevTitle: { en: 'Custom Web Development', he: 'פיתוח אתרים מותאם אישית' },
     customWebDevDescription: { 
       en: 'Enterprise-grade web applications engineered with React, Next.js, and Node.js to scale with your business demands.', 
@@ -47,6 +56,19 @@ export const siteContent: SiteContent = {
       he: 'פתרונות עיצוב מונעי נתונים שהופכים מבקרים ללקוחות. מסגרות עבודה מקצועיות וממשקים מושלמים פיקסל אחר פיקסל המותאמים למעורבות.' 
     },
     
+    howWeWorkTitle: { en: 'How we work', he: 'איך אנחנו עובדים' },
+    howWeWorkSubtitle: { 
+      en: 'Straightforward, transparent, and built for long-term success.', 
+      he: 'פשוט, שקוף ובנוי להצלחה לאורך זמן.' 
+    },
+    howWeWorkStep1Title: { en: 'Discover', he: 'גילוי' },
+    howWeWorkStep1Description: { en: 'We align on goals, scope, and what success looks like.', he: 'מתאמים יעדים, היקף ומה נחשב להצלחה.' },
+    howWeWorkStep2Title: { en: 'Design', he: 'עיצוב' },
+    howWeWorkStep2Description: { en: 'Structure, UX, and visual direction—approved before we build.', he: 'מבנה, חוויית משתמש וכיוון ויזואלי—מאושר לפני הבנייה.' },
+    howWeWorkStep3Title: { en: 'Build', he: 'בנייה' },
+    howWeWorkStep3Description: { en: 'Iterative development with clear milestones and feedback loops.', he: 'פיתוח איטרטיבי עם ציוני דרך ומשוב ברור.' },
+    howWeWorkStep4Title: { en: 'Launch & iterate', he: 'השקה ושיפור' },
+    howWeWorkStep4Description: { en: 'Go live, then improve based on real usage and your priorities.', he: 'עולים לאוויר, ואז משפרים לפי שימוש ויעדיך.' },
     processTitle: { en: 'Our Proven Process', he: 'התהליך המוכח שלנו' },
     processSubtitle: { 
       en: 'A systematic approach ensuring on-time delivery and exceptional results', 
@@ -92,7 +114,16 @@ export const siteContent: SiteContent = {
       he: 'אנחנו מפתחי ווב נלהבים המוקדשים ליצירת חוויות דיגיטליות יוצאות דופן המניעות הצלחה עסקית.' 
     },
     testimonialsTitle: { en: 'What Our Clients Say', he: 'מה הלקוחות שלנו אומרים' },
-    
+    communityTitle: { en: 'Owners, operators, and a growing community', he: 'בעלים, מפעילים וקהילה גדלה' },
+    communityDescription: { 
+      en: 'We build and run our own products across multiple fields—and we build for clients too. We\'re building a broader community of makers and partners. Join in or collaborate.', 
+      he: 'אנחנו בונים ומפעילים מוצרים משלנו בתחומים שונים—וגם בונים ללקוחות. בונים קהילה רחבה יותר של יוצרים ושותפים. הצטרפו או שתשתפו פעולה.' 
+    },
+    communityCta: { en: 'Join the community', he: 'הצטרפו לקהילה' },
+    finalCtaTitle: { en: 'Ready to start?', he: 'מוכנים להתחיל?' },
+    finalCtaSubtext: { en: 'From a small landing page to a full app—let\'s talk about what you need.', he: 'מעמוד נחיתה קטן ועד אפליקציה מלאה—בואו נדבר על מה שאתם צריכים.' },
+    finalCtaButton: { en: 'Book a call', he: 'קבע שיחה' },
+
     contactTitle: { en: 'Let\'s Build Together', he: 'בואו נבנה יחד' },
     contactSubtitle: { 
       en: 'Take the first step toward a powerful web presence. Connect with our team to discuss your requirements.', 
