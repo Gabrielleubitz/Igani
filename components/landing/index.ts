@@ -1,8 +1,0 @@
-export { Section } from './Section'
-export { Hero } from './Hero'
-export { Services } from './Services'
-export { HowWeWork } from './HowWeWork'
-export { Community } from './Community'
-export { FinalCTA } from './FinalCTA'
-export { ProjectGrid } from './ProjectGrid'
-export { TestimonialsSection } from './TestimonialsSection'
