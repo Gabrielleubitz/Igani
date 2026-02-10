@@ -203,12 +203,14 @@ export interface Expense {
   updatedAt?: string;
 }
 
-/** Help & Support inquiries from igani.co/help (AlmaLinks and other products) */
+/** Help & Support inquiries from igani.co/help/[productSlug] */
 export interface SupportInquiry {
   id: string;
   name: string;
   email: string;
   product: string;
+  productSlug?: string;
+  productName?: string;
   issueType: 'bug' | 'something_not_working' | 'feedback' | 'feature_request';
   description: string;
   stepsToReproduce?: string;
@@ -218,7 +220,10 @@ export interface SupportInquiry {
   browser?: string;
   submittedAt: string;
   source: string;
+  sourceUrl?: string;
+  referrer?: string;
   userAgent?: string;
   status: 'new' | 'in_progress' | 'resolved';
   statusUpdatedAt?: string;
+  internalNotes?: string;
 }
