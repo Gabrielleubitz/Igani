@@ -1,13 +1,13 @@
 import { SiteSettings } from '../types';
 
 export const defaultSettings: SiteSettings = {
-  siteName: 'Egani',
-  companyName: 'Egani',
-  tagline: 'Apps, websites, and SaaS—for ourselves and for clients.',
-  heroTitle: 'We build apps, websites, and SaaS.',
-  heroSubtitle: 'For ourselves and for clients. We operate as owners across multiple fields and we\'re building a broader community. From small landing pages to full apps—approachable and ready to talk.',
-  aboutTitle: 'Owners, operators, and a growing community',
-  aboutDescription: 'We build and run our own products—and we build for clients too. One team, clear ownership, and a straightforward process from idea to launch.',
+  siteName: 'Igani',
+  companyName: 'Igani',
+  tagline: 'Crafting exceptional digital experiences',
+  heroTitle: 'Crafting Digital Experiences',
+  heroSubtitle: 'Transform your vision into stunning, high-performance websites that captivate users and drive results. Explore our portfolio of exceptional web solutions.',
+  aboutTitle: 'Why Choose Igani?',
+  aboutDescription: 'Personal ownership from start to finish. You get a single developer who partners with you, keeps momentum, and is reachable 24/7. Result: a site shaped for your brand—not a template.',
   contactEmail: 'info@igani.co',
   contactPhone: '+972 58 44 77757',
   contactLocation: 'Netanya, Israel',
