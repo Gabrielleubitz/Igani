@@ -202,3 +202,23 @@ export interface Expense {
   createdAt?: string;
   updatedAt?: string;
 }
+
+/** Help & Support inquiries from igani.co/help (AlmaLinks and other products) */
+export interface SupportInquiry {
+  id: string;
+  name: string;
+  email: string;
+  product: string;
+  issueType: 'bug' | 'something_not_working' | 'feedback' | 'feature_request';
+  description: string;
+  stepsToReproduce?: string;
+  pageOrFeature?: string;
+  attachmentUrl?: string;
+  deviceType?: 'desktop' | 'mobile';
+  browser?: string;
+  submittedAt: string;
+  source: string;
+  userAgent?: string;
+  status: 'new' | 'in_progress' | 'resolved';
+  statusUpdatedAt?: string;
+}

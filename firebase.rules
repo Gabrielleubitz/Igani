@@ -70,6 +70,13 @@ service cloud.firestore {
                       request.time < timestamp.date(2025, 12, 31);
     }
     
+    // Support Inquiries (Help & Support from igani.co/help)
+    match /supportInquiries/{document} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null ||
+                                       request.time < timestamp.date(2025, 12, 31);
+    }
+
     // Default rule - deny all other collections
     match /{document=**} {
       allow read, write: if false;
