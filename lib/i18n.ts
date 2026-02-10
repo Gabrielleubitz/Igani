@@ -29,8 +29,8 @@ export const siteContent: SiteContent = {
       he: 'כבונים, מפעילים ושותפים.' 
     },
     heroSubtitle: { 
-      en: 'Transform your vision into a stunning digital presence with custom website development', 
-      he: 'הפוך את החזון שלך לנוכחות דיגיטלית מרהיבה עם פיתוח אתרים מותאמים אישית' 
+      en: 'From landing pages to full applications—we\'re ready to talk.', 
+      he: 'מעמודי נחיתה ועד אפליקציות מלאות—אנחנו מוכנים לשיחה.' 
     },
     ctaFreeConsultation: { en: 'Book a call', he: 'קבע שיחה' },
     ctaViewWork: { en: 'See our work', he: 'ראה את העבודות שלנו' },

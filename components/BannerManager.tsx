@@ -570,96 +570,73 @@ export function BannerManager() {
           <div className="border border-slate-600 rounded-lg overflow-hidden">
             <div
               style={backgroundStyle}
-              className={`${settings.subtitle && settings.animationType !== 'marquee' ? 'h-[65px]' : 'h-[50px]'} flex items-center justify-center px-4 sm:px-6 ${
+              className={`${settings.subtitle && settings.animationType !== 'marquee' ? 'min-h-[72px]' : 'min-h-[52px]'} py-3 px-4 sm:px-6 flex items-center ${
                 settings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
               } ${settings.ctaUrl ? 'cursor-pointer hover:opacity-95 transition-opacity' : ''}`}
             >
-              <div className="flex items-center justify-center gap-4 max-w-7xl mx-auto w-full">
-                <div className="flex-1 flex items-center justify-center gap-4 min-w-0">
-                  {/* Image - Inline */}
+              <div className="flex items-center w-full gap-3">
+                <div className="flex-1 flex items-center gap-3 min-w-0">
                   {settings.image && settings.imagePosition === 'inline' && settings.animationType !== 'marquee' && (
-                    <div className="flex-shrink-0">
-                      <img
-                        src={settings.image}
-                        alt=""
-                        className="h-6 w-6 sm:h-8 sm:w-8 object-contain"
-                      />
+                    <div className="flex-shrink-0 hidden sm:block">
+                      <img src={settings.image} alt="" className="h-6 w-6 sm:h-7 sm:w-7 object-contain opacity-90" />
                     </div>
                   )}
-
-                  {/* Text Content */}
-                  <div className={`flex-1 ${settings.textAlign === 'center' ? 'text-center' : 'text-left'}`}>
+                  <div className={`flex-1 min-w-0 ${settings.textAlign === 'center' ? 'text-center' : 'text-left'}`}>
                     {settings.animationType === 'marquee' ? (
-                      <div className="flex items-center justify-center gap-3 text-center">
-                        <span
-                          style={{ color: settings.textColor }}
-                          className={`${
-                            settings.fontSize === 'small' ? 'text-sm' : settings.fontSize === 'large' ? 'text-lg' : 'text-base'
-                          } font-${
-                            settings.fontWeight === '400' ? 'normal' : settings.fontWeight === '500' ? 'medium' : settings.fontWeight === '600' ? 'semibold' : 'bold'
-                          } leading-none`}
-                        >
-                          {renderPreviewTitle(settings.title || 'Your banner title will appear here...')}
-                        </span>
-                        <span className="text-xs opacity-50">(will scroll on live site)</span>
-                      </div>
+                      <span
+                        style={{ color: settings.textColor }}
+                        className={`${
+                          settings.fontSize === 'small' ? 'text-sm' : settings.fontSize === 'large' ? 'text-lg' : 'text-base'
+                        } font-${
+                          settings.fontWeight === '400' ? 'normal' : settings.fontWeight === '500' ? 'medium' : settings.fontWeight === '600' ? 'semibold' : 'bold'
+                        }`}
+                      >
+                        {renderPreviewTitle(settings.title || 'Your banner title...')}
+                      </span>
                     ) : (
-                      <div className="flex flex-col items-center justify-center gap-1">
-                        <span
+                      <>
+                        <p
                           style={{ color: settings.textColor }}
                           className={`${
                             settings.fontSize === 'small' ? 'text-sm sm:text-base' : settings.fontSize === 'large' ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'
                           } font-${
                             settings.fontWeight === '400' ? 'normal' : settings.fontWeight === '500' ? 'medium' : settings.fontWeight === '600' ? 'semibold' : 'bold'
-                          } leading-none`}
+                          } leading-snug line-clamp-1`}
                         >
                           {renderPreviewTitle(settings.title || 'Your banner title will appear here...')}
-                        </span>
+                        </p>
                         {settings.subtitle && (
-                          <span
-                            style={{ color: settings.textColor }}
-                            className="text-xs sm:text-sm opacity-80"
-                          >
+                          <p style={{ color: settings.textColor }} className="text-xs sm:text-sm mt-0.5 opacity-90 leading-snug line-clamp-1">
                             {settings.subtitle}
-                          </span>
+                          </p>
                         )}
-                      </div>
+                      </>
                     )}
                   </div>
-
-                  {/* Image - Right */}
                   {settings.image && settings.imagePosition === 'right' && settings.animationType !== 'marquee' && (
                     <div className="flex-shrink-0 hidden lg:block">
-                      <img
-                        src={settings.image}
-                        alt=""
-                        className="h-8 w-8 object-contain"
-                      />
+                      <img src={settings.image} alt="" className="h-7 w-7 object-contain opacity-90" />
                     </div>
                   )}
-
-                  {/* CTA Button - Always shown when configured */}
+                </div>
+                <div className="flex-shrink-0 flex items-center gap-2">
                   {settings.ctaLabel && settings.ctaUrl && (
                     <span
                       style={{
-                        backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.15)',
+                        backgroundColor: settings.ctaColor || 'rgba(255, 255, 255, 0.2)',
                         color: settings.textColor
                       }}
-                      className={`flex-shrink-0 px-4 sm:px-5 py-1.5 sm:py-2 text-sm sm:text-base font-semibold backdrop-blur-sm border border-white/20 whitespace-nowrap ${
-                        settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'
-                      }`}
+                      className={`px-4 py-2 text-sm font-semibold whitespace-nowrap border border-white/25 ${settings.ctaStyle === 'pill' ? 'rounded-full' : 'rounded-lg'}`}
                     >
                       {settings.ctaLabel}
                     </span>
                   )}
+                  {settings.dismissible && (
+                    <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                      <X className="w-4 h-4" style={{ color: settings.textColor }} />
+                    </button>
+                  )}
                 </div>
-
-                {/* Dismiss Button */}
-                {settings.dismissible && (
-                  <button className="flex-shrink-0 p-1.5 hover:bg-white/10 rounded-full transition-colors">
-                    <X className="w-4 h-4" style={{ color: settings.textColor }} />
-                  </button>
-                )}
               </div>
             </div>
           </div>
