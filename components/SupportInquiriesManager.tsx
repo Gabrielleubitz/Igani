@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { SupportInquiry } from '@/types'
-import { updateSupportInquiryStatus, updateSupportInquiry } from '@/lib/firestore'
+import { updateSupportInquiryStatus, updateSupportInquiry, deleteSupportInquiry } from '@/lib/firestore'
 import {
   ChevronDown,
   ChevronUp,
@@ -11,7 +11,8 @@ import {
   AlertCircle,
   ExternalLink,
   Filter,
-  Save
+  Save,
+  Trash2
 } from 'lucide-react'
 
 interface SupportInquiriesManagerProps {
@@ -32,6 +33,7 @@ export function SupportInquiriesManager({ inquiries, onUpdate }: SupportInquirie
   const [editingNotesId, setEditingNotesId] = useState<string | null>(null)
   const [notesDraft, setNotesDraft] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const filtered = inquiries.filter((i) => {
     const productKey = i.productSlug || i.productName || i.product
@@ -76,6 +78,21 @@ export function SupportInquiriesManager({ inquiries, onUpdate }: SupportInquirie
     setNotesDraft(inq.internalNotes ?? '')
   }
 
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this support inquiry? This cannot be undone.')) return
+    setDeletingId(id)
+    try {
+      await deleteSupportInquiry(id)
+      setExpandedId((prev) => (prev === id ? null : prev))
+      onUpdate()
+    } catch (e) {
+      console.error(e)
+      alert('Failed to delete inquiry')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-4 items-center">
@@ -115,7 +132,7 @@ export function SupportInquiriesManager({ inquiries, onUpdate }: SupportInquirie
                 <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Product / Slug</th>
                 <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Type</th>
                 <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider w-10" />
+                <th className="px-4 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider text-right w-24">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -168,14 +185,26 @@ export function SupportInquiriesManager({ inquiries, onUpdate }: SupportInquirie
                         </select>
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedId(isExpanded ? null : inq.id)}
-                          className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white"
-                          aria-expanded={isExpanded}
-                        >
-                          {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                        </button>
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedId(isExpanded ? null : inq.id)}
+                            className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white"
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(inq.id)}
+                            disabled={deletingId === inq.id}
+                            className="p-2 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 disabled:opacity-50"
+                            title="Delete inquiry"
+                            aria-label="Delete inquiry"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   )

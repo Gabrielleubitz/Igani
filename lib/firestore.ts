@@ -340,6 +340,15 @@ export const updateSupportInquiry = async (
   }
 };
 
+export const deleteSupportInquiry = async (id: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, SUPPORT_INQUIRIES_COLLECTION, id));
+  } catch (error) {
+    console.error('Error deleting support inquiry:', error);
+    throw error;
+  }
+};
+
 // Website Functions
 export const saveWebsite = async (
   website: Omit<Website, 'id' | 'createdAt'>
