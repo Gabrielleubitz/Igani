@@ -136,7 +136,11 @@ export function SupportInquiriesManager({ inquiries, onUpdate }: SupportInquirie
                       className="border-b border-slate-700/30 hover:bg-slate-800/60 transition-colors"
                     >
                       <td className="px-4 py-3 text-slate-300 text-sm whitespace-nowrap">
-                        {new Date(inq.submittedAt).toLocaleDateString()}
+                        {new Date(inq.submittedAt).toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric'
+                        })}
                       </td>
                       <td className="px-4 py-3">
                         <span className="text-white font-medium">{inq.name}</span>
