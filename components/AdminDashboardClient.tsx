@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, useMemo } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt, HelpCircle } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
@@ -13,14 +13,22 @@ import { SiteSettingsManager } from './SiteSettingsManager'
 import { FinancialReportsManager } from './FinancialReportsManager'
 import { PackagesManager } from './PackagesManager'
 import { SupportInquiriesManager } from './SupportInquiriesManager'
+import { AboutUsManager } from './AboutUsManager'
 import { getWebsites, getContactSubmissions, getTestimonials, getSupportInquiries } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial, SupportInquiry } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
 type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial'
 
+const VALID_TABS: TabType[] = ['websites', 'inquiries', 'support', 'leads', 'financial', 'testimonials', 'packages', 'about', 'banner', 'offers', 'settings']
+
 export default function AdminDashboardClient() {
-  const [activeTab, setActiveTab] = useState<TabType>('websites')
+  const searchParams = useSearchParams()
+  const tabFromUrl = useMemo(() => {
+    const t = searchParams.get('tab')
+    return (t && VALID_TABS.includes(t as TabType)) ? t as TabType : null
+  }, [searchParams])
+  const [activeTab, setActiveTab] = useState<TabType>(tabFromUrl ?? 'websites')
   const [websites, setWebsites] = useState<Website[]>([])
   const [inquiries, setInquiries] = useState<ContactSubmission[]>([])
   const [supportInquiries, setSupportInquiries] = useState<SupportInquiry[]>([])
@@ -32,6 +40,10 @@ export default function AdminDashboardClient() {
   useEffect(() => {
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (tabFromUrl) setActiveTab(tabFromUrl)
+  }, [tabFromUrl])
 
   const loadData = async () => {
     try {
@@ -244,19 +256,7 @@ export default function AdminDashboardClient() {
 
             {activeTab === 'about' && (
               <div className="animate-in fade-in duration-300">
-                <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
-                  <p className="text-slate-300 text-center py-8">
-                    About Us management coming soon. For now, use{' '}
-                    <a
-                      href="/admin/about"
-                      target="_blank"
-                      className="text-cyan-400 hover:text-cyan-300 underline"
-                    >
-                      /admin/about
-                    </a>
-                    {' '}in a new tab.
-                  </p>
-                </div>
+                <AboutUsManager />
               </div>
             )}
 
