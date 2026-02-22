@@ -246,12 +246,13 @@ export const saveSupportInquiry = async (
   inquiry: Omit<SupportInquiry, 'id' | 'submittedAt' | 'status' | 'statusUpdatedAt'>
 ): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db, SUPPORT_INQUIRIES_COLLECTION), {
+    const data = cleanObjectForFirestore({
       ...inquiry,
       submittedAt: Timestamp.now(),
       status: 'new' as const,
       statusUpdatedAt: Timestamp.now()
     });
+    const docRef = await addDoc(collection(db, SUPPORT_INQUIRIES_COLLECTION), data);
     return docRef.id;
   } catch (error) {
     console.error('Error saving support inquiry:', error);
