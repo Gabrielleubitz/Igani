@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveSupportInquiry } from '@/lib/firestore'
 import { uploadToCloudinary, cloudinaryConfigured } from '@/lib/cloudinary'
+import { sendAdminNotification } from '@/lib/mailjet'
+import { buildHelpNotificationEmail } from '@/lib/email-templates'
 
 const ISSUE_TYPES = ['bug', 'something_not_working', 'feedback', 'feature_request'] as const
 const PRODUCTS = ['AlmaLinks', 'Igani', 'Other'] as const
@@ -101,6 +103,28 @@ export async function POST(request: NextRequest) {
       referrer,
       userAgent
     })
+
+    const helpData = {
+      name,
+      email,
+      product: product || 'AlmaLinks',
+      productSlug,
+      productName,
+      issueType: validIssueType,
+      description,
+      stepsToReproduce,
+      pageOrFeature,
+      deviceType: deviceType === 'desktop' || deviceType === 'mobile' ? deviceType : undefined,
+      browser,
+      source,
+      attachmentUrl
+    }
+    const html = buildHelpNotificationEmail(helpData)
+    await sendAdminNotification(
+      `[IGANI] Help inquiry: ${name} – ${validIssueType}`,
+      html,
+      `${name} (${email}): ${description}`
+    )
 
     return NextResponse.json(
       { success: true, message: 'Thanks for reporting this. Our team has received it and will take a look.' },

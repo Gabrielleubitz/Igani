@@ -9,7 +9,7 @@ import { AnimatedButton } from '@/components/ui/animated-button'
 import { IganiLogo } from '@/components/IganiLogo'
 import Header from '@/components/Header'
 import { defaultSettings } from '@/data/defaultSettings'
-import { getWebsites, getSettings, saveContactSubmission, getTestimonials } from '@/lib/firestore'
+import { getWebsites, getSettings, getTestimonials } from '@/lib/firestore'
 import { Website, SiteSettings, Testimonial } from '@/types'
 import { siteContent } from '@/lib/i18n'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -98,8 +98,16 @@ export default function HomePage() {
     setIsSubmitting(true)
 
     try {
-      // Submit to Firebase
-      await saveContactSubmission(formData)
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSubmitStatus('error')
+        return
+      }
       setSubmitStatus('success')
       setFormData({
         firstName: '',

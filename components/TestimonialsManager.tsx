@@ -10,6 +10,7 @@ import {
   updateTestimonial,
   deleteTestimonial
 } from '@/lib/firestore'
+import { AdminImageField } from '@/components/admin/AdminImageField'
 
 export default function TestimonialsManager() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
@@ -207,16 +208,12 @@ export default function TestimonialsManager() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Profile Image URL (optional)
-              </label>
-              <input
-                type="url"
-                name="image"
+              <AdminImageField
+                label="Profile Image (optional)"
                 value={formData.image}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                onChange={(url) => setFormData(prev => ({ ...prev, image: url }))}
                 placeholder="https://example.com/image.jpg"
+                previewSize="md"
               />
             </div>
 

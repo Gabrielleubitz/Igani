@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Edit, Trash2, Save, X, Star, ExternalLink } from 'lucide-react'
 import { Website } from '@/types'
 import { saveWebsite, updateWebsite, deleteWebsite } from '@/lib/firestore'
+import { AdminImageField } from '@/components/admin/AdminImageField'
 
 interface WebsiteManagerProps {
   websites: Website[]
@@ -191,16 +192,12 @@ export function WebsiteManager({ websites, onUpdate }: WebsiteManagerProps) {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-white mb-2">
-                  Image URL *
-                </label>
-                <input
-                  type="url"
+                <AdminImageField
+                  label="Image *"
                   value={formData.image}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+                  onChange={(url) => setFormData(prev => ({ ...prev, image: url }))}
                   placeholder="https://example.com/image.jpg"
-                  required
+                  previewSize="md"
                 />
               </div>
 

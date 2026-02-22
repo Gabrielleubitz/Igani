@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { collection, getDocs, addDoc, query, orderBy, Timestamp } from 'firebase/firestore'
 import { db } from '@/lib/firebase'
+import { sendAdminNotification } from '@/lib/mailjet'
+import { buildLeadNotificationEmail } from '@/lib/email-templates'
 
 interface Lead {
   id: string
@@ -134,6 +136,20 @@ export async function POST(request: Request) {
     }
 
     const leadId = await saveLead(leadData)
+
+    const html = buildLeadNotificationEmail({
+      name: leadData.name,
+      email: leadData.email,
+      phone: leadData.phone,
+      source: leadData.source,
+      message: leadData.message,
+      sourceDetails: leadData.sourceDetails
+    })
+    await sendAdminNotification(
+      `[IGANI] New lead: ${leadData.name}`,
+      html,
+      `Lead from ${leadData.email}: ${leadData.message || '(no message)'}`
+    )
 
     return NextResponse.json({ success: true, lead: { ...leadData, id: leadId } }, {
       headers: {

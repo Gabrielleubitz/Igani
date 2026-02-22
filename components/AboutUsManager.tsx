@@ -32,6 +32,7 @@ import {
   deleteTeamMember
 } from '@/lib/firestore'
 import { AboutUsSection, AboutUsSettings, TeamMember } from '@/types'
+import { AdminImageField } from '@/components/admin/AdminImageField'
 
 const sectionSchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -505,14 +506,13 @@ export function AboutUsManager() {
               {errors.metaDescription && <p className="text-red-400 text-sm mt-1">{errors.metaDescription}</p>}
             </div>
             <div>
-              <label className="block text-white font-medium mb-2">Hero Image URL (Optional)</label>
-              <input
-                type="url"
+              <AdminImageField
+                label="Hero Image (Optional)"
                 value={settings.heroImage || ''}
-                onChange={(e) => setSettings(prev => ({ ...prev, heroImage: e.target.value }))}
+                onChange={(url) => setSettings(prev => ({ ...prev, heroImage: url }))}
                 disabled={!editingSettings}
-                className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500 disabled:opacity-50"
                 placeholder="https://example.com/hero-image.jpg"
+                previewSize="lg"
               />
             </div>
             <div>
@@ -660,19 +660,13 @@ export function AboutUsManager() {
                 </div>
               </div>
               <div>
-                <label className="block text-white font-medium mb-2">Image URL (Optional)</label>
-                <input
-                  type="url"
+                <AdminImageField
+                  label="Image (Optional)"
                   value={editingTeamMember.imageUrl || ''}
-                  onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, imageUrl: e.target.value } : null)}
-                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white"
+                  onChange={(url) => setEditingTeamMember(prev => prev ? { ...prev, imageUrl: url } : null)}
                   placeholder="https://example.com/photo.jpg"
+                  previewSize="md"
                 />
-                {editingTeamMember.imageUrl && (
-                  <div className="mt-2">
-                    <img src={editingTeamMember.imageUrl} alt="Preview" className="w-20 h-20 rounded-lg object-cover border border-slate-600" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  </div>
-                )}
               </div>
               <div>
                 <label className="block text-white font-medium mb-2">Bio *</label>

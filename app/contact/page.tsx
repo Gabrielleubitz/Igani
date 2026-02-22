@@ -8,7 +8,6 @@ import { IganiLogo } from '@/components/IganiLogo'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
-import { saveContactSubmission } from '@/lib/firestore'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { T } from '@/components/T'
@@ -38,7 +37,16 @@ export default function ContactPage() {
     setIsSubmitting(true)
 
     try {
-      await saveContactSubmission(formData)
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setSubmitStatus('error')
+        return
+      }
       setSubmitStatus('success')
       setFormData({
         firstName: '',

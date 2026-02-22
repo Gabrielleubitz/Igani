@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { saveContactSubmission } from '@/lib/firestore'
+import { sendAdminNotification } from '@/lib/mailjet'
+import { buildFunnelNotificationEmail } from '@/lib/email-templates'
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,11 +30,14 @@ export async function POST(request: NextRequest) {
       message: `[Funnel Lead - ${businessType}]\n${phone ? `Phone: ${phone}\n` : ''}${message}`
     }
 
-    // Use the same function as contact form to save to contactSubmissions collection
     await saveContactSubmission(submissionData)
 
-    // TODO: Send email notification (optional)
-    // You can integrate with Mailjet, SendGrid, or another email service here
+    const html = buildFunnelNotificationEmail(submissionData)
+    await sendAdminNotification(
+      `[IGANI] New funnel lead: ${firstName} ${lastName}`,
+      html,
+      `Funnel lead from ${email}: ${message}`
+    )
 
     return NextResponse.json(
       { success: true, message: 'Form submitted successfully' },
