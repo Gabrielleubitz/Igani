@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt, HelpCircle } from 'lucide-react'
+import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt, HelpCircle, Zap } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
@@ -18,9 +18,83 @@ import { getWebsites, getContactSubmissions, getTestimonials, getSupportInquirie
 import { Website, ContactSubmission, Testimonial, SupportInquiry } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
-type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial'
+type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial' | 'api'
 
-const VALID_TABS: TabType[] = ['websites', 'inquiries', 'support', 'leads', 'financial', 'testimonials', 'packages', 'about', 'banner', 'offers', 'settings']
+const VALID_TABS: TabType[] = ['websites', 'inquiries', 'support', 'leads', 'financial', 'testimonials', 'packages', 'about', 'banner', 'offers', 'api', 'settings']
+
+const API_TESTS = [
+  { id: 'health', label: 'Health check', method: 'GET', path: '/api/health' },
+  { id: 'leads', label: 'Leads (list)', method: 'GET', path: '/api/leads' },
+] as const
+
+function TestApiSection() {
+  const [loading, setLoading] = useState<string | null>(null)
+  const [result, setResult] = useState<{ status: number; body: string } | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const runTest = async (path: string, method: string) => {
+    setLoading(path)
+    setError(null)
+    setResult(null)
+    try {
+      const res = await fetch(path, { method })
+      const text = await res.text()
+      let body = text
+      try {
+        body = JSON.stringify(JSON.parse(text), null, 2)
+      } catch {
+        // keep raw text
+      }
+      setResult({ status: res.status, body })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Request failed')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
+        <h3 className="text-lg font-semibold text-white mb-2">Quick API tests</h3>
+        <p className="text-slate-400 text-sm mb-4">
+          Run read-only checks against your API routes. Responses appear below.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          {API_TESTS.map((test) => (
+            <button
+              key={test.id}
+              type="button"
+              onClick={() => runTest(test.path, test.method)}
+              disabled={!!loading}
+              className="px-4 py-2.5 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm"
+            >
+              {loading === test.path ? '…' : `${test.method} ${test.path}`}
+            </button>
+          ))}
+        </div>
+      </div>
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm">
+          {error}
+        </div>
+      )}
+      {result && (
+        <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-slate-400 text-sm">Status:</span>
+            <span className={`font-mono text-sm font-semibold ${result.status >= 400 ? 'text-red-400' : 'text-green-400'}`}>
+              {result.status}
+            </span>
+          </div>
+          <pre className="p-4 rounded-lg bg-slate-900/80 border border-slate-600 text-slate-300 text-xs overflow-x-auto max-h-96 overflow-y-auto">
+            {result.body}
+          </pre>
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function AdminDashboardClient() {
   const searchParams = useSearchParams()
@@ -80,6 +154,7 @@ export default function AdminDashboardClient() {
     { id: 'about', label: 'About Us', icon: Info, color: 'indigo' },
     { id: 'banner', label: 'Promo Banner', icon: Megaphone, color: 'pink' },
     { id: 'offers', label: 'Offer Timer', icon: Clock, color: 'orange' },
+    { id: 'api', label: 'Test API', icon: Zap, color: 'violet' },
     { id: 'settings', label: 'Settings', icon: SettingsIcon, color: 'slate' },
   ]
 
@@ -281,6 +356,12 @@ export default function AdminDashboardClient() {
             {activeTab === 'offers' && (
               <div className="animate-in fade-in duration-300">
                 <OfferSettingsManager />
+              </div>
+            )}
+
+            {activeTab === 'api' && (
+              <div className="animate-in fade-in duration-300">
+                <TestApiSection />
               </div>
             )}
 
