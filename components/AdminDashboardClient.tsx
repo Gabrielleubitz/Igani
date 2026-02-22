@@ -27,6 +27,8 @@ const API_TESTS = [
   { id: 'leads', label: 'Leads (list)', method: 'GET', path: '/api/leads' },
 ] as const
 
+const MAILJET_TEST_PATH = '/api/admin/test-email'
+
 function TestApiSection() {
   const [loading, setLoading] = useState<string | null>(null)
   const [result, setResult] = useState<{ status: number; body: string } | null>(null)
@@ -73,6 +75,20 @@ function TestApiSection() {
             </button>
           ))}
         </div>
+      </div>
+      <div className="bg-slate-800/60 rounded-2xl border border-slate-700/50 p-6">
+        <h3 className="text-lg font-semibold text-white mb-2">Mailjet</h3>
+        <p className="text-slate-400 text-sm mb-4">
+          Send a test email to the admin address to verify Mailjet is configured.
+        </p>
+        <button
+          type="button"
+          onClick={() => runTest(MAILJET_TEST_PATH, 'POST')}
+          disabled={!!loading}
+          className="px-4 py-2.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium text-sm"
+        >
+          {loading === MAILJET_TEST_PATH ? 'Sending…' : 'POST /api/admin/test-email (send test email)'}
+        </button>
       </div>
       {error && (
         <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-300 text-sm">
