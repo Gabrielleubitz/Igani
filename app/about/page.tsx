@@ -8,8 +8,8 @@ import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { getAboutUsSections, getAboutUsSettings, getPackageFAQs } from '@/lib/firestore'
-import { AboutUsSection, AboutUsSettings, PackageFAQ } from '@/types'
+import { getAboutUsSections, getAboutUsSettings, getPackageFAQs, getTeamMembers } from '@/lib/firestore'
+import { AboutUsSection, AboutUsSettings, PackageFAQ, TeamMember } from '@/types'
 import { T } from '@/components/T'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
@@ -21,6 +21,7 @@ const IGANI_CAPITAL_URL = 'https://capital.igani.co'
 export default function AboutPage() {
   const { language } = useLanguage()
   const [sections, setSections] = useState<AboutUsSection[]>([])
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [faqs, setFAQs] = useState<PackageFAQ[]>([])
   const [settings, setSettings] = useState<AboutUsSettings>({
     pageTitle: 'About IGANI',
@@ -35,13 +36,15 @@ export default function AboutPage() {
       try {
         setIsLoading(true)
 
-        const [sectionsData, settingsData, faqsData] = await Promise.all([
+        const [sectionsData, settingsData, faqsData, teamData] = await Promise.all([
           getAboutUsSections(),
           getAboutUsSettings(),
-          getPackageFAQs()
+          getPackageFAQs(),
+          getTeamMembers()
         ])
 
         setSections(sectionsData.filter(s => s.published).sort((a, b) => a.order - b.order))
+        setTeamMembers(teamData.filter(m => m.published).sort((a, b) => a.order - b.order))
         setFAQs(faqsData.filter(f => f.published))
 
         if (settingsData) {
@@ -286,62 +289,55 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {/* Co-Founders Section */}
-        <section className="py-16 px-4">
-          <div className="max-w-7xl mx-auto">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-3xl md:text-4xl font-bold text-white mb-10 text-center"
-            >
-              {siteContent.aboutPage.coFoundersTitle[language]}
-            </motion.h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
+        {/* Team Members Section */}
+        {teamMembers.length > 0 && (
+          <section className="py-16 px-4">
+            <div className="max-w-7xl mx-auto">
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
+                transition={{ duration: 0.6 }}
                 viewport={{ once: true }}
-                className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50"
+                className="text-3xl md:text-4xl font-bold text-white mb-10 text-center"
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center mb-4">
-                  <User className="w-7 h-7 text-cyan-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-1">
-                  {siteContent.aboutPage.gabrielName[language]}
-                </h3>
-                <p className="text-cyan-400 text-sm font-medium mb-3">
-                  {siteContent.aboutPage.gabrielRole[language]}
-                </p>
-                <p className="text-slate-300 leading-relaxed">
-                  {siteContent.aboutPage.gabrielBio[language]}
-                </p>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                viewport={{ once: true }}
-                className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center mb-4">
-                  <User className="w-7 h-7 text-cyan-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-1">
-                  {siteContent.aboutPage.amitayName[language]}
-                </h3>
-                <p className="text-cyan-400 text-sm font-medium mb-3">
-                  {siteContent.aboutPage.amitayRole[language]}
-                </p>
-                <p className="text-slate-300 leading-relaxed">
-                  {siteContent.aboutPage.amitayBio[language]}
-                </p>
-              </motion.div>
+                {settings.teamSectionTitle || 'Our Team'}
+              </motion.h2>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                {teamMembers.map((member, index) => (
+                  <motion.div
+                    key={member.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50"
+                  >
+                    {member.imageUrl ? (
+                      <img
+                        src={member.imageUrl}
+                        alt={member.name}
+                        className="w-24 h-24 rounded-xl object-cover mb-4 mx-auto md:mx-0"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center mb-4">
+                        <User className="w-12 h-12 text-cyan-400" />
+                      </div>
+                    )}
+                    <h3 className="text-xl font-bold text-white mb-1">
+                      {member.name}
+                    </h3>
+                    <p className="text-cyan-400 text-sm font-medium mb-3">
+                      {member.position}
+                    </p>
+                    <p className="text-slate-300 leading-relaxed">
+                      {member.bio}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* FAQ Section */}
         {faqs.length > 0 && (

@@ -12,7 +12,7 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, PromoBannerSettings, Expense, SupportInquiry } from '../types';
+import { SiteSettings, ContactSubmission, Website, Testimonial, Package, MaintenancePlan, PackageFAQ, PackageSettings, AboutUsSection, AboutUsSettings, TeamMember, PromoBannerSettings, Expense, SupportInquiry } from '../types';
 
 // Collections
 const SETTINGS_COLLECTION = 'settings';
@@ -24,6 +24,7 @@ const PACKAGES_COLLECTION = 'packages';
 const MAINTENANCE_PLANS_COLLECTION = 'maintenancePlans';
 const PACKAGE_FAQS_COLLECTION = 'faqs';
 const ABOUT_US_SECTIONS_COLLECTION = 'aboutUsSections';
+const TEAM_MEMBERS_COLLECTION = 'teamMembers';
 const PROMO_BANNER_COLLECTION = 'promoBanner';
 const EXPENSES_COLLECTION = 'expenses';
 
@@ -844,6 +845,71 @@ export const deleteAboutUsSection = async (id: string): Promise<void> => {
   }
 };
 
+// Team Members (About page)
+export const getTeamMembers = async (): Promise<TeamMember[]> => {
+  try {
+    const q = query(
+      collection(db, TEAM_MEMBERS_COLLECTION),
+      orderBy('order', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        name: data.name ?? '',
+        position: data.position ?? '',
+        bio: data.bio ?? '',
+        imageUrl: data.imageUrl,
+        order: data.order ?? 0,
+        published: data.published ?? true,
+        createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? data.createdAt,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() ?? data.updatedAt
+      } as TeamMember;
+    });
+  } catch (error) {
+    console.error('Error getting team members:', error);
+    return [];
+  }
+};
+
+export const saveTeamMember = async (
+  data: Omit<TeamMember, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string> => {
+  try {
+    const cleaned = cleanObjectForFirestore({
+      ...data,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now()
+    });
+    const docRef = await addDoc(collection(db, TEAM_MEMBERS_COLLECTION), cleaned);
+    return docRef.id;
+  } catch (error) {
+    console.error('Error saving team member:', error);
+    throw error;
+  }
+};
+
+export const updateTeamMember = async (member: TeamMember): Promise<void> => {
+  try {
+    const { id, createdAt, ...rest } = member;
+    const cleaned = cleanObjectForFirestore({ ...rest, updatedAt: Timestamp.now() });
+    await updateDoc(doc(db, TEAM_MEMBERS_COLLECTION, id), cleaned);
+  } catch (error) {
+    console.error('Error updating team member:', error);
+    throw error;
+  }
+};
+
+export const deleteTeamMember = async (id: string): Promise<void> => {
+  try {
+    await deleteDoc(doc(db, TEAM_MEMBERS_COLLECTION, id));
+  } catch (error) {
+    console.error('Error deleting team member:', error);
+    throw error;
+  }
+};
+
 // About Us Settings Functions
 export const saveAboutUsSettings = async (settings: AboutUsSettings): Promise<void> => {
   try {
@@ -866,7 +932,8 @@ export const getAboutUsSettings = async (): Promise<AboutUsSettings | null> => {
         pageTitle: data.pageTitle || 'About IGANI',
         pageSubtitle: data.pageSubtitle || 'Crafting digital experiences with passion and precision',
         heroImage: data.heroImage || '',
-        metaDescription: data.metaDescription || 'Learn about IGANI - your trusted partner for premium web development and digital solutions.'
+        metaDescription: data.metaDescription || 'Learn about IGANI - your trusted partner for premium web development and digital solutions.',
+        teamSectionTitle: data.teamSectionTitle || 'Our Team'
       };
     }
     return null;

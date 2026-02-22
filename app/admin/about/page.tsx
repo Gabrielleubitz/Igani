@@ -26,9 +26,13 @@ import {
   saveAboutUsSection,
   updateAboutUsSection,
   deleteAboutUsSection,
-  saveAboutUsSettings
+  saveAboutUsSettings,
+  getTeamMembers,
+  saveTeamMember,
+  updateTeamMember,
+  deleteTeamMember
 } from '@/lib/firestore'
-import { AboutUsSection, AboutUsSettings } from '@/types'
+import { AboutUsSection, AboutUsSettings, TeamMember } from '@/types'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 
 // Validation schemas
@@ -44,10 +48,20 @@ const settingsSchema = z.object({
   pageTitle: z.string().min(1, 'Page title is required'),
   pageSubtitle: z.string().min(1, 'Page subtitle is required'),
   metaDescription: z.string().min(1, 'Meta description is required'),
-  heroImage: z.string().optional()
+  heroImage: z.string().optional(),
+  teamSectionTitle: z.string().optional()
 })
 
-type TabType = 'sections' | 'settings'
+const teamMemberSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  position: z.string().min(1, 'Position is required'),
+  bio: z.string().min(1, 'Bio is required'),
+  imageUrl: z.string().optional(),
+  order: z.number().min(0),
+  published: z.boolean()
+})
+
+type TabType = 'sections' | 'team' | 'settings'
 
 export default function AboutUsAdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>('sections')
@@ -61,6 +75,9 @@ export default function AboutUsAdminPage() {
   const [editingSection, setEditingSection] = useState<AboutUsSection | null>(null)
   const [editingSettings, setEditingSettings] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [editingTeamMember, setEditingTeamMember] = useState<TeamMember | null>(null)
+  const [isCreatingTeamMember, setIsCreatingTeamMember] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -70,11 +87,13 @@ export default function AboutUsAdminPage() {
   const loadData = async () => {
     try {
       setIsLoading(true)
-      const [sectionsData, settingsData] = await Promise.all([
+      const [sectionsData, settingsData, teamData] = await Promise.all([
         getAboutUsSections(),
-        getAboutUsSettings()
+        getAboutUsSettings(),
+        getTeamMembers()
       ])
       setSections(sectionsData.sort((a, b) => a.order - b.order))
+      setTeamMembers(teamData.sort((a, b) => a.order - b.order))
       if (settingsData) {
         setSettings(settingsData)
       }
@@ -187,6 +206,71 @@ export default function AboutUsAdminPage() {
     }
   }
 
+  const handleCreateTeamMember = () => {
+    setEditingTeamMember({
+      id: '',
+      name: '',
+      position: '',
+      bio: '',
+      imageUrl: '',
+      order: Math.max(...teamMembers.map(m => m.order), 0) + 1,
+      published: true
+    })
+    setIsCreatingTeamMember(true)
+    setErrors({})
+  }
+
+  const handleEditTeamMember = (member: TeamMember) => {
+    setEditingTeamMember({ ...member })
+    setIsCreatingTeamMember(false)
+    setErrors({})
+  }
+
+  const handleSaveTeamMember = async () => {
+    if (!editingTeamMember) return
+    try {
+      const validated = teamMemberSchema.parse({
+        name: editingTeamMember.name,
+        position: editingTeamMember.position,
+        bio: editingTeamMember.bio,
+        imageUrl: editingTeamMember.imageUrl || undefined,
+        order: editingTeamMember.order,
+        published: editingTeamMember.published
+      })
+      if (isCreatingTeamMember) {
+        await saveTeamMember(validated)
+      } else {
+        await updateTeamMember({ ...editingTeamMember, ...validated })
+      }
+      await loadData()
+      setEditingTeamMember(null)
+      setIsCreatingTeamMember(false)
+      setErrors({})
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {}
+        error.errors.forEach(err => {
+          if (err.path[0]) {
+            newErrors[err.path[0] as string] = err.message
+          }
+        })
+        setErrors(newErrors)
+      } else {
+        console.error('Error saving team member:', error)
+      }
+    }
+  }
+
+  const handleDeleteTeamMember = async (id: string) => {
+    if (!confirm('Delete this team member?')) return
+    try {
+      await deleteTeamMember(id)
+      await loadData()
+    } catch (error) {
+      console.error('Error deleting team member:', error)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
@@ -240,6 +324,17 @@ export default function AboutUsAdminPage() {
           >
             <Info className="w-5 h-5" />
             Content Sections ({sections.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('team')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 ${
+              activeTab === 'team'
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-500/25'
+                : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 hover:text-white'
+            }`}
+          >
+            <Users className="w-5 h-5" />
+            Team Members ({teamMembers.length})
           </button>
           <button
             onClick={() => setActiveTab('settings')}
@@ -346,6 +441,85 @@ export default function AboutUsAdminPage() {
           </div>
         )}
 
+        {/* Team Members Tab */}
+        {activeTab === 'team' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold text-white">Team Members</h2>
+              <button
+                onClick={handleCreateTeamMember}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300"
+              >
+                <Plus className="w-4 h-4" />
+                Add Team Member
+              </button>
+            </div>
+            <div className="space-y-4">
+              {teamMembers.map((member) => (
+                <motion.div
+                  key={member.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6 flex items-start justify-between gap-4"
+                >
+                  <div className="flex items-start gap-4 flex-1 min-w-0">
+                    {member.imageUrl ? (
+                      <img
+                        src={member.imageUrl}
+                        alt={member.name}
+                        className="w-16 h-16 rounded-lg object-cover flex-shrink-0 bg-slate-700"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-slate-700 flex items-center justify-center flex-shrink-0">
+                        <Users className="w-8 h-8 text-slate-500" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-lg font-semibold text-white">{member.name}</h3>
+                      <p className="text-cyan-400 text-sm font-medium">{member.position}</p>
+                      <p className="text-slate-300 text-sm mt-1 line-clamp-2">{member.bio}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-slate-500">Order: {member.order}</span>
+                        {member.published ? (
+                          <Eye className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <EyeOff className="w-4 h-4 text-slate-500" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleEditTeamMember(member)}
+                      className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-slate-700/50 rounded-lg transition-all"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTeamMember(member.id)}
+                      className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700/50 rounded-lg transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              ))}
+              {teamMembers.length === 0 && (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-slate-500 mx-auto mb-4" />
+                  <p className="text-slate-400">No team members yet</p>
+                  <button
+                    onClick={handleCreateTeamMember}
+                    className="mt-4 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                  >
+                    Add your first team member
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Page Settings Tab */}
         {activeTab === 'settings' && (
           <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-xl p-6">
@@ -434,6 +608,19 @@ export default function AboutUsAdminPage() {
                   placeholder="https://example.com/hero-image.jpg"
                 />
                 {errors.heroImage && <p className="text-red-400 text-sm mt-1">{errors.heroImage}</p>}
+              </div>
+
+              <div>
+                <label className="block text-white font-medium mb-2">Team Section Title (Optional)</label>
+                <input
+                  type="text"
+                  value={settings.teamSectionTitle || ''}
+                  onChange={(e) => setSettings(prev => ({ ...prev, teamSectionTitle: e.target.value }))}
+                  disabled={!editingSettings}
+                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Our Team"
+                />
+                <p className="text-slate-500 text-sm mt-1">Heading shown above the team members on the About page.</p>
               </div>
             </div>
           </div>
@@ -549,6 +736,136 @@ export default function AboutUsAdminPage() {
                   className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300"
                 >
                   {isCreating ? 'Create Section' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Edit Team Member Modal */}
+      {editingTeamMember && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-slate-800 rounded-xl border border-slate-700/50 p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-white">
+                {isCreatingTeamMember ? 'Add Team Member' : 'Edit Team Member'}
+              </h2>
+              <button
+                onClick={() => {
+                  setEditingTeamMember(null)
+                  setIsCreatingTeamMember(false)
+                  setErrors({})
+                }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-white font-medium mb-2">Name *</label>
+                  <input
+                    type="text"
+                    value={editingTeamMember.name}
+                    onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, name: e.target.value } : null)}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+                    placeholder="Full name"
+                  />
+                  {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
+                </div>
+                <div>
+                  <label className="block text-white font-medium mb-2">Position *</label>
+                  <input
+                    type="text"
+                    value={editingTeamMember.position}
+                    onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, position: e.target.value } : null)}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+                    placeholder="e.g. Co-Founder, Developer"
+                  />
+                  {errors.position && <p className="text-red-400 text-sm mt-1">{errors.position}</p>}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-white font-medium mb-2">Image URL (Optional)</label>
+                <input
+                  type="url"
+                  value={editingTeamMember.imageUrl || ''}
+                  onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, imageUrl: e.target.value } : null)}
+                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+                  placeholder="https://example.com/photo.jpg"
+                />
+                {editingTeamMember.imageUrl && (
+                  <div className="mt-2">
+                    <img
+                      src={editingTeamMember.imageUrl}
+                      alt="Preview"
+                      className="w-20 h-20 rounded-lg object-cover border border-slate-600"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-white font-medium mb-2">Bio *</label>
+                <textarea
+                  value={editingTeamMember.bio}
+                  onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, bio: e.target.value } : null)}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+                  placeholder="Short bio or description..."
+                />
+                {errors.bio && <p className="text-red-400 text-sm mt-1">{errors.bio}</p>}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-white font-medium mb-2">Order</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editingTeamMember.order}
+                    onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, order: parseInt(e.target.value) || 0 } : null)}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white"
+                  />
+                </div>
+                <div className="flex items-center pt-8">
+                  <label className="flex items-center gap-2 text-white font-medium">
+                    <input
+                      type="checkbox"
+                      checked={editingTeamMember.published}
+                      onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, published: e.target.checked } : null)}
+                      className="w-4 h-4 text-cyan-600 bg-slate-900 border-slate-600 rounded focus:ring-cyan-500"
+                    />
+                    Published (visible on About page)
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-4 pt-4">
+                <button
+                  onClick={() => {
+                    setEditingTeamMember(null)
+                    setIsCreatingTeamMember(false)
+                    setErrors({})
+                  }}
+                  className="px-6 py-3 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveTeamMember}
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300"
+                >
+                  {isCreatingTeamMember ? 'Add Team Member' : 'Save Changes'}
                 </button>
               </div>
             </div>

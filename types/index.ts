@@ -142,11 +142,24 @@ export interface AboutUsSection {
   updatedAt?: string;
 }
 
+export interface TeamMember {
+  id: string;
+  name: string;
+  position: string;
+  bio: string;
+  imageUrl?: string;
+  order: number;
+  published: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface AboutUsSettings {
   pageTitle: string;
   pageSubtitle: string;
   heroImage?: string;
   metaDescription: string;
+  teamSectionTitle?: string;
 }
 
 export interface PromoBannerSettings {
