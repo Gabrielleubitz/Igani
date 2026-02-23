@@ -40,6 +40,7 @@ export const HELP_PRODUCT_CONFIGS: Record<string, HelpProductConfig> = {
     introBody:
       'AlmaLinks is built by Igani. Your feedback and bug reports directly help us improve the platform. We really appreciate you taking the time to reach out. All submissions go straight to our team—we read every one.',
     betaMessage: 'AlmaLinks is currently in beta.',
+    logoPath: '/alma-logo.svg',
     issueCategories: DEFAULT_ISSUE_CATEGORIES,
     defaultProductValue: 'AlmaLinks',
     requireSourceParam: true
@@ -53,6 +54,18 @@ export const HELP_PRODUCT_CONFIGS: Record<string, HelpProductConfig> = {
     betaMessage: undefined,
     issueCategories: DEFAULT_ISSUE_CATEGORIES,
     defaultProductValue: 'Capital by Igani',
+    requireSourceParam: true
+  },
+  callmap: {
+    productSlug: 'callmap',
+    productName: 'Callmap',
+    introTitle: 'Help & Support',
+    introBody:
+      'Callmap is built by Igani. Your feedback and bug reports directly help us improve the platform. We really appreciate you taking the time to reach out. All submissions go straight to our team—we read every one.',
+    betaMessage: undefined,
+    logoPath: '/callmap.svg',
+    issueCategories: DEFAULT_ISSUE_CATEGORIES,
+    defaultProductValue: 'Callmap',
     requireSourceParam: true
   }
 }

@@ -158,6 +158,61 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
             )}
           </motion.div>
 
+          {/* Igani × Alma Links partnership (Alma Links help page only) */}
+          {config.productSlug === 'almalinks' && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="flex items-center justify-center gap-4 mb-8"
+            >
+              <IganiLogo className="w-24 h-8 text-white opacity-90" />
+              <span className="text-slate-500 font-light text-lg" aria-hidden>×</span>
+              <img
+                src="/alma-logo.svg"
+                alt="Alma Links"
+                className="h-8 w-auto object-contain opacity-95"
+              />
+              <span className="sr-only">Igani and Alma Links partnership</span>
+            </motion.div>
+          )}
+
+          {/* Igani × Callmap partnership (Callmap help page only) */}
+          {config.productSlug === 'callmap' && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="flex flex-col items-center gap-3 mb-8"
+            >
+              <div className="flex items-center justify-center gap-4">
+                <IganiLogo className="w-24 h-8 text-white opacity-90" />
+                <span className="text-slate-500 font-light text-lg" aria-hidden>×</span>
+                {config.logoPath ? (
+                  <img
+                    src={config.logoPath}
+                    alt="Callmap"
+                    className="h-8 w-auto object-contain opacity-95"
+                  />
+                ) : (
+                  <span className="text-xl font-semibold text-white">Callmap</span>
+                )}
+                <span className="sr-only">Igani and Callmap partnership</span>
+              </div>
+              <p className="text-slate-400 text-sm">
+                For more info on Callmap, go to{' '}
+                <a
+                  href="https://callmap.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-cyan-400 hover:text-cyan-300 underline"
+                >
+                  callmap.ai
+                </a>
+              </p>
+            </motion.div>
+          )}
+
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
