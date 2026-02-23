@@ -141,75 +141,81 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
 
       <div className="relative z-10 pt-4 pb-20 px-4">
         <div className="max-w-2xl mx-auto">
-          {/* Branding */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex justify-center mb-8"
-          >
-            {config.logoPath ? (
-              <img
-                src={config.logoPath}
-                alt={config.productName}
-                className="h-12 w-auto object-contain"
-              />
-            ) : (
-              <IganiLogo className="w-36 h-12 text-white" />
-            )}
-          </motion.div>
+          {/* Branding: top logo only for products that don't have a partnership block */}
+          {config.productSlug !== 'almalinks' && config.productSlug !== 'callmap' && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-center mb-8"
+            >
+              {config.logoPath ? (
+                <img
+                  src={config.logoPath}
+                  alt={config.productName}
+                  className="h-12 w-auto object-contain"
+                />
+              ) : (
+                <IganiLogo className="w-36 h-12 text-white" />
+              )}
+            </motion.div>
+          )}
 
-          {/* Igani × Alma Links partnership (Alma Links help page only) */}
+          {/* Igani × Alma Links partnership in liquid glass (Alma Links help page only) */}
           {config.productSlug === 'almalinks' && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="flex items-center justify-center gap-4 mb-8"
+              className="mb-8 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(255,255,255,0.08)] p-6"
             >
-              <IganiLogo className="w-24 h-8 text-white opacity-90" />
-              <span className="text-slate-500 font-light text-lg" aria-hidden>×</span>
-              <img
-                src="/alma-logo.svg"
-                alt="Alma Links"
-                className="h-8 w-auto object-contain opacity-95"
-              />
-              <span className="sr-only">Igani and Alma Links partnership</span>
+              <div className="flex items-center justify-center gap-4">
+                <IganiLogo className="w-24 h-8 text-white opacity-90" />
+                <span className="text-slate-400 font-light text-lg" aria-hidden>×</span>
+                <img
+                  src="/alma-logo.svg"
+                  alt="Alma Links"
+                  className="h-8 w-auto object-contain opacity-95"
+                />
+                <span className="sr-only">Igani and Alma Links partnership</span>
+              </div>
             </motion.div>
           )}
 
-          {/* Igani × Callmap partnership (Callmap help page only) */}
+          {/* Igani × Callmap partnership in liquid glass (Callmap help page only) */}
           {config.productSlug === 'callmap' && (
             <motion.div
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="flex flex-col items-center gap-3 mb-8"
+              className="mb-8 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(255,255,255,0.08)] p-6"
             >
-              <div className="flex items-center justify-center gap-4">
-                <IganiLogo className="w-24 h-8 text-white opacity-90" />
-                <span className="text-slate-500 font-light text-lg" aria-hidden>×</span>
-                {config.logoPath ? (
-                  <img
-                    src={config.logoPath}
-                    alt="Callmap"
-                    className="h-8 w-auto object-contain opacity-95"
-                  />
-                ) : (
-                  <span className="text-xl font-semibold text-white">Callmap</span>
-                )}
-                <span className="sr-only">Igani and Callmap partnership</span>
+              <div className="flex flex-col items-center gap-3">
+                <div className="flex items-center justify-center gap-4">
+                  <IganiLogo className="w-24 h-8 text-white opacity-90" />
+                  <span className="text-slate-400 font-light text-lg" aria-hidden>×</span>
+                  {config.logoPath ? (
+                    <img
+                      src={config.logoPath}
+                      alt="Callmap"
+                      className="h-8 w-auto object-contain opacity-95"
+                    />
+                  ) : (
+                    <span className="text-xl font-semibold text-white">Callmap</span>
+                  )}
+                  <span className="sr-only">Igani and Callmap partnership</span>
+                </div>
+                <p className="text-slate-400 text-sm">
+                  For more info on Callmap, go to{' '}
+                  <a
+                    href="https://callmap.ai"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 underline"
+                  >
+                    callmap.ai
+                  </a>
+                </p>
               </div>
-              <p className="text-slate-400 text-sm">
-                For more info on Callmap, go to{' '}
-                <a
-                  href="https://callmap.ai"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-cyan-400 hover:text-cyan-300 underline"
-                >
-                  callmap.ai
-                </a>
-              </p>
             </motion.div>
           )}
 
