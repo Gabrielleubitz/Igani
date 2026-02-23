@@ -166,7 +166,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="mb-8 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(255,255,255,0.08)] p-6"
+              className="mb-8 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-xl shadow-[0_0_40px_-8px_rgba(255,255,255,0.15)] p-6"
             >
               <div className="flex items-center justify-center gap-4">
                 <IganiLogo className="w-24 h-8 text-white opacity-90" />
@@ -187,7 +187,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="mb-8 rounded-2xl border border-white/20 bg-white/5 backdrop-blur-xl shadow-[0_0_40px_-10px_rgba(255,255,255,0.08)] p-6"
+              className="mb-8 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-xl shadow-[0_0_40px_-8px_rgba(255,255,255,0.15)] p-6"
             >
               <div className="flex flex-col items-center gap-3">
                 <div className="flex items-center justify-center gap-4">
