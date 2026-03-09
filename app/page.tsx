@@ -419,7 +419,7 @@ export default function HomePage() {
                       whileInView={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
                       viewport={{ once: true }}
-                      className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-500 hover:border-cyan-500/60"
+                      className="group relative bg-white/8 backdrop-blur-md border border-white/15 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-500 hover:border-white/25"
                     >
                       <div className="relative h-64 overflow-hidden bg-slate-100/10 backdrop-blur-sm flex items-center justify-center">
                         <img
