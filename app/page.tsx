@@ -421,7 +421,7 @@ export default function HomePage() {
                       viewport={{ once: true }}
                       className="group relative bg-slate-800/60 border border-slate-700/50 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-500 hover:border-cyan-500/60"
                     >
-                      <div className="relative h-64 overflow-hidden bg-slate-900 flex items-center justify-center">
+                      <div className="relative h-64 overflow-hidden bg-slate-100/10 backdrop-blur-sm flex items-center justify-center">
                         <img
                           src={website.image}
                           alt={website.title}
