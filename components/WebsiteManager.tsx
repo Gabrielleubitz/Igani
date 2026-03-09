@@ -247,13 +247,13 @@ export function WebsiteManager({ websites, onUpdate }: WebsiteManagerProps) {
             className="group relative bg-slate-800/60 border border-slate-700/50 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-cyan-500/10 transition-all duration-300"
           >
             {/* Image */}
-            <div className="relative h-48 overflow-hidden">
+            <div className="relative h-48 overflow-hidden bg-slate-900 flex items-center justify-center">
               <img
                 src={website.image}
                 alt={website.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain p-5"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent pointer-events-none"></div>
               {website.featured && (
                 <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-3 py-1.5 rounded-full text-xs font-bold shadow-xl">
                   ⭐ Featured
