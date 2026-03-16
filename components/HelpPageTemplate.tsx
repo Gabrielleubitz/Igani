@@ -195,7 +195,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                 <img
                   src="/calenologo.png"
                   alt="Caleno"
-                  className="h-8 w-auto object-contain opacity-95"
+                  className="h-14 w-auto object-contain opacity-95"
                 />
                 <span className="sr-only">Igani and Caleno partnership</span>
               </div>
