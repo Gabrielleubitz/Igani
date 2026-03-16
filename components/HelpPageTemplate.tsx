@@ -13,11 +13,97 @@ interface HelpPageTemplateProps {
   sourceUrl: string
 }
 
+const TEXT = {
+  en: {
+    back: '← Back',
+    poweredBy: 'Powered by Igani',
+    reportingIssue: (name: string) => `Reporting an issue with ${name}?`,
+    reportTagged: (name: string) => `Your report will be tagged for ${name} and sent to our team.`,
+    thanks: 'Thanks for reporting this.',
+    teamReceived: 'Our team has received it and will take a look.',
+    submitAnother: 'Submit another',
+    errorSomethingWrong: 'Something went wrong. Please try again.',
+    labelName: 'Name',
+    labelEmail: 'Email',
+    labelPhone: 'Phone',
+    labelIssueType: 'Issue type',
+    labelDescription: 'Description',
+    labelSteps: 'Steps to reproduce',
+    labelPage: 'Page or feature where it occurred',
+    labelAttachment: 'Screenshot or screen recording',
+    labelDevice: 'Device',
+    labelBrowser: 'Browser',
+    optional: '(optional)',
+    placeholderName: 'Your name',
+    placeholderEmail: 'you@example.com',
+    placeholderPhone: '+1 555 000 0000',
+    placeholderDescription: 'What happened? What did you expect to happen?',
+    placeholderSteps: '1. Go to... 2. Click...',
+    placeholderPage: 'e.g. Dashboard, Settings',
+    placeholderBrowser: 'e.g. Chrome, Safari',
+    selectDevice: 'Select',
+    deviceDesktop: 'Desktop',
+    deviceMobile: 'Mobile',
+    maxFileSize: 'Max 10 MB.',
+    submitButton: 'Submit',
+    submitting: 'Sending…',
+    validName: 'Please enter your name.',
+    validEmail: 'Please enter your email.',
+    validEmailFormat: 'Please enter a valid email address.',
+    validPhone: 'Please enter your phone number.',
+    validDescription: 'Please describe what happened.',
+  },
+  he: {
+    back: 'חזרה →',
+    poweredBy: 'מופעל על ידי Igani',
+    reportingIssue: (name: string) => `מדווח על בעיה עם ${name}?`,
+    reportTagged: (name: string) => `הדיווח שלך יסומן עבור ${name} וישלח לצוות שלנו.`,
+    thanks: 'תודה על הדיווח.',
+    teamReceived: 'הצוות שלנו קיבל את הדיווח ויבדוק אותו.',
+    submitAnother: 'שלח דיווח נוסף',
+    errorSomethingWrong: 'משהו השתבש. נסה שוב.',
+    labelName: 'שם',
+    labelEmail: 'אימייל',
+    labelPhone: 'טלפון',
+    labelIssueType: 'סוג הבעיה',
+    labelDescription: 'תיאור',
+    labelSteps: 'שלבים לשחזור הבעיה',
+    labelPage: 'עמוד או תכונה שבהם הבעיה אירעה',
+    labelAttachment: 'צילום מסך או הקלטת מסך',
+    labelDevice: 'מכשיר',
+    labelBrowser: 'דפדפן',
+    optional: '(אופציונלי)',
+    placeholderName: 'שמך',
+    placeholderEmail: 'you@example.com',
+    placeholderPhone: '+972 50 000 0000',
+    placeholderDescription: 'מה קרה? מה ציפית שיקרה?',
+    placeholderSteps: '1. עבור ל... 2. לחץ על...',
+    placeholderPage: 'לדוגמה: לוח בקרה, הגדרות',
+    placeholderBrowser: 'לדוגמה: Chrome, Safari',
+    selectDevice: 'בחר',
+    deviceDesktop: 'מחשב',
+    deviceMobile: 'נייד',
+    maxFileSize: 'גודל מקסימלי 10 MB.',
+    submitButton: 'שלח',
+    submitting: 'שולח…',
+    validName: 'נא להזין שם.',
+    validEmail: 'נא להזין אימייל.',
+    validEmailFormat: 'נא להזין כתובת אימייל תקינה.',
+    validPhone: 'נא להזין מספר טלפון.',
+    validDescription: 'נא לתאר מה קרה.',
+  },
+} as const
+
 export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
+  const locale = config.locale ?? 'en'
+  const t = TEXT[locale]
+  const isRtl = locale === 'he'
+
   const [form, setForm] = useState({
     name: '',
     email: '',
-    issueType: 'feedback',
+    phone: '',
+    issueType: config.issueCategories?.[0]?.value ?? 'feedback',
     description: '',
     stepsToReproduce: '',
     pageOrFeature: '',
@@ -31,13 +117,14 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
 
   const validate = useCallback((): boolean => {
     const next: Record<string, string> = {}
-    if (!form.name.trim()) next.name = 'Please enter your name.'
-    if (!form.email.trim()) next.email = 'Please enter your email.'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = 'Please enter a valid email address.'
-    if (!form.description.trim()) next.description = 'Please describe what happened.'
+    if (!form.name.trim()) next.name = t.validName
+    if (!form.email.trim()) next.email = t.validEmail
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = t.validEmailFormat
+    if (!form.phone.trim()) next.phone = t.validPhone
+    if (!form.description.trim()) next.description = t.validDescription
     setErrors(next)
     return Object.keys(next).length === 0
-  }, [form.name, form.email, form.description])
+  }, [form.name, form.email, form.phone, form.description, t])
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -61,6 +148,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
       const body: Record<string, string> = {
         name: form.name.trim(),
         email: form.email.trim(),
+        phone: form.phone.trim(),
         product: config.defaultProductValue,
         productSlug: config.productSlug,
         productName: config.productName,
@@ -90,14 +178,15 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
 
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setErrors({ form: data.error || 'Something went wrong. Please try again.' })
+        setErrors({ form: data.error || t.errorSomethingWrong })
         return
       }
       setSubmitted(true)
       setForm({
         name: '',
         email: '',
-        issueType: 'feedback',
+        phone: '',
+        issueType: config.issueCategories?.[0]?.value ?? 'feedback',
         description: '',
         stepsToReproduce: '',
         pageOrFeature: '',
@@ -106,7 +195,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
       })
       setAttachment(null)
     } catch {
-      setErrors({ form: 'Something went wrong. Please try again.' })
+      setErrors({ form: t.errorSomethingWrong })
     } finally {
       setIsSubmitting(false)
     }
@@ -121,8 +210,10 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
         { value: 'feature_request', label: 'Feature request' }
       ]
 
+  const inputClass = 'w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent'
+
   return (
-    <div className="min-h-screen bg-slate-900 relative">
+    <div className="min-h-screen bg-slate-900 relative" dir={isRtl ? 'rtl' : 'ltr'}>
       <StarryBackground />
       <div className="fixed inset-0 pointer-events-none z-0">
         <SplashCursor />
@@ -130,13 +221,10 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
 
       {/* Minimal top: no main nav, just back */}
       <div className="relative z-10 pt-8 pb-4 px-4 flex justify-between items-center max-w-2xl mx-auto">
-        <a
-          href="/"
-          className="text-slate-400 hover:text-white text-sm transition-colors"
-        >
-          ← Back
+        <a href="/" className="text-slate-400 hover:text-white text-sm transition-colors">
+          {t.back}
         </a>
-        <span className="text-slate-500 text-xs">Powered by Igani</span>
+        <span className="text-slate-500 text-xs">{t.poweredBy}</span>
       </div>
 
       <div className="relative z-10 pt-4 pb-20 px-4">
@@ -171,11 +259,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
               <div className="flex items-center justify-center gap-4">
                 <IganiLogo className="w-24 h-8 text-white opacity-90" />
                 <span className="text-slate-400 font-light text-lg" aria-hidden>×</span>
-                <img
-                  src="/alma-logo.svg"
-                  alt="Alma Links"
-                  className="h-8 w-auto object-contain opacity-95"
-                />
+                <img src="/alma-logo.svg" alt="Alma Links" className="h-8 w-auto object-contain opacity-95" />
                 <span className="sr-only">Igani and Alma Links partnership</span>
               </div>
             </motion.div>
@@ -192,11 +276,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
               <div className="flex items-center justify-center gap-4">
                 <IganiLogo className="w-24 h-8 text-white opacity-90" />
                 <span className="text-slate-400 font-light text-lg" aria-hidden>×</span>
-                <img
-                  src="/calenologo.png"
-                  alt="Caleno"
-                  className="h-14 w-auto object-contain opacity-95"
-                />
+                <img src="/calenologo.png" alt="Caleno" className="h-14 w-auto object-contain opacity-95" />
                 <span className="sr-only">Igani and Caleno partnership</span>
               </div>
             </motion.div>
@@ -215,11 +295,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   <IganiLogo className="w-24 h-8 text-white opacity-90" />
                   <span className="text-slate-400 font-light text-lg" aria-hidden>×</span>
                   {config.logoPath ? (
-                    <img
-                      src={config.logoPath}
-                      alt="Callmap"
-                      className="h-8 w-auto object-contain opacity-95"
-                    />
+                    <img src={config.logoPath} alt="Callmap" className="h-8 w-auto object-contain opacity-95" />
                   ) : (
                     <span className="text-xl font-semibold text-white">Callmap</span>
                   )}
@@ -227,12 +303,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                 </div>
                 <p className="text-slate-400 text-sm">
                   For more info on Callmap, go to{' '}
-                  <a
-                    href="https://callmap.ai"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-cyan-400 hover:text-cyan-300 underline"
-                  >
+                  <a href="https://callmap.ai" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline">
                     callmap.ai
                   </a>
                 </p>
@@ -254,9 +325,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
               {config.introBody}
             </p>
             {config.betaMessage && (
-              <p className="text-cyan-400 font-medium">
-                {config.betaMessage}
-              </p>
+              <p className="text-cyan-400 font-medium">{config.betaMessage}</p>
             )}
           </motion.section>
 
@@ -268,10 +337,10 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
           >
             <p className="text-cyan-200 font-medium flex items-center gap-2">
               <MessageSquare className="w-5 h-5" />
-              Reporting an issue with {config.productName}?
+              {t.reportingIssue(config.productName)}
             </p>
             <p className="text-slate-400 text-sm mt-1">
-              Your report will be tagged for {config.productName} and sent to our team.
+              {t.reportTagged(config.productName)}
             </p>
           </motion.section>
 
@@ -281,16 +350,14 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
               animate={{ opacity: 1, scale: 1 }}
               className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 text-center"
             >
-              <p className="text-xl text-white mb-2">Thanks for reporting this.</p>
-              <p className="text-slate-300">
-                Our team has received it and will take a look.
-              </p>
+              <p className="text-xl text-white mb-2">{t.thanks}</p>
+              <p className="text-slate-300">{t.teamReceived}</p>
               <button
                 type="button"
                 onClick={() => setSubmitted(false)}
                 className="mt-6 px-6 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-medium rounded-lg transition-colors"
               >
-                Submit another
+                {t.submitAnother}
               </button>
             </motion.div>
           ) : (
@@ -313,10 +380,11 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
 
               <input type="hidden" name="product" value={config.defaultProductValue} />
 
+              {/* Name + Email */}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="help-name" className="block text-sm font-medium text-slate-300 mb-1">
-                    Name <span className="text-red-400">*</span>
+                    {t.labelName} <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="help-name"
@@ -325,15 +393,15 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                     required
                     value={form.name}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                    placeholder="Your name"
+                    className={inputClass}
+                    placeholder={t.placeholderName}
                     aria-invalid={!!errors.name}
                   />
                   {errors.name && <p className="mt-1 text-sm text-red-400">{errors.name}</p>}
                 </div>
                 <div>
                   <label htmlFor="help-email" className="block text-sm font-medium text-slate-300 mb-1">
-                    Email <span className="text-red-400">*</span>
+                    {t.labelEmail} <span className="text-red-400">*</span>
                   </label>
                   <input
                     id="help-email"
@@ -342,17 +410,38 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                     required
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                    placeholder="you@example.com"
+                    className={inputClass}
+                    placeholder={t.placeholderEmail}
                     aria-invalid={!!errors.email}
                   />
                   {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email}</p>}
                 </div>
               </div>
 
+              {/* Phone */}
+              <div>
+                <label htmlFor="help-phone" className="block text-sm font-medium text-slate-300 mb-1">
+                  {t.labelPhone} <span className="text-red-400">*</span>
+                </label>
+                <input
+                  id="help-phone"
+                  name="phone"
+                  type="tel"
+                  required
+                  value={form.phone}
+                  onChange={handleChange}
+                  className={inputClass}
+                  placeholder={t.placeholderPhone}
+                  aria-invalid={!!errors.phone}
+                  dir="ltr"
+                />
+                {errors.phone && <p className="mt-1 text-sm text-red-400">{errors.phone}</p>}
+              </div>
+
+              {/* Issue type */}
               <div>
                 <label htmlFor="help-issueType" className="block text-sm font-medium text-slate-300 mb-1">
-                  Issue type <span className="text-red-400">*</span>
+                  {t.labelIssueType} <span className="text-red-400">*</span>
                 </label>
                 <select
                   id="help-issueType"
@@ -360,19 +449,18 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   required
                   value={form.issueType}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  className={inputClass}
                 >
-                  {categories.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
+                  {categories.map((c) => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
                   ))}
                 </select>
               </div>
 
+              {/* Description */}
               <div>
                 <label htmlFor="help-description" className="block text-sm font-medium text-slate-300 mb-1">
-                  Description <span className="text-red-400">*</span>
+                  {t.labelDescription} <span className="text-red-400">*</span>
                 </label>
                 <textarea
                   id="help-description"
@@ -381,18 +469,17 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   rows={4}
                   value={form.description}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-y min-h-[100px]"
-                  placeholder="What happened? What did you expect to happen?"
+                  className={`${inputClass} resize-y min-h-[100px]`}
+                  placeholder={t.placeholderDescription}
                   aria-invalid={!!errors.description}
                 />
-                {errors.description && (
-                  <p className="mt-1 text-sm text-red-400">{errors.description}</p>
-                )}
+                {errors.description && <p className="mt-1 text-sm text-red-400">{errors.description}</p>}
               </div>
 
+              {/* Steps to reproduce */}
               <div>
                 <label htmlFor="help-steps" className="block text-sm font-medium text-slate-300 mb-1">
-                  Steps to reproduce <span className="text-slate-500">(optional)</span>
+                  {t.labelSteps} <span className="text-slate-500">{t.optional}</span>
                 </label>
                 <textarea
                   id="help-steps"
@@ -400,14 +487,15 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   rows={2}
                   value={form.stepsToReproduce}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-y"
-                  placeholder="1. Go to... 2. Click..."
+                  className={`${inputClass} resize-y`}
+                  placeholder={t.placeholderSteps}
                 />
               </div>
 
+              {/* Page or feature */}
               <div>
                 <label htmlFor="help-page" className="block text-sm font-medium text-slate-300 mb-1">
-                  Page or feature where it occurred <span className="text-slate-500">(optional)</span>
+                  {t.labelPage} <span className="text-slate-500">{t.optional}</span>
                 </label>
                 <input
                   id="help-page"
@@ -415,14 +503,15 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   type="text"
                   value={form.pageOrFeature}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                  placeholder="e.g. Dashboard, Settings"
+                  className={inputClass}
+                  placeholder={t.placeholderPage}
                 />
               </div>
 
+              {/* Attachment */}
               <div>
                 <label htmlFor="help-attachment" className="block text-sm font-medium text-slate-300 mb-1">
-                  Screenshot or screen recording <span className="text-slate-500">(optional)</span>
+                  {t.labelAttachment} <span className="text-slate-500">{t.optional}</span>
                 </label>
                 <input
                   id="help-attachment"
@@ -432,29 +521,30 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   onChange={(e) => setAttachment(e.target.files?.[0] ?? null)}
                   className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-cyan-600 file:text-white file:text-sm"
                 />
-                <p className="mt-1 text-xs text-slate-500">Max 10 MB.</p>
+                <p className="mt-1 text-xs text-slate-500">{t.maxFileSize}</p>
               </div>
 
+              {/* Device + Browser */}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="help-device" className="block text-sm font-medium text-slate-300 mb-1">
-                    Device <span className="text-slate-500">(optional)</span>
+                    {t.labelDevice} <span className="text-slate-500">{t.optional}</span>
                   </label>
                   <select
                     id="help-device"
                     name="deviceType"
                     value={form.deviceType}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className={inputClass}
                   >
-                    <option value="">Select</option>
-                    <option value="desktop">Desktop</option>
-                    <option value="mobile">Mobile</option>
+                    <option value="">{t.selectDevice}</option>
+                    <option value="desktop">{t.deviceDesktop}</option>
+                    <option value="mobile">{t.deviceMobile}</option>
                   </select>
                 </div>
                 <div>
                   <label htmlFor="help-browser" className="block text-sm font-medium text-slate-300 mb-1">
-                    Browser <span className="text-slate-500">(optional)</span>
+                    {t.labelBrowser} <span className="text-slate-500">{t.optional}</span>
                   </label>
                   <input
                     id="help-browser"
@@ -462,8 +552,8 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                     type="text"
                     value={form.browser}
                     onChange={handleChange}
-                    className="w-full px-4 py-2.5 rounded-lg bg-slate-900/80 border border-slate-600 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                    placeholder="e.g. Chrome, Safari"
+                    className={inputClass}
+                    placeholder={t.placeholderBrowser}
                   />
                 </div>
               </div>
@@ -474,7 +564,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   disabled={isSubmitting}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-3.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900"
                 >
-                  {isSubmitting ? 'Sending…' : (<><Send className="w-5 h-5" /> Submit</>)}
+                  {isSubmitting ? t.submitting : (<><Send className="w-5 h-5" /> {t.submitButton}</>)}
                 </button>
               </div>
             </motion.form>
@@ -483,7 +573,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
       </div>
 
       <div className="relative z-10 py-6 text-center">
-        <p className="text-slate-600 text-xs">Powered by Igani</p>
+        <p className="text-slate-600 text-xs">{t.poweredBy}</p>
       </div>
     </div>
   )

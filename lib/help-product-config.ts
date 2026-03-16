@@ -23,6 +23,8 @@ export interface HelpProductConfig {
   defaultProductValue: string
   /** Optional: require ?src=<productSlug> or ?k= to show the form; otherwise show gate */
   requireSourceParam?: boolean
+  /** Page locale — affects all UI strings and text direction. Defaults to 'en'. */
+  locale?: 'en' | 'he'
 }
 
 const DEFAULT_ISSUE_CATEGORIES: HelpIssueCategory[] = [
@@ -71,14 +73,20 @@ export const HELP_PRODUCT_CONFIGS: Record<string, HelpProductConfig> = {
   caleno: {
     productSlug: 'caleno',
     productName: 'Caleno',
-    introTitle: 'Help & Support',
+    introTitle: 'תמיכה ועזרה',
     introBody:
-      'Caleno is built by Igani. Your feedback and bug reports directly help us improve the platform. We really appreciate you taking the time to reach out. All submissions go straight to our team—we read every one.',
+      'Caleno נבנה על ידי Igani. המשוב ודיווחי הבאגים שלך עוזרים לנו ישירות לשפר את הפלטפורמה. אנחנו מעריכים את הזמן שהשקעת ליצור קשר. כל הפניות מגיעות ישירות לצוות שלנו—אנחנו קוראים כל אחת.',
     betaMessage: undefined,
     logoPath: '/calenologo.png',
-    issueCategories: DEFAULT_ISSUE_CATEGORIES,
+    issueCategories: [
+      { value: 'bug', label: 'באג' },
+      { value: 'something_not_working', label: 'משהו לא עובד' },
+      { value: 'feedback', label: 'משוב' },
+      { value: 'feature_request', label: 'בקשת תכונה' }
+    ],
     defaultProductValue: 'Caleno',
-    requireSourceParam: true
+    requireSourceParam: true,
+    locale: 'he'
   }
 }
 
