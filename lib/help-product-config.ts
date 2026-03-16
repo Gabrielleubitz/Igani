@@ -67,6 +67,18 @@ export const HELP_PRODUCT_CONFIGS: Record<string, HelpProductConfig> = {
     issueCategories: DEFAULT_ISSUE_CATEGORIES,
     defaultProductValue: 'Callmap',
     requireSourceParam: true
+  },
+  caleno: {
+    productSlug: 'caleno',
+    productName: 'Caleno',
+    introTitle: 'Help & Support',
+    introBody:
+      'Caleno is built by Igani. Your feedback and bug reports directly help us improve the platform. We really appreciate you taking the time to reach out. All submissions go straight to our team—we read every one.',
+    betaMessage: undefined,
+    logoPath: '/calenologo.png',
+    issueCategories: DEFAULT_ISSUE_CATEGORIES,
+    defaultProductValue: 'Caleno',
+    requireSourceParam: true
   }
 }
 

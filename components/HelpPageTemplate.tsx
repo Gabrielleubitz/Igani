@@ -142,7 +142,7 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
       <div className="relative z-10 pt-4 pb-20 px-4">
         <div className="max-w-2xl mx-auto">
           {/* Branding: top logo only for products that don't have a partnership block */}
-          {config.productSlug !== 'almalinks' && config.productSlug !== 'callmap' && (
+          {config.productSlug !== 'almalinks' && config.productSlug !== 'callmap' && config.productSlug !== 'caleno' && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -177,6 +177,27 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
                   className="h-8 w-auto object-contain opacity-95"
                 />
                 <span className="sr-only">Igani and Alma Links partnership</span>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Igani × Caleno partnership in liquid glass (Caleno help page only) */}
+          {config.productSlug === 'caleno' && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="mb-8 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-xl shadow-[0_0_40px_-8px_rgba(255,255,255,0.15)] p-6"
+            >
+              <div className="flex items-center justify-center gap-4">
+                <IganiLogo className="w-24 h-8 text-white opacity-90" />
+                <span className="text-slate-400 font-light text-lg" aria-hidden>×</span>
+                <img
+                  src="/calenologo.png"
+                  alt="Caleno"
+                  className="h-8 w-auto object-contain opacity-95"
+                />
+                <span className="sr-only">Igani and Caleno partnership</span>
               </div>
             </motion.div>
           )}
