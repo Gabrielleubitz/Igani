@@ -271,12 +271,28 @@ export function HelpPageTemplate({ config, sourceUrl }: HelpPageTemplateProps) {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="mb-8 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-xl shadow-[0_0_40px_-8px_rgba(255,255,255,0.15)] p-6"
+              className="mb-8 rounded-2xl border border-white/30 bg-white/15 backdrop-blur-xl shadow-[0_0_40px_-8px_rgba(255,255,255,0.15)] py-8 px-10"
             >
-              <div className="flex items-center justify-center gap-4">
-                <IganiLogo className="w-24 h-8 text-white opacity-90" />
-                <span className="text-slate-400 font-light text-lg" aria-hidden>×</span>
-                <img src="/calenologo.png" alt="Caleno" className="h-14 w-auto object-contain opacity-95" />
+              <div className="flex items-center justify-center gap-8">
+                {/* Igani */}
+                <div className="flex flex-col items-center gap-2">
+                  <IganiLogo className="w-36 h-12 text-white" />
+                </div>
+
+                {/* Divider */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-slate-400 text-2xl font-thin leading-none select-none" aria-hidden>×</span>
+                </div>
+
+                {/* Caleno */}
+                <div className="flex flex-col items-center gap-2">
+                  <img
+                    src="/calenologo.png"
+                    alt="Caleno"
+                    className="h-12 w-auto object-contain"
+                  />
+                </div>
+
                 <span className="sr-only">Igani and Caleno partnership</span>
               </div>
             </motion.div>
