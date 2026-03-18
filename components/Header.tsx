@@ -90,7 +90,7 @@ export default function Header({
               </button>
             )}
             <div className="flex items-center cursor-pointer" onClick={handleLogoClick}>
-              <IganiLogo className="h-10 w-36" />
+              <IganiLogo className="h-12 w-44" />
             </div>
           </div>
 
