@@ -352,11 +352,21 @@ export const deleteSupportInquiry = async (id: string): Promise<void> => {
 
 // Website Functions
 export const saveWebsite = async (
-  website: Omit<Website, 'id' | 'createdAt'>
+  website: Omit<Website, 'id' | 'createdAt' | 'order'>,
+  order?: number
 ): Promise<string> => {
   try {
+    // If no order given, place at end
+    let resolvedOrder = order;
+    if (resolvedOrder === undefined) {
+      const existing = await getWebsites();
+      resolvedOrder = existing.length > 0
+        ? Math.max(...existing.map(w => w.order ?? 0)) + 1
+        : 0;
+    }
     const docRef = await addDoc(collection(db, WEBSITES_COLLECTION), {
       ...website,
+      order: resolvedOrder,
       createdAt: new Date().toISOString().split('T')[0],
       updatedAt: Timestamp.now()
     });
@@ -369,12 +379,7 @@ export const saveWebsite = async (
 
 export const getWebsites = async (): Promise<Website[]> => {
   try {
-    const q = query(
-      collection(db, WEBSITES_COLLECTION),
-      orderBy('createdAt', 'desc')
-    );
-
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(collection(db, WEBSITES_COLLECTION));
     const websites: Website[] = [];
 
     querySnapshot.forEach((doc) => {
@@ -387,8 +392,15 @@ export const getWebsites = async (): Promise<Website[]> => {
         category: data.category,
         image: data.image,
         featured: data.featured || false,
-        createdAt: data.createdAt
+        createdAt: data.createdAt,
+        order: data.order ?? 9999
       });
+    });
+
+    // Sort client-side: by explicit order, then by createdAt for legacy items
+    websites.sort((a, b) => {
+      if (a.order !== b.order) return a.order - b.order;
+      return (a.createdAt ?? '').localeCompare(b.createdAt ?? '');
     });
 
     return websites;
@@ -408,10 +420,25 @@ export const updateWebsite = async (website: Website): Promise<void> => {
       category: website.category,
       image: website.image,
       featured: website.featured,
+      order: website.order,
       updatedAt: Timestamp.now()
     });
   } catch (error) {
     console.error('Error updating website:', error);
+    throw error;
+  }
+};
+
+export const reorderWebsites = async (
+  orderedIds: string[]
+): Promise<void> => {
+  try {
+    const promises = orderedIds.map((id, index) =>
+      updateDoc(doc(db, WEBSITES_COLLECTION, id), { order: index })
+    );
+    await Promise.all(promises);
+  } catch (error) {
+    console.error('Error reordering websites:', error);
     throw error;
   }
 };

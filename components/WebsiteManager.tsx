@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Edit, Trash2, Save, X, Star, ExternalLink } from 'lucide-react'
+import { Plus, Edit, Trash2, Save, X, Star, ExternalLink, ChevronUp, ChevronDown } from 'lucide-react'
 import { Website } from '@/types'
-import { saveWebsite, updateWebsite, deleteWebsite } from '@/lib/firestore'
+import { saveWebsite, updateWebsite, deleteWebsite, reorderWebsites } from '@/lib/firestore'
 import { AdminImageField } from '@/components/admin/AdminImageField'
 
 interface WebsiteManagerProps {
@@ -24,6 +24,29 @@ export function WebsiteManager({ websites, onUpdate }: WebsiteManagerProps) {
     featured: false
   })
   const [isSaving, setIsSaving] = useState(false)
+  const [isReordering, setIsReordering] = useState(false)
+
+  // Local ordered copy so moves feel instant
+  const [localOrder, setLocalOrder] = useState<Website[]>(websites)
+
+  // Sync when parent refreshes data
+  useEffect(() => { setLocalOrder(websites) }, [websites])
+
+  const moveWebsite = async (index: number, direction: 'up' | 'down') => {
+    const next = [...localOrder]
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= next.length) return
+    ;[next[index], next[swapIndex]] = [next[swapIndex], next[index]]
+    setLocalOrder(next)
+    setIsReordering(true)
+    try {
+      await reorderWebsites(next.map(w => w.id))
+    } catch {
+      setLocalOrder(localOrder) // revert on error
+    } finally {
+      setIsReordering(false)
+    }
+  }
 
   const handleEdit = (website: Website) => {
     setEditingWebsite(website)
@@ -240,12 +263,37 @@ export function WebsiteManager({ websites, onUpdate }: WebsiteManagerProps) {
 
       {/* Websites Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {websites.map((website) => (
+        {localOrder.map((website, index) => (
           <motion.div
             key={website.id}
             layout
             className="group relative bg-slate-800/60 border border-slate-700/50 rounded-2xl overflow-hidden hover:shadow-2xl hover:shadow-cyan-500/10 transition-all duration-300"
           >
+            {/* Order badge + move buttons */}
+            <div className="absolute top-3 left-3 z-10 flex items-center gap-1">
+              <span className="bg-slate-900/80 text-slate-400 text-xs font-bold px-2 py-1 rounded-full border border-slate-700">
+                #{index + 1}
+              </span>
+              <div className="flex flex-col gap-0.5">
+                <button
+                  onClick={() => moveWebsite(index, 'up')}
+                  disabled={index === 0 || isReordering}
+                  className="flex items-center justify-center w-6 h-5 rounded bg-slate-800/90 border border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Move up"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => moveWebsite(index, 'down')}
+                  disabled={index === localOrder.length - 1 || isReordering}
+                  className="flex items-center justify-center w-6 h-5 rounded bg-slate-800/90 border border-slate-600 text-slate-300 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  title="Move down"
+                >
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
             {/* Image */}
             <div className="relative h-48 overflow-hidden bg-slate-100/10 backdrop-blur-sm flex items-center justify-center">
               <img
@@ -300,7 +348,7 @@ export function WebsiteManager({ websites, onUpdate }: WebsiteManagerProps) {
         ))}
       </div>
 
-      {websites.length === 0 && !isEditing && (
+      {localOrder.length === 0 && !isEditing && (
         <div className="text-center py-16 bg-slate-800/60 rounded-2xl border border-slate-700/50">
           <p className="text-slate-400 text-lg mb-4">No websites yet</p>
           <button

@@ -9,7 +9,8 @@ export const sampleWebsites: Website[] = [
     category: 'SaaS',
     image: 'https://images.pexels.com/photos/196644/pexels-photo-196644.jpeg?auto=compress&cs=tinysrgb&w=800',
     featured: true,
-    createdAt: '2024-01-15'
+    createdAt: '2024-01-15',
+    order: 0
   },
   {
     id: '2',
@@ -19,7 +20,8 @@ export const sampleWebsites: Website[] = [
     category: 'E-commerce',
     image: 'https://images.pexels.com/photos/230325/pexels-photo-230325.jpeg?auto=compress&cs=tinysrgb&w=800',
     featured: true,
-    createdAt: '2024-01-20'
+    createdAt: '2024-01-20',
+    order: 1
   },
   {
     id: '3',
@@ -29,7 +31,8 @@ export const sampleWebsites: Website[] = [
     category: 'Portfolio',
     image: 'https://images.pexels.com/photos/323780/pexels-photo-323780.jpeg?auto=compress&cs=tinysrgb&w=800',
     featured: false,
-    createdAt: '2024-02-01'
+    createdAt: '2024-02-01',
+    order: 2
   },
   {
     id: '4',
@@ -39,7 +42,8 @@ export const sampleWebsites: Website[] = [
     category: 'Corporate',
     image: 'https://images.pexels.com/photos/590020/pexels-photo-590020.jpeg?auto=compress&cs=tinysrgb&w=800',
     featured: true,
-    createdAt: '2024-02-10'
+    createdAt: '2024-02-10',
+    order: 3
   },
   {
     id: '5',
@@ -49,7 +53,8 @@ export const sampleWebsites: Website[] = [
     category: 'Healthcare',
     image: 'https://images.pexels.com/photos/4386370/pexels-photo-4386370.jpeg?auto=compress&cs=tinysrgb&w=800',
     featured: false,
-    createdAt: '2024-02-15'
+    createdAt: '2024-02-15',
+    order: 4
   },
   {
     id: '6',
@@ -59,6 +64,7 @@ export const sampleWebsites: Website[] = [
     category: 'Creative',
     image: 'https://images.pexels.com/photos/3585088/pexels-photo-3585088.jpeg?auto=compress&cs=tinysrgb&w=800',
     featured: false,
-    createdAt: '2024-02-20'
+    createdAt: '2024-02-20',
+    order: 5
   }
 ];

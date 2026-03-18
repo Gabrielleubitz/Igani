@@ -7,6 +7,7 @@ export interface Website {
   image: string;
   featured: boolean;
   createdAt: string;
+  order: number;
 }
 
 export interface AdminState {
