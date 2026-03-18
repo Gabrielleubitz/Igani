@@ -46,6 +46,18 @@ const TAP_SPRING = {
   mass: 1,
 };
 
+/** Returns true when the viewport width is below `breakpoint` (default 768). */
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = React.useState(false);
+  React.useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export function FocusRail({
   items,
   initialIndex = 0,
@@ -57,10 +69,18 @@ export function FocusRail({
   const [active, setActive] = React.useState(initialIndex);
   const [isHovering, setIsHovering] = React.useState(false);
   const lastWheelTime = React.useRef<number>(0);
+  const isMobile = useIsMobile();
 
   const count = items.length;
   const activeIndex = wrap(0, count, active);
   const activeItem = items[activeIndex];
+
+  // Responsive layout values
+  const xStep    = isMobile ? 170 : 320;
+  const zStep    = isMobile ? 100 : 180;
+  const rotStep  = isMobile ? 12  : 20;
+  // On mobile only show 1 side-card each side to keep the layout clean
+  const visibleIndices = isMobile ? [-1, 0, 1] : [-2, -1, 0, 1, 2];
 
   const handlePrev = React.useCallback(() => {
     if (!loop && active === 0) return;
@@ -97,7 +117,7 @@ export function FocusRail({
     if (e.key === "ArrowRight") handleNext();
   };
 
-  const swipeConfidenceThreshold = 10000;
+  const swipeConfidenceThreshold = 8000;
   const swipePower = (offset: number, velocity: number) =>
     Math.abs(offset) * velocity;
 
@@ -110,12 +130,12 @@ export function FocusRail({
     else if (swipe > swipeConfidenceThreshold) handlePrev();
   };
 
-  const visibleIndices = [-2, -1, 0, 1, 2];
-
   return (
     <div
       className={cn(
-        "group relative flex h-[600px] w-full flex-col overflow-hidden bg-neutral-950 text-white outline-none select-none overflow-x-hidden",
+        // Height: shorter on mobile so the info panel fits without scrolling
+        "group relative flex w-full flex-col overflow-hidden bg-neutral-950 text-white outline-none select-none overflow-x-hidden",
+        "h-[520px] md:h-[620px]",
         className
       )}
       onMouseEnter={() => setIsHovering(true)}
@@ -124,7 +144,7 @@ export function FocusRail({
       onKeyDown={onKeyDown}
       onWheel={onWheel}
     >
-      {/* Background Ambience */}
+      {/* ── Background Ambience ── */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <AnimatePresence mode="popLayout">
           <motion.div
@@ -145,14 +165,20 @@ export function FocusRail({
         </AnimatePresence>
       </div>
 
-      {/* Main Stage */}
+      {/* ── Main Stage ── */}
       <div className="relative z-10 flex flex-1 flex-col justify-center px-4 md:px-8">
+
         {/* Draggable Rail */}
         <motion.div
-          className="relative mx-auto flex h-[360px] w-full max-w-6xl items-center justify-center perspective-[1200px] cursor-grab active:cursor-grabbing"
+          className={cn(
+            "relative mx-auto flex w-full max-w-6xl items-center justify-center cursor-grab active:cursor-grabbing",
+            // Rail height: shorter on mobile
+            "h-[260px] md:h-[360px]",
+          )}
+          style={{ perspective: isMobile ? "800px" : "1200px" }}
           drag="x"
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
+          dragElastic={0.15}
           onDragEnd={onDragEnd}
         >
           {visibleIndices.map((offset) => {
@@ -165,19 +191,21 @@ export function FocusRail({
             const isCenter = offset === 0;
             const dist = Math.abs(offset);
 
-            const xOffset = offset * 320;
-            const zOffset = -dist * 180;
-            const scale = isCenter ? 1 : 0.85;
-            const rotateY = offset * -20;
-            const opacity = isCenter ? 1 : Math.max(0.1, 1 - dist * 0.5);
-            const blur = isCenter ? 0 : dist * 6;
-            const brightness = isCenter ? 1 : 0.5;
+            const xOffset   = offset * xStep;
+            const zOffset   = -dist * zStep;
+            const scale     = isCenter ? 1 : 0.8;
+            const rotateY   = offset * -rotStep;
+            const opacity   = isCenter ? 1 : Math.max(0.1, 1 - dist * 0.55);
+            const blur      = isCenter ? 0 : dist * (isMobile ? 4 : 6);
+            const brightness = isCenter ? 1 : 0.45;
 
             return (
               <motion.div
                 key={absIndex}
                 className={cn(
-                  "absolute aspect-[3/4] w-[260px] md:w-[300px] rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl shadow-2xl transition-shadow duration-300",
+                  "absolute aspect-[3/4] rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl shadow-2xl transition-shadow duration-300",
+                  // Card width: narrower on mobile so centre card has room
+                  "w-[180px] md:w-[300px]",
                   isCenter ? "z-20 shadow-white/10" : "z-10"
                 )}
                 initial={false}
@@ -205,9 +233,8 @@ export function FocusRail({
                 <img
                   src={item.imageSrc}
                   alt={item.title}
-                  className="h-full w-full rounded-2xl object-contain pointer-events-none p-6"
+                  className="h-full w-full rounded-2xl object-contain pointer-events-none p-4 md:p-6"
                 />
-                {/* Lighting */}
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
                 <div className="absolute inset-0 rounded-2xl bg-black/10 pointer-events-none mix-blend-multiply" />
               </motion.div>
@@ -215,29 +242,37 @@ export function FocusRail({
           })}
         </motion.div>
 
-        {/* Info & Controls */}
-        <div className="mx-auto mt-12 flex w-full max-w-4xl flex-col items-center justify-between gap-6 md:flex-row pointer-events-auto">
+        {/* ── Info & Controls ── */}
+        <div className={cn(
+          "mx-auto w-full max-w-4xl pointer-events-auto",
+          "mt-6 md:mt-10",
+          // Stack vertically on mobile, side-by-side on md+
+          "flex flex-col items-center gap-4",
+          "md:flex-row md:items-end md:justify-between md:gap-6",
+        )}>
+
           {/* Title / description */}
-          <div className="flex flex-1 flex-col items-center text-center md:items-start md:text-left h-32 justify-center">
+          <div className="flex flex-col items-center text-center md:items-start md:text-left w-full md:flex-1">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeItem.id}
-                initial={{ opacity: 0, y: 10, filter: "blur(4px)" }}
+                initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
                 animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
-                transition={{ duration: 0.3 }}
-                className="space-y-2"
+                exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+                transition={{ duration: 0.25 }}
+                className="space-y-1"
               >
                 {activeItem.meta && (
                   <span className="text-xs font-medium uppercase tracking-wider text-cyan-400">
                     {activeItem.meta}
                   </span>
                 )}
-                <h2 className="text-3xl font-bold tracking-tight md:text-4xl text-white">
+                <h2 className="text-xl font-bold tracking-tight md:text-4xl text-white leading-tight">
                   {activeItem.title}
                 </h2>
+                {/* Description hidden on mobile to save vertical space */}
                 {activeItem.description && (
-                  <p className="max-w-md text-neutral-400 line-clamp-2">
+                  <p className="hidden md:block max-w-md text-neutral-400 line-clamp-2 text-sm">
                     {activeItem.description}
                   </p>
                 )}
@@ -246,22 +281,23 @@ export function FocusRail({
           </div>
 
           {/* Nav + action buttons */}
-          <div className="flex items-center gap-3">
-            {/* Prev / counter / Next */}
-            <div className="flex items-center gap-1 rounded-full bg-neutral-900/80 p-1 ring-1 ring-white/10 backdrop-blur-md">
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+
+            {/* Prev / counter / Next — larger tap targets on mobile */}
+            <div className="flex items-center gap-0.5 rounded-full bg-neutral-900/80 p-1 ring-1 ring-white/10 backdrop-blur-md">
               <button
                 onClick={handlePrev}
-                className="rounded-full p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
+                className="rounded-full p-2.5 md:p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
                 aria-label="Previous"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <span className="min-w-[40px] text-center text-xs font-mono text-neutral-500">
-                {activeIndex + 1} / {count}
+              <span className="min-w-[36px] text-center text-xs font-mono text-neutral-500">
+                {activeIndex + 1}/{count}
               </span>
               <button
                 onClick={handleNext}
-                className="rounded-full p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
+                className="rounded-full p-2.5 md:p-3 text-neutral-400 transition hover:bg-white/10 hover:text-white active:scale-95"
                 aria-label="Next"
               >
                 <ChevronRight className="h-5 w-5" />
@@ -280,7 +316,7 @@ export function FocusRail({
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.2 }}
-                  className="flex items-center justify-center w-11 h-11 rounded-full bg-neutral-900/80 ring-1 ring-white/10 backdrop-blur-md text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+                  className="flex items-center justify-center w-10 h-10 md:w-11 md:h-11 rounded-full bg-neutral-900/80 ring-1 ring-white/10 backdrop-blur-md text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
                   title="Visit Live Site"
                 >
                   <ExternalLink className="h-4 w-4" />
@@ -300,10 +336,10 @@ export function FocusRail({
                 >
                   <Link
                     href={activeItem.href}
-                    className="group flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-5 py-3 text-sm font-semibold text-white transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/20"
+                    className="group flex items-center gap-1.5 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-4 py-2.5 md:px-5 md:py-3 text-xs md:text-sm font-semibold text-white transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-cyan-500/20 whitespace-nowrap"
                   >
-                    View Preview
-                    <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    Preview
+                    <ArrowUpRight className="h-3.5 w-3.5 md:h-4 md:w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                   </Link>
                 </motion.div>
               </AnimatePresence>
