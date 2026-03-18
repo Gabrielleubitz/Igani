@@ -179,7 +179,7 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
 
             {/* Visit Site Button */}
             <motion.a
-              href={website.url}
+              href={/^https?:\/\//i.test(website.url) ? website.url : `https://${website.url}`}
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}

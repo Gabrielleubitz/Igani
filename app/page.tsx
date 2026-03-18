@@ -426,7 +426,9 @@ export default function HomePage() {
                     imageSrc: w.image,
                     meta: w.category,
                     href: `/preview/${w.id}`,
-                    externalHref: w.url || undefined,
+                    externalHref: w.url
+                      ? /^https?:\/\//i.test(w.url) ? w.url : `https://${w.url}`
+                      : undefined,
                   }))}
                   loop
                   autoPlay={false}

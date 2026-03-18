@@ -281,7 +281,7 @@ export function WebsiteManager({ websites, onUpdate }: WebsiteManagerProps) {
                   Edit
                 </button>
                 <a
-                  href={website.url}
+                  href={/^https?:\/\//i.test(website.url) ? website.url : `https://${website.url}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg transition-colors duration-300"
