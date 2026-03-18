@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
 import { HamburgerMenu } from '@/components/HamburgerMenu'
 import LanguageToggle from '@/components/LanguageToggle'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
+import { cn } from '@/lib/utils'
 import {
   Home,
   Folder,
@@ -27,22 +28,19 @@ interface HeaderProps {
 export default function Header({
   showBackButton = false,
   backButtonText,
-  backButtonHref = "/",
+  backButtonHref = '/',
   onBackClick
 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { language: currentLanguage } = useLanguage()
-  
-  // Get localized text
+
   const nav = siteContent.navigation
   const defaultBackButtonText = backButtonText || nav.backToHome[currentLanguage]
 
   const scrollToSection = (sectionId: string) => {
     if (window.location.pathname === '/') {
-      // If on homepage, scroll to section
       document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
     } else {
-      // If on another page, navigate to homepage first
       window.location.href = `/#${sectionId}`
     }
     setIsMenuOpen(false)
@@ -50,6 +48,7 @@ export default function Header({
 
   const handleContactClick = () => {
     window.location.href = '/contact'
+    setIsMenuOpen(false)
   }
 
   const handleBackClick = () => {
@@ -64,170 +63,170 @@ export default function Header({
     window.location.href = '/'
   }
 
-  // Navigation items with localization
   const navigationItems = [
-    { id: 'home', label: nav.home[currentLanguage], icon: Home, type: 'section' as const },
-    { id: 'portfolio', label: nav.portfolio[currentLanguage], icon: Folder, type: 'section' as const },
-    { id: 'packages', label: nav.packages[currentLanguage], icon: Package, type: 'page' as const, href: '/packages' },
-    { id: 'about', label: nav.about[currentLanguage], icon: Info, type: 'page' as const, href: '/about' },
-    { id: 'igani-capital', label: nav.iganiCapital[currentLanguage], icon: TrendingUp, type: 'external' as const, href: 'https://capital.igani.co' }
+    { id: 'home',          label: nav.home[currentLanguage],          icon: Home,       type: 'section'  as const },
+    { id: 'portfolio',     label: nav.portfolio[currentLanguage],     icon: Folder,     type: 'section'  as const },
+    { id: 'packages',      label: nav.packages[currentLanguage],      icon: Package,    type: 'page'     as const, href: '/packages' },
+    { id: 'about',         label: nav.about[currentLanguage],         icon: Info,       type: 'page'     as const, href: '/about' },
+    { id: 'igani-capital', label: nav.iganiCapital[currentLanguage],  icon: TrendingUp, type: 'external' as const, href: 'https://capital.igani.co' }
   ]
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-slate-900 lg:bg-slate-900/95 border-b border-slate-700/50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Back Button or Logo */}
-          <div className="flex items-center gap-4">
+    <header className="fixed top-0 left-0 right-0 z-50 pt-3 pb-2 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl flex flex-col gap-0">
+
+        {/* ── Pill nav ── */}
+        <nav className="flex items-center justify-between gap-3 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2.5 shadow-[0_4px_32px_-4px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-xl lg:grid lg:px-6 lg:[grid-template-columns:auto_1fr_auto]">
+
+          {/* LEFT — logo (+ optional back button) */}
+          <div className="flex shrink-0 items-center gap-2">
             {showBackButton && (
               <button
                 onClick={handleBackClick}
-                className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white transition-colors rounded-lg hover:bg-slate-800/50"
+                className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:border-white/20 hover:text-white"
               >
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{defaultBackButtonText}</span>
               </button>
             )}
-            <div className="group cursor-pointer" onClick={handleLogoClick}>
-              <IganiLogo className="w-40 h-14" />
+            <div className="cursor-pointer" onClick={handleLogoClick}>
+              <IganiLogo className="h-11 w-36" />
             </div>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-4">
-            <nav className="flex items-center space-x-1">
-              {navigationItems.map(item => (
+          {/* CENTRE — nav links (desktop only) */}
+          <div className="hidden min-w-0 lg:flex lg:justify-center lg:gap-1">
+            {navigationItems.map(item =>
               item.type === 'external' ? (
                 <a
                   key={item.id}
                   href={item.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="relative px-4 py-2 text-sm font-medium transition-all rounded-lg group text-slate-300 hover:text-white hover:bg-slate-800/50 inline-flex items-center gap-2"
+                  className="group relative inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   <img
                     src="https://capital.igani.co/igani-logo.png"
                     alt="Igani Capital"
-                    className="w-5 h-5 object-contain"
+                    className="h-4 w-4 object-contain"
                   />
                   {item.label}
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 w-0 group-hover:w-3/4"></span>
+                  <span className="absolute bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-300 group-hover:w-3/4" />
                 </a>
               ) : item.type === 'page' ? (
                 <a
                   key={item.id}
                   href={item.href}
-                  className="relative px-4 py-2 text-sm font-medium transition-all rounded-lg group text-slate-300 hover:text-white hover:bg-slate-800/50"
+                  className="group relative inline-flex items-center rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   {item.label}
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 w-0 group-hover:w-3/4"></span>
+                  <span className="absolute bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-3/4" />
                 </a>
               ) : (
                 <button
                   key={item.id}
                   onClick={() => scrollToSection(item.id)}
-                  className="relative px-4 py-2 text-sm font-medium transition-all rounded-lg group text-slate-300 hover:text-white hover:bg-slate-800/50"
+                  className="group relative inline-flex items-center rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   {item.label}
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-0.5 bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 w-0 group-hover:w-3/4"></span>
+                  <span className="absolute bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-3/4" />
                 </button>
               )
-            ))}
-            </nav>
-            
-            {/* Language Toggle */}
-            <LanguageToggle />
-            
-            {/* Special CTA Contact Button */}
-            <button
-              onClick={handleContactClick}
-              className="relative px-6 py-2 text-sm font-medium bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-cyan-500/25 transform hover:scale-105"
-            >
-              <MessageSquare className="w-4 h-4 inline mr-2" />
-              {nav.freeConsultation[currentLanguage]}
-            </button>
+            )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="lg:hidden">
-            <HamburgerMenu
-              isOpen={isMenuOpen}
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-            />
-          </div>
-        </div>
-
-        {/* Mobile Navigation Menu */}
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            className="lg:hidden absolute left-0 right-0 top-20 bg-slate-900 backdrop-blur-xl border-b border-slate-700/50 shadow-xl"
-          >
-            <div className="px-4 py-6 space-y-2">
-              {showBackButton && (
-                <button
-                  onClick={handleBackClick}
-                  className="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all group"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  <span>{defaultBackButtonText}</span>
-                </button>
-              )}
-              {navigationItems.map(item => (
-                item.type === 'external' ? (
-                  <a
-                    key={item.id}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all group"
-                  >
-                    <img
-                      src="https://capital.igani.co/igani-logo.png"
-                      alt="Igani Capital"
-                      className="w-5 h-5 object-contain"
-                    />
-                    <span>{item.label}</span>
-                  </a>
-                ) : item.type === 'page' ? (
-                  <a
-                    key={item.id}
-                    href={item.href}
-                    className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all group"
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                  </a>
-                ) : (
-                  <button
-                    key={item.id}
-                    onClick={() => scrollToSection(item.id)}
-                    className="flex items-center gap-3 w-full px-4 py-3 text-slate-300 hover:text-white hover:bg-slate-800/50 rounded-lg transition-all group"
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span>{item.label}</span>
-                  </button>
-                )
-              ))}
-              
-              {/* Language Toggle for Mobile */}
-              <div className="mt-6 pt-4 border-t border-slate-700/50">
-                <LanguageToggle variant="mobile" />
-              </div>
-              
-              {/* Special CTA Contact Button for Mobile */}
+          {/* RIGHT — language toggle + CTA (desktop) / hamburger (mobile) */}
+          <div className="flex shrink-0 items-center gap-2 lg:justify-self-end">
+            <div className="hidden lg:flex lg:items-center lg:gap-2">
+              <LanguageToggle />
               <button
                 onClick={handleContactClick}
-                className="flex items-center gap-3 w-full px-4 py-3 mt-4 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700 transition-all shadow-lg"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-medium text-white shadow-lg transition-all duration-300 hover:from-cyan-500 hover:to-blue-500 hover:shadow-cyan-500/25"
               >
-                <MessageSquare className="w-5 h-5" />
-                <span>{nav.freeConsultation[currentLanguage]}</span>
+                <MessageSquare className="h-4 w-4" />
+                {nav.freeConsultation[currentLanguage]}
               </button>
             </div>
-          </motion.div>
-        )}
+            <div className="lg:hidden">
+              <HamburgerMenu
+                isOpen={isMenuOpen}
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+              />
+            </div>
+          </div>
+        </nav>
+
+        {/* ── Mobile slide-down menu ── */}
+        <AnimatePresence>
+          {isMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="mt-2 rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-4 shadow-xl backdrop-blur-xl lg:hidden"
+            >
+              <div className="flex flex-col gap-1">
+                {showBackButton && (
+                  <button
+                    onClick={handleBackClick}
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                    {defaultBackButtonText}
+                  </button>
+                )}
+                {navigationItems.map(item =>
+                  item.type === 'external' ? (
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <img src="https://capital.igani.co/igani-logo.png" alt="Igani Capital" className="h-5 w-5 object-contain" />
+                      {item.label}
+                    </a>
+                  ) : item.type === 'page' ? (
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </a>
+                  ) : (
+                    <button
+                      key={item.id}
+                      onClick={() => scrollToSection(item.id)}
+                      className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      <item.icon className="h-5 w-5" />
+                      {item.label}
+                    </button>
+                  )
+                )}
+
+                <div className="mt-3 border-t border-white/10 pt-3">
+                  <LanguageToggle variant="mobile" />
+                </div>
+
+                <button
+                  onClick={handleContactClick}
+                  className="mt-2 flex items-center gap-3 w-full rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-3 text-sm font-medium text-white shadow-lg transition-all hover:from-cyan-500 hover:to-blue-500"
+                >
+                  <MessageSquare className="h-5 w-5" />
+                  {nav.freeConsultation[currentLanguage]}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </header>
   )
