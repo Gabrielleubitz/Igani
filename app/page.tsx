@@ -26,6 +26,7 @@ import {
   Star,
   MessageSquare
 } from 'lucide-react'
+import { FocusRail } from '@/components/ui/focus-rail'
 
 export default function HomePage() {
   const { language } = useLanguage()
@@ -404,69 +405,34 @@ export default function HomePage() {
             </motion.div>
 
 
-            {/* Featured Projects */}
+            {/* Featured Projects — FocusRail */}
             {featuredWebsites.length > 0 && (
-              <div className="mb-20">
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                viewport={{ once: true }}
+                className="mb-20"
+              >
                 <div className="flex items-center gap-3 mb-8">
                   <div className="w-1 h-8 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
                   <h3 className="text-2xl font-bold text-white">{content.featuredProjects[language]}</h3>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {featuredWebsites.map((website, index) => (
-                    <motion.div
-                      key={website.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      className="group relative bg-white/8 backdrop-blur-md border border-white/15 rounded-3xl overflow-hidden shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/30 transition-all duration-500 hover:border-white/25"
-                    >
-                      <div className="relative h-64 overflow-hidden bg-slate-100/10 backdrop-blur-sm flex items-center justify-center">
-                        <img
-                          src={website.image}
-                          alt={website.title}
-                          className="w-full h-full object-contain p-6 transition-all duration-700 group-hover:brightness-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent pointer-events-none"></div>
-                        <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/0 to-blue-600/0 group-hover:from-cyan-600/10 group-hover:to-blue-600/10 transition-all duration-500 pointer-events-none"></div>
-                        <div className="absolute top-4 right-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-xl backdrop-blur-sm">
-                          {content.featured[language]}
-                        </div>
-                        {/* External Link Button */}
-                        <a
-                          href={website.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute top-4 left-4 bg-slate-800/90 hover:bg-slate-700 text-white p-3 rounded-full shadow-2xl backdrop-blur-sm transition-all duration-300 hover:scale-110 z-10 border border-slate-600/50"
-                          title="Visit Live Site"
-                        >
-                          <ExternalLink className="w-5 h-5" />
-                        </a>
-                      </div>
-                      <div className="p-6">
-                        <span className="inline-block bg-cyan-500/10 text-cyan-400 text-xs px-3 py-1.5 rounded-full font-bold border border-cyan-500/30 mb-3">
-                          {website.category}
-                        </span>
-                        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors duration-300">{website.title}</h3>
-                        <p className="text-slate-400 leading-relaxed text-sm line-clamp-2 mb-4">
-                          {website.description}
-                        </p>
-                        <Link
-                          href={`/preview/${website.id}`}
-                          className="flex items-center justify-center space-x-2 w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white px-4 py-3 rounded-xl hover:from-cyan-700 hover:to-blue-700 transition-all duration-300 shadow-lg shadow-cyan-500/20 hover:shadow-xl hover:shadow-cyan-500/30 font-semibold group/btn"
-                        >
-                          <span><T>View Preview</T></span>
-                          <svg className="w-5 h-5 transform group-hover/btn:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </Link>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
+                <FocusRail
+                  items={featuredWebsites.map((w) => ({
+                    id: w.id,
+                    title: w.title,
+                    description: w.description,
+                    imageSrc: w.image,
+                    meta: w.category,
+                    href: `/preview/${w.id}`,
+                    externalHref: w.url || undefined,
+                  }))}
+                  loop
+                  autoPlay={false}
+                  className="rounded-3xl overflow-hidden"
+                />
+              </motion.div>
             )}
 
 
