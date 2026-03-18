@@ -89,8 +89,8 @@ export default function Header({
                 <span className="hidden sm:inline">{defaultBackButtonText}</span>
               </button>
             )}
-            <div className="cursor-pointer" onClick={handleLogoClick}>
-              <IganiLogo className="h-11 w-36" />
+            <div className="flex items-center cursor-pointer" onClick={handleLogoClick}>
+              <IganiLogo className="h-10 w-36" />
             </div>
           </div>
 

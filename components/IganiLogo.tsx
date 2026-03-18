@@ -14,13 +14,12 @@ export function IganiLogo({ className = "w-32 h-10" }: { className?: string }) {
   }, [])
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative flex items-center ${className}`}>
       <Image
         src={logoSrc}
         alt="IGANI Logo"
-        width={128}
-        height={40}
-        className="object-contain"
+        fill
+        className="object-contain object-left"
         priority
         unoptimized={logoSrc.startsWith('http')}
       />
