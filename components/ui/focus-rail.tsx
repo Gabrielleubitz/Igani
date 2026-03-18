@@ -76,7 +76,7 @@ export function FocusRail({
   const activeItem = items[activeIndex];
 
   // Responsive layout values
-  const xStep    = isMobile ? 170 : 320;
+  const xStep    = isMobile ? 160 : 290;
   const zStep    = isMobile ? 100 : 180;
   const rotStep  = isMobile ? 12  : 20;
   // On mobile only show 1 side-card each side to keep the layout clean
@@ -135,7 +135,7 @@ export function FocusRail({
       className={cn(
         // Height: shorter on mobile so the info panel fits without scrolling
         "group relative flex w-full flex-col overflow-hidden bg-neutral-950 text-white outline-none select-none overflow-x-hidden",
-        "h-[520px] md:h-[620px]",
+        "h-[640px] md:h-[760px]",
         className
       )}
       onMouseEnter={() => setIsHovering(true)}
@@ -204,8 +204,9 @@ export function FocusRail({
                 key={absIndex}
                 className={cn(
                   "absolute aspect-[3/4] rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl shadow-2xl transition-shadow duration-300",
-                  // Card width: narrower on mobile so centre card has room
-                  "w-[180px] md:w-[300px]",
+                  // Card width: must satisfy width × 4/3 < rail height (260px mobile, 360px desktop)
+                  // 190px × 4/3 ≈ 253px ✓  |  265px × 4/3 ≈ 353px ✓
+                  "w-[190px] md:w-[265px]",
                   isCenter ? "z-20 shadow-white/10" : "z-10"
                 )}
                 initial={false}
@@ -245,7 +246,7 @@ export function FocusRail({
         {/* ── Info & Controls ── */}
         <div className={cn(
           "mx-auto w-full max-w-4xl pointer-events-auto",
-          "mt-6 md:mt-10",
+          "mt-4 md:mt-6",
           // Stack vertically on mobile, side-by-side on md+
           "flex flex-col items-center gap-4",
           "md:flex-row md:items-end md:justify-between md:gap-6",
@@ -270,11 +271,22 @@ export function FocusRail({
                 <h2 className="text-xl font-bold tracking-tight md:text-4xl text-white leading-tight">
                   {activeItem.title}
                 </h2>
-                {/* Description hidden on mobile to save vertical space */}
+                {/* Description — clamped to 3 lines with link to preview */}
                 {activeItem.description && (
-                  <p className="hidden md:block max-w-md text-neutral-400 line-clamp-2 text-sm">
-                    {activeItem.description}
-                  </p>
+                  <div className="hidden md:block max-w-md text-sm">
+                    <p className="text-neutral-400 line-clamp-3">
+                      {activeItem.description}
+                    </p>
+                    {activeItem.href && (
+                      <a
+                        href={activeItem.href}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1 inline-block text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                      >
+                        Show more →
+                      </a>
+                    )}
+                  </div>
                 )}
               </motion.div>
             </AnimatePresence>
