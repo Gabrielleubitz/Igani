@@ -28,9 +28,9 @@ export interface ApiKeyRecord {
 /** Generate a fresh sk_live_... key and its SHA-256 hash */
 export function generateRawApiKey(): { key: string; hash: string; masked: string } {
   const raw = randomBytes(32).toString('hex')
-  const key = `sk_live_${raw}`
+  const key = `igsk_${raw}`
   const hash = createHash('sha256').update(key).digest('hex')
-  const masked = `sk_live_...${raw.slice(-4)}`
+  const masked = `igsk_...${raw.slice(-4)}`
   return { key, hash, masked }
 }
 
@@ -112,10 +112,10 @@ export async function findAndVerifyApiKey(
     const data = docSnap.data()
     if (!data.keyHash) continue
     if (verifyKey(token, data.keyHash)) {
-      // Update lastUsedAt asynchronously (fire-and-forget)
+      // Update lastUsedAt asynchronously — non-blocking, but log failures
       updateDoc(doc(db, API_KEYS_COLLECTION, docSnap.id), {
         lastUsedAt: Timestamp.now(),
-      }).catch(() => {})
+      }).catch((err) => console.error('[api-keys] Failed to update lastUsedAt:', err))
       return {
         id: docSnap.id,
         name: data.name ?? 'Unnamed Key',

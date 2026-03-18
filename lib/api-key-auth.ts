@@ -33,7 +33,8 @@ export function withApiKeyAuth(handler: RouteHandler): RouteHandler {
 
     const keyRecord = await findAndVerifyApiKey(token)
     if (!keyRecord) {
-      return NextResponse.json({ error: 'Invalid or revoked API key' }, { status: 403 })
+      // 401 (not 403): the request lacks valid authentication credentials
+      return NextResponse.json({ error: 'Invalid or revoked API key' }, { status: 401 })
     }
 
     // Attach key metadata to headers for the handler if needed
@@ -73,7 +74,7 @@ export async function requireApiKey(
 
   const keyRecord = await findAndVerifyApiKey(token)
   if (!keyRecord) {
-    return NextResponse.json({ error: 'Invalid or revoked API key' }, { status: 403 })
+    return NextResponse.json({ error: 'Invalid or revoked API key' }, { status: 401 })
   }
 
   return { id: keyRecord.id, name: keyRecord.name }

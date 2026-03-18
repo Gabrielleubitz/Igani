@@ -73,7 +73,7 @@ function NewKeyBanner({ result, onDismiss }: { result: NewKeyResult; onDismiss: 
 
       <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-600 rounded-xl px-4 py-3 font-mono text-sm">
         <span className="flex-1 text-white break-all">
-          {revealed ? result.key : result.key.replace(/sk_live_(.{4}).+(.{4})$/, 'sk_live_$1' + '•'.repeat(24) + '$2')}
+          {revealed ? result.key : result.key.replace(/igsk_(.{4}).+(.{4})$/, 'igsk_$1' + '•'.repeat(24) + '$2')}
         </span>
         <button
           type="button"
@@ -195,7 +195,7 @@ export function ApiKeysManager() {
         <div className="mt-5 rounded-xl bg-slate-900/60 border border-slate-700 p-4">
           <p className="text-xs text-slate-500 mb-2 font-medium uppercase tracking-wide">Usage</p>
           <pre className="text-xs text-slate-300 font-mono overflow-x-auto">
-            {`Authorization: Bearer sk_live_<your_key>`}
+            {`Authorization: Bearer igsk_<your_key>`}
           </pre>
         </div>
       </div>
@@ -359,7 +359,7 @@ export function ApiKeysManager() {
         </h4>
         <ol className="space-y-2 text-sm text-slate-400">
           <li className="flex gap-2"><span className="text-slate-500 font-mono text-xs mt-0.5">1.</span> Generate a key above and copy it immediately.</li>
-          <li className="flex gap-2"><span className="text-slate-500 font-mono text-xs mt-0.5">2.</span> In n8n, create a new <span className="text-white">Header Auth</span> credential with name <code className="text-xs bg-slate-700 px-1 py-0.5 rounded">Authorization</code> and value <code className="text-xs bg-slate-700 px-1 py-0.5 rounded">Bearer sk_live_…</code></li>
+          <li className="flex gap-2"><span className="text-slate-500 font-mono text-xs mt-0.5">2.</span> In n8n, create a new <span className="text-white">Header Auth</span> credential with name <code className="text-xs bg-slate-700 px-1 py-0.5 rounded">Authorization</code> and value <code className="text-xs bg-slate-700 px-1 py-0.5 rounded">Bearer igsk_…</code></li>
           <li className="flex gap-2"><span className="text-slate-500 font-mono text-xs mt-0.5">3.</span> Attach that credential to your HTTP Request nodes that call <code className="text-xs bg-slate-700 px-1 py-0.5 rounded">igani.co/api/*</code> protected routes.</li>
           <li className="flex gap-2"><span className="text-slate-500 font-mono text-xs mt-0.5">4.</span> Revoke a key at any time from this panel to immediately block access.</li>
         </ol>

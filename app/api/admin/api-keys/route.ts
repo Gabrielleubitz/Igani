@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { listApiKeys, createApiKeyRecord } from '@/lib/api-keys'
+
+const CreateKeySchema = z.object({
+  name: z.string().trim().min(1, 'name is required').max(64, 'name must be ≤ 64 chars'),
+})
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -21,10 +26,9 @@ export async function GET() {
 /** POST /api/admin/api-keys — generate a new key */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({}))
-    const name = typeof body?.name === 'string' && body.name.trim()
-      ? body.name.trim()
-      : 'Unnamed Key'
+    const raw = await request.json().catch(() => ({}))
+    const parsed = CreateKeySchema.safeParse(raw)
+    const name = parsed.success ? parsed.data.name : 'Unnamed Key'
 
     const { plainKey, record } = await createApiKeyRecord(name)
 
