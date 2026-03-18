@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt, HelpCircle, Zap } from 'lucide-react'
+import { Globe, Mail, Settings as SettingsIcon, Star, Package, Info, Megaphone, Users, Clock, Home, BarChart3, Receipt, HelpCircle, Zap, Key } from 'lucide-react'
 import { WebsiteManager } from './WebsiteManager'
 import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
@@ -12,15 +12,16 @@ import { OfferSettingsManager } from './OfferSettingsManager'
 import { SiteSettingsManager } from './SiteSettingsManager'
 import { FinancialReportsManager } from './FinancialReportsManager'
 import { PackagesManager } from './PackagesManager'
+import { ApiKeysManager } from './ApiKeysManager'
 import { SupportInquiriesManager } from './SupportInquiriesManager'
 import { AboutUsManager } from './AboutUsManager'
 import { getWebsites, getContactSubmissions, getTestimonials, getSupportInquiries } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial, SupportInquiry } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
-type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial' | 'api'
+type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial' | 'api' | 'apikeys'
 
-const VALID_TABS: TabType[] = ['websites', 'inquiries', 'support', 'leads', 'financial', 'testimonials', 'packages', 'about', 'banner', 'offers', 'api', 'settings']
+const VALID_TABS: TabType[] = ['websites', 'inquiries', 'support', 'leads', 'financial', 'testimonials', 'packages', 'about', 'banner', 'offers', 'api', 'apikeys', 'settings']
 
 const API_TESTS = [
   { id: 'health', label: 'Health check', method: 'GET', path: '/api/health' },
@@ -171,6 +172,7 @@ export default function AdminDashboardClient() {
     { id: 'banner', label: 'Promo Banner', icon: Megaphone, color: 'pink' },
     { id: 'offers', label: 'Offer Timer', icon: Clock, color: 'orange' },
     { id: 'api', label: 'Test API', icon: Zap, color: 'violet' },
+    { id: 'apikeys', label: 'API Keys', icon: Key, color: 'violet' },
     { id: 'settings', label: 'Settings', icon: SettingsIcon, color: 'slate' },
   ]
 
@@ -378,6 +380,12 @@ export default function AdminDashboardClient() {
             {activeTab === 'api' && (
               <div className="animate-in fade-in duration-300">
                 <TestApiSection />
+              </div>
+            )}
+
+            {activeTab === 'apikeys' && (
+              <div className="animate-in fade-in duration-300">
+                <ApiKeysManager />
               </div>
             )}
 
