@@ -33,14 +33,14 @@ function wrap(min: number, max: number, v: number) {
 }
 
 const BASE_SPRING = {
-  type: "spring",
+  type: "spring" as const,
   stiffness: 300,
   damping: 30,
   mass: 1,
 };
 
 const TAP_SPRING = {
-  type: "spring",
+  type: "spring" as const,
   stiffness: 450,
   damping: 18,
   mass: 1,
@@ -177,7 +177,7 @@ export function FocusRail({
               <motion.div
                 key={absIndex}
                 className={cn(
-                  "absolute aspect-[3/4] w-[260px] md:w-[300px] rounded-2xl border-t border-white/20 bg-neutral-900 shadow-2xl transition-shadow duration-300",
+                  "absolute aspect-[3/4] w-[260px] md:w-[300px] rounded-2xl border border-white/30 bg-white/20 backdrop-blur-xl shadow-2xl transition-shadow duration-300",
                   isCenter ? "z-20 shadow-white/10" : "z-10"
                 )}
                 initial={false}
@@ -189,9 +189,14 @@ export function FocusRail({
                   opacity,
                   filter: `blur(${blur}px) brightness(${brightness})`,
                 }}
-                transition={(val) =>
-                  val === "scale" ? TAP_SPRING : BASE_SPRING
-                }
+                transition={{
+                  x: BASE_SPRING,
+                  z: BASE_SPRING,
+                  rotateY: BASE_SPRING,
+                  opacity: BASE_SPRING,
+                  filter: BASE_SPRING,
+                  scale: TAP_SPRING,
+                }}
                 style={{ transformStyle: "preserve-3d" }}
                 onClick={() => {
                   if (offset !== 0) setActive((p) => p + offset);
@@ -200,7 +205,7 @@ export function FocusRail({
                 <img
                   src={item.imageSrc}
                   alt={item.title}
-                  className="h-full w-full rounded-2xl object-contain bg-white/8 pointer-events-none p-4"
+                  className="h-full w-full rounded-2xl object-contain pointer-events-none p-6"
                 />
                 {/* Lighting */}
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
