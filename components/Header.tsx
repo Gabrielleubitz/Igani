@@ -15,7 +15,6 @@ import {
   MessageSquare,
   Package,
   ArrowLeft,
-  TrendingUp
 } from 'lucide-react'
 
 interface HeaderProps {
@@ -64,11 +63,10 @@ export default function Header({
   }
 
   const navigationItems = [
-    { id: 'home',          label: nav.home[currentLanguage],          icon: Home,       type: 'section'  as const },
-    { id: 'portfolio',     label: nav.portfolio[currentLanguage],     icon: Folder,     type: 'section'  as const },
-    { id: 'packages',      label: nav.packages[currentLanguage],      icon: Package,    type: 'page'     as const, href: '/packages' },
-    { id: 'about',         label: nav.about[currentLanguage],         icon: Info,       type: 'page'     as const, href: '/about' },
-    { id: 'igani-capital', label: nav.iganiCapital[currentLanguage],  icon: TrendingUp, type: 'external' as const, href: 'https://capital.igani.co' }
+    { id: 'home',      label: nav.home[currentLanguage],      icon: Home,    type: 'section' as const },
+    { id: 'portfolio', label: nav.portfolio[currentLanguage], icon: Folder,  type: 'section' as const },
+    { id: 'packages',  label: nav.packages[currentLanguage],  icon: Package, type: 'page'    as const, href: '/packages' },
+    { id: 'about',     label: nav.about[currentLanguage],     icon: Info,    type: 'page'    as const, href: '/about' },
   ]
 
   return (
