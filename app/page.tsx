@@ -27,6 +27,7 @@ import {
   MessageSquare
 } from 'lucide-react'
 import { FocusRail } from '@/components/ui/focus-rail'
+import PhoneInput, { validatePhone } from '@/components/PhoneInput'
 
 export default function HomePage() {
   const { language } = useLanguage()
@@ -34,11 +35,13 @@ export default function HomePage() {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     projectType: 'Landing Page',
     message: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [phoneError, setPhoneError] = useState('')
 
   // Firebase data
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
@@ -96,6 +99,13 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Validate phone before submitting
+    const localNumber = formData.phone.replace(/^\+\d+\s*/, '')
+    if (formData.phone && !validatePhone(localNumber)) {
+      setPhoneError('Please enter a valid phone number.')
+      return
+    }
+    setPhoneError('')
     setIsSubmitting(true)
 
     try {
@@ -114,6 +124,7 @@ export default function HomePage() {
         firstName: '',
         lastName: '',
         email: '',
+        phone: '',
         projectType: 'Landing Page',
         message: ''
       })
@@ -591,6 +602,12 @@ export default function HomePage() {
                       required
                     />
                   </div>
+                  <PhoneInput
+                    value={formData.phone}
+                    onChange={(val) => setFormData(f => ({ ...f, phone: val }))}
+                    error={phoneError}
+                    required
+                  />
                   <div>
                     <label className="block text-sm font-semibold text-white mb-2">{content.projectType[language]}</label>
                     <select

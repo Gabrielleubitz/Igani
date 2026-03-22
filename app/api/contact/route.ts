@@ -6,7 +6,7 @@ import { buildContactNotificationEmail } from '@/lib/email-templates'
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { firstName, lastName, email, projectType, message } = body
+    const { firstName, lastName, email, phone, projectType, message } = body
 
     if (!email || !message) {
       return NextResponse.json(
@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
       firstName: (firstName as string)?.trim() ?? '',
       lastName: (lastName as string)?.trim() ?? '',
       email: (email as string)?.trim(),
+      phone: (phone as string)?.trim() || '',
       projectType: (projectType as string)?.trim() || 'Other',
       message: (message as string)?.trim()
     }

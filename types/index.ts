@@ -40,6 +40,7 @@ export interface ContactSubmission {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
   projectType: string;
   message: string;
   submittedAt: string;

@@ -12,6 +12,7 @@ import {
   User,
   Calendar,
   Mail,
+  Phone,
   Briefcase,
   MessageSquare,
   TrendingUp,
@@ -227,11 +228,20 @@ export function ContactSubmissionsManager({ contacts, onUpdate }: ContactSubmiss
                         </span>
                       )}
                     </h3>
-                    <div className="flex items-center gap-4 mt-2 text-sm text-slate-400">
+                    <div className="flex flex-wrap items-center gap-4 mt-2 text-sm text-slate-400">
                       <span className="flex items-center gap-1">
                         <Mail className="w-4 h-4" />
                         {contact.email}
                       </span>
+                      {contact.phone && (
+                        <a
+                          href={`tel:${contact.phone.replace(/\s/g, '')}`}
+                          className="flex items-center gap-1 hover:text-cyan-400 transition-colors"
+                        >
+                          <Phone className="w-4 h-4" />
+                          {contact.phone}
+                        </a>
+                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         {new Date(contact.submittedAt).toLocaleDateString('en-GB')}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Phone, MapPin, Send, MessageCircle } from 'lucide-react'
+import PhoneInput, { validatePhone } from '@/components/PhoneInput'
 import { IganiLogo } from '@/components/IganiLogo'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
@@ -19,11 +20,13 @@ export default function ContactPage() {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     projectType: 'Landing Page',
     message: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
+  const [phoneError, setPhoneError] = useState('')
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -34,6 +37,12 @@ export default function ContactPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    const localNumber = formData.phone.replace(/^\+\d+\s*/, '')
+    if (formData.phone && !validatePhone(localNumber)) {
+      setPhoneError('Please enter a valid phone number.')
+      return
+    }
+    setPhoneError('')
     setIsSubmitting(true)
 
     try {
@@ -52,6 +61,7 @@ export default function ContactPage() {
         firstName: '',
         lastName: '',
         email: '',
+        phone: '',
         projectType: 'Landing Page',
         message: ''
       })
@@ -221,6 +231,13 @@ export default function ContactPage() {
                       required
                     />
                   </div>
+
+                  <PhoneInput
+                    value={formData.phone}
+                    onChange={(val) => setFormData(f => ({ ...f, phone: val }))}
+                    error={phoneError}
+                    required
+                  />
 
                   <div>
                     <label className="block text-sm font-semibold text-white mb-2"><T>Project Type</T></label>
