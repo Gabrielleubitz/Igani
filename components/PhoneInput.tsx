@@ -9,49 +9,78 @@ export type CountryDialEntry = {
   name: string
   /** Mock local format hint for the placeholder (no country prefix). */
   example: string
+  /**
+   * Input mask: `#` = digit slot; other characters are shown as-typed spacing/punctuation.
+   * Must match the visual pattern of `example`.
+   */
+  mask: string
 }
 
 export const COUNTRY_CODES: CountryDialEntry[] = [
-  { code: '+972', flag: '🇮🇱', name: 'Israel', example: '50 123 4567' },
-  { code: '+1', flag: '🇺🇸', name: 'United States', example: '(555) 123-4567' },
-  { code: '+1', flag: '🇨🇦', name: 'Canada', example: '416 555 1234' },
-  { code: '+44', flag: '🇬🇧', name: 'United Kingdom', example: '7700 900123' },
-  { code: '+33', flag: '🇫🇷', name: 'France', example: '6 12 34 56 78' },
-  { code: '+49', flag: '🇩🇪', name: 'Germany', example: '151 23456789' },
-  { code: '+39', flag: '🇮🇹', name: 'Italy', example: '312 345 6789' },
-  { code: '+34', flag: '🇪🇸', name: 'Spain', example: '612 34 56 78' },
-  { code: '+31', flag: '🇳🇱', name: 'Netherlands', example: '6 1234 5678' },
-  { code: '+41', flag: '🇨🇭', name: 'Switzerland', example: '79 123 45 67' },
-  { code: '+43', flag: '🇦🇹', name: 'Austria', example: '664 1234567' },
-  { code: '+32', flag: '🇧🇪', name: 'Belgium', example: '470 12 34 56' },
-  { code: '+48', flag: '🇵🇱', name: 'Poland', example: '512 345 678' },
-  { code: '+7', flag: '🇷🇺', name: 'Russia', example: '912 345-67-89' },
-  { code: '+380', flag: '🇺🇦', name: 'Ukraine', example: '50 123 4567' },
-  { code: '+90', flag: '🇹🇷', name: 'Turkey', example: '532 123 45 67' },
-  { code: '+20', flag: '🇪🇬', name: 'Egypt', example: '100 123 4567' },
-  { code: '+971', flag: '🇦🇪', name: 'UAE', example: '50 123 4567' },
-  { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia', example: '50 123 4567' },
-  { code: '+962', flag: '🇯🇴', name: 'Jordan', example: '7 9012 3456' },
-  { code: '+961', flag: '🇱🇧', name: 'Lebanon', example: '3 123 456' },
-  { code: '+970', flag: '🇵🇸', name: 'Palestine', example: '599 123 456' },
-  { code: '+965', flag: '🇰🇼', name: 'Kuwait', example: '512 34567' },
-  { code: '+974', flag: '🇶🇦', name: 'Qatar', example: '3312 3456' },
-  { code: '+973', flag: '🇧🇭', name: 'Bahrain', example: '3612 3456' },
-  { code: '+968', flag: '🇴🇲', name: 'Oman', example: '9212 3456' },
-  { code: '+91', flag: '🇮🇳', name: 'India', example: '98765 43210' },
-  { code: '+86', flag: '🇨🇳', name: 'China', example: '138 0013 8000' },
-  { code: '+81', flag: '🇯🇵', name: 'Japan', example: '90-1234-5678' },
-  { code: '+82', flag: '🇰🇷', name: 'South Korea', example: '10-1234-5678' },
-  { code: '+55', flag: '🇧🇷', name: 'Brazil', example: '11 91234-5678' },
-  { code: '+52', flag: '🇲🇽', name: 'Mexico', example: '55 1234 5678' },
-  { code: '+54', flag: '🇦🇷', name: 'Argentina', example: '11 2345-6789' },
-  { code: '+57', flag: '🇨🇴', name: 'Colombia', example: '300 123 4567' },
-  { code: '+61', flag: '🇦🇺', name: 'Australia', example: '412 345 678' },
-  { code: '+64', flag: '🇳🇿', name: 'New Zealand', example: '21 123 4567' },
-  { code: '+27', flag: '🇿🇦', name: 'South Africa', example: '82 123 4567' },
-  { code: '+234', flag: '🇳🇬', name: 'Nigeria', example: '802 123 4567' },
-  { code: '+254', flag: '🇰🇪', name: 'Kenya', example: '712 345678' },
+  { code: '+972', flag: '🇮🇱', name: 'Israel', example: '50 123 4567', mask: '## ### ####' },
+  { code: '+1', flag: '🇺🇸', name: 'United States', example: '(555) 123-4567', mask: '(###) ###-####' },
+  { code: '+1', flag: '🇨🇦', name: 'Canada', example: '416 555 1234', mask: '### ### ####' },
+  { code: '+44', flag: '🇬🇧', name: 'United Kingdom', example: '7700 900123', mask: '#### ######' },
+  { code: '+33', flag: '🇫🇷', name: 'France', example: '6 12 34 56 78', mask: '# ## ## ## ##' },
+  { code: '+49', flag: '🇩🇪', name: 'Germany', example: '151 23456789', mask: '### ########' },
+  { code: '+39', flag: '🇮🇹', name: 'Italy', example: '312 345 6789', mask: '### ### ####' },
+  { code: '+34', flag: '🇪🇸', name: 'Spain', example: '612 34 56 78', mask: '### ## ## ##' },
+  { code: '+31', flag: '🇳🇱', name: 'Netherlands', example: '6 1234 5678', mask: '# #### ####' },
+  { code: '+41', flag: '🇨🇭', name: 'Switzerland', example: '79 123 45 67', mask: '## ### ## ##' },
+  { code: '+43', flag: '🇦🇹', name: 'Austria', example: '664 1234567', mask: '### #######' },
+  { code: '+32', flag: '🇧🇪', name: 'Belgium', example: '470 12 34 56', mask: '### ## ## ##' },
+  { code: '+48', flag: '🇵🇱', name: 'Poland', example: '512 345 678', mask: '### ### ###' },
+  { code: '+7', flag: '🇷🇺', name: 'Russia', example: '912 345-67-89', mask: '### ###-##-##' },
+  { code: '+380', flag: '🇺🇦', name: 'Ukraine', example: '50 123 4567', mask: '## ### ####' },
+  { code: '+90', flag: '🇹🇷', name: 'Turkey', example: '532 123 45 67', mask: '### ### ## ##' },
+  { code: '+20', flag: '🇪🇬', name: 'Egypt', example: '100 123 4567', mask: '### ### ####' },
+  { code: '+971', flag: '🇦🇪', name: 'UAE', example: '50 123 4567', mask: '## ### ####' },
+  { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia', example: '50 123 4567', mask: '## ### ####' },
+  { code: '+962', flag: '🇯🇴', name: 'Jordan', example: '7 9012 3456', mask: '# #### ####' },
+  { code: '+961', flag: '🇱🇧', name: 'Lebanon', example: '3 123 456', mask: '# ### ###' },
+  { code: '+970', flag: '🇵🇸', name: 'Palestine', example: '599 123 456', mask: '### ### ###' },
+  { code: '+965', flag: '🇰🇼', name: 'Kuwait', example: '512 34567', mask: '### #####' },
+  { code: '+974', flag: '🇶🇦', name: 'Qatar', example: '3312 3456', mask: '#### ####' },
+  { code: '+973', flag: '🇧🇭', name: 'Bahrain', example: '3612 3456', mask: '#### ####' },
+  { code: '+968', flag: '🇴🇲', name: 'Oman', example: '9212 3456', mask: '#### ####' },
+  { code: '+91', flag: '🇮🇳', name: 'India', example: '98765 43210', mask: '##### #####' },
+  { code: '+86', flag: '🇨🇳', name: 'China', example: '138 0013 8000', mask: '### #### ####' },
+  { code: '+81', flag: '🇯🇵', name: 'Japan', example: '90-1234-5678', mask: '##-####-####' },
+  { code: '+82', flag: '🇰🇷', name: 'South Korea', example: '10-1234-5678', mask: '##-####-####' },
+  { code: '+55', flag: '🇧🇷', name: 'Brazil', example: '11 91234-5678', mask: '## #####-####' },
+  { code: '+52', flag: '🇲🇽', name: 'Mexico', example: '55 1234 5678', mask: '## #### ####' },
+  { code: '+54', flag: '🇦🇷', name: 'Argentina', example: '11 2345-6789', mask: '## ####-####' },
+  { code: '+57', flag: '🇨🇴', name: 'Colombia', example: '300 123 4567', mask: '### ### ####' },
+  { code: '+61', flag: '🇦🇺', name: 'Australia', example: '412 345 678', mask: '### ### ###' },
+  { code: '+64', flag: '🇳🇿', name: 'New Zealand', example: '21 123 4567', mask: '## ### ####' },
+  { code: '+27', flag: '🇿🇦', name: 'South Africa', example: '82 123 4567', mask: '## ### ####' },
+  { code: '+234', flag: '🇳🇬', name: 'Nigeria', example: '802 123 4567', mask: '### ### ####' },
+  { code: '+254', flag: '🇰🇪', name: 'Kenya', example: '712 345678', mask: '### ######' },
 ]
+
+/** Count of digit slots in a mask. */
+export function maskDigitCount(mask: string): number {
+  return (mask.match(/#/g) || []).length
+}
+
+/**
+ * Formats digits to match the mask (e.g. US `(###) ###-####`).
+ * Stops when digits are exhausted; leading literals (e.g. `(`) appear once digits exist.
+ */
+export function formatLocalWithMask(digitsOnly: string, mask: string): string {
+  const d = digitsOnly.replace(/\D/g, '')
+  if (!d) return ''
+  let out = ''
+  let di = 0
+  for (let mi = 0; mi < mask.length && di < d.length; mi++) {
+    if (mask[mi] === '#') {
+      out += d[di++]
+    } else {
+      out += mask[mi]
+    }
+  }
+  return out
+}
 
 /** Returns true if the local number looks real (not 1234567, 0000000, etc.) */
 export function validatePhone(localNumber: string): boolean {
@@ -89,19 +118,30 @@ export default function PhoneInput({
   const country = COUNTRY_CODES[countryIndex]
   const countryCode = country.code
   const placeholder = country.example
+  const mask = country.mask
+  const maxDigits = maskDigitCount(mask)
+
+  const applyDigits = (digitsRaw: string) => {
+    const capped = digitsRaw.replace(/\D/g, '').slice(0, maxDigits)
+    return formatLocalWithMask(capped, mask)
+  }
 
   const handleCountryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const idx = Number(e.target.value)
     setCountryIndex(idx)
+    const nextMask = COUNTRY_CODES[idx].mask
+    const digits = local.replace(/\D/g, '')
+    const capped = digits.slice(0, maskDigitCount(nextMask))
+    const formatted = formatLocalWithMask(capped, nextMask)
+    setLocal(formatted)
     const nextCode = COUNTRY_CODES[idx].code
-    onChange(`${nextCode} ${local}`.trim())
+    onChange(`${nextCode} ${formatted}`.trim())
   }
 
   const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow digits, spaces, hyphens, parentheses
-    const cleaned = e.target.value.replace(/[^\d\s\-()]/g, '')
-    setLocal(cleaned)
-    onChange(`${countryCode} ${cleaned}`.trim())
+    const formatted = applyDigits(e.target.value)
+    setLocal(formatted)
+    onChange(`${countryCode} ${formatted}`.trim())
   }
 
   const isInvalid = local.length > 0 && !validatePhone(local)
