@@ -130,7 +130,6 @@ export default function HomePage() {
         projectType: 'Landing Page',
         message: ''
       })
-      setTimeout(() => setSubmitStatus('idle'), 9000)
     } catch (error) {
       console.error('Form submission failed:', error)
       setSubmitStatus('error')
@@ -569,6 +568,7 @@ export default function HomePage() {
                 viewport={{ once: true }}
                 className="order-1 lg:order-2"
               >
+                <div className="relative">
                 <form onSubmit={handleSubmit} className="space-y-6 bg-slate-800/60 p-8 rounded-2xl border border-slate-700/50 shadow-xl shadow-slate-950/50">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -639,19 +639,6 @@ export default function HomePage() {
                     ></textarea>
                   </div>
 
-                  {submitStatus === 'success' && (
-                    <ContactInquirySuccess
-                      badge={content.inquirySuccessBadge[language]}
-                      heading={content.inquirySuccessTitle[language]}
-                      lead={content.inquirySuccessLead[language]}
-                      bullets={[
-                        content.inquirySuccessBullet1[language],
-                        content.inquirySuccessBullet2[language],
-                        content.inquirySuccessBullet3[language],
-                      ]}
-                    />
-                  )}
-
                   {submitStatus === 'error' && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -673,6 +660,28 @@ export default function HomePage() {
                     {isSubmitting ? content.submitting[language] : content.submitButton[language]}
                   </AnimatedButton>
                 </form>
+
+                {submitStatus === 'success' && (
+                  <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl p-3 sm:p-4">
+                    <div className="absolute inset-0 rounded-2xl bg-slate-950/80 backdrop-blur-md" aria-hidden />
+                    <div className="relative z-10 w-full max-h-[min(92vh,calc(100%-0.5rem))] overflow-y-auto">
+                      <ContactInquirySuccess
+                        onDismiss={() => setSubmitStatus('idle')}
+                        submitAnotherLabel={content.inquirySuccessSubmitAnother[language]}
+                        closeLabel={content.inquirySuccessCloseLabel[language]}
+                        badge={content.inquirySuccessBadge[language]}
+                        heading={content.inquirySuccessTitle[language]}
+                        lead={content.inquirySuccessLead[language]}
+                        bullets={[
+                          content.inquirySuccessBullet1[language],
+                          content.inquirySuccessBullet2[language],
+                          content.inquirySuccessBullet3[language],
+                        ]}
+                      />
+                    </div>
+                  </div>
+                )}
+                </div>
               </motion.div>
 
               {/* Contact Info - appears second on mobile, first on desktop */}

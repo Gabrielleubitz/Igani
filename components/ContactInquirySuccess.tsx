@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Check, Clock, MessageCircle, Sparkles } from 'lucide-react'
+import { Check, Clock, MessageCircle, Sparkles, X } from 'lucide-react'
 
 const bulletIcons = [Sparkles, Clock, MessageCircle] as const
 
@@ -10,6 +10,10 @@ type ContactInquirySuccessProps = {
   heading: string
   lead: string
   bullets: [string, string, string]
+  /** When set, shows X and “submit another” to dismiss the overlay. */
+  onDismiss?: () => void
+  submitAnotherLabel?: string
+  closeLabel?: string
   className?: string
 }
 
@@ -18,6 +22,9 @@ export function ContactInquirySuccess({
   heading,
   lead,
   bullets,
+  onDismiss,
+  submitAnotherLabel = 'Submit another inquiry',
+  closeLabel = 'Close',
   className = '',
 }: ContactInquirySuccessProps) {
   const particles = Array.from({ length: 10 }, (_, i) => ({
@@ -30,13 +37,25 @@ export function ContactInquirySuccess({
 
   return (
     <motion.div
-      role="status"
-      aria-live="polite"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="contact-inquiry-success-heading"
       initial={{ opacity: 0, y: 14, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       className={`relative overflow-hidden rounded-2xl border border-cyan-500/35 bg-gradient-to-br from-slate-900/95 via-slate-950/90 to-cyan-950/40 shadow-[0_0_40px_-8px_rgba(34,211,238,0.2)] ${className}`}
     >
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={closeLabel}
+          className="absolute right-3 top-3 z-20 rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+        >
+          <X className="h-5 w-5" aria-hidden />
+        </button>
+      )}
+
       <motion.div
         className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-cyan-500/25 blur-3xl"
         animate={{ scale: [1, 1.15, 1], opacity: [0.35, 0.55, 0.35] }}
@@ -69,7 +88,7 @@ export function ContactInquirySuccess({
         />
       ))}
 
-      <div className="relative z-10 p-6 sm:p-7">
+      <div className="relative z-10 p-6 pt-12 sm:p-7 sm:pt-14">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
           <div className="relative mx-auto flex-shrink-0 sm:mx-0">
             <motion.div
@@ -105,6 +124,7 @@ export function ContactInquirySuccess({
             </motion.p>
 
             <motion.h3
+              id="contact-inquiry-success-heading"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.4 }}
@@ -141,6 +161,23 @@ export function ContactInquirySuccess({
                 )
               })}
             </ul>
+
+            {onDismiss && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.65, duration: 0.35 }}
+                className="mt-6 flex justify-center sm:justify-start"
+              >
+                <button
+                  type="button"
+                  onClick={onDismiss}
+                  className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-5 py-2.5 text-sm font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/20 focus:outline-none focus:ring-2 focus:ring-cyan-500/60"
+                >
+                  {submitAnotherLabel}
+                </button>
+              </motion.div>
+            )}
           </div>
         </div>
       </div>

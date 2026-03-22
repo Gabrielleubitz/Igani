@@ -87,6 +87,8 @@ export interface SiteContent {
     inquirySuccessBullet1: I18nText
     inquirySuccessBullet2: I18nText
     inquirySuccessBullet3: I18nText
+    inquirySuccessSubmitAnother: I18nText
+    inquirySuccessCloseLabel: I18nText
     errorMessage: I18nText
   }
   

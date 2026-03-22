@@ -71,7 +71,6 @@ export default function ContactPage() {
         projectType: 'Landing Page',
         message: ''
       })
-      setTimeout(() => setSubmitStatus('idle'), 9000)
     } catch (error) {
       console.error('Form submission failed:', error)
       setSubmitStatus('error')
@@ -198,6 +197,7 @@ export default function ContactPage() {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="order-1 lg:order-2"
             >
+              <div className="relative">
               <form onSubmit={handleSubmit} className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-xl shadow-slate-950/50">
                 <h2 className="text-2xl font-bold text-white mb-6"><T>Send Us a Message</T></h2>
 
@@ -275,19 +275,6 @@ export default function ContactPage() {
                     ></textarea>
                   </div>
 
-                  {submitStatus === 'success' && (
-                    <ContactInquirySuccess
-                      badge={home.inquirySuccessBadge[language]}
-                      heading={home.inquirySuccessTitle[language]}
-                      lead={home.inquirySuccessLead[language]}
-                      bullets={[
-                        home.inquirySuccessBullet1[language],
-                        home.inquirySuccessBullet2[language],
-                        home.inquirySuccessBullet3[language],
-                      ]}
-                    />
-                  )}
-
                   {submitStatus === 'error' && (
                     <motion.div
                       initial={{ opacity: 0, y: -10 }}
@@ -310,6 +297,28 @@ export default function ContactPage() {
                   </AnimatedButton>
                 </div>
               </form>
+
+              {submitStatus === 'success' && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl p-3 sm:p-4">
+                  <div className="absolute inset-0 rounded-2xl bg-slate-950/80 backdrop-blur-md" aria-hidden />
+                  <div className="relative z-10 w-full max-h-[min(92vh,calc(100%-0.5rem))] overflow-y-auto">
+                    <ContactInquirySuccess
+                      onDismiss={() => setSubmitStatus('idle')}
+                      submitAnotherLabel={home.inquirySuccessSubmitAnother[language]}
+                      closeLabel={home.inquirySuccessCloseLabel[language]}
+                      badge={home.inquirySuccessBadge[language]}
+                      heading={home.inquirySuccessTitle[language]}
+                      lead={home.inquirySuccessLead[language]}
+                      bullets={[
+                        home.inquirySuccessBullet1[language],
+                        home.inquirySuccessBullet2[language],
+                        home.inquirySuccessBullet3[language],
+                      ]}
+                    />
+                  </div>
+                </div>
+              )}
+              </div>
             </motion.div>
           </div>
         </motion.div>

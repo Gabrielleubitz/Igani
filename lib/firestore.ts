@@ -119,7 +119,7 @@ export const getContactSubmissions = async (): Promise<ContactSubmission[]> => {
         firstName: data.firstName || '',
         lastName: data.lastName || '',
         email: data.email || '',
-        phone: data.phone || '',
+        phone: data.phone || data.phoneNumber || '',
         projectType: data.projectType || '',
         message: data.message || '',
         submittedAt: toISOString(data.submittedAt),

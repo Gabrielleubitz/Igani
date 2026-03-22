@@ -19,6 +19,7 @@ import {
   User,
   Calendar,
   Mail,
+  Phone,
   Briefcase,
   MessageSquare,
   TrendingUp,
@@ -73,6 +74,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     projectType: 'Landing Page',
     message: '',
     priority: 'medium' as ContactSubmission['priority'],
@@ -191,6 +193,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
         firstName: '',
         lastName: '',
         email: '',
+        phone: '',
         projectType: 'Landing Page',
         message: '',
         priority: 'medium',
@@ -300,6 +303,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
         contact.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (contact.phone && contact.phone.toLowerCase().includes(searchTerm.toLowerCase())) ||
         contact.projectType.toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesStatus = filterStatus === 'all' || contact.status === filterStatus
@@ -476,7 +480,7 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by name, email, or project type..."
+              placeholder="Search by name, email, phone, or project type..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
@@ -553,6 +557,15 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                             {contact.firstName} {contact.lastName}
                           </h3>
                           <p className="text-slate-400 text-sm">{contact.email}</p>
+                          {contact.phone ? (
+                            <a
+                              href={`tel:${contact.phone.replace(/\s/g, '')}`}
+                              className="mt-1 inline-flex items-center gap-1.5 text-sm text-cyan-400/90 hover:text-cyan-300"
+                            >
+                              <Phone className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                              {contact.phone}
+                            </a>
+                          ) : null}
                         </div>
                         {contact.priority && (
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${priorityConfig[contact.priority].bg} ${priorityConfig[contact.priority].color} border border-current/30`}>
@@ -764,6 +777,19 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                         <div>
                           <h4 className="text-white font-medium mb-3">Additional Details</h4>
                           <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2 text-slate-300">
+                              <Phone className="w-4 h-4 text-slate-500 shrink-0" />
+                              {contact.phone ? (
+                                <a
+                                  href={`tel:${contact.phone.replace(/\s/g, '')}`}
+                                  className="text-cyan-400 hover:text-cyan-300"
+                                >
+                                  {contact.phone}
+                                </a>
+                              ) : (
+                                <span className="text-slate-500">—</span>
+                              )}
+                            </div>
                             {contact.estimatedDelivery && (
                               <div className="flex items-center gap-2 text-slate-300">
                                 <CalendarDays className="w-4 h-4 text-slate-500" />
@@ -828,6 +854,30 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
               </div>
 
               <div className="space-y-6">
+                {/* Contact (from submission) */}
+                <div className="rounded-xl border border-slate-600/60 bg-slate-900/50 p-4">
+                  <h3 className="text-sm font-semibold text-slate-400 mb-3">Contact</h3>
+                  <p className="text-white font-medium">
+                    {editingTicket.firstName} {editingTicket.lastName}
+                  </p>
+                  <p className="text-slate-300 text-sm mt-1">{editingTicket.email}</p>
+                  <div className="mt-3">
+                    <label className="block text-slate-400 text-xs font-medium mb-1.5">Phone</label>
+                    <input
+                      type="tel"
+                      value={editingTicket.phone || ''}
+                      onChange={(e) =>
+                        setEditingTicket({
+                          ...editingTicket,
+                          phone: e.target.value || undefined,
+                        })
+                      }
+                      className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500 text-sm"
+                      placeholder="e.g. +972 50 123 4567"
+                    />
+                  </div>
+                </div>
+
                 {/* Basic Information */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -1197,6 +1247,17 @@ export function TicketManager({ contacts, onUpdate }: TicketManagerProps) {
                     className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
                     placeholder="john.doe@example.com"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white font-medium mb-2">Phone</label>
+                  <input
+                    type="tel"
+                    value={newInquiry.phone}
+                    onChange={(e) => setNewInquiry({ ...newInquiry, phone: e.target.value })}
+                    className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white placeholder-slate-500"
+                    placeholder="+972 50 123 4567"
                   />
                 </div>
 

@@ -142,6 +142,14 @@ export const siteContent: SiteContent = {
       en: 'No pitch deck—just a real conversation about what you want to build.',
       he: 'בלי מצגת מכירה — רק שיחה אמיתית על מה שאתם רוצים לבנות.',
     },
+    inquirySuccessSubmitAnother: {
+      en: 'Submit another inquiry',
+      he: 'שלחו פנייה נוספת',
+    },
+    inquirySuccessCloseLabel: {
+      en: 'Close',
+      he: 'סגור',
+    },
     errorMessage: { 
       en: 'An error occurred. Please try again or contact us directly.', 
       he: 'אירעה שגיאה. אנא נסה שוב או צור איתנו קשר ישירות.' 
