@@ -13,8 +13,13 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { T } from '@/components/T'
 import { useSiteSettings } from '@/hooks/useSiteSettings'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { siteContent } from '@/lib/i18n'
+import { ContactInquirySuccess } from '@/components/ContactInquirySuccess'
 
 export default function ContactPage() {
+  const { language } = useLanguage()
+  const home = siteContent.home
   const { settings } = useSiteSettings()
   const [formData, setFormData] = useState({
     firstName: '',
@@ -54,6 +59,7 @@ export default function ContactPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setSubmitStatus('error')
+        setTimeout(() => setSubmitStatus('idle'), 5000)
         return
       }
       setSubmitStatus('success')
@@ -65,12 +71,13 @@ export default function ContactPage() {
         projectType: 'Landing Page',
         message: ''
       })
+      setTimeout(() => setSubmitStatus('idle'), 9000)
     } catch (error) {
       console.error('Form submission failed:', error)
       setSubmitStatus('error')
+      setTimeout(() => setSubmitStatus('idle'), 5000)
     } finally {
       setIsSubmitting(false)
-      setTimeout(() => setSubmitStatus('idle'), 3000)
     }
   }
 
@@ -269,13 +276,16 @@ export default function ContactPage() {
                   </div>
 
                   {submitStatus === 'success' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-green-600/20 border border-green-500/50 text-green-400 p-4 rounded-lg font-medium"
-                    >
-                      <T>Thank you for reaching out. We will respond to your inquiry within 24 hours.</T>
-                    </motion.div>
+                    <ContactInquirySuccess
+                      badge={home.inquirySuccessBadge[language]}
+                      heading={home.inquirySuccessTitle[language]}
+                      lead={home.inquirySuccessLead[language]}
+                      bullets={[
+                        home.inquirySuccessBullet1[language],
+                        home.inquirySuccessBullet2[language],
+                        home.inquirySuccessBullet3[language],
+                      ]}
+                    />
                   )}
 
                   {submitStatus === 'error' && (

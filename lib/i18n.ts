@@ -118,6 +118,30 @@ export const siteContent: SiteContent = {
       en: 'Thank you for reaching out. We will respond to your inquiry within 24 hours.', 
       he: 'תודה שפנית אלינו. אנו נענה לפנייתך תוך 24 שעות.' 
     },
+    inquirySuccessBadge: {
+      en: 'Inquiry received',
+      he: 'הפנייה התקבלה',
+    },
+    inquirySuccessTitle: {
+      en: "You're in — here's what happens next",
+      he: 'נרשמתם — מה קורה עכשיו',
+    },
+    inquirySuccessLead: {
+      en: 'Your inquiry just landed on our desk. We read every message and reply with a clear plan—not a canned template.',
+      he: 'הפנייה שלכם הגיעה אלינו. אנחנו קוראים כל הודעה ומחזירים תשובה ברורה — לא תבנית אוטומטית.',
+    },
+    inquirySuccessBullet1: {
+      en: 'Expect a personal reply within 24 hours.',
+      he: 'תגובה אישית תוך 24 שעות.',
+    },
+    inquirySuccessBullet2: {
+      en: "We'll map your goals to a concrete next step—scope, timeline, and options.",
+      he: 'נמפה את המטרות שלכם לצעד הבא — היקף, לוח זמנים ואפשרויות.',
+    },
+    inquirySuccessBullet3: {
+      en: 'No pitch deck—just a real conversation about what you want to build.',
+      he: 'בלי מצגת מכירה — רק שיחה אמיתית על מה שאתם רוצים לבנות.',
+    },
     errorMessage: { 
       en: 'An error occurred. Please try again or contact us directly.', 
       he: 'אירעה שגיאה. אנא נסה שוב או צור איתנו קשר ישירות.' 

@@ -81,6 +81,12 @@ export interface SiteContent {
     submitButton: I18nText
     submitting: I18nText
     successMessage: I18nText
+    inquirySuccessBadge: I18nText
+    inquirySuccessTitle: I18nText
+    inquirySuccessLead: I18nText
+    inquirySuccessBullet1: I18nText
+    inquirySuccessBullet2: I18nText
+    inquirySuccessBullet3: I18nText
     errorMessage: I18nText
   }
   

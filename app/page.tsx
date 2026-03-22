@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import { FocusRail } from '@/components/ui/focus-rail'
 import PhoneInput, { validatePhone } from '@/components/PhoneInput'
+import { ContactInquirySuccess } from '@/components/ContactInquirySuccess'
 
 export default function HomePage() {
   const { language } = useLanguage()
@@ -117,6 +118,7 @@ export default function HomePage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         setSubmitStatus('error')
+        setTimeout(() => setSubmitStatus('idle'), 5000)
         return
       }
       setSubmitStatus('success')
@@ -128,12 +130,13 @@ export default function HomePage() {
         projectType: 'Landing Page',
         message: ''
       })
+      setTimeout(() => setSubmitStatus('idle'), 9000)
     } catch (error) {
       console.error('Form submission failed:', error)
       setSubmitStatus('error')
+      setTimeout(() => setSubmitStatus('idle'), 5000)
     } finally {
       setIsSubmitting(false)
-      setTimeout(() => setSubmitStatus('idle'), 3000)
     }
   }
 
@@ -637,13 +640,16 @@ export default function HomePage() {
                   </div>
 
                   {submitStatus === 'success' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-green-600/20 border border-green-500/50 text-green-400 p-4 rounded-lg font-medium"
-                    >
-                      Thank you for reaching out. We will respond to your inquiry within 24 hours.
-                    </motion.div>
+                    <ContactInquirySuccess
+                      badge={content.inquirySuccessBadge[language]}
+                      heading={content.inquirySuccessTitle[language]}
+                      lead={content.inquirySuccessLead[language]}
+                      bullets={[
+                        content.inquirySuccessBullet1[language],
+                        content.inquirySuccessBullet2[language],
+                        content.inquirySuccessBullet3[language],
+                      ]}
+                    />
                   )}
 
                   {submitStatus === 'error' && (
