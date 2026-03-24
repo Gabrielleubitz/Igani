@@ -105,10 +105,10 @@ export default function Header({
       <div className="mx-auto max-w-7xl flex flex-col gap-0">
 
         {/* ── Pill nav ── */}
-        <nav className="flex items-center justify-between gap-3 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2.5 shadow-[0_4px_32px_-4px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-xl lg:grid lg:px-6 lg:[grid-template-columns:auto_1fr_auto]">
+        <nav className="flex items-center justify-between gap-3 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2.5 shadow-[0_4px_32px_-4px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-xl lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-3 lg:px-6">
 
           {/* LEFT — logo (+ optional back button) */}
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2 lg:min-w-0 lg:justify-self-start">
             {showBackButton && (
               <button
                 onClick={handleBackClick}
@@ -123,8 +123,8 @@ export default function Header({
             </div>
           </div>
 
-          {/* CENTRE — nav links (desktop only) */}
-          <div className="hidden min-w-0 lg:flex lg:justify-center lg:gap-1">
+          {/* CENTRE — nav links (desktop only), centered in the bar via 1fr / auto / 1fr grid */}
+          <div className="hidden min-w-0 lg:flex lg:justify-center lg:gap-1 lg:justify-self-center">
             {navigationItems.map(item =>
               item.type === 'page' ? (
                 <a
@@ -149,7 +149,7 @@ export default function Header({
           </div>
 
           {/* RIGHT — language toggle + CTA (desktop) / hamburger (mobile) */}
-          <div className="flex shrink-0 items-center gap-2 lg:justify-self-end">
+          <div className="flex shrink-0 items-center justify-end gap-2 lg:min-w-0 lg:justify-self-end">
             <div className="hidden lg:flex lg:items-center lg:gap-1.5">
               <a
                 href={instagramHref}
