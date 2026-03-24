@@ -12,7 +12,13 @@ export const siteContent: SiteContent = {
     iganiCapital: { en: 'Igani Capital', he: 'איגני קפיטל' },
     contact: { en: 'Contact', he: 'צור קשר' },
     freeConsultation: { en: 'Free Consultation', he: 'יעוץ חינמי' },
-    backToHome: { en: 'Back to Home', he: 'חזור לעמוד הבית' }
+    backToHome: { en: 'Back to Home', he: 'חזור לעמוד הבית' },
+    whatsappAria: { en: 'Chat on WhatsApp', he: 'שליחת הודעה בווטסאפ' },
+    instagramAria: { en: 'Igani on Instagram', he: 'איגני באינסטגרם' },
+    whatsappPrefillMessage: {
+      en: "Hi! I'm reaching out from the Igani website and would like to get in touch.",
+      he: 'שלום! פניתי אליכם מאתר Igani ואשמח ליצור קשר.',
+    },
   },
   
   home: {

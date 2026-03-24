@@ -24,6 +24,9 @@ export interface SiteContent {
     contact: I18nText
     freeConsultation: I18nText
     backToHome: I18nText
+    whatsappAria: I18nText
+    instagramAria: I18nText
+    whatsappPrefillMessage: I18nText
   }
   
   // Home page content
