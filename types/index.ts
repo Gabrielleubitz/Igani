@@ -150,6 +150,12 @@ export interface TeamMember {
   position: string;
   bio: string;
   imageUrl?: string;
+  /** Shown on hover on the About page (e.g. +972 50 123 4567) */
+  phone?: string;
+  /** Full URL, e.g. https://www.instagram.com/username */
+  instagramUrl?: string;
+  /** Full URL, e.g. https://www.linkedin.com/in/username */
+  linkedinUrl?: string;
   order: number;
   published: boolean;
   createdAt?: string;

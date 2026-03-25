@@ -55,6 +55,9 @@ const teamMemberSchema = z.object({
   position: z.string().min(1, 'Position is required'),
   bio: z.string().min(1, 'Bio is required'),
   imageUrl: z.string().optional(),
+  phone: z.string().optional(),
+  instagramUrl: z.string().optional(),
+  linkedinUrl: z.string().optional(),
   order: z.number().min(0),
   published: z.boolean()
 })
@@ -208,6 +211,9 @@ export function AboutUsManager() {
       position: '',
       bio: '',
       imageUrl: '',
+      phone: '',
+      instagramUrl: '',
+      linkedinUrl: '',
       order: Math.max(...teamMembers.map(m => m.order), 0) + 1,
       published: true
     })
@@ -229,6 +235,9 @@ export function AboutUsManager() {
         position: editingTeamMember.position,
         bio: editingTeamMember.bio,
         imageUrl: editingTeamMember.imageUrl || undefined,
+        phone: editingTeamMember.phone?.trim() || undefined,
+        instagramUrl: editingTeamMember.instagramUrl?.trim() || undefined,
+        linkedinUrl: editingTeamMember.linkedinUrl?.trim() || undefined,
         order: editingTeamMember.order,
         published: editingTeamMember.published
       })
@@ -678,6 +687,39 @@ export function AboutUsManager() {
                   placeholder="Short bio..."
                 />
                 {errors.bio && <p className="text-red-400 text-sm mt-1">{errors.bio}</p>}
+              </div>
+              <div className="rounded-lg border border-slate-600/60 bg-slate-900/30 p-4 space-y-3">
+                <p className="text-slate-300 text-sm font-medium">Contact (shown on hover on About page)</p>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={editingTeamMember.phone || ''}
+                    onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, phone: e.target.value } : null)}
+                    className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white text-sm"
+                    placeholder="+972 50 123 4567"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">Instagram URL</label>
+                  <input
+                    type="url"
+                    value={editingTeamMember.instagramUrl || ''}
+                    onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, instagramUrl: e.target.value } : null)}
+                    className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white text-sm"
+                    placeholder="https://www.instagram.com/username"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">LinkedIn URL</label>
+                  <input
+                    type="url"
+                    value={editingTeamMember.linkedinUrl || ''}
+                    onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, linkedinUrl: e.target.value } : null)}
+                    className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white text-sm"
+                    placeholder="https://www.linkedin.com/in/username"
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>

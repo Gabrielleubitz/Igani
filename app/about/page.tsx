@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { User, Target, Heart, Lightbulb, Award, Users, ChevronDown, ChevronUp } from 'lucide-react'
+import { User, Target, Heart, Lightbulb, Award, Users, ChevronDown, ChevronUp, Phone, Instagram, Linkedin } from 'lucide-react'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
@@ -303,26 +303,75 @@ export default function AboutPage() {
                 {settings.teamSectionTitle || 'Our Team'}
               </motion.h2>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {teamMembers.map((member, index) => (
+                {teamMembers.map((member, index) => {
+                  const hasContact =
+                    !!(member.phone?.trim() || member.instagramUrl?.trim() || member.linkedinUrl?.trim())
+                  const telHref = member.phone ? `tel:${member.phone.replace(/\s/g, '')}` : ''
+                  return (
                   <motion.div
                     key={member.id}
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: index * 0.1 }}
                     viewport={{ once: true }}
-                    className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50"
+                    className={`bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50 ${hasContact ? 'group' : ''}`}
                   >
-                    {member.imageUrl ? (
-                      <img
-                        src={member.imageUrl}
-                        alt={member.name}
-                        className="w-24 h-24 rounded-xl object-cover mb-4 mx-auto md:mx-0"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-xl flex items-center justify-center mb-4">
-                        <User className="w-12 h-12 text-cyan-400" />
-                      </div>
-                    )}
+                    <div className="relative mb-4 h-24 w-24 mx-auto md:mx-0 shrink-0">
+                      {member.imageUrl ? (
+                        <img
+                          src={member.imageUrl}
+                          alt={member.name}
+                          className="h-full w-full rounded-xl object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
+                          <User className="h-12 w-12 text-cyan-400" />
+                        </div>
+                      )}
+                      {hasContact && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-slate-950/92 opacity-0 transition-opacity duration-300 ease-out pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                            Contact
+                          </span>
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            {member.phone?.trim() && (
+                              <a
+                                href={telHref}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-emerald-400 transition-colors hover:bg-white/20 hover:text-emerald-300"
+                                title={member.phone}
+                                aria-label={`Call ${member.name}`}
+                              >
+                                <Phone className="h-4 w-4" />
+                              </a>
+                            )}
+                            {member.instagramUrl?.trim() && (
+                              <a
+                                href={member.instagramUrl.trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-pink-400 transition-colors hover:bg-white/20 hover:text-pink-300"
+                                title="Instagram"
+                                aria-label={`${member.name} on Instagram`}
+                              >
+                                <Instagram className="h-4 w-4" />
+                              </a>
+                            )}
+                            {member.linkedinUrl?.trim() && (
+                              <a
+                                href={member.linkedinUrl.trim()}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-sky-400 transition-colors hover:bg-white/20 hover:text-sky-300"
+                                title="LinkedIn"
+                                aria-label={`${member.name} on LinkedIn`}
+                              >
+                                <Linkedin className="h-4 w-4" />
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     <h3 className="text-xl font-bold text-white mb-1">
                       {member.name}
                     </h3>
@@ -333,7 +382,8 @@ export default function AboutPage() {
                       {member.bio}
                     </p>
                   </motion.div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </section>
