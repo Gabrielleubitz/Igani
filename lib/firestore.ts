@@ -945,7 +945,8 @@ export const deleteTeamMember = async (id: string): Promise<void> => {
 export const saveAboutUsSettings = async (settings: AboutUsSettings): Promise<void> => {
   try {
     const settingsRef = doc(db, SETTINGS_COLLECTION, 'aboutUs');
-    await updateDoc(settingsRef, { ...settings });
+    // setDoc + merge: creates the doc when missing; updateDoc alone fails if it never existed
+    await setDoc(settingsRef, cleanObjectForFirestore({ ...settings }), { merge: true });
   } catch (error) {
     console.error('Error saving about us settings:', error);
     throw error;
