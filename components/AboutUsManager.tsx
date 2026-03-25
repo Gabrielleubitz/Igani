@@ -691,13 +691,13 @@ export function AboutUsManager() {
               <div className="rounded-lg border border-slate-600/60 bg-slate-900/30 p-4 space-y-3">
                 <p className="text-slate-300 text-sm font-medium">Contact (shown on hover on About page)</p>
                 <div>
-                  <label className="block text-slate-400 text-sm mb-1">Phone</label>
+                  <label className="block text-slate-400 text-sm mb-1">WhatsApp number</label>
                   <input
                     type="text"
                     value={editingTeamMember.phone || ''}
                     onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, phone: e.target.value } : null)}
                     className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white text-sm"
-                    placeholder="+972 50 123 4567"
+                    placeholder="+972501234567 (country code + number, any format)"
                   />
                 </div>
                 <div>

@@ -150,7 +150,7 @@ export interface TeamMember {
   position: string;
   bio: string;
   imageUrl?: string;
-  /** Shown on hover on the About page (e.g. +972 50 123 4567) */
+  /** WhatsApp number on hover on About (international digits; opens wa.me) */
   phone?: string;
   /** Full URL, e.g. https://www.instagram.com/username */
   instagramUrl?: string;
