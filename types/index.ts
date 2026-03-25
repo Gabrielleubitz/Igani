@@ -152,6 +152,8 @@ export interface TeamMember {
   imageUrl?: string;
   /** WhatsApp number on hover on About (international digits; opens wa.me) */
   phone?: string;
+  /** Shown on hover on About (opens mailto:) */
+  email?: string;
   /** Full URL, e.g. https://www.instagram.com/username */
   instagramUrl?: string;
   /** Full URL, e.g. https://www.linkedin.com/in/username */

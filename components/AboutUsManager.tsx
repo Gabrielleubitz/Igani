@@ -56,6 +56,10 @@ const teamMemberSchema = z.object({
   bio: z.string().min(1, 'Bio is required'),
   imageUrl: z.string().optional(),
   phone: z.string().optional(),
+  email: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.string().email('Invalid email').optional()
+  ),
   instagramUrl: z.string().optional(),
   linkedinUrl: z.string().optional(),
   order: z.number().min(0),
@@ -212,6 +216,7 @@ export function AboutUsManager() {
       bio: '',
       imageUrl: '',
       phone: '',
+      email: '',
       instagramUrl: '',
       linkedinUrl: '',
       order: Math.max(...teamMembers.map(m => m.order), 0) + 1,
@@ -230,12 +235,14 @@ export function AboutUsManager() {
   const handleSaveTeamMember = async () => {
     if (!editingTeamMember) return
     try {
+      const emailTrimmed = editingTeamMember.email?.trim() || undefined
       const validated = teamMemberSchema.parse({
         name: editingTeamMember.name,
         position: editingTeamMember.position,
         bio: editingTeamMember.bio,
         imageUrl: editingTeamMember.imageUrl || undefined,
         phone: editingTeamMember.phone?.trim() || undefined,
+        email: emailTrimmed,
         instagramUrl: editingTeamMember.instagramUrl?.trim() || undefined,
         linkedinUrl: editingTeamMember.linkedinUrl?.trim() || undefined,
         order: editingTeamMember.order,
@@ -244,7 +251,7 @@ export function AboutUsManager() {
       if (isCreatingTeamMember) {
         await saveTeamMember(validated)
       } else {
-        await updateTeamMember({ ...editingTeamMember, ...validated })
+        await updateTeamMember({ ...editingTeamMember, ...validated, email: emailTrimmed })
       }
       await loadData()
       setEditingTeamMember(null)
@@ -699,6 +706,17 @@ export function AboutUsManager() {
                     className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white text-sm"
                     placeholder="+972501234567 (country code + number, any format)"
                   />
+                </div>
+                <div>
+                  <label className="block text-slate-400 text-sm mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={editingTeamMember.email || ''}
+                    onChange={(e) => setEditingTeamMember(prev => prev ? { ...prev, email: e.target.value } : null)}
+                    className="w-full px-4 py-2.5 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 text-white text-sm"
+                    placeholder="name@company.com"
+                  />
+                  {errors.email && <p className="text-red-400 text-sm mt-1">{errors.email}</p>}
                 </div>
                 <div>
                   <label className="block text-slate-400 text-sm mb-1">Instagram URL</label>

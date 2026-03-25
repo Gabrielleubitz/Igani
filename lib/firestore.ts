@@ -5,6 +5,7 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  deleteField,
   query,
   orderBy,
   Timestamp,
@@ -890,6 +891,7 @@ export const getTeamMembers = async (): Promise<TeamMember[]> => {
         bio: data.bio ?? '',
         imageUrl: data.imageUrl,
         phone: data.phone ?? undefined,
+        email: data.email ?? undefined,
         instagramUrl: data.instagramUrl ?? undefined,
         linkedinUrl: data.linkedinUrl ?? undefined,
         order: data.order ?? 0,
@@ -921,10 +923,31 @@ export const saveTeamMember = async (
   }
 };
 
+const TEAM_MEMBER_OPTIONAL_KEYS = [
+  'imageUrl',
+  'phone',
+  'email',
+  'instagramUrl',
+  'linkedinUrl'
+] as const;
+
 export const updateTeamMember = async (member: TeamMember): Promise<void> => {
   try {
     const { id, createdAt, ...rest } = member;
-    const cleaned = cleanObjectForFirestore({ ...rest, updatedAt: Timestamp.now() });
+    const payload: Record<string, unknown> = {
+      name: rest.name,
+      position: rest.position,
+      bio: rest.bio,
+      order: rest.order,
+      published: rest.published,
+      updatedAt: Timestamp.now()
+    };
+    for (const key of TEAM_MEMBER_OPTIONAL_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(rest, key)) continue;
+      const v = rest[key];
+      payload[key] = v === undefined || v === '' ? deleteField() : v;
+    }
+    const cleaned = cleanObjectForFirestore(payload as Record<string, unknown>);
     await updateDoc(doc(db, TEAM_MEMBERS_COLLECTION, id), cleaned);
   } catch (error) {
     console.error('Error updating team member:', error);
