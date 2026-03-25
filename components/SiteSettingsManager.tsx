@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Save, Loader2, Mail, Phone, MapPin, Instagram, Linkedin, Facebook, Twitter, Github, Globe, AlertCircle } from 'lucide-react'
+import { Save, Loader2, Mail, Phone, MapPin, Instagram, Linkedin, Facebook, Twitter, Github, Globe, AlertCircle, Music2 } from 'lucide-react'
 
 interface SiteSettings {
   // Contact Information
@@ -16,6 +16,7 @@ interface SiteSettings {
   facebookUrl: string
   twitterUrl: string
   githubUrl: string
+  tiktokUrl: string
 
   // SEO
   metaTitle: string
@@ -42,6 +43,7 @@ const defaultSettings: SiteSettings = {
   facebookUrl: '',
   twitterUrl: '',
   githubUrl: '',
+  tiktokUrl: '',
   metaTitle: 'IGANI - Web Development & Design',
   metaDescription: 'Professional web development and design services',
   metaKeywords: 'web development, design, websites, digital solutions',
@@ -49,7 +51,7 @@ const defaultSettings: SiteSettings = {
   enableLeadNotifications: true,
   enableInquiryNotifications: true,
   footerTagline: 'Building digital experiences that matter',
-  copyrightText: '© 2024 IGANI. All rights reserved.'
+  copyrightText: '© 2026 IGANI. All rights reserved.'
 }
 
 export function SiteSettingsManager() {
@@ -262,6 +264,20 @@ export function SiteSettingsManager() {
 
           <div>
             <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
+              <Music2 className="w-4 h-4 text-slate-300" />
+              TikTok URL
+            </label>
+            <input
+              type="url"
+              value={settings.tiktokUrl}
+              onChange={(e) => updateSetting('tiktokUrl', e.target.value)}
+              placeholder="https://www.tiktok.com/@igani.co"
+              className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-300 mb-2">
               <Facebook className="w-4 h-4 text-blue-500" />
               Facebook URL
             </label>
@@ -449,7 +465,7 @@ export function SiteSettingsManager() {
               type="text"
               value={settings.copyrightText}
               onChange={(e) => updateSetting('copyrightText', e.target.value)}
-              placeholder="© 2024 IGANI. All rights reserved."
+              placeholder="© 2026 IGANI. All rights reserved."
               className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
             />
           </div>

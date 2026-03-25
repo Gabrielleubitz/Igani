@@ -15,6 +15,7 @@ export const siteContent: SiteContent = {
     backToHome: { en: 'Back to Home', he: 'חזור לעמוד הבית' },
     whatsappAria: { en: 'Chat on WhatsApp', he: 'שליחת הודעה בווטסאפ' },
     instagramAria: { en: 'Igani on Instagram', he: 'איגני באינסטגרם' },
+    tiktokAria: { en: 'Igani on TikTok', he: 'איגני בטיקטוק' },
     whatsappPrefillMessage: {
       en: "Hi! I'm reaching out from the Igani website and would like to get in touch.",
       he: 'שלום! פניתי אליכם מאתר Igani ואשמח ליצור קשר.',

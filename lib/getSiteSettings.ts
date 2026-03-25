@@ -11,6 +11,7 @@ export interface SiteSettings {
   facebookUrl: string
   twitterUrl: string
   githubUrl: string
+  tiktokUrl: string
   metaTitle: string
   metaDescription: string
   metaKeywords: string
@@ -32,6 +33,7 @@ const defaultSettings: SiteSettings = {
   facebookUrl: '',
   twitterUrl: '',
   githubUrl: '',
+  tiktokUrl: '',
   metaTitle: 'IGANI - Web Development & Design',
   metaDescription: 'Professional web development and design services',
   metaKeywords: 'web development, design, websites, digital solutions',
@@ -39,7 +41,7 @@ const defaultSettings: SiteSettings = {
   enableLeadNotifications: true,
   enableInquiryNotifications: true,
   footerTagline: 'Building digital experiences that matter',
-  copyrightText: '© 2024 IGANI. All rights reserved.'
+  copyrightText: '© 2026 IGANI. All rights reserved.'
 }
 
 const SETTINGS_COLLECTION = 'settings'

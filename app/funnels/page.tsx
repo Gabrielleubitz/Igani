@@ -818,7 +818,7 @@ export default function FunnelsPage() {
         <footer className="bg-slate-800 border-t border-slate-700/50 py-6">
           <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-slate-400 text-sm">
-              © 2025 IGANI. All rights reserved. • <a href="mailto:info@igani.co" className="text-purple-400 hover:text-purple-300">info@igani.co</a>
+              © 2026 IGANI. All rights reserved. • <a href="mailto:info@igani.co" className="text-purple-400 hover:text-purple-300">info@igani.co</a>
             </p>
           </div>
         </footer>

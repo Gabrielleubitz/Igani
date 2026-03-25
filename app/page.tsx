@@ -8,6 +8,7 @@ import { StarryBackground } from '@/components/ui/starry-background'
 import { AnimatedButton } from '@/components/ui/animated-button'
 import { IganiLogo } from '@/components/IganiLogo'
 import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 import { defaultSettings } from '@/data/defaultSettings'
 import { getWebsites, getSettings, getTestimonials } from '@/lib/firestore'
 import { Website, SiteSettings, Testimonial } from '@/types'
@@ -54,7 +55,6 @@ export default function HomePage() {
   const content = siteContent.home
   const nav = siteContent.navigation
   const projectTypes = siteContent.projectTypes
-  const footer = siteContent.footer
 
   // Load data from Firebase on mount
   useEffect(() => {
@@ -724,33 +724,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="bg-transparent border-t border-slate-700/50 py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="flex flex-col md:flex-row justify-between items-center gap-6"
-            >
-              <div className="group">
-                <IganiLogo className="w-44 h-14" />
-                <p className="text-slate-500 mt-3 text-sm max-w-xs">
-                  {settings.tagline}
-                </p>
-              </div>
-              <div className="text-center md:text-right">
-                <p className="text-slate-400 mb-2">© 2025 {settings.siteName}. {footer.allRightsReserved[language]}</p>
-                <div className="flex gap-4 justify-center md:justify-end">
-                  <a href="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.privacy[language]}</a>
-                  <a href="/terms" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.terms[language]}</a>
-                  <a href="/contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">{footer.contact[language]}</a>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </footer>
+        <Footer />
       </div>
     </div>
   )

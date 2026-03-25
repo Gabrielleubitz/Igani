@@ -26,6 +26,7 @@ export interface SiteContent {
     backToHome: I18nText
     whatsappAria: I18nText
     instagramAria: I18nText
+    tiktokAria: I18nText
     whatsappPrefillMessage: I18nText
   }
   
