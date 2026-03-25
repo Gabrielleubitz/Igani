@@ -18,6 +18,108 @@ import { TrendingUp } from 'lucide-react'
 const IGANI_CAPITAL_LOGO_URL = 'https://capital.igani.co/igani-logo.png'
 const IGANI_CAPITAL_URL = 'https://capital.igani.co'
 
+/** Long bios get line-clamped until expanded */
+const TEAM_BIO_READ_MORE_AT = 140
+
+function TeamMemberCard({ member, index }: { member: TeamMember; index: number }) {
+  const [expanded, setExpanded] = useState(false)
+  const hasContact = !!(
+    member.phone?.trim() ||
+    member.instagramUrl?.trim() ||
+    member.linkedinUrl?.trim()
+  )
+  const telHref = member.phone ? `tel:${member.phone.replace(/\s/g, '')}` : ''
+  const showReadMore = member.bio.length > TEAM_BIO_READ_MORE_AT
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: index * 0.1 }}
+      viewport={{ once: true }}
+      className={`flex h-full flex-col overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800/60 shadow-xl shadow-slate-950/50 backdrop-blur-sm ${hasContact ? 'group' : ''}`}
+    >
+      {/* Image fills top of card */}
+      <div className="relative aspect-[3/4] w-full min-h-[260px] sm:min-h-[300px]">
+        {member.imageUrl ? (
+          <img
+            src={member.imageUrl}
+            alt={member.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyan-500/25 to-blue-500/20">
+            <User className="h-20 w-20 text-cyan-400/90 sm:h-24 sm:w-24" />
+          </div>
+        )}
+        {hasContact && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/90 opacity-0 transition-opacity duration-300 ease-out pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              Contact
+            </span>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {member.phone?.trim() && (
+                <a
+                  href={telHref}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-emerald-400 transition-colors hover:bg-white/20 hover:text-emerald-300"
+                  title={member.phone}
+                  aria-label={`Call ${member.name}`}
+                >
+                  <Phone className="h-4 w-4" />
+                </a>
+              )}
+              {member.instagramUrl?.trim() && (
+                <a
+                  href={member.instagramUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-pink-400 transition-colors hover:bg-white/20 hover:text-pink-300"
+                  title="Instagram"
+                  aria-label={`${member.name} on Instagram`}
+                >
+                  <Instagram className="h-4 w-4" />
+                </a>
+              )}
+              {member.linkedinUrl?.trim() && (
+                <a
+                  href={member.linkedinUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-sky-400 transition-colors hover:bg-white/20 hover:text-sky-300"
+                  title="LinkedIn"
+                  aria-label={`${member.name} on LinkedIn`}
+                >
+                  <Linkedin className="h-4 w-4" />
+                </a>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col border-t border-slate-700/50 p-5 md:p-6">
+        <h3 className="text-xl font-bold text-white">{member.name}</h3>
+        <p className="mb-3 text-sm font-medium text-cyan-400">{member.position}</p>
+        <p
+          className={`text-sm leading-relaxed text-slate-300 ${!expanded && showReadMore ? 'line-clamp-4' : ''}`}
+        >
+          {member.bio}
+        </p>
+        {showReadMore && (
+          <button
+            type="button"
+            onClick={() => setExpanded((e) => !e)}
+            className="mt-4 self-start text-sm font-semibold text-cyan-400 transition-colors hover:text-cyan-300"
+            aria-expanded={expanded}
+          >
+            {expanded ? <T>Read less</T> : <T>Read more</T>}
+          </button>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
 export default function AboutPage() {
   const { language } = useLanguage()
   const [sections, setSections] = useState<AboutUsSection[]>([])
@@ -302,88 +404,10 @@ export default function AboutPage() {
               >
                 {settings.teamSectionTitle || 'Our Team'}
               </motion.h2>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                {teamMembers.map((member, index) => {
-                  const hasContact =
-                    !!(member.phone?.trim() || member.instagramUrl?.trim() || member.linkedinUrl?.trim())
-                  const telHref = member.phone ? `tel:${member.phone.replace(/\s/g, '')}` : ''
-                  return (
-                  <motion.div
-                    key={member.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.6, delay: index * 0.1 }}
-                    viewport={{ once: true }}
-                    className={`bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 shadow-lg shadow-slate-950/50 ${hasContact ? 'group' : ''}`}
-                  >
-                    <div className="relative mb-4 h-24 w-24 mx-auto md:mx-0 shrink-0">
-                      {member.imageUrl ? (
-                        <img
-                          src={member.imageUrl}
-                          alt={member.name}
-                          className="h-full w-full rounded-xl object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
-                          <User className="h-12 w-12 text-cyan-400" />
-                        </div>
-                      )}
-                      {hasContact && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl bg-slate-950/92 opacity-0 transition-opacity duration-300 ease-out pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
-                          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                            Contact
-                          </span>
-                          <div className="flex flex-wrap items-center justify-center gap-2">
-                            {member.phone?.trim() && (
-                              <a
-                                href={telHref}
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-emerald-400 transition-colors hover:bg-white/20 hover:text-emerald-300"
-                                title={member.phone}
-                                aria-label={`Call ${member.name}`}
-                              >
-                                <Phone className="h-4 w-4" />
-                              </a>
-                            )}
-                            {member.instagramUrl?.trim() && (
-                              <a
-                                href={member.instagramUrl.trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-pink-400 transition-colors hover:bg-white/20 hover:text-pink-300"
-                                title="Instagram"
-                                aria-label={`${member.name} on Instagram`}
-                              >
-                                <Instagram className="h-4 w-4" />
-                              </a>
-                            )}
-                            {member.linkedinUrl?.trim() && (
-                              <a
-                                href={member.linkedinUrl.trim()}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 text-sky-400 transition-colors hover:bg-white/20 hover:text-sky-300"
-                                title="LinkedIn"
-                                aria-label={`${member.name} on LinkedIn`}
-                              >
-                                <Linkedin className="h-4 w-4" />
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-1">
-                      {member.name}
-                    </h3>
-                    <p className="text-cyan-400 text-sm font-medium mb-3">
-                      {member.position}
-                    </p>
-                    <p className="text-slate-300 leading-relaxed">
-                      {member.bio}
-                    </p>
-                  </motion.div>
-                  )
-                })}
+              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+                {teamMembers.map((member, index) => (
+                  <TeamMemberCard key={member.id} member={member} index={index} />
+                ))}
               </div>
             </div>
           </section>
