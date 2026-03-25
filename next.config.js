@@ -2,7 +2,9 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      allowedOrigins: ['localhost:3000', 'igani.co', '*.igani.co']
+      allowedOrigins: ['localhost:3000', 'igani.co', '*.igani.co'],
+      /** Helps local / non-Vercel hosts; Vercel still caps request bodies ~4.5 MB (see uploadAdminImage). */
+      bodySizeLimit: '10mb'
     }
   },
   images: {

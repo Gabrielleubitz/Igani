@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { Upload, Link2, Loader2 } from 'lucide-react'
+import { uploadAdminImage } from '@/lib/uploadAdminImage'
 
 interface AdminImageFieldProps {
   value: string
@@ -38,22 +39,10 @@ export function AdminImageField({
     setUploadError(null)
     setUploading(true)
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await fetch('/api/admin/upload', {
-        method: 'POST',
-        body: formData
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        setUploadError(data.error || 'Upload failed')
-        return
-      }
-      if (data.url) {
-        onChange(data.url)
-      }
-    } catch {
-      setUploadError('Upload failed. Please try again.')
+      const url = await uploadAdminImage(file)
+      onChange(url)
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed. Please try again.')
     } finally {
       setUploading(false)
       e.target.value = ''
