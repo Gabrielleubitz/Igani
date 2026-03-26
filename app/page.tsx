@@ -30,6 +30,7 @@ import {
 import { FocusRail } from '@/components/ui/focus-rail'
 import PhoneInput, { validatePhone } from '@/components/PhoneInput'
 import { ContactInquirySuccess } from '@/components/ContactInquirySuccess'
+import { HomepageTracker } from '@/components/HomepageTracker'
 
 export default function HomePage() {
   const { language } = useLanguage()
@@ -142,6 +143,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-900 relative">
+      <HomepageTracker />
       {/* Starry Night Background */}
       <StarryBackground />
 

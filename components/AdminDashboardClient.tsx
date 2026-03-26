@@ -15,13 +15,14 @@ import { PackagesManager } from './PackagesManager'
 import { ApiKeysManager } from './ApiKeysManager'
 import { SupportInquiriesManager } from './SupportInquiriesManager'
 import { AboutUsManager } from './AboutUsManager'
+import { AnalyticsManager } from './AnalyticsManager'
 import { getWebsites, getContactSubmissions, getTestimonials, getSupportInquiries } from '@/lib/firestore'
 import { Website, ContactSubmission, Testimonial, SupportInquiry } from '@/types'
 import { LoadingScreen } from './ui/loading-screen'
 
-type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial' | 'api' | 'apikeys'
+type TabType = 'websites' | 'inquiries' | 'support' | 'testimonials' | 'packages' | 'about' | 'settings' | 'banner' | 'leads' | 'offers' | 'financial' | 'analytics' | 'api' | 'apikeys'
 
-const VALID_TABS: TabType[] = ['websites', 'inquiries', 'support', 'leads', 'financial', 'testimonials', 'packages', 'about', 'banner', 'offers', 'api', 'apikeys', 'settings']
+const VALID_TABS: TabType[] = ['websites', 'inquiries', 'support', 'leads', 'financial', 'analytics', 'testimonials', 'packages', 'about', 'banner', 'offers', 'api', 'apikeys', 'settings']
 
 const API_TESTS = [
   { id: 'health', label: 'Health check', method: 'GET', path: '/api/health' },
@@ -166,6 +167,7 @@ export default function AdminDashboardClient() {
     { id: 'support', label: 'Help & Support', icon: HelpCircle, count: supportInquiries.length, color: 'amber' },
     { id: 'leads', label: 'Leads', icon: Users, color: 'purple' },
     { id: 'financial', label: 'Financial Reports', icon: Receipt, color: 'emerald' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, color: 'teal' },
     { id: 'testimonials', label: 'Testimonials', icon: Star, count: testimonials.length, color: 'yellow' },
     { id: 'packages', label: 'Packages', icon: Package, color: 'green' },
     { id: 'about', label: 'About Us', icon: Info, color: 'indigo' },
@@ -392,6 +394,12 @@ export default function AdminDashboardClient() {
             {activeTab === 'financial' && (
               <div className="animate-in fade-in duration-300">
                 <FinancialReportsManager />
+              </div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="animate-in fade-in duration-300">
+                <AnalyticsManager />
               </div>
             )}
           </div>
