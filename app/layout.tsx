@@ -5,6 +5,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext'
 import { PromoBanner } from '@/components/PromoBanner'
 import { getSiteSettings } from '@/lib/getSiteSettings'
 import { Metadata } from 'next'
+import { Analytics } from '@vercel/analytics/next'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -139,6 +140,7 @@ export default function RootLayout({
         <LanguageProvider>
           {children}
         </LanguageProvider>
+        <Analytics />
       </body>
     </html>
   )

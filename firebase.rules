@@ -12,7 +12,7 @@ service cloud.firestore {
       // This works with your existing admin login system
       allow write: if request.auth != null || 
                       resource == null || // Allow initial creation
-                      request.time < timestamp.date(2025, 12, 31); // Temporary allow during setup
+                      request.time < timestamp.date(2026, 12, 31); // Temporary allow during setup
     }
     
     // Contact Submissions Collection - Allow create for all, read/update only for admin
@@ -23,21 +23,21 @@ service cloud.firestore {
       // Allow read/update only for admin (in admin dashboard)  
       // Temporary rule - allows all operations during development
       allow read, update, delete: if request.auth != null || 
-                                     request.time < timestamp.date(2025, 12, 31);
+                                     request.time < timestamp.date(2026, 12, 31);
     }
     
     // Websites Collection
     match /websites/{document} {
       allow read: if true; // Anyone can view websites
       allow write: if request.auth != null || 
-                      request.time < timestamp.date(2025, 12, 31);
+                      request.time < timestamp.date(2026, 12, 31);
     }
     
     // Testimonials Collection
     match /testimonials/{document} {
       allow read: if true; // Anyone can view testimonials
       allow write: if request.auth != null || 
-                      request.time < timestamp.date(2025, 12, 31);
+                      request.time < timestamp.date(2026, 12, 31);
     }
     
     // Packages Collection - Allow read for all, write only for admin
@@ -47,7 +47,7 @@ service cloud.firestore {
       
       // Allow write only for admin (in admin dashboard)
       allow write: if request.auth != null || 
-                      request.time < timestamp.date(2025, 12, 31);
+                      request.time < timestamp.date(2026, 12, 31);
     }
     
     // Maintenance Plans Collection - Allow read for all, write only for admin
@@ -57,7 +57,7 @@ service cloud.firestore {
       
       // Allow write only for admin (in admin dashboard)
       allow write: if request.auth != null || 
-                      request.time < timestamp.date(2025, 12, 31);
+                      request.time < timestamp.date(2026, 12, 31);
     }
     
     // Package FAQs Collection - Allow read for all, write only for admin
@@ -67,14 +67,33 @@ service cloud.firestore {
       
       // Allow write only for admin (in admin dashboard)
       allow write: if request.auth != null || 
-                      request.time < timestamp.date(2025, 12, 31);
+                      request.time < timestamp.date(2026, 12, 31);
     }
     
     // Support Inquiries (Help & Support from igani.co/help)
     match /supportInquiries/{document} {
       allow create: if true;
       allow read, update, delete: if request.auth != null ||
-                                       request.time < timestamp.date(2025, 12, 31);
+                                       request.time < timestamp.date(2026, 12, 31);
+
+    // Homepage analytics collections
+    match /analytics_page_views/{document} {
+      allow create: if true;
+      allow read, update, delete: if request.auth != null ||
+                                    request.time < timestamp.date(2026, 12, 31);
+    }
+
+    match /analytics_page_daily/{document} {
+      allow read: if true;
+      allow write: if request.auth != null ||
+                    request.time < timestamp.date(2026, 12, 31);
+    }
+
+    match /analytics_metadata/{document} {
+      allow read: if true;
+      allow write: if request.auth != null ||
+                    request.time < timestamp.date(2026, 12, 31);
+    }
     }
 
     // Default rule - deny all other collections
