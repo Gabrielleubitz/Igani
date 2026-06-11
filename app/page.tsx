@@ -214,11 +214,12 @@ export default function HomePage() {
           </div>
         }
         overlayEnd={
-          <div className="mx-auto max-w-3xl text-center">
+          <div className="relative mx-auto max-w-3xl overflow-hidden rounded-3xl border border-white/[0.12] bg-[#04101e]/45 px-8 py-10 text-center backdrop-blur-[40px] backdrop-saturate-[180%] shadow-[0_8px_48px_-8px_rgba(0,0,20,0.7),inset_0_1px_0_rgba(255,255,255,0.14),inset_0_0_32px_rgba(64,128,224,0.06)] sm:px-12 sm:py-12">
+            <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
             <h2 className="border-none pb-0 text-3xl font-semibold tracking-tight text-white sm:text-5xl">
               {content.heroOutroTitle[language]}
             </h2>
-            <p className="mt-4 text-lg text-white/75">
+            <p className="mt-4 text-lg text-white/85">
               {content.heroOutroSubtitle[language]}
             </p>
             <div className="mt-8 flex justify-center">{ctaPrimary}</div>
