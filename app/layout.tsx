@@ -105,7 +105,7 @@ export default function RootLayout({
   })();`;
 
   return (
-    <html lang="en" dir="ltr" className="overflow-x-hidden">
+    <html lang="en" dir="ltr" className="overflow-x-clip">
       <head>
         {/* Hotjar Tracking Code for igani.co */}
         {process.env.NEXT_PUBLIC_HOTJAR_ID && (
@@ -127,7 +127,7 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className={`${outfit.variable} font-sans overflow-x-hidden`}>
+      <body className={`${outfit.variable} font-sans overflow-x-clip`}>
         {/* ProductFlow Changelog Widget */}
         <Script
           id="productflow-widget"

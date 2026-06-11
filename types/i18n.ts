@@ -36,6 +36,8 @@ export interface SiteContent {
     heroTitle: I18nText
     heroTitleLine2: I18nText
     heroSubtitle: I18nText
+    heroOutroTitle: I18nText
+    heroOutroSubtitle: I18nText
     ctaFreeConsultation: I18nText
     ctaViewWork: I18nText
     
@@ -46,6 +48,8 @@ export interface SiteContent {
     customWebDevDescription: I18nText
     uiUxDesignTitle: I18nText
     uiUxDesignDescription: I18nText
+    automationTitle: I18nText
+    automationDescription: I18nText
     
     // Process section
     processTitle: I18nText
@@ -70,6 +74,12 @@ export interface SiteContent {
     // About section
     aboutTitle: I18nText
     aboutDescription: I18nText
+    whyPillar1Title: I18nText
+    whyPillar1Description: I18nText
+    whyPillar2Title: I18nText
+    whyPillar2Description: I18nText
+    whyPillar3Title: I18nText
+    whyPillar3Description: I18nText
     testimonialsTitle: I18nText
     
     // Contact section

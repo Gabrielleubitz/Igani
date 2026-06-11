@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import Link from 'next/link'
-import { SplashCursor } from '@/components/ui/splash-cursor'
-import { StarryBackground } from '@/components/ui/starry-background'
-import { AnimatedButton } from '@/components/ui/animated-button'
-import { IganiLogo } from '@/components/IganiLogo'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import ScrollHero from '@/app/components/ScrollHero'
+import ScrollBackground from '@/app/components/ScrollBackground'
 import { defaultSettings } from '@/data/defaultSettings'
 import { getWebsites, getSettings, getTestimonials } from '@/lib/firestore'
 import { Website, SiteSettings, Testimonial } from '@/types'
@@ -21,16 +18,25 @@ import {
   MapPin,
   Send,
   ExternalLink,
-  Award,
-  Users,
-  Clock,
+  ArrowRight,
+  ArrowUpRight,
   Star,
-  MessageSquare
+  Code2,
+  PenTool,
+  Workflow,
 } from 'lucide-react'
-import { FocusRail } from '@/components/ui/focus-rail'
 import PhoneInput, { validatePhone } from '@/components/PhoneInput'
 import { ContactInquirySuccess } from '@/components/ContactInquirySuccess'
 import { HomepageTracker } from '@/components/HomepageTracker'
+
+const EASE = 'easeOut' as const
+
+const fadeUp = {
+  initial: { opacity: 0, y: 24 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-80px' },
+  transition: { duration: 0.6, ease: EASE },
+}
 
 export default function HomePage() {
   const { language } = useLanguage()
@@ -46,43 +52,27 @@ export default function HomePage() {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [phoneError, setPhoneError] = useState('')
 
-  // Firebase data
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
   const [websites, setWebsites] = useState<Website[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
-  const [isLoading, setIsLoading] = useState(true)
 
-  // Localized content based on current language
   const content = siteContent.home
-  const nav = siteContent.navigation
-  const projectTypes = siteContent.projectTypes
 
-  // Load data from Firebase on mount
   useEffect(() => {
     const loadData = async () => {
       try {
-        setIsLoading(true)
-
-        // Load settings
         const firebaseSettings = await getSettings()
         if (firebaseSettings) {
           setSettings(firebaseSettings)
         }
-
-        // Load websites - always set the data from Firebase
         const firebaseWebsites = await getWebsites()
         setWebsites(firebaseWebsites)
-
-        // Load testimonials
         const firebaseTestimonials = await getTestimonials()
         setTestimonials(firebaseTestimonials)
       } catch (error) {
         console.error('Error loading data from Firebase:', error)
-        // Set empty array on error
         setWebsites([])
         setTestimonials([])
-      } finally {
-        setIsLoading(false)
       }
     }
 
@@ -101,7 +91,6 @@ export default function HomePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Validate phone before submitting
     const localNumber = formData.phone.replace(/^\+\d+\s*/, '')
     if (formData.phone && !validatePhone(localNumber)) {
       setPhoneError('Please enter a valid phone number.')
@@ -116,7 +105,7 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       })
-      const data = await res.json().catch(() => ({}))
+      await res.json().catch(() => ({}))
       if (!res.ok) {
         setSubmitStatus('error')
         setTimeout(() => setSubmitStatus('idle'), 5000)
@@ -140,586 +129,557 @@ export default function HomePage() {
     }
   }
 
+  const scrollToPortfolio = () => {
+    document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const capabilities = [
+    {
+      icon: Code2,
+      title: content.customWebDevTitle[language],
+      description: content.customWebDevDescription[language],
+    },
+    {
+      icon: PenTool,
+      title: content.uiUxDesignTitle[language],
+      description: content.uiUxDesignDescription[language],
+    },
+    {
+      icon: Workflow,
+      title: content.automationTitle[language],
+      description: content.automationDescription[language],
+    },
+  ]
+
+  const processSteps = [
+    { step: '01', title: content.step1Title[language], description: content.step1Description[language] },
+    { step: '02', title: content.step2Title[language], description: content.step2Description[language] },
+    { step: '03', title: content.step3Title[language], description: content.step3Description[language] },
+    { step: '04', title: content.step4Title[language], description: content.step4Description[language] },
+    { step: '05', title: content.step5Title[language], description: content.step5Description[language] },
+  ]
+
+  const whyPillars = [
+    { title: content.whyPillar1Title[language], description: content.whyPillar1Description[language] },
+    { title: content.whyPillar2Title[language], description: content.whyPillar2Description[language] },
+    { title: content.whyPillar3Title[language], description: content.whyPillar3Description[language] },
+  ]
+
+  const featuredTestimonials = testimonials.filter(t => t.featured).slice(0, 3)
+
+  const ctaPrimary = (
+    <a
+      href="/contact"
+      className="group inline-flex items-center gap-2 rounded-full bg-[#4080E0] px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#5090F0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]"
+    >
+      {content.ctaFreeConsultation[language]}
+      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+    </a>
+  )
 
   return (
-    <div className="min-h-screen bg-slate-900 relative">
+    <div id="home" className="min-h-screen bg-[#0a0a0a] text-white">
       <HomepageTracker />
-      {/* Starry Night Background */}
-      <StarryBackground />
-
-      {/* Splash Cursor Animation - Full Page */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <SplashCursor />
-      </div>
-
-      {/* Header */}
       <Header />
 
-      {/* Main Content */}
-      <div className="relative z-10">
-        {/* Hero Section — one clear headline, one supporting line, then CTAs */}
-        <section id="home" className="min-h-screen flex items-center justify-center px-4 pt-20 scroll-mt-20">
-          <div className="text-center max-w-3xl mx-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.98 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="mb-5"
-            >
-              <span className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-500/10 border border-cyan-500/30 rounded-full text-cyan-400 text-xs sm:text-sm font-medium">
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                </svg>
-                {content.heroTagline[language]}
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.05 }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl xl:text-7xl font-bold leading-tight tracking-tight"
-            >
-              <span className="text-white block">
-                {content.heroTitle[language]}
-              </span>
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 bg-clip-text text-transparent block mt-1 text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl font-semibold">
-                {content.heroTitleLine2[language]}
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.15 }}
-              className="mt-6 text-base sm:text-lg text-slate-400 max-w-xl mx-auto leading-relaxed"
-            >
+      {/* 1 — Scroll-scrubbed cinematic hero */}
+      <ScrollHero
+        videoSrc="/hero.mp4"
+        poster="/hero-poster.jpg"
+        heightVh={300}
+        mobileHeightVh={220}
+        overlayStart={
+          <div className="mx-auto max-w-4xl text-center">
+            <p className="mb-6 text-[11px] font-medium uppercase tracking-[0.35em] text-[#80A0E0] sm:text-xs">
+              {content.heroTagline[language]}
+            </p>
+            <h1 className="text-balance text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
+              {content.heroTitle[language]}
+            </h1>
+            <p className="mt-4 text-xl font-medium tracking-tight text-white/85 sm:text-2xl">
+              {content.heroTitleLine2[language]}
+            </p>
+            <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
               {content.heroSubtitle[language]}
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.25 }}
-              className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center"
-            >
-              <AnimatedButton
-                variant="primary"
-                size="large"
-                onClick={() => window.location.href = '/contact'}
+            </p>
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              {ctaPrimary}
+              <button
+                onClick={scrollToPortfolio}
+                className="inline-flex items-center gap-2 rounded-full border border-[#4080E0]/40 px-7 py-3.5 text-sm font-semibold text-white transition-colors hover:border-[#4080E0]/80 hover:bg-[#4080E0]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]"
               >
-                <MessageSquare className="w-5 h-5 mr-2" />
-                {content.ctaFreeConsultation[language]}
-              </AnimatedButton>
-              <AnimatedButton
-                variant="secondary"
-                size="large"
-                onClick={() => document.getElementById('portfolio')?.scrollIntoView({ behavior: 'smooth' })}
-              >
-{content.ctaViewWork[language]}
-              </AnimatedButton>
-            </motion.div>
+                {content.ctaViewWork[language]}
+              </button>
+            </div>
           </div>
-        </section>
+        }
+        overlayEnd={
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="border-none pb-0 text-3xl font-semibold tracking-tight text-white sm:text-5xl">
+              {content.heroOutroTitle[language]}
+            </h2>
+            <p className="mt-4 text-lg text-white/75">
+              {content.heroOutroSubtitle[language]}
+            </p>
+            <div className="mt-8 flex justify-center">{ctaPrimary}</div>
+          </div>
+        }
+      />
 
-        {/* Services Section */}
-        <section className="py-24 bg-transparent">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center mb-14"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">
+      {/* Sections 2-6 — cinematic navy/blue scroll-scrubbed canvas */}
+      <ScrollBackground videoSrc="/sections.mp4" poster="/sections-poster.jpg">
+
+        {/* 2 — What we build — bento dark-grid with corner-bracket hover */}
+        <section className="py-28 sm:py-36">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div {...fadeUp} className="mb-16 max-w-2xl">
+              <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.3em] text-[#4080E0]">01</p>
+              <h2 className="border-none pb-0 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                 {content.servicesTitle[language]}
               </h2>
-              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              <p className="mt-5 text-lg leading-relaxed text-white/75">
                 {content.servicesSubtitle[language]}
               </p>
             </motion.div>
 
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mb-24">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -8 }}
-                className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-blue-500/50 transition-all duration-300 shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-blue-500/20"
-              >
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <svg className="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">{content.customWebDevTitle[language]}</h3>
-                <p className="text-slate-400 leading-relaxed">
-                  {content.customWebDevDescription[language]}
-                </p>
-              </motion.div>
+            {/* Bento grid: two cards top row, one wide card bottom */}
+            <div className="grid gap-3 md:grid-cols-2">
+              {capabilities.slice(0, 2).map((cap, index) => (
+                <motion.div
+                  key={cap.title}
+                  {...fadeUp}
+                  transition={{ duration: 0.6, ease: EASE, delay: index * 0.08 }}
+                  className="group relative overflow-visible rounded-2xl border border-[#4080E0]/20 bg-[#020d1c]/80 p-8 backdrop-blur-md transition-colors duration-300 hover:border-[#4080E0]/50 sm:p-10"
+                >
+                  {/* Corner brackets — appear on hover */}
+                  <div className="pointer-events-none absolute inset-0 hidden group-hover:block">
+                    <div className="absolute -left-[3px] -top-[3px] h-4 w-4 border-l-2 border-t-2 border-[#4080E0] rounded-tl" />
+                    <div className="absolute -right-[3px] -top-[3px] h-4 w-4 border-r-2 border-t-2 border-[#4080E0] rounded-tr" />
+                    <div className="absolute -left-[3px] -bottom-[3px] h-4 w-4 border-l-2 border-b-2 border-[#4080E0] rounded-bl" />
+                    <div className="absolute -right-[3px] -bottom-[3px] h-4 w-4 border-r-2 border-b-2 border-[#4080E0] rounded-br" />
+                  </div>
+                  {/* Subtle inner glow on hover */}
+                  <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-br from-[#4080E0]/8 via-transparent to-transparent" />
 
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.1 }}
-                viewport={{ once: true }}
-                whileHover={{ y: -8 }}
-                className="group bg-gradient-to-br from-slate-800/80 to-slate-800/40 backdrop-blur-sm p-8 rounded-2xl border border-slate-700/50 hover:border-purple-500/50 transition-all duration-300 shadow-xl shadow-slate-950/50 hover:shadow-2xl hover:shadow-purple-500/20"
-              >
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                  <svg className="w-10 h-10 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold mb-3 text-white">{content.uiUxDesignTitle[language]}</h3>
-                <p className="text-slate-400 leading-relaxed">
-                  {content.uiUxDesignDescription[language]}
-                </p>
-              </motion.div>
+                  <div className="relative z-10">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#4080E0]/30 bg-[#4080E0]/10">
+                      <cap.icon className="h-5 w-5 text-[#4080E0]" strokeWidth={1.5} />
+                    </div>
+                    <h3 className="mt-7 text-xl font-semibold tracking-tight text-white">
+                      {cap.title}
+                    </h3>
+                    <p className="mt-3 text-[15px] leading-relaxed text-white/72">
+                      {cap.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+
+              {/* Third card — full width, horizontal layout */}
+              {capabilities[2] && (() => {
+                const ThirdIcon = capabilities[2].icon
+                return (
+                  <motion.div
+                    {...fadeUp}
+                    transition={{ duration: 0.6, ease: EASE, delay: 0.18 }}
+                    className="group relative col-span-full overflow-visible rounded-2xl border border-[#4080E0]/20 bg-[#020d1c]/80 p-8 backdrop-blur-md transition-colors duration-300 hover:border-[#4080E0]/50 sm:p-10"
+                  >
+                    <div className="pointer-events-none absolute inset-0 hidden group-hover:block">
+                      <div className="absolute -left-[3px] -top-[3px] h-4 w-4 border-l-2 border-t-2 border-[#4080E0] rounded-tl" />
+                      <div className="absolute -right-[3px] -top-[3px] h-4 w-4 border-r-2 border-t-2 border-[#4080E0] rounded-tr" />
+                      <div className="absolute -left-[3px] -bottom-[3px] h-4 w-4 border-l-2 border-b-2 border-[#4080E0] rounded-bl" />
+                      <div className="absolute -right-[3px] -bottom-[3px] h-4 w-4 border-r-2 border-b-2 border-[#4080E0] rounded-br" />
+                    </div>
+                    <div className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 bg-gradient-to-br from-[#4080E0]/8 via-transparent to-transparent" />
+
+                    <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-12">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#4080E0]/30 bg-[#4080E0]/10">
+                        <ThirdIcon className="h-5 w-5 text-[#4080E0]" strokeWidth={1.5} />
+                      </div>
+                      <div className="sm:border-l sm:border-[#4080E0]/15 sm:pl-12">
+                        <h3 className="text-xl font-semibold tracking-tight text-white">
+                          {capabilities[2].title}
+                        </h3>
+                        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-white/72">
+                          {capabilities[2].description}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )
+              })()}
             </div>
+          </div>
+        </section>
 
-            {/* Process Timeline */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h3 className="text-3xl md:text-4xl font-bold text-white mb-3">
+        {/* 3 — How we work — giant number behind each step */}
+        <section className="border-t border-[#4080E0]/10 py-28 sm:py-36">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div {...fadeUp} className="mb-20 max-w-2xl">
+              <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.3em] text-[#4080E0]">02</p>
+              <h2 className="border-none pb-0 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
                 {content.processTitle[language]}
-              </h3>
-              <p className="text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              </h2>
+              <p className="mt-5 text-lg leading-relaxed text-white/75">
                 {content.processSubtitle[language]}
               </p>
             </motion.div>
 
-            <div className="max-w-5xl mx-auto">
-              {/* Timeline */}
-              <div className="relative">
-                {/* Vertical Line */}
-                <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-cyan-500 via-blue-500 to-purple-500 transform -translate-x-1/2"></div>
-
-                {/* Timeline Steps */}
-                <div className="space-y-12">
-                  {[
-                    {
-                      step: '01',
-                      title: content.step1Title[language],
-                      description: content.step1Description[language],
-                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>,
-                      gradient: 'from-cyan-500 to-blue-500'
-                    },
-                    {
-                      step: '02',
-                      title: content.step2Title[language],
-                      description: content.step2Description[language],
-                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>,
-                      gradient: 'from-blue-500 to-indigo-500'
-                    },
-                    {
-                      step: '03',
-                      title: content.step3Title[language],
-                      description: content.step3Description[language],
-                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>,
-                      gradient: 'from-indigo-500 to-purple-500'
-                    },
-                    {
-                      step: '04',
-                      title: content.step4Title[language],
-                      description: content.step4Description[language],
-                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
-                      gradient: 'from-purple-500 to-pink-500'
-                    },
-                    {
-                      step: '05',
-                      title: content.step5Title[language],
-                      description: content.step5Description[language],
-                      icon: <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" /></svg>,
-                      gradient: 'from-pink-500 to-rose-500'
-                    }
-                  ].map((item, index) => (
-                    <motion.div
-                      key={index}
-                      initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.6, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      className={`relative flex items-center gap-8 ${
-                        index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'
-                      }`}
-                    >
-                      {/* Content Card */}
-                      <div className="flex-1 md:w-[calc(50%-3rem)]">
-                        <div className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-slate-600 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-2xl hover:shadow-cyan-500/10">
-                          <div className="flex items-center gap-4 mb-4">
-                            <div className={`w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-xl flex items-center justify-center text-2xl`}>
-                              {item.icon}
-                            </div>
-                            <div>
-                              <div className={`text-xs font-bold bg-gradient-to-r ${item.gradient} bg-clip-text text-transparent mb-1`}>
-                                STEP {item.step}
-                              </div>
-                              <h4 className="text-xl font-bold text-white">{item.title}</h4>
-                            </div>
-                          </div>
-                          <p className="text-slate-400 leading-relaxed">
-                            {item.description}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Center Dot */}
-                      <div className="hidden md:block absolute left-1/2 transform -translate-x-1/2">
-                        <div className={`w-6 h-6 bg-gradient-to-br ${item.gradient} rounded-full border-4 border-slate-900 shadow-lg`}></div>
-                      </div>
-
-                      {/* Spacer */}
-                      <div className="hidden md:block flex-1 w-[calc(50%-3rem)]"></div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              {/* CTA */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.5 }}
-                viewport={{ once: true }}
-                className="text-center mt-16"
-              >
-                <button
-                  onClick={() => window.location.href = '/contact'}
-                  className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-xl shadow-2xl shadow-cyan-500/30 hover:shadow-cyan-500/50 transition-all duration-300 hover:scale-105"
+            <ol className="space-y-3">
+              {processSteps.map((item, index) => (
+                <motion.li
+                  key={item.step}
+                  {...fadeUp}
+                  transition={{ duration: 0.55, ease: EASE, delay: index * 0.07 }}
+                  className="group relative overflow-hidden rounded-2xl border border-[#4080E0]/15 bg-[#020d1c]/60 backdrop-blur-sm transition-all duration-300 hover:border-[#4080E0]/45 hover:bg-[#020d1c]/80"
                 >
-                  <MessageSquare className="w-5 h-5" />
-                  {content.ctaFreeConsultation[language]}
-                </button>
-              </motion.div>
-            </div>
+                  {/* Giant ghost number */}
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 select-none font-bold leading-none text-[#4080E0]/[0.06] transition-all duration-300 group-hover:text-[#4080E0]/[0.10]"
+                    style={{ fontSize: 'clamp(5rem, 12vw, 9rem)' }}
+                  >
+                    {item.step}
+                  </span>
+
+                  {/* Left accent bar */}
+                  <div className="absolute left-0 top-0 h-full w-[3px] rounded-l-2xl bg-[#4080E0]/0 transition-colors duration-300 group-hover:bg-[#4080E0]/60" />
+
+                  <div className="relative z-10 grid grid-cols-1 gap-4 px-8 py-8 sm:grid-cols-[5rem_1fr_2fr] sm:items-center sm:gap-10 sm:px-10 sm:py-10">
+                    {/* Step number badge */}
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[#4080E0]/30 bg-[#4080E0]/10 font-mono text-sm font-semibold text-[#4080E0] transition-colors duration-300 group-hover:border-[#4080E0]/60 group-hover:bg-[#4080E0]/20">
+                      {item.step}
+                    </div>
+                    <h3 className="text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                      {item.title}
+                    </h3>
+                    <p className="text-[15px] leading-relaxed text-white/72 sm:text-base">
+                      {item.description}
+                    </p>
+                  </div>
+                </motion.li>
+              ))}
+            </ol>
           </div>
         </section>
 
-        {/* Portfolio Section */}
-        <section id="portfolio" className="py-24 bg-transparent scroll-mt-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">{content.portfolioTitle[language]}</h2>
-              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        {/* 4 — Our work — hover-reveal dimming grid */}
+        <section id="portfolio" className="scroll-mt-20 border-t border-[#4080E0]/10 py-28 sm:py-36">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div {...fadeUp} className="mb-16 max-w-2xl">
+              <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.3em] text-[#4080E0]">03</p>
+              <h2 className="border-none pb-0 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                {content.portfolioTitle[language]}
+              </h2>
+              <p className="mt-5 text-lg leading-relaxed text-white/75">
                 {content.portfolioSubtitle[language]}
               </p>
             </motion.div>
 
-
-            {/* Featured Projects — FocusRail */}
-            {featuredWebsites.length > 0 && (
+            {/* Combined grid — hover-reveal: hovering any card dims the rest */}
+            {(featuredWebsites.length > 0 || regularWebsites.length > 0) && (
               <motion.div
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-                className="mb-20"
+                {...fadeUp}
+                className="group grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
               >
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="w-1 h-8 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
-                  <h3 className="text-2xl font-bold text-white">{content.featuredProjects[language]}</h3>
-                </div>
-                <FocusRail
-                  items={featuredWebsites.map((w) => ({
-                    id: w.id,
-                    title: w.title,
-                    description: w.description,
-                    imageSrc: w.image,
-                    meta: w.category,
-                    href: `/preview/${w.id}`,
-                    externalHref: w.url
-                      ? /^https?:\/\//i.test(w.url) ? w.url : `https://${w.url}`
-                      : undefined,
-                  }))}
-                  loop
-                  autoPlay={false}
-                  className="rounded-3xl overflow-hidden"
-                />
+                {[...featuredWebsites, ...regularWebsites].map((site, index) => (
+                  <a
+                    key={site.id}
+                    href={`/preview/${site.id}`}
+                    className={[
+                      'relative overflow-hidden rounded-2xl bg-[#020d1c]/70 backdrop-blur-sm',
+                      'cursor-pointer transition-all duration-500',
+                      // All cards dim when group is hovered; hovered card snaps back
+                      'group-hover:opacity-50 group-hover:scale-[0.98] group-hover:blur-[1px]',
+                      'hover:!opacity-100 hover:!scale-[1.02] hover:!blur-none',
+                      // Prominent ring on focus / hover
+                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]',
+                      // Taller aspect for featured
+                      featuredWebsites.includes(site) ? 'sm:col-span-1' : '',
+                    ].join(' ')}
+                  >
+                    {/* Image */}
+                    <div className={featuredWebsites.includes(site) ? 'aspect-[4/3]' : 'aspect-[4/3]'}>
+                      {site.image ? (
+                        <img
+                          src={site.image}
+                          alt={site.title}
+                          loading="lazy"
+                          className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.05]"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-gradient-to-br from-[#4080E0]/20 to-[#002040]/40" />
+                      )}
+                    </div>
+
+                    {/* Gradient overlay — always shown */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#010814]/90 via-[#010814]/30 to-transparent" />
+
+                    {/* Blue glow on hover */}
+                    <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/0 transition-all duration-300 hover:ring-[#4080E0]/40" />
+
+                    {/* Content */}
+                    <div className="absolute bottom-0 left-0 right-0 p-6">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#80A0E0]">
+                        {site.category}
+                      </p>
+                      <h3 className="mt-1.5 text-lg font-semibold tracking-tight text-white">
+                        {site.title}
+                      </h3>
+                      {featuredWebsites.includes(site) && site.description && (
+                        <p className="mt-1 line-clamp-1 text-sm text-white/70">
+                          {site.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Arrow pill — appears on hover */}
+                    <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-white/10 bg-[#010814]/70 px-3 py-1.5 opacity-0 backdrop-blur-sm transition-opacity duration-300 hover:opacity-100">
+                      <ArrowUpRight className="h-3.5 w-3.5 text-[#4080E0]" />
+                      <span className="text-[11px] font-medium text-white/70">View</span>
+                    </div>
+                  </a>
+                ))}
               </motion.div>
             )}
-
-
           </div>
         </section>
 
-        {/* About Section */}
-        <section id="about" className="py-24 bg-transparent scroll-mt-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center mb-14"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3"><T>{settings.aboutTitle}</T></h2>
-              <p className="text-lg md:text-xl text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                <T>{settings.aboutDescription}</T>
-              </p>
-            </motion.div>
+        {/* 5 — Why IGANI */}
+        <section id="about" className="scroll-mt-20 border-t border-[#4080E0]/10 py-28 sm:py-36">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="grid gap-14 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
+              <motion.div {...fadeUp}>
+                <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.3em] text-[#4080E0]">04</p>
+                <h2 className="border-none pb-0 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                  <T>{settings.aboutTitle}</T>
+                </h2>
+                  <p className="mt-6 text-lg leading-relaxed text-white/75">
+                  <T>{settings.aboutDescription}</T>
+                </p>
+              </motion.div>
 
-            {/* Testimonials */}
-            {testimonials.length > 0 && testimonials.filter(t => t.featured).length > 0 && (
-              <div className="mb-20">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="w-1 h-8 bg-gradient-to-b from-purple-500 to-pink-500 rounded-full"></div>
-                  <h3 className="text-2xl font-bold text-white">{content.testimonialsTitle[language]}</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {testimonials.filter(t => t.featured).slice(0, 6).map((testimonial, index) => (
-                    <motion.div
-                      key={testimonial.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      whileHover={{ y: -8 }}
-                      className="group bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-6 hover:border-cyan-500/50 transition-all duration-300 shadow-lg shadow-slate-950/50 hover:shadow-xl hover:shadow-cyan-500/10"
-                    >
-                      {/* Rating */}
-                      <div className="flex items-center gap-1 mb-4">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`w-4 h-4 ${
-                              i < testimonial.rating
-                                ? 'text-yellow-400 fill-current'
-                                : 'text-slate-600'
-                            }`}
-                          />
-                        ))}
-                        <span className="text-xs text-slate-400 ml-2">
-                          {testimonial.rating}.0
-                        </span>
-                      </div>
+              <div className="space-y-2">
+                {whyPillars.map((pillar, index) => (
+                  <motion.div
+                    key={pillar.title}
+                    {...fadeUp}
+                    transition={{ duration: 0.55, ease: EASE, delay: index * 0.08 }}
+                    className="rounded-2xl border border-[#4080E0]/20 bg-[#020d1c]/80 p-7 backdrop-blur-sm"
+                  >
+                    <h3 className="text-lg font-semibold tracking-tight text-white">
+                      <span className="text-[#4080E0]">—</span>{' '}{pillar.title}
+                    </h3>
+                    <p className="mt-2 text-[15px] leading-relaxed text-white/72">
+                      {pillar.description}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
 
-                      {/* Message */}
-                      <blockquote className="text-slate-300 text-sm leading-relaxed mb-6 line-clamp-4">
-                        "{testimonial.message}"
-                      </blockquote>
-
-                      {/* Author */}
-                      <div className="flex items-center gap-3">
-                        {testimonial.image ? (
-                          <img
-                            src={testimonial.image}
-                            alt={testimonial.name}
-                            className="w-10 h-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-full flex items-center justify-center">
-                            <span className="text-cyan-400 font-bold text-sm">
-                              {testimonial.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div>
-                          <h4 className="text-white font-semibold text-sm">
-                            {testimonial.name}
-                          </h4>
-                          <p className="text-slate-400 text-xs">
-                            {testimonial.role} at {testimonial.company}
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
+            {featuredTestimonials.length > 0 && (
+              <div className="mt-20 grid gap-6 md:grid-cols-3">
+                {featuredTestimonials.map((testimonial, index) => (
+                  <motion.figure
+                    key={testimonial.id}
+                    {...fadeUp}
+                    transition={{ duration: 0.55, ease: EASE, delay: index * 0.08 }}
+                    className="flex flex-col rounded-2xl border border-[#4080E0]/20 bg-[#020d1c]/80 p-7 backdrop-blur-sm"
+                  >
+                    <div className="flex items-center gap-1" aria-label={`${testimonial.rating} out of 5 stars`}>
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3.5 w-3.5 ${i < testimonial.rating ? 'fill-[#4080E0] text-[#4080E0]' : 'text-white/20'}`}
+                        />
+                      ))}
+                    </div>
+                    <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-white/70">
+                      &ldquo;{testimonial.message}&rdquo;
+                    </blockquote>
+                    <figcaption className="mt-6 text-sm">
+                      <span className="font-semibold text-white">{testimonial.name}</span>
+                      <span className="block text-white/60">
+                        {testimonial.role}{testimonial.company ? ` · ${testimonial.company}` : ''}
+                      </span>
+                    </figcaption>
+                  </motion.figure>
+                ))}
               </div>
             )}
-
           </div>
         </section>
 
-        {/* Contact Section */}
-        <section id="contact" className="py-24 bg-transparent scroll-mt-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              viewport={{ once: true }}
-              className="text-center mb-14"
-            >
-              <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">{content.contactTitle[language]}</h2>
-              <p className="text-lg md:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        {/* 6 — Contact */}
+        <section id="contact" className="scroll-mt-20 border-t border-[#4080E0]/10 py-28 sm:py-36">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <motion.div {...fadeUp} className="mb-16 max-w-2xl">
+              <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.3em] text-[#4080E0]">05</p>
+              <h2 className="border-none pb-0 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+                {content.contactTitle[language]}
+              </h2>
+              <p className="mt-5 text-lg leading-relaxed text-white/75">
                 {content.contactSubtitle[language]}
               </p>
             </motion.div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-              {/* Contact Form - appears first on mobile, second on desktop */}
-              <motion.div
-                initial={{ opacity: 0, x: 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-                className="order-1 lg:order-2"
-              >
-                <div className="relative">
-                <form onSubmit={handleSubmit} className="space-y-6 bg-slate-800/60 p-8 rounded-2xl border border-slate-700/50 shadow-xl shadow-slate-950/50">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-semibold text-white mb-2">{content.firstName[language]}</label>
-                      <input
-                        type="text"
-                        name="firstName"
-                        value={formData.firstName}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-white mb-2">{content.lastName[language]}</label>
-                      <input
-                        type="text"
-                        name="lastName"
-                        value={formData.lastName}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">{content.email[language]}</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 transition-all duration-300"
-                      required
-                    />
-                  </div>
-                  <PhoneInput
-                    value={formData.phone}
-                    onChange={(val) => setFormData(f => ({ ...f, phone: val }))}
-                    error={phoneError}
-                    required
-                  />
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">{content.projectType[language]}</label>
-                    <select
-                      name="projectType"
-                      value={formData.projectType}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white transition-all duration-300"
-                    >
-                      <option>Landing Page</option>
-                      <option>Small Business Website</option>
-                      <option>Premium Brand Site</option>
-                      <option>E-commerce Website</option>
-                      <option>Custom Web App</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-white mb-2">{content.projectDetails[language]}</label>
-                    <textarea
-                      rows={5}
-                      name="message"
-                      value={formData.message}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500 resize-none transition-all duration-300"
-                      placeholder="Describe your business needs and project goals..."
-                      required
-                    ></textarea>
-                  </div>
-
-                  {submitStatus === 'error' && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-red-600/20 border border-red-500/50 text-red-400 p-4 rounded-lg font-medium"
-                    >
-                      An error occurred. Please try again or contact us directly.
-                    </motion.div>
-                  )}
-
-                  <AnimatedButton
-                    variant="primary"
-                    size="large"
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Send className="w-5 h-5 mr-2" />
-                    {isSubmitting ? content.submitting[language] : content.submitButton[language]}
-                  </AnimatedButton>
-                </form>
-
-                {submitStatus === 'success' && (
-                  <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl p-3 sm:p-4">
-                    <div className="absolute inset-0 rounded-2xl bg-slate-950/80 backdrop-blur-md" aria-hidden />
-                    <div className="relative z-10 w-full max-h-[min(92vh,calc(100%-0.5rem))] overflow-y-auto">
-                      <ContactInquirySuccess
-                        onDismiss={() => setSubmitStatus('idle')}
-                        submitAnotherLabel={content.inquirySuccessSubmitAnother[language]}
-                        closeLabel={content.inquirySuccessCloseLabel[language]}
-                        badge={content.inquirySuccessBadge[language]}
-                        heading={content.inquirySuccessTitle[language]}
-                        lead={content.inquirySuccessLead[language]}
-                        bullets={[
-                          content.inquirySuccessBullet1[language],
-                          content.inquirySuccessBullet2[language],
-                          content.inquirySuccessBullet3[language],
-                        ]}
-                      />
-                    </div>
-                  </div>
-                )}
+            <div className="grid grid-cols-1 gap-12 lg:grid-cols-[1fr_1.4fr]">
+              {/* Contact info */}
+              <motion.div {...fadeUp} className="order-2 lg:order-1">
+                <div className="space-y-3">
+                  {[
+                    { icon: Mail, label: 'Email', value: settings.contactEmail, href: `mailto:${settings.contactEmail}` },
+                    { icon: Phone, label: 'Phone', value: settings.contactPhone, href: `tel:${settings.contactPhone?.replace(/\s/g, '')}` },
+                    { icon: MapPin, label: 'Location', value: settings.contactLocation, href: undefined },
+                  ].map((contact) => {
+                    const inner = (
+                      <>
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#4080E0]/30 bg-[#4080E0]/10">
+                          <contact.icon className="h-5 w-5 text-[#4080E0]" strokeWidth={1.5} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/55">{contact.label}</p>
+                          <p className="mt-1 text-[15px] text-white">{contact.value}</p>
+                        </div>
+                      </>
+                    )
+                    return contact.href ? (
+                      <a
+                        key={contact.label}
+                        href={contact.href}
+                        className="flex items-center gap-4 rounded-2xl border border-[#4080E0]/20 bg-[#020d1c]/80 p-5 backdrop-blur-sm transition-colors hover:border-[#4080E0]/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]"
+                      >
+                        {inner}
+                      </a>
+                    ) : (
+                      <div
+                        key={contact.label}
+                        className="flex items-center gap-4 rounded-2xl border border-[#4080E0]/20 bg-[#020d1c]/80 p-5 backdrop-blur-sm"
+                      >
+                        {inner}
+                      </div>
+                    )
+                  })}
                 </div>
               </motion.div>
 
-              {/* Contact Info - appears second on mobile, first on desktop */}
-              <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-                className="space-y-8 order-2 lg:order-1"
-              >
-                <div>
-                  <h3 className="text-2xl font-bold text-white mb-6">{content.contactInfo[language]}</h3>
-                  <div className="space-y-6">
-                    {[
-                      { icon: Mail, label: 'Email', value: settings.contactEmail },
-                      { icon: Phone, label: 'Phone', value: settings.contactPhone },
-                      { icon: MapPin, label: 'Location', value: settings.contactLocation }
-                    ].map((contact, index) => (
-                      <motion.div
-                        key={contact.label}
-                        initial={{ opacity: 0, y: 20 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: index * 0.1 }}
-                        viewport={{ once: true }}
-                        className="flex items-start space-x-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:border-cyan-500/50 transition-all duration-300 shadow-md shadow-slate-950/50 hover:shadow-lg hover:shadow-cyan-500/10"
+              {/* Form */}
+              <motion.div {...fadeUp} className="order-1 lg:order-2">
+                <div className="relative">
+                  <form
+                    onSubmit={handleSubmit}
+                    className="space-y-6 rounded-2xl border border-[#4080E0]/20 bg-[#020d1c]/80 p-7 backdrop-blur-sm sm:p-9"
+                  >
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-white/80">{content.firstName[language]}</label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          className="w-full rounded-lg border border-[#4080E0]/20 bg-[#010814]/60 px-4 py-3 text-white placeholder-white/25 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-white/80">{content.lastName[language]}</label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          className="w-full rounded-lg border border-[#4080E0]/20 bg-[#010814]/60 px-4 py-3 text-white placeholder-white/25 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]"
+                          required
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-white/80">{content.email[language]}</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="w-full rounded-lg border border-[#4080E0]/20 bg-[#010814]/60 px-4 py-3 text-white placeholder-white/25 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]"
+                        required
+                      />
+                    </div>
+                    <PhoneInput
+                      value={formData.phone}
+                      onChange={(val) => setFormData(f => ({ ...f, phone: val }))}
+                      error={phoneError}
+                      required
+                    />
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-white/80">{content.projectType[language]}</label>
+                      <select
+                        name="projectType"
+                        value={formData.projectType}
+                        onChange={handleInputChange}
+                        className="w-full rounded-lg border border-[#4080E0]/20 bg-[#010814]/60 px-4 py-3 text-white transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]"
                       >
-                        <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                          <contact.icon className="w-6 h-6 text-cyan-400" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white mb-1">{contact.label}</p>
-                          <p className="text-slate-400">{contact.value}</p>
-                        </div>
+                        <option>Landing Page</option>
+                        <option>Small Business Website</option>
+                        <option>Premium Brand Site</option>
+                        <option>E-commerce Website</option>
+                        <option>Custom Web App</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-white/80">{content.projectDetails[language]}</label>
+                      <textarea
+                        rows={5}
+                        name="message"
+                        value={formData.message}
+                        onChange={handleInputChange}
+                        className="w-full resize-none rounded-lg border border-[#4080E0]/20 bg-[#010814]/60 px-4 py-3 text-white placeholder-white/25 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]"
+                        placeholder={content.projectDetailsPlaceholder[language]}
+                        required
+                      ></textarea>
+                    </div>
+
+                    {submitStatus === 'error' && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm font-medium text-red-400"
+                      >
+                        {content.errorMessage[language]}
                       </motion.div>
-                    ))}
-                  </div>
+                    )}
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#4080E0] px-7 py-4 text-sm font-semibold text-white transition-colors hover:bg-[#5090F0] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Send className="h-4 w-4" />
+                      {isSubmitting ? content.submitting[language] : content.submitButton[language]}
+                    </button>
+                  </form>
+
+                  {submitStatus === 'success' && (
+                    <div className="absolute inset-0 z-30 flex items-center justify-center rounded-2xl p-3 sm:p-4">
+                      <div className="absolute inset-0 rounded-2xl bg-[#010814]/90 backdrop-blur-md" aria-hidden />
+                      <div className="relative z-10 max-h-[min(92vh,calc(100%-0.5rem))] w-full overflow-y-auto">
+                        <ContactInquirySuccess
+                          onDismiss={() => setSubmitStatus('idle')}
+                          submitAnotherLabel={content.inquirySuccessSubmitAnother[language]}
+                          closeLabel={content.inquirySuccessCloseLabel[language]}
+                          badge={content.inquirySuccessBadge[language]}
+                          heading={content.inquirySuccessTitle[language]}
+                          lead={content.inquirySuccessLead[language]}
+                          bullets={[
+                            content.inquirySuccessBullet1[language],
+                            content.inquirySuccessBullet2[language],
+                            content.inquirySuccessBullet3[language],
+                          ]}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
@@ -727,7 +687,8 @@ export default function HomePage() {
         </section>
 
         <Footer />
-      </div>
+
+      </ScrollBackground>
     </div>
   )
 }

@@ -154,14 +154,14 @@ export default function PhoneInput({
       <div className={`flex rounded-lg overflow-hidden border transition-all duration-300 ${
         isInvalid
           ? 'border-red-500 ring-2 ring-red-500/30'
-          : 'border-slate-600 focus-within:ring-2 focus-within:ring-cyan-500 focus-within:border-cyan-500'
+          : 'border-white/10 focus-within:ring-1 focus-within:ring-amber-400 focus-within:border-amber-400'
       }`}>
         {/* Country code dropdown */}
         <div className="relative flex-shrink-0">
           <select
             value={countryIndex}
             onChange={handleCountryChange}
-            className="appearance-none h-full pl-3 pr-7 py-3 bg-slate-800 text-white text-sm cursor-pointer focus:outline-none border-r border-slate-600"
+            className="appearance-none h-full pl-3 pr-7 py-3 bg-[#161616] text-white text-sm cursor-pointer focus:outline-none border-r border-white/10"
             style={{ minWidth: '88px' }}
           >
             {COUNTRY_CODES.map((c, i) => (
@@ -180,7 +180,7 @@ export default function PhoneInput({
           placeholder={placeholder}
           dir="ltr"
           required={required}
-          className={`flex-1 px-4 py-3 bg-slate-900/60 text-white placeholder-slate-500 focus:outline-none ${inputClassName}`}
+          className={`flex-1 px-4 py-3 bg-black/40 text-white placeholder-white/30 focus:outline-none ${inputClassName}`}
         />
       </div>
       {isInvalid && (

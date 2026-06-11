@@ -84,8 +84,11 @@ export default function Header({
     <header className="fixed top-0 left-0 right-0 z-50 pt-3 pb-2 px-4 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl flex flex-col gap-0">
 
-        {/* ── Pill nav ── */}
-        <nav className="flex items-center justify-between gap-3 rounded-full border border-white/10 bg-slate-900/80 px-4 py-2.5 shadow-[0_4px_32px_-4px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04)_inset] backdrop-blur-xl lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-3 lg:px-6">
+        {/* ── Pill nav — liquid glass ── */}
+        <nav className="relative flex items-center justify-between gap-3 rounded-full border border-white/[0.10] bg-[#04101e]/30 px-4 py-2.5 backdrop-blur-[36px] backdrop-saturate-[180%] shadow-[0_8px_40px_-4px_rgba(0,0,20,0.65),inset_0_1px_0_rgba(255,255,255,0.13),inset_0_0_28px_rgba(64,128,224,0.05)] lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-3 lg:px-6 overflow-hidden">
+
+          {/* Liquid glass top-edge shimmer */}
+          <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
 
           {/* LEFT — logo (+ optional back button) */}
           <div className="flex shrink-0 items-center gap-2 lg:min-w-0 lg:justify-self-start">
@@ -113,7 +116,7 @@ export default function Header({
                   className="group relative inline-flex items-center rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   {item.label}
-                  <span className="absolute bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-3/4" />
+                  <span className="absolute bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#80A0E0] to-[#4080E0] transition-all duration-300 group-hover:w-3/4" />
                 </a>
               ) : (
                 <button
@@ -122,7 +125,7 @@ export default function Header({
                   className="group relative inline-flex items-center rounded-full px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
                 >
                   {item.label}
-                  <span className="absolute bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 transition-all duration-300 group-hover:w-3/4" />
+                  <span className="absolute bottom-1 left-1/2 h-0.5 w-0 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#80A0E0] to-[#4080E0] transition-all duration-300 group-hover:w-3/4" />
                 </button>
               )
             )}
@@ -161,7 +164,7 @@ export default function Header({
               <LanguageToggle />
               <button
                 onClick={handleContactClick}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-cyan-600 to-blue-600 px-5 py-2 text-sm font-medium text-white shadow-lg transition-all duration-300 hover:from-cyan-500 hover:to-blue-500 hover:shadow-cyan-500/25"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4080E0] to-[#2060C0] px-5 py-2 text-sm font-medium text-white shadow-lg shadow-[#4080E0]/20 transition-all duration-300 hover:from-[#5090F0] hover:to-[#3070D0] hover:shadow-[#4080E0]/35"
               >
                 <MessageSquare className="h-4 w-4" />
                 {nav.freeConsultation[currentLanguage]}
@@ -184,7 +187,7 @@ export default function Header({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="mt-2 rounded-2xl border border-white/10 bg-slate-900/95 px-4 py-4 shadow-xl backdrop-blur-xl lg:hidden"
+              className="mt-2 rounded-2xl border border-white/[0.10] bg-[#010814]/75 px-4 py-4 shadow-xl backdrop-blur-[36px] backdrop-saturate-[180%] shadow-[0_8px_40px_-4px_rgba(0,0,20,0.65),inset_0_1px_0_rgba(255,255,255,0.10)] lg:hidden"
             >
               <div className="flex flex-col gap-1">
                 {showBackButton && (
@@ -261,7 +264,7 @@ export default function Header({
 
                 <button
                   onClick={handleContactClick}
-                  className="mt-2 flex items-center gap-3 w-full rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 px-4 py-3 text-sm font-medium text-white shadow-lg transition-all hover:from-cyan-500 hover:to-blue-500"
+                  className="mt-2 flex items-center gap-3 w-full rounded-xl bg-gradient-to-r from-[#4080E0] to-[#2060C0] px-4 py-3 text-sm font-medium text-white shadow-lg shadow-[#4080E0]/20 transition-all hover:from-[#5090F0] hover:to-[#3070D0]"
                 >
                   <MessageSquare className="h-5 w-5" />
                   {nav.freeConsultation[currentLanguage]}

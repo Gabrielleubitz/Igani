@@ -24,44 +24,57 @@ export const siteContent: SiteContent = {
   
   home: {
     heroTagline: { 
-      en: 'Professional Web Development Services', 
-      he: 'שירותי פיתוח אתרים מקצועיים' 
+      en: 'IGANI — Product studio', 
+      he: 'IGANI — סטודיו למוצרים דיגיטליים' 
     },
     heroTitle: { 
-      en: 'We build apps, websites, and SaaS', 
-      he: 'אנחנו בונים אפליקציות, אתרים ו-SaaS' 
+      en: 'We build automations, websites, and SaaS.', 
+      he: 'אנחנו בונים אוטומציות, אתרים ו-SaaS.' 
     },
     heroTitleLine2: { 
       en: 'As builders, operators, and partners.', 
       he: 'כבונים, מפעילים ושותפים.' 
     },
     heroSubtitle: { 
-      en: 'From landing pages to full applications—we\'re ready to talk.', 
-      he: 'מעמודי נחיתה ועד אפליקציות מלאות—אנחנו מוכנים לשיחה.' 
+      en: 'One team that takes your product from first idea to shipped — design, code, and launch.', 
+      he: 'צוות אחד שלוקח את המוצר שלכם מרעיון ראשון ועד השקה — עיצוב, קוד והשקה.' 
+    },
+    heroOutroTitle: {
+      en: 'Idea. Design. Code. Launch.',
+      he: 'רעיון. עיצוב. קוד. השקה.'
+    },
+    heroOutroSubtitle: {
+      en: 'That\'s the whole story. Let\'s build yours.',
+      he: 'זה כל הסיפור. בואו נבנה את שלכם.'
     },
     ctaFreeConsultation: { en: 'Book a call', he: 'קבע שיחה' },
     ctaViewWork: { en: 'See our work', he: 'ראה את העבודות שלנו' },
 
     servicesTitle: { en: 'What we build', he: 'מה אנחנו בונים' },
     servicesSubtitle: { 
-      en: 'Websites, apps, and SaaS—for startups, businesses, and our own products.', 
-      he: 'אתרים, אפליקציות ו-SaaS—לסטארטאפים, עסקים ולמוצרים שלנו.' 
+      en: 'Websites, apps, and SaaS — for startups, businesses, and our own products.', 
+      he: 'אתרים, אפליקציות ו-SaaS — לסטארטאפים, עסקים ולמוצרים שלנו.' 
     },
     customWebDevTitle: { en: 'Websites & apps', he: 'אתרים ואפליקציות' },
     customWebDevDescription: { 
-      en: 'From landing pages to full web and mobile applications. Built to last and easy to iterate.', 
-      he: 'מעמודי נחיתה ועד אפליקציות ווב ומובייל מלאות. בנוי להחזיק לאורך זמן וקל לשפר.' 
+      en: 'From landing pages to full web and mobile applications. Built to last, easy to iterate, fast to ship.', 
+      he: 'מעמודי נחיתה ועד אפליקציות ווב ומובייל מלאות. בנוי להחזיק לאורך זמן, קל לשפר ומהיר להשקה.' 
     },
     uiUxDesignTitle: { en: 'Design & build', he: 'עיצוב ובנייה' },
     uiUxDesignDescription: { 
-      en: 'Clear structure and interfaces. We design with the build in mind so nothing gets lost in translation.', 
-      he: 'מבנה וממשקים ברורים. אנחנו מעצבים עם הבנייה בראש כדי שלא יאבד דבר בתרגום.' 
+      en: 'Clear structure, sharp interfaces. We design with the build in mind, so nothing gets lost in translation.', 
+      he: 'מבנה ברור וממשקים חדים. אנחנו מעצבים עם הבנייה בראש, כדי שלא יאבד דבר בתרגום.' 
+    },
+    automationTitle: { en: 'SaaS & automation', he: 'SaaS ואוטומציה' },
+    automationDescription: {
+      en: 'Internal tools, integrations, and products we run ourselves. We automate the busywork so your business moves faster.',
+      he: 'כלים פנימיים, אינטגרציות ומוצרים שאנחנו מפעילים בעצמנו. אנחנו הופכים עבודה ידנית לאוטומטית כדי שהעסק שלכם ינוע מהר יותר.'
     },
     
     processTitle: { en: 'How we work', he: 'איך אנחנו עובדים' },
     processSubtitle: { 
-      en: 'Discover, design, build, launch—with clear steps and no surprises.', 
-      he: 'גילוי, עיצוב, בנייה, השקה—עם צעדים ברורים ובלי הפתעות.' 
+      en: 'Discover, design, build, launch — clear steps, no surprises.', 
+      he: 'גילוי, עיצוב, בנייה, השקה — צעדים ברורים, בלי הפתעות.' 
     },
     step1Title: { en: 'Discover', he: 'גילוי' },
     step1Description: { 
@@ -101,6 +114,21 @@ export const siteContent: SiteContent = {
     aboutDescription: { 
       en: 'We build and run our own products as well as client work. One team, clear ownership, and a straightforward process from idea to launch.', 
       he: 'אנחנו בונים ומפעילים מוצרים משלנו וגם עבודת לקוחות. צוות אחד, בעלות ברורה, ותהליך ישיר מרעיון להשקה.' 
+    },
+    whyPillar1Title: { en: 'One team, end to end', he: 'צוות אחד, מקצה לקצה' },
+    whyPillar1Description: {
+      en: 'Strategy, design, and engineering in one room. No hand-offs, no agencies-within-agencies.',
+      he: 'אסטרטגיה, עיצוב והנדסה בחדר אחד. בלי העברות מקל, בלי סוכנות בתוך סוכנות.'
+    },
+    whyPillar2Title: { en: 'Clear ownership', he: 'בעלות ברורה' },
+    whyPillar2Description: {
+      en: 'You always know who is building what, what it costs, and when it ships.',
+      he: 'אתם תמיד יודעים מי בונה מה, כמה זה עולה ומתי זה עולה לאוויר.'
+    },
+    whyPillar3Title: { en: 'We ship our own products', he: 'אנחנו משיקים מוצרים משלנו' },
+    whyPillar3Description: {
+      en: 'We operate our own SaaS, so we build for you like operators — not like contractors.',
+      he: 'אנחנו מפעילים SaaS משלנו, ולכן בונים עבורכם כמו מפעילים — לא כמו קבלנים.'
     },
     testimonialsTitle: { en: 'What Our Clients Say', he: 'מה הלקוחות שלנו אומרים' },
     
