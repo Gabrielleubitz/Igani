@@ -47,8 +47,11 @@ export default function Footer() {
     !!(settings.businessEmail?.trim() || settings.businessPhone?.trim() || settings.businessAddress?.trim())
 
   return (
-    <footer className="bg-transparent border-t border-slate-700/50 py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <footer className="relative mx-4 mb-4 overflow-hidden rounded-2xl border border-white/[0.10] bg-[#04101e]/30 backdrop-blur-[36px] backdrop-saturate-[180%] shadow-[0_-4px_40px_-4px_rgba(0,0,20,0.5),inset_0_1px_0_rgba(255,255,255,0.12),inset_0_0_28px_rgba(64,128,224,0.04)] sm:mx-6 lg:mx-8">
+      {/* Top-edge shimmer */}
+      <span aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
+      <div className="max-w-7xl mx-auto px-6 py-14 sm:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -56,20 +59,21 @@ export default function Footer() {
           viewport={{ once: true }}
           className="flex flex-col md:flex-row justify-between items-start gap-10 md:gap-8"
         >
-          <div className="group text-center md:text-left w-full md:w-auto">
+          {/* Left — logo + tagline + socials */}
+          <div className="text-center md:text-left w-full md:w-auto">
             <IganiLogo className="w-44 h-14 mx-auto md:mx-0" />
-            <p className="text-slate-500 mt-3 text-sm max-w-xs mx-auto md:mx-0">
+            <p className="text-white/55 mt-3 text-sm max-w-xs mx-auto md:mx-0">
               {settings.footerTagline || 'Building digital experiences that matter'}
             </p>
 
-            <div className="flex flex-wrap gap-3 mt-5 justify-center md:justify-start">
+            <div className="flex flex-wrap gap-2.5 mt-5 justify-center md:justify-start">
               {socialItems.map(({ href, label, Icon }) => (
                 <a
                   key={label}
                   href={href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-lg bg-slate-800/50 hover:bg-cyan-600/20 border border-slate-700/50 hover:border-cyan-500/50 flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-all duration-300"
+                  className="w-9 h-9 rounded-xl border border-[#4080E0]/20 bg-[#4080E0]/[0.07] flex items-center justify-center text-white/50 transition-all duration-300 hover:border-[#4080E0]/50 hover:bg-[#4080E0]/20 hover:text-[#80A0E0]"
                   aria-label={label}
                 >
                   <Icon className="w-4 h-4" />
@@ -78,28 +82,29 @@ export default function Footer() {
             </div>
           </div>
 
+          {/* Right — copyright + links + contact */}
           <div className="text-center md:text-right w-full md:max-w-md md:ml-auto">
-            <p className="text-slate-400 mb-2">
+            <p className="text-white/55 text-sm mb-2">
               {settings.copyrightText || `© 2026 IGANI. ${footer.allRightsReserved[language]}`}
             </p>
             <div className="flex gap-4 justify-center md:justify-end flex-wrap items-center">
-              <a href="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">
+              <a href="/privacy" className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
                 {footer.privacy[language]}
               </a>
-              <a href="/terms" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">
+              <a href="/terms" className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
                 {footer.terms[language]}
               </a>
-              <a href="/contact" className="text-slate-400 hover:text-cyan-400 transition-colors text-sm">
+              <a href="/contact" className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
                 {footer.contact[language]}
               </a>
             </div>
 
             {hasContact && (
-              <div className="mt-5 text-sm text-slate-500 space-y-2 md:text-right">
+              <div className="mt-5 text-sm text-white/45 space-y-1.5 md:text-right">
                 {settings.businessEmail?.trim() && (
                   <a
                     href={`mailto:${settings.businessEmail.trim()}`}
-                    className="block hover:text-cyan-400 transition-colors"
+                    className="block hover:text-[#80A0E0] transition-colors"
                   >
                     {settings.businessEmail.trim()}
                   </a>
@@ -107,14 +112,14 @@ export default function Footer() {
                 {settings.businessPhone?.trim() && (
                   <a
                     href={`tel:${settings.businessPhone.replace(/\s/g, '')}`}
-                    className="block hover:text-cyan-400 transition-colors"
+                    className="block hover:text-[#80A0E0] transition-colors"
                   >
                     {settings.businessPhone.trim()}
                   </a>
                 )}
                 {settings.businessAddress?.trim() && (
-                  <p className="flex items-start justify-center md:justify-end gap-2 text-slate-500">
-                    <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-slate-600" aria-hidden />
+                  <p className="flex items-start justify-center md:justify-end gap-2">
+                    <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-[#4080E0]/50" aria-hidden />
                     <span>{settings.businessAddress.trim()}</span>
                   </p>
                 )}

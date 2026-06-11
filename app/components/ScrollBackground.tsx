@@ -157,7 +157,7 @@ export default function ScrollBackground({
       </div>
 
       {/* Content — pulled up to overlap the sticky video */}
-      <div className="-mt-[100vh] relative z-10">
+      <div className="-mt-[100vh] relative z-10 pb-4">
         {children}
       </div>
     </div>
