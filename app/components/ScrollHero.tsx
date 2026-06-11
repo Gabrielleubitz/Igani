@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import { useScrollVideoScrub } from '@/hooks/useScrollVideoScrub'
 
 interface ScrollHeroProps {
   /** Video source, e.g. /hero.mp4 */
@@ -28,8 +29,7 @@ interface ScrollHeroProps {
  * Apple-style scroll-scrubbed hero.
  *
  * A tall scroll track wraps a sticky full-viewport stage. Scroll progress
- * through the track is mapped 1:1 onto video.currentTime via a rAF loop
- * (with light smoothing so the scrub feels weighty rather than jittery).
+ * through the track is mapped 1:1 onto video.currentTime (no easing).
  *
  * Respects prefers-reduced-motion: the track collapses to one viewport and
  * the video stays on its first frame (or poster) with no scrubbing.
@@ -49,11 +49,6 @@ export default function ScrollHero({
   const startOverlayRef = useRef<HTMLDivElement>(null)
   const endOverlayRef = useRef<HTMLDivElement>(null)
 
-  const targetProgress = useRef(0)
-  const renderedProgress = useRef(-1)
-  const duration = useRef(0)
-  const rafId = useRef<number>(0)
-
   const [reducedMotion, setReducedMotion] = useState(false)
   const [isSmallScreen, setIsSmallScreen] = useState(false)
 
@@ -72,86 +67,30 @@ export default function ScrollHero({
     }
   }, [])
 
-  const readScrollProgress = useCallback(() => {
-    const track = trackRef.current
-    if (!track) return 0
-    const rect = track.getBoundingClientRect()
-    const scrollable = rect.height - window.innerHeight
-    if (scrollable <= 0) return 0
-    return Math.min(1, Math.max(0, -rect.top / scrollable))
+  const onProgress = useCallback((progress: number) => {
+    if (progressBarRef.current) {
+      progressBarRef.current.style.transform = `scaleX(${progress})`
+    }
+    if (startOverlayRef.current) {
+      const o = 1 - Math.min(1, progress / 0.3)
+      startOverlayRef.current.style.opacity = o.toFixed(3)
+      startOverlayRef.current.style.transform = `translate3d(0, ${progress * -60}px, 0)`
+      startOverlayRef.current.style.pointerEvents = o > 0.4 ? 'auto' : 'none'
+    }
+    if (endOverlayRef.current) {
+      const o = Math.min(1, Math.max(0, (progress - 0.72) / 0.22))
+      endOverlayRef.current.style.opacity = o.toFixed(3)
+      endOverlayRef.current.style.transform = `translate3d(0, ${(1 - o) * 28}px, 0)`
+      endOverlayRef.current.style.pointerEvents = o > 0.6 ? 'auto' : 'none'
+    }
   }, [])
 
-  useEffect(() => {
-    if (reducedMotion) {
-      // Rest on the opening frame instead of wherever the scrub left off
-      const video = videoRef.current
-      if (video && video.readyState >= 1) video.currentTime = 0
-      return
-    }
-
-    const video = videoRef.current
-    if (!video) return
-
-    const onMeta = () => {
-      duration.current = video.duration || 0
-    }
-    video.addEventListener('loadedmetadata', onMeta)
-    if (video.readyState >= 1) onMeta()
-
-    // iOS won't decode frames for currentTime seeks until playback has been
-    // "touched" once — a muted play()/pause() unlocks frame-accurate seeking.
-    const unlock = () => {
-      video.play().then(() => video.pause()).catch(() => {})
-      window.removeEventListener('touchstart', unlock)
-    }
-    window.addEventListener('touchstart', unlock, { once: true, passive: true })
-
-    const onScroll = () => {
-      targetProgress.current = readScrollProgress()
-    }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
-
-    const tick = () => {
-      const target = targetProgress.current
-      const prev = renderedProgress.current
-      // Smooth toward the target so fast flicks don't strobe the video
-      const next = prev < 0 ? target : prev + (target - prev) * 0.18
-
-      if (Math.abs(next - (prev < 0 ? -1 : prev)) > 0.0005) {
-        renderedProgress.current = next
-
-        if (duration.current > 0 && video.readyState >= 1) {
-          // Hold a hair before the end so the last frame stays visible
-          video.currentTime = next * Math.max(duration.current - 0.05, 0)
-        }
-        if (progressBarRef.current) {
-          progressBarRef.current.style.transform = `scaleX(${next})`
-        }
-        if (startOverlayRef.current) {
-          const o = 1 - Math.min(1, next / 0.3)
-          startOverlayRef.current.style.opacity = o.toFixed(3)
-          startOverlayRef.current.style.transform = `translateY(${next * -60}px)`
-          startOverlayRef.current.style.pointerEvents = o > 0.4 ? 'auto' : 'none'
-        }
-        if (endOverlayRef.current) {
-          const o = Math.min(1, Math.max(0, (next - 0.72) / 0.22))
-          endOverlayRef.current.style.opacity = o.toFixed(3)
-          endOverlayRef.current.style.transform = `translateY(${(1 - o) * 28}px)`
-          endOverlayRef.current.style.pointerEvents = o > 0.6 ? 'auto' : 'none'
-        }
-      }
-      rafId.current = requestAnimationFrame(tick)
-    }
-    rafId.current = requestAnimationFrame(tick)
-
-    return () => {
-      cancelAnimationFrame(rafId.current)
-      window.removeEventListener('scroll', onScroll)
-      window.removeEventListener('touchstart', unlock)
-      video.removeEventListener('loadedmetadata', onMeta)
-    }
-  }, [reducedMotion, readScrollProgress])
+  useScrollVideoScrub({
+    trackRef,
+    videoRef,
+    reducedMotion,
+    onProgress: reducedMotion ? undefined : onProgress,
+  })
 
   const trackHeight = reducedMotion
     ? '100vh'
@@ -174,7 +113,7 @@ export default function ScrollHero({
           preload="auto"
           aria-hidden="true"
           tabIndex={-1}
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover [transform:translateZ(0)]"
         />
 
         {/* Legibility scrims */}
