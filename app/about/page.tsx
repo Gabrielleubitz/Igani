@@ -12,6 +12,14 @@ import { getAboutUsSections, getAboutUsSettings, getPackageFAQs, getTeamMembers 
 import { AboutUsSection, AboutUsSettings, PackageFAQ, TeamMember } from '@/types'
 import { T } from '@/components/T'
 
+function teamMemberSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
 /** Long bios get line-clamped until expanded */
 const TEAM_BIO_READ_MORE_AT = 140
 
@@ -46,6 +54,7 @@ function TeamMemberCard({
 
   return (
     <motion.div
+      id={teamMemberSlug(member.name)}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay: index * 0.1 }}
@@ -356,9 +365,10 @@ export default function AboutPage() {
 
         {/* Team Members Section */}
         {teamMembers.length > 0 && (
-          <section className="py-16 px-4">
+          <section id="team" className="py-16 px-4" aria-labelledby="team-heading">
             <div className="max-w-7xl mx-auto">
               <motion.h2
+                id="team-heading"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.6 }}

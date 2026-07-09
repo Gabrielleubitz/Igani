@@ -228,7 +228,7 @@ export default function HomePage() {
       />
 
       {/* Sections 2-6 — cinematic navy/blue scroll-scrubbed canvas */}
-      <ScrollBackground videoSrc="/sections.mp4" poster="/sections-poster.jpg">
+      <ScrollBackground imageSrc="/sections-bg.jpg">
 
         {/* 2 — What we build — bento dark-grid with corner-bracket hover */}
         <section className="py-28 sm:py-36">
