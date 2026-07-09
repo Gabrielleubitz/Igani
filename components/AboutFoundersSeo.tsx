@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { User } from 'lucide-react'
 import { getFounderProfiles, founderSlug } from '@/lib/seo/founders'
 import { SITE_NAME } from '@/lib/seo/site'
 
@@ -21,19 +22,35 @@ export async function AboutFoundersSeo() {
         <ul className="mt-8 grid gap-6 sm:grid-cols-3">
           {founders.map((founder) => (
             <li key={founder.name}>
-              <Link
-                href={`/about/team/${founderSlug(founder.name)}`}
-                className="block h-full rounded-2xl border border-slate-700/50 bg-slate-800/60 p-6 transition-colors hover:border-cyan-500/40 hover:bg-slate-800/80"
-              >
-                <h3 className="text-xl font-bold text-white">{founder.name}</h3>
-                <p className="mt-1 text-sm font-medium text-cyan-400">{founder.position}</p>
-                <p className="mt-3 line-clamp-4 text-sm leading-relaxed text-slate-300">
-                  {founder.bio}
-                </p>
-                <span className="mt-4 inline-block text-sm font-semibold text-cyan-400">
-                  View profile →
-                </span>
-              </Link>
+              <article className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800/60 shadow-xl shadow-slate-950/40 transition-colors hover:border-cyan-500/40">
+                <div className="relative aspect-[3/4] w-full min-h-[220px] bg-slate-900/50">
+                  {founder.imageUrl ? (
+                    <img
+                      src={founder.imageUrl}
+                      alt={founder.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyan-500/25 to-blue-500/20">
+                      <User className="h-16 w-16 text-cyan-400/80" aria-hidden />
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-1 flex-col border-t border-slate-700/50 p-6">
+                  <h3 className="text-xl font-bold text-white">{founder.name}</h3>
+                  <p className="mt-1 text-sm font-medium text-cyan-400">{founder.position}</p>
+                  <p className="mt-3 line-clamp-4 flex-1 text-sm leading-relaxed text-slate-300">
+                    {founder.bio}
+                  </p>
+                  <Link
+                    href={`/about/team/${founderSlug(founder.name)}`}
+                    className="mt-5 inline-flex text-sm font-semibold text-cyan-400 transition-colors hover:text-cyan-300"
+                  >
+                    View profile →
+                  </Link>
+                </div>
+              </article>
             </li>
           ))}
         </ul>

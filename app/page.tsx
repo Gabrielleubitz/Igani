@@ -6,6 +6,7 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import ScrollHero from '@/app/components/ScrollHero'
 import ScrollBackground from '@/app/components/ScrollBackground'
+import PortfolioInfiniteScroll from '@/app/components/PortfolioInfiniteScroll'
 import { defaultSettings } from '@/data/defaultSettings'
 import { getWebsites, getSettings, getTestimonials } from '@/lib/firestore'
 import { Website, SiteSettings, Testimonial } from '@/types'
@@ -17,9 +18,7 @@ import {
   Phone,
   MapPin,
   Send,
-  ExternalLink,
   ArrowRight,
-  ArrowUpRight,
   Star,
   Code2,
   PenTool,
@@ -81,6 +80,9 @@ export default function HomePage() {
 
   const featuredWebsites = websites.filter(w => w.featured)
   const regularWebsites = websites.filter(w => !w.featured)
+  const portfolioWebsites = [...featuredWebsites, ...regularWebsites].sort(
+    (a, b) => a.order - b.order
+  )
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({
@@ -377,70 +379,9 @@ export default function HomePage() {
               </p>
             </motion.div>
 
-            {/* Combined grid — hover-reveal: hovering any card dims the rest */}
-            {(featuredWebsites.length > 0 || regularWebsites.length > 0) && (
-              <motion.div
-                {...fadeUp}
-                className="group grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
-              >
-                {[...featuredWebsites, ...regularWebsites].map((site, index) => (
-                  <a
-                    key={site.id}
-                    href={`/preview/${site.id}`}
-                    className={[
-                      'relative overflow-hidden rounded-2xl bg-[#020d1c]/70 backdrop-blur-sm',
-                      'cursor-pointer transition-all duration-500',
-                      // All cards dim when group is hovered; hovered card snaps back
-                      'group-hover:opacity-50 group-hover:scale-[0.98] group-hover:blur-[1px]',
-                      'hover:!opacity-100 hover:!scale-[1.02] hover:!blur-none',
-                      // Prominent ring on focus / hover
-                      'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]',
-                      // Taller aspect for featured
-                      featuredWebsites.includes(site) ? 'sm:col-span-1' : '',
-                    ].join(' ')}
-                  >
-                    {/* Image */}
-                    <div className={featuredWebsites.includes(site) ? 'aspect-[4/3]' : 'aspect-[4/3]'}>
-                      {site.image ? (
-                        <img
-                          src={site.image}
-                          alt={site.title}
-                          loading="lazy"
-                          className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.05]"
-                        />
-                      ) : (
-                        <div className="h-full w-full bg-gradient-to-br from-[#4080E0]/20 to-[#002040]/40" />
-                      )}
-                    </div>
-
-                    {/* Gradient overlay — always shown */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#010814]/90 via-[#010814]/30 to-transparent" />
-
-                    {/* Blue glow on hover */}
-                    <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/0 transition-all duration-300 hover:ring-[#4080E0]/40" />
-
-                    {/* Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-6">
-                      <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-[#80A0E0]">
-                        {site.category}
-                      </p>
-                      <h3 className="mt-1.5 text-lg font-semibold tracking-tight text-white">
-                        {site.title}
-                      </h3>
-                      {featuredWebsites.includes(site) && site.description && (
-                        <p className="mt-1 line-clamp-1 text-sm text-white/70">
-                          {site.description}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Arrow pill — appears on hover */}
-                    <div className="absolute right-4 top-4 flex items-center gap-1.5 rounded-full border border-white/10 bg-[#010814]/70 px-3 py-1.5 opacity-0 backdrop-blur-sm transition-opacity duration-300 hover:opacity-100">
-                      <ArrowUpRight className="h-3.5 w-3.5 text-[#4080E0]" />
-                      <span className="text-[11px] font-medium text-white/70">View</span>
-                    </div>
-                  </a>
-                ))}
+            {portfolioWebsites.length > 0 && (
+              <motion.div {...fadeUp}>
+                <PortfolioInfiniteScroll websites={portfolioWebsites} />
               </motion.div>
             )}
           </div>

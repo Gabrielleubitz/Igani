@@ -80,6 +80,49 @@
       animation: none;
     }
   }
+
+  @keyframes portfolio-scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .portfolio-infinite-scroll {
+    animation: portfolio-scroll 28s linear infinite;
+  }
+
+  .portfolio-scroll-mask {
+    mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      black 8%,
+      black 92%,
+      transparent 100%
+    );
+  }
+
+  .portfolio-scroll-mask:hover .portfolio-infinite-scroll {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portfolio-infinite-scroll {
+      animation: none;
+      flex-wrap: wrap;
+      width: 100%;
+      justify-content: center;
+    }
+  }
 }
 
 /* RTL Support */
