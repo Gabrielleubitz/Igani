@@ -190,7 +190,7 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
                   <span className="ml-4 text-sm font-semibold text-white"><T>Live Preview</T></span>
                 </div>
                 <div className="text-sm text-slate-400 hidden md:block">
-                  <T>Scroll the capture to explore the page</T>
+                  <T>Interact with the live site inside the frame</T>
                 </div>
               </div>
 
@@ -204,7 +204,6 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
                   <SitePreviewFrame
                     title={website.title}
                     url={website.url}
-                    fallbackImage={website.image}
                     viewMode={viewMode}
                   />
                 </motion.div>

@@ -19,11 +19,6 @@ export function normalizeWebsiteUrl(raw: string): string {
   return parsed.toString()
 }
 
-export function getWebsiteScreenshotUrl(rawUrl: string, width = 1280): string {
-  const normalized = normalizeWebsiteUrl(rawUrl)
-  return `https://image.thum.io/get/fullpage/width/${width}/noanimate/${normalized}`
-}
-
 export function isEmbeddablePreviewUrl(rawUrl: string): boolean {
   try {
     const normalized = normalizeWebsiteUrl(rawUrl)
