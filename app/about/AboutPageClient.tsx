@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { User, Target, Heart, Lightbulb, Award, Users, ChevronDown, ChevronUp, Mail, Instagram, Linkedin } from 'lucide-react'
+import { User, Target, Heart, Lightbulb, Award, Users, ChevronDown, ChevronUp, Mail, Instagram, Linkedin, ArrowRight } from 'lucide-react'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
 import { AnimatedButton } from '@/components/ui/animated-button'
@@ -159,6 +159,13 @@ function TeamMemberCard({
             {expanded ? <T>Read less</T> : <T>Read more</T>}
           </button>
         )}
+        <Link
+          href={`/about/team/${teamMemberSlug(member.name)}`}
+          className="mt-auto inline-flex items-center gap-2 self-start rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 pt-5 text-sm font-semibold text-cyan-400 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/20 hover:text-cyan-300"
+        >
+          <T>View profile</T>
+          <ArrowRight className="h-4 w-4" />
+        </Link>
       </div>
     </motion.div>
   )
