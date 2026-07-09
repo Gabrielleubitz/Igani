@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect, ReactNode } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { User, Target, Heart, Lightbulb, Award, Users, ChevronDown, ChevronUp, Mail, Instagram, Linkedin } from 'lucide-react'
 import { StarryBackground } from '@/components/ui/starry-background'
@@ -164,7 +164,7 @@ function TeamMemberCard({
   )
 }
 
-export default function AboutPageClient({ foundersSection }: { foundersSection?: ReactNode }) {
+export default function AboutPageClient() {
   const [sections, setSections] = useState<AboutUsSection[]>([])
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   /** Only one team member bio expanded at a time */
@@ -274,8 +274,6 @@ export default function AboutPageClient({ foundersSection }: { foundersSection?:
             </motion.p>
           </div>
         </section>
-
-        {foundersSection}
 
         {/* Dynamic Sections */}
         {sections.length > 0 ? (
