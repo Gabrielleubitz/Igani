@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { getAboutUsSettings } from '@/lib/firestore'
 import { AboutJsonLd } from '@/components/AboutJsonLd'
-import { AboutFoundersSeo } from '@/components/AboutFoundersSeo'
 import { buildFounderKeywords, getFounderProfiles } from '@/lib/seo/founders'
 import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
 
@@ -49,7 +48,6 @@ export default function AboutLayout({ children }: { children: React.ReactNode })
   return (
     <>
       <AboutJsonLd />
-      <AboutFoundersSeo />
       {children}
     </>
   )

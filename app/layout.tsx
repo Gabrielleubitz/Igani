@@ -3,6 +3,7 @@ import { Outfit } from 'next/font/google'
 import Script from 'next/script'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { PromoBanner } from '@/components/PromoBanner'
+import { SiteJsonLd } from '@/components/SiteJsonLd'
 import { getSiteSettings } from '@/lib/getSiteSettings'
 import { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
@@ -137,6 +138,7 @@ export default function RootLayout({
           }}
         />
         <PromoBanner />
+        <SiteJsonLd />
         <LanguageProvider>
           {children}
         </LanguageProvider>

@@ -1,7 +1,7 @@
 import { getAboutUsSettings } from '@/lib/firestore'
 import {
   buildFounderKeywords,
-  founderSlug,
+  founderProfileUrl,
   getFounderProfiles,
 } from '@/lib/seo/founders'
 import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
@@ -31,7 +31,7 @@ export async function AboutJsonLd() {
       url: SITE_URL,
       logo: `${SITE_URL}/igani-logo.png`,
       description: pageDescription,
-      founder: founders.map((f) => ({ '@id': `${aboutUrl}#${founderSlug(f.name)}` })),
+      founder: founders.map((f) => ({ '@id': `${founderProfileUrl(f.name)}#person` })),
     },
     {
       '@type': 'AboutPage',
@@ -41,15 +41,15 @@ export async function AboutJsonLd() {
       description,
       isPartOf: { '@id': orgId },
       mainEntity: { '@id': orgId },
-      about: founders.map((f) => ({ '@id': `${aboutUrl}#${founderSlug(f.name)}` })),
+      about: founders.map((f) => ({ '@id': `${founderProfileUrl(f.name)}#person` })),
     },
     ...founders.map((f) => ({
       '@type': 'Person',
-      '@id': `${aboutUrl}#${founderSlug(f.name)}`,
+      '@id': `${founderProfileUrl(f.name)}#person`,
       name: f.name,
       jobTitle: f.position,
       description: f.bio,
-      url: aboutUrl,
+      url: founderProfileUrl(f.name),
       ...(f.imageUrl ? { image: f.imageUrl } : {}),
       worksFor: { '@id': orgId },
       ...(f.linkedinUrl ? { sameAs: [f.linkedinUrl] } : {}),

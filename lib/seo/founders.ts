@@ -1,20 +1,26 @@
 import { getTeamMembers } from '@/lib/firestore'
 import { TeamMember } from '@/types'
 import { siteContent } from '@/lib/i18n'
+import { SITE_URL } from '@/lib/seo/site'
 
 const about = siteContent.aboutPage
 
 /** Static co-founder profiles — used for SEO when Firebase is empty or incomplete. */
 export const STATIC_FOUNDERS: Pick<TeamMember, 'name' | 'position' | 'bio'>[] = [
   {
-    name: about.gabrielName.en,
-    position: about.gabrielRole.en,
-    bio: about.gabrielBio.en,
+    name: 'Ilan Leubitz',
+    position: 'Founder & CEO',
+    bio: 'Ilan Leubitz is the Founder & CEO of IGANI, leading product, engineering, and brand across web development and digital products.',
   },
   {
     name: about.amitayName.en,
     position: about.amitayRole.en,
     bio: about.amitayBio.en,
+  },
+  {
+    name: about.gabrielName.en,
+    position: about.gabrielRole.en,
+    bio: about.gabrielBio.en,
   },
 ]
 
@@ -52,6 +58,15 @@ export function founderSlug(name: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
+}
+
+export function founderProfileUrl(name: string): string {
+  return `${SITE_URL}/about/team/${founderSlug(name)}`
+}
+
+export async function getFounderBySlug(slug: string): Promise<FounderProfile | null> {
+  const founders = await getFounderProfiles()
+  return founders.find((f) => founderSlug(f.name) === slug) ?? null
 }
 
 export function buildFounderKeywords(founders: FounderProfile[]): string[] {
