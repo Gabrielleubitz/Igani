@@ -1,25 +1,24 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, ExternalLink, Monitor, Smartphone, Tablet, Globe, Eye } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Monitor, Smartphone, Tablet, Eye } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getWebsites } from '@/lib/firestore'
 import { Website } from '@/types'
 import { StarryBackground } from '@/components/ui/starry-background'
 import { SplashCursor } from '@/components/ui/splash-cursor'
-import { IganiLogo } from '@/components/IganiLogo'
 import Header from '@/components/Header'
 import { LoadingScreen } from '@/components/ui/loading-screen'
 import { T } from '@/components/T'
+import { SitePreviewFrame } from '@/app/components/SitePreviewFrame'
+import { normalizeWebsiteUrl } from '@/lib/websiteUrl'
 
 export default function PreviewPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [website, setWebsite] = useState<Website | null>(null)
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
-  const [isHoveringIframe, setIsHoveringIframe] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     const loadWebsite = async () => {
@@ -38,22 +37,6 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
 
     loadWebsite()
   }, [params.id])
-
-  useEffect(() => {
-    const handleScroll = (e: WheelEvent) => {
-      if (isHoveringIframe && iframeRef.current) {
-        e.preventDefault()
-        try {
-          iframeRef.current.contentWindow?.scrollBy(0, e.deltaY)
-        } catch (error) {
-          console.log('Cross-origin iframe - letting iframe handle scroll')
-        }
-      }
-    }
-
-    document.addEventListener('wheel', handleScroll, { passive: false })
-    return () => document.removeEventListener('wheel', handleScroll)
-  }, [isHoveringIframe])
 
   if (isLoading) {
     return <LoadingScreen message="Loading website preview..." />
@@ -79,16 +62,13 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
     )
   }
 
-  const getFrameClasses = () => {
-    switch (viewMode) {
-      case 'mobile':
-        return 'w-full max-w-[320px] h-[640px]'
-      case 'tablet':
-        return 'w-full max-w-[768px] h-[900px]'
-      default:
-        return 'w-full h-[600px] sm:h-[700px] md:h-[800px]'
+  const liveUrl = (() => {
+    try {
+      return normalizeWebsiteUrl(website.url)
+    } catch {
+      return website.url
     }
-  }
+  })()
 
   return (
     <div className="min-h-screen bg-slate-900 relative">
@@ -179,7 +159,7 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
 
             {/* Visit Site Button */}
             <motion.a
-              href={/^https?:\/\//i.test(website.url) ? website.url : `https://${website.url}`}
+              href={liveUrl}
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.05 }}
@@ -210,26 +190,22 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
                   <span className="ml-4 text-sm font-semibold text-white"><T>Live Preview</T></span>
                 </div>
                 <div className="text-sm text-slate-400 hidden md:block">
-                  {isHoveringIframe ? <T>Scrolling website content</T> : <T>Hover over preview to scroll website</T>}
+                  <T>Scroll the capture to explore the page</T>
                 </div>
               </div>
 
               <div className="flex justify-center">
                 <motion.div
-                  className={`bg-white rounded-xl shadow-2xl overflow-hidden border-4 border-slate-700/30 ${getFrameClasses()}`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.4 }}
                   key={viewMode}
-                  onMouseEnter={() => setIsHoveringIframe(true)}
-                  onMouseLeave={() => setIsHoveringIframe(false)}
                 >
-                  <iframe
-                    ref={iframeRef}
-                    src={website.url}
-                    className="w-full h-full border-0"
-                    title={`Preview of ${website.title}`}
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation"
+                  <SitePreviewFrame
+                    title={website.title}
+                    url={website.url}
+                    fallbackImage={website.image}
+                    viewMode={viewMode}
                   />
                 </motion.div>
               </div>

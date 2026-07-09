@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, Save, X, Star, ExternalLink, ChevronUp, ChevronDown
 import { Website } from '@/types'
 import { saveWebsite, updateWebsite, deleteWebsite, reorderWebsites } from '@/lib/firestore'
 import { AdminImageField } from '@/components/admin/AdminImageField'
+import { normalizeWebsiteUrl } from '@/lib/websiteUrl'
 
 interface WebsiteManagerProps {
   websites: Website[]
@@ -91,15 +92,18 @@ export function WebsiteManager({ websites, onUpdate }: WebsiteManagerProps) {
     try {
       setIsSaving(true)
 
+      const payload = {
+        ...formData,
+        url: normalizeWebsiteUrl(formData.url),
+      }
+
       if (editingWebsite) {
-        // Update existing website
         await updateWebsite({
           ...editingWebsite,
-          ...formData
+          ...payload,
         })
       } else {
-        // Create new website
-        await saveWebsite(formData)
+        await saveWebsite(payload)
       }
 
       await onUpdate()
