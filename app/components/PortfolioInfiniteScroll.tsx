@@ -36,31 +36,30 @@ export default function PortfolioInfiniteScroll({ websites }: PortfolioInfiniteS
                 aria-expanded={isActive}
                 aria-label={`${site.title} — ${isActive ? 'collapse' : 'expand'} project details`}
                 className={[
-                  'group relative w-64 flex-shrink-0 overflow-hidden rounded-xl bg-[#010814] shadow-2xl transition-all duration-300 md:w-72 lg:w-80',
+                  'group relative w-64 flex-shrink-0 overflow-hidden rounded-xl border border-white/35 bg-white/45 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.65)] backdrop-blur-xl backdrop-saturate-150 transition-all duration-300 md:w-72 lg:w-80',
                   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]',
                   isActive
                     ? 'scale-[1.02] ring-2 ring-[#4080E0] ring-offset-2 ring-offset-[#020d1c]'
-                    : 'hover:brightness-110',
+                    : 'hover:border-white/50 hover:bg-white/55',
                 ].join(' ')}
               >
-                <div className="relative aspect-video w-full">
+                <div className="relative aspect-video w-full bg-[#c8ccd4]/90">
                 {site.image ? (
                   <img
                     src={site.image}
                     alt={site.title}
                     loading="lazy"
-                    className="h-full w-full object-contain object-center"
+                    className="h-full w-full object-contain object-center p-3"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4080E0]/30 to-[#002040]/60">
-                    <span className="px-4 text-center text-lg font-semibold text-white/90">
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4080E0]/20 to-[#8090a8]/40">
+                    <span className="px-4 text-center text-lg font-semibold text-[#1a2230]">
                       {site.title}
                     </span>
                   </div>
                 )}
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-[#010814]/90 via-[#010814]/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-4 text-left">
+                <div className="border-t border-black/5 bg-[#020d1c]/88 px-4 py-3 text-left backdrop-blur-sm">
                   <p className="text-[10px] font-medium uppercase tracking-[0.25em] text-[#80A0E0]">
                     {site.category}
                   </p>
@@ -82,12 +81,12 @@ export default function PortfolioInfiniteScroll({ websites }: PortfolioInfiniteS
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-[#4080E0]/30 bg-[#020d1c]/90 shadow-[0_8px_48px_-8px_rgba(0,32,64,0.8)] backdrop-blur-md"
           >
-            <div className="relative aspect-video w-full overflow-hidden bg-[#010814]">
+            <div className="relative aspect-video w-full overflow-hidden border-b border-black/5 bg-[#c8ccd4]/90">
               {expanded.image ? (
                 <img
                   src={expanded.image}
                   alt={expanded.title}
-                  className="h-full w-full object-contain object-center"
+                  className="h-full w-full object-contain object-center p-4"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4080E0]/25 to-[#002040]/50">
