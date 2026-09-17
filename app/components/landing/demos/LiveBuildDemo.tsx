@@ -14,7 +14,7 @@ const LINES: Line[] = [
   { text: '    <Card glow>', reveal: 'card' },
   { text: '      <Badge>Most popular</Badge>', reveal: 'badge' },
   { text: '      <h3>Launch</h3>', reveal: 'title' },
-  { text: '      <Price value={2400} />', reveal: 'price' },
+  { text: '      <Pitch>Idea → live URL</Pitch>', reveal: 'price' },
   { text: '      <Features items={list} />', reveal: 'features' },
   { text: '      <Button>Start</Button>', reveal: 'button' },
   { text: '    </Card>' },
@@ -202,8 +202,7 @@ export function LiveBuildDemo() {
                         animate={{ opacity: 1, y: 0 }}
                         className="!mt-1 flex items-baseline gap-1"
                       >
-                        <span className="text-3xl font-semibold tracking-tight text-white">$2,400</span>
-                        <span className="text-sm text-white/50">/ project</span>
+                        <span className="text-2xl font-semibold tracking-tight text-white">Idea → live URL</span>
                       </motion.p>
                     )}
                   </AnimatePresence>
@@ -233,15 +232,15 @@ export function LiveBuildDemo() {
                   </AnimatePresence>
                   <AnimatePresence>
                     {revealed.has('button') && (
-                      <motion.button
+                      <motion.a
                         key="button"
-                        type="button"
+                        href="/contact"
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="mt-auto w-full rounded-full bg-[#4080E0] py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(64,128,224,0.9)] transition-colors hover:bg-[#5090F0]"
+                        className="mt-auto block w-full rounded-full bg-[#4080E0] py-2.5 text-center text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(64,128,224,0.9)] transition-colors hover:bg-[#5090F0]"
                       >
                         Start
-                      </motion.button>
+                      </motion.a>
                     )}
                   </AnimatePresence>
                 </div>

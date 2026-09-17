@@ -206,22 +206,23 @@ export function AutomationFlowDemo() {
             streaming
           </span>
         </div>
-        <ul className="flex min-h-[132px] flex-1 flex-col justify-end gap-1 p-4 font-mono text-[12px] leading-5">
-          <AnimatePresence initial={false}>
+        {/* Fixed height + no wrapping: the panel above is sticky-stacked, so any height change here would jolt the page. */}
+        <ul className="flex h-[124px] flex-col justify-end gap-1 overflow-hidden px-4 py-3 font-mono text-[12px] leading-5">
+          <AnimatePresence initial={false} mode="popLayout">
             {log.map((l) => (
               <motion.li
                 key={l.id}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+                exit={{ opacity: 0, transition: { duration: 0.12 } }}
                 transition={{ duration: 0.3 }}
-                className="flex gap-3"
+                className="flex min-w-0 gap-3"
               >
                 <span className="shrink-0 text-white/30">{l.t}</span>
                 <span
-                  className={
+                  className={`truncate ${
                     l.tone === 'in' ? 'text-white' : l.tone === 'ai' ? 'text-[#c792ea]' : 'text-[#8fd3b6]'
-                  }
+                  }`}
                 >
                   {l.tone === 'in' ? '→ ' : l.tone === 'ai' ? '✦ ' : '✓ '}
                   {l.text}

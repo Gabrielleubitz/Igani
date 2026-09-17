@@ -83,7 +83,7 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
   ]
 
   return (
-    <section id="contact" className="relative scroll-mt-20 border-t border-white/[0.06] py-28 sm:py-36">
+    <section id="contact" className="relative scroll-mt-20 border-t border-white/[0.06] py-20 sm:py-28">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -bottom-40 right-0 h-[600px] w-[600px] rounded-full bg-[#4080E0]/12 blur-[160px]" />
       </div>
@@ -95,7 +95,7 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
           aside={c.aside[language]}
           title={c.title[language]}
           sub={c.sub[language]}
-          className="mb-16"
+          className="mb-12"
         />
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.5fr]">

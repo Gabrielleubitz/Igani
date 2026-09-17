@@ -74,7 +74,7 @@ export function Capabilities() {
   const c = landingContent.capabilities
 
   return (
-    <section id="capabilities" className="relative scroll-mt-20 py-28 sm:py-36">
+    <section id="capabilities" className="relative scroll-mt-20 py-20 sm:py-28">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -left-40 top-40 h-[520px] w-[520px] rounded-full bg-[#4080E0]/15 blur-[140px]" />
         <div className="absolute -right-40 bottom-40 h-[520px] w-[520px] rounded-full bg-[#1b3f8a]/25 blur-[140px]" />
@@ -87,7 +87,7 @@ export function Capabilities() {
           aside={c.aside[language]}
           title={c.title[language]}
           sub={c.sub[language]}
-          className="mb-16"
+          className="mb-12"
         />
 
         <div className="flex flex-col gap-6">

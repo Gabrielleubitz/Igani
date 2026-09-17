@@ -26,7 +26,7 @@ export function WhySection({ settings, testimonials }: WhySectionProps) {
   ]
 
   return (
-    <section id="about" className="relative scroll-mt-20 border-t border-white/[0.06] py-28 sm:py-36">
+    <section id="about" className="relative scroll-mt-20 border-t border-white/[0.06] py-20 sm:py-28">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-[#4080E0]/10 blur-[160px]" />
       </div>

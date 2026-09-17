@@ -15,6 +15,7 @@ import { WhySection } from '@/app/components/landing/WhySection'
 import { ContactSection } from '@/app/components/landing/ContactSection'
 import { SectionHeading } from '@/app/components/landing/fx/SectionHeading'
 import { SideNote } from '@/app/components/landing/fx/SideNote'
+import { SectionRail } from '@/app/components/landing/fx/SectionRail'
 import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
 import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
@@ -68,6 +69,13 @@ export default function HomePage() {
   }
 
   const work = landingContent.work
+  const rail = [
+    { id: 'capabilities', index: landingContent.capabilities.index, label: landingContent.capabilities.label[language] },
+    { id: 'process', index: landingContent.process.index, label: landingContent.process.label[language] },
+    { id: 'portfolio', index: work.index, label: work.label[language] },
+    { id: 'about', index: landingContent.why.index, label: landingContent.why.label[language] },
+    { id: 'contact', index: landingContent.contact.index, label: landingContent.contact.label[language] },
+  ]
   const workAside =
     websites.length > 0
       ? `${websites.length} ${websites.length === 1 ? work.asideOne[language] : work.asideMany[language]}`
@@ -78,6 +86,7 @@ export default function HomePage() {
       <HomepageTracker />
       <GrainOverlay />
       <CursorGlow />
+      <SectionRail items={rail} />
       <Header />
 
       <Hero onSeeWork={scrollToCapabilities} latestProject={latestProject} />
@@ -91,7 +100,7 @@ export default function HomePage() {
       <HorizontalProcess />
 
       {/* Work */}
-      <section id="portfolio" className="relative scroll-mt-20 border-t border-white/[0.06] py-28 sm:py-36">
+      <section id="portfolio" className="relative scroll-mt-20 border-t border-white/[0.06] py-20 sm:py-28">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
           <SectionHeading
             index={work.index}

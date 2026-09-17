@@ -28,7 +28,7 @@ export function FoundersStatement({ team }: FoundersStatementProps) {
   const people = team.slice(0, 3)
 
   return (
-    <section className="relative border-t border-white/[0.06] py-24 sm:py-32">
+    <section className="relative border-t border-white/[0.06] py-16 sm:py-24">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <TextReveal
           text={c.statement[language]}

@@ -77,7 +77,7 @@ function DesktopTrack({ heading, steps, rtl, hint }: { heading: ReactNode; steps
   const hintOpacity = useTransform(scrollYProgress, [0, 0.12, 0.2], [1, 1, 0])
 
   return (
-    <div ref={trackRef} className="relative" style={{ height: '260vh' }}>
+    <div ref={trackRef} className="relative" style={{ height: '200vh' }}>
       <div className="sticky top-0 flex h-screen flex-col justify-center overflow-hidden">
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">{heading}</div>
         <div className="mt-12 w-full overflow-hidden">
