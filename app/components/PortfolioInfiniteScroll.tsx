@@ -71,11 +71,11 @@ export default function PortfolioInfiniteScroll({ websites }: PortfolioInfiniteS
     <div className="space-y-10">
       <div className="portfolio-scroll-wrap relative">
         <div
-          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#020d1c] to-transparent sm:w-16"
+          className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[#030814] to-transparent sm:w-16"
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#020d1c] to-transparent sm:w-16"
+          className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[#030814] to-transparent sm:w-16"
           aria-hidden
         />
 

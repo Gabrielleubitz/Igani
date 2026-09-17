@@ -111,6 +111,63 @@
       justify-content: center;
     }
   }
+
+  /* Landing — stack marquee */
+  @keyframes landing-marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+
+  .landing-marquee {
+    animation: landing-marquee 40s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .landing-marquee {
+      animation: none;
+    }
+  }
+
+  /* Landing — design lab range input */
+  .landing-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+  }
+
+  .landing-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--accent, #4080e0);
+    border: 3px solid #040b18;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+
+  .landing-range::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+  }
+
+  .landing-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: var(--accent, #4080e0);
+    border: 3px solid #040b18;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+    cursor: pointer;
+  }
 }
 
 /* RTL Support */
