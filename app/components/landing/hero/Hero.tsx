@@ -6,6 +6,7 @@ import { ArrowDown, ArrowRight } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { landingContent } from '@/lib/landingContent'
 import { HERO_PALETTES, HeroCanvas } from './HeroCanvas'
+import { HeroCube } from './HeroCube'
 import { KineticWord } from './KineticWord'
 import { MagneticButton } from '../fx/MagneticButton'
 import { SideNote } from '../fx/SideNote'
@@ -54,7 +55,19 @@ export function Hero({ onSeeWork, latestProject }: HeroProps) {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_45%,transparent_0%,rgba(2,8,18,0.55)_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#030814] to-transparent" />
 
+      {/* Cube on the right — a full object in a square stage, not a cropped close-up. */}
+      <div className="pointer-events-none absolute top-1/2 right-[1%] z-[11] hidden aspect-square h-[min(80vh,700px)] -translate-y-[51%] lg:block">
+        <div
+          aria-hidden
+          className="absolute left-1/2 top-1/2 h-[62%] w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#4080E0]/22 blur-[80px]"
+        />
+        <div className="pointer-events-auto absolute inset-0">
+          <HeroCube palette={palette} />
+        </div>
+      </div>
+
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-4 pb-32 pt-36 sm:px-6 lg:px-8">
+        <div className="max-w-xl lg:max-w-[46rem]">
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -64,7 +77,7 @@ export function Hero({ onSeeWork, latestProject }: HeroProps) {
           {c.eyebrow[language]}
         </motion.p>
 
-        <h1 className="text-balance font-semibold leading-[0.95] tracking-[-0.035em] text-white">
+        <h1 className="font-semibold leading-[0.95] tracking-[-0.035em] text-white">
           <motion.span
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -77,7 +90,7 @@ export function Hero({ onSeeWork, latestProject }: HeroProps) {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, ease: EASE, delay: 0.35 }}
-            className="relative block text-[clamp(2.75rem,9vw,7.5rem)]"
+            className="relative mt-[0.02em] flex max-w-full flex-nowrap items-baseline whitespace-nowrap text-[clamp(2.2rem,6.2vw,5.6rem)]"
           >
             <KineticWord words={words} />
             <button
@@ -134,6 +147,7 @@ export function Hero({ onSeeWork, latestProject }: HeroProps) {
             <ArrowDown className="h-4 w-4" />
           </MagneticButton>
         </motion.div>
+        </div>
       </div>
 
       {/* Bottom bar: status line (left) + margin note (right) */}

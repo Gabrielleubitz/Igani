@@ -7,6 +7,7 @@ const nextConfig = {
       bodySizeLimit: '10mb'
     }
   },
+  transpilePackages: ['three'],
   images: {
     domains: ['localhost', 'igani.co'],
     formats: ['image/webp', 'image/avif']

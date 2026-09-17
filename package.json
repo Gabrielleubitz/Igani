@@ -39,6 +39,7 @@
     "react-hook-form": "^7.48.2",
     "stripe": "^14.10.0",
     "tailwind-merge": "^3.3.1",
+    "three": "^0.186.0",
     "translate": "^3.0.1",
     "xlsx": "^0.18.5",
     "zod": "^3.25.76"
@@ -48,6 +49,7 @@
     "@types/node": "^20.10.5",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
+    "@types/three": "^0.186.0",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.4",
