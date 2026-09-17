@@ -34,7 +34,12 @@ export function WhySection({ settings, testimonials }: WhySectionProps) {
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="grid gap-14 lg:grid-cols-[1fr_1.2fr] lg:gap-20">
           <div>
-            <SectionHeading kicker={landingContent.why.kicker[language]} title={settings.aboutTitle} />
+            <SectionHeading
+              index={landingContent.why.index}
+              label={landingContent.why.label[language]}
+              aside={landingContent.why.aside[language]}
+              title={settings.aboutTitle}
+            />
             <motion.p
               initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
@@ -57,7 +62,7 @@ export function WhySection({ settings, testimonials }: WhySectionProps) {
               >
                 <SpotlightCard className="p-7">
                   <div className="flex items-start gap-5">
-                    <span className="mt-1 font-mono text-sm text-[#80A0E0]">0{i + 1}</span>
+                    <span className="font-display mt-0.5 text-2xl leading-none text-white/70">0{i + 1}</span>
                     <div>
                       <h3 className="text-xl font-semibold tracking-tight text-white">{p.title}</h3>
                       <p className="!mt-2 text-[15px] leading-relaxed text-white/70">{p.body}</p>

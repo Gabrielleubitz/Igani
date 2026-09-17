@@ -141,7 +141,7 @@ export function DesignLabDemo() {
       {/* Controls */}
       <div className="flex flex-col gap-5 rounded-2xl border border-white/[0.08] bg-[#040b18] p-5">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">{c.accent[language]}</p>
+          <p className="!mt-0 text-xs text-white/55">{c.accent[language]}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {ACCENTS.map((a) => (
               <button
@@ -161,7 +161,7 @@ export function DesignLabDemo() {
 
         <div>
           <div className="flex items-center justify-between">
-            <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">{c.radius[language]}</p>
+            <p className="!mt-0 text-xs text-white/55">{c.radius[language]}</p>
             <span className="font-mono text-xs text-white/70">{radius}px</span>
           </div>
           <input
@@ -177,7 +177,7 @@ export function DesignLabDemo() {
         </div>
 
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">{c.theme[language]}</p>
+          <p className="!mt-0 text-xs text-white/55">{c.theme[language]}</p>
           <div className="mt-3 grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1">
             {(['dark', 'light'] as const).map((t) => (
               <button

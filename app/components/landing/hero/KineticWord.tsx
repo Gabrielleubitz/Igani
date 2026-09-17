@@ -7,12 +7,10 @@ type KineticWordProps = {
   words: string[]
   interval?: number
   className?: string
-  /** Trailing punctuation rendered in the accent color, travels with the word */
-  suffix?: string
 }
 
-/** Cycles through words with a per-character vertical flip. */
-export function KineticWord({ words, interval = 2400, className = '', suffix }: KineticWordProps) {
+/** Cycles through words with a per-character vertical flip, set in the display serif. */
+export function KineticWord({ words, interval = 2600, className = '' }: KineticWordProps) {
   const [index, setIndex] = useState(0)
 
   useEffect(() => {
@@ -31,31 +29,16 @@ export function KineticWord({ words, interval = 2400, className = '', suffix }: 
           {chars.map((ch, i) => (
             <motion.span
               key={`${word}-${i}`}
-              className="inline-block bg-gradient-to-b from-white via-[#c9d8f7] to-[#80A0E0] bg-clip-text text-transparent"
+              className="font-display inline-block text-[1.06em] text-[#e9f0ff]"
               initial={{ y: '105%', opacity: 0, rotateX: -60 }}
               animate={{ y: 0, opacity: 1, rotateX: 0 }}
               exit={{ y: '-105%', opacity: 0, rotateX: 60 }}
-              transition={{
-                duration: 0.55,
-                ease: [0.22, 1, 0.36, 1],
-                delay: i * 0.028,
-              }}
+              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: i * 0.026 }}
               style={{ transformOrigin: '50% 100%' }}
             >
               {ch === ' ' ? '\u00A0' : ch}
             </motion.span>
           ))}
-          {suffix && (
-            <motion.span
-              className="inline-block text-[#4080E0]"
-              initial={{ y: '105%', opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: '-105%', opacity: 0 }}
-              transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: chars.length * 0.028 }}
-            >
-              {suffix}
-            </motion.span>
-          )}
         </motion.span>
       </AnimatePresence>
     </span>

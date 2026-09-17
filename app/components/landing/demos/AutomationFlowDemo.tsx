@@ -197,7 +197,7 @@ export function AutomationFlowDemo() {
       {/* Live log */}
       <div className="flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#040b18]">
         <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
-          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/50">{c.liveLabel[language]}</span>
+          <span className="text-xs text-white/55">{c.liveLabel[language]}</span>
           <span className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[#9ec0f5]">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#80A0E0] opacity-75" />

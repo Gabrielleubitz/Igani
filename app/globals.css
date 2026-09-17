@@ -112,6 +112,13 @@
     }
   }
 
+  /* Landing — editorial serif accent (Instrument Serif, italic) */
+  .font-display {
+    font-family: var(--font-display), 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+    font-style: italic;
+    letter-spacing: -0.01em;
+  }
+
   /* Landing — stack marquee */
   @keyframes landing-marquee {
     from {

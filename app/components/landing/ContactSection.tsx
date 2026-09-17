@@ -2,13 +2,16 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Mail, MapPin, Phone, Send } from 'lucide-react'
+import { ArrowUpRight, Mail, MapPin, Phone, Send } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
 import { landingContent } from '@/lib/landingContent'
+import { getWhatsAppChatHref } from '@/lib/siteSocial'
+import { useSiteSettings } from '@/hooks/useSiteSettings'
 import { SiteSettings } from '@/types'
 import PhoneInput, { validatePhone } from '@/components/PhoneInput'
 import { ContactInquirySuccess } from '@/components/ContactInquirySuccess'
+import { WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { SectionHeading } from './fx/SectionHeading'
 import { SpotlightCard } from './fx/SpotlightCard'
 
@@ -18,6 +21,9 @@ const INPUT =
 export function ContactSection({ settings }: { settings: SiteSettings }) {
   const { language } = useLanguage()
   const content = siteContent.home
+  const c = landingContent.contact
+  const { settings: social } = useSiteSettings()
+  const whatsappHref = getWhatsAppChatHref(social, siteContent.navigation.whatsappPrefillMessage[language])
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -84,9 +90,11 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
-          kicker={landingContent.contact.kicker[language]}
-          title={content.contactTitle[language]}
-          sub={content.contactSubtitle[language]}
+          index={c.index}
+          label={c.label[language]}
+          aside={c.aside[language]}
+          title={c.title[language]}
+          sub={c.sub[language]}
           className="mb-16"
         />
 
@@ -98,24 +106,45 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
             transition={{ duration: 0.6 }}
             className="order-2 grid content-start gap-3 lg:order-1"
           >
-            {contacts.map((c) => {
+            {/* WhatsApp first: it's how most people actually reach us */}
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block rounded-3xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]"
+            >
+              <SpotlightCard intensity={0.3}>
+                <div className="flex items-center gap-4 p-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#25D366]/15 text-[#5ee39a]">
+                    <WhatsAppGlyph className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="font-display block text-lg leading-tight text-[#dbe6ff]">{c.whatsappLead[language]}</span>
+                    <span className="mt-1 block text-sm text-white/60">{c.whatsappCta[language]}</span>
+                  </div>
+                  <ArrowUpRight className="h-4 w-4 shrink-0 text-white/40" />
+                </div>
+              </SpotlightCard>
+            </a>
+
+            {contacts.map((item) => {
               const inner = (
                 <div className="flex items-center gap-4 p-5">
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[#4080E0]/30 bg-[#4080E0]/10">
-                    <c.icon className="h-5 w-5 text-[#9ec0f5]" strokeWidth={1.5} />
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.03]">
+                    <item.icon className="h-5 w-5 text-[#9ec0f5]" strokeWidth={1.5} />
                   </div>
                   <div className="min-w-0">
-                    <span className="block font-mono text-[10px] uppercase tracking-[0.25em] text-white/45">{c.label}</span>
-                    <span className="mt-1 block truncate text-[15px] text-white">{c.value}</span>
+                    <span className="block text-xs text-white/45">{item.label}</span>
+                    <span className="mt-0.5 block truncate text-[15px] text-white">{item.value}</span>
                   </div>
                 </div>
               )
-              return c.href ? (
-                <a key={c.label} href={c.href} className="block rounded-3xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]">
+              return item.href ? (
+                <a key={item.label} href={item.href} className="block rounded-3xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0]">
                   <SpotlightCard intensity={0.2}>{inner}</SpotlightCard>
                 </a>
               ) : (
-                <SpotlightCard key={c.label} intensity={0.2}>
+                <SpotlightCard key={item.label} intensity={0.2}>
                   {inner}
                 </SpotlightCard>
               )
