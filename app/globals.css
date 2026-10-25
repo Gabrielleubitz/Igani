@@ -354,3 +354,36 @@
     border-radius: 12px;
   }
 }
+/* Funnels landing: gradient pulse on headline hover + infinite marquee */
+@layer utilities {
+  .font-clash {
+    font-family: var(--font-clash), var(--font-outfit), system-ui, sans-serif;
+  }
+  .funnels-root .font-mono {
+    font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @keyframes funnel-pulse {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .funnel-pulse {
+    transition: filter 0.4s ease;
+  }
+  .group:hover .funnel-pulse {
+    animation: funnel-pulse 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 0 32px rgba(0, 240, 255, 0.6));
+  }
+  @keyframes funnel-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  .funnel-marquee {
+    animation: funnel-marquee 40s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .group:hover .funnel-pulse,
+    .funnel-marquee {
+      animation: none;
+    }
+  }
+}
