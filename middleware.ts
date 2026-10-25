@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const FUNNEL_PATHS = ['/funnels', '/funnel2']
+
 export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || ''
 
-  // Redirect funnels subdomain to /funnels page
+  // Redirect funnels subdomain to /funnels page (funnel variants are allowed through)
   if (hostname.startsWith('funnels.')) {
-    // If they're not already on the /funnels page, redirect them
-    if (request.nextUrl.pathname !== '/funnels') {
+    // If they're not already on a funnel page, redirect them
+    if (!FUNNEL_PATHS.includes(request.nextUrl.pathname)) {
       const url = request.nextUrl.clone()
       url.pathname = '/funnels'
       return NextResponse.redirect(url)
