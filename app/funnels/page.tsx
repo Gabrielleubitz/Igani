@@ -384,7 +384,7 @@ export default function FunnelsPage() {
                     Stop Losing Customers
                   </span>
                   <span className="text-blue-400 block">
-                    Every Single night
+                    Every Single Night
                   </span>
                 </motion.h1>
 
