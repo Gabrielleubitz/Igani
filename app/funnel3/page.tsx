@@ -1,0 +1,117 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import Script from 'next/script'
+import { MessageSquare } from 'lucide-react'
+import { IganiLogo } from '@/components/IganiLogo'
+import { FunnelBanner } from '@/app/components/funnels/FunnelBanner'
+import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
+import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
+import { SectionRail } from '@/app/components/landing/fx/SectionRail'
+import { displaySerif } from '@/app/components/landing/fx/fonts'
+import { Hero } from '@/app/components/funnel3/Hero'
+import { CompareSlider } from '@/app/components/funnel3/CompareSlider'
+import { Proof } from '@/app/components/funnel3/Proof'
+import { WhatWeBuild } from '@/app/components/funnel3/WhatWeBuild'
+import { FinalCTA } from '@/app/components/funnel3/FinalCTA'
+
+const scrollTo = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+const scrollToForm = scrollTo('build')
+
+const RAIL = [
+  { id: 'reason', index: '01', label: 'The reason' },
+  { id: 'proof', index: '02', label: 'The proof' },
+  { id: 'build-what', index: '03', label: 'What we build' },
+  { id: 'build', index: '04', label: 'The bottom line' },
+]
+
+export default function Funnel3Page() {
+  const [showStickyCTA, setShowStickyCTA] = useState(false)
+
+  // Mobile sticky CTA: show after the hero, hide once the form is on screen
+  useEffect(() => {
+    const handleScroll = () => {
+      const form = document.getElementById('build')
+      const formTop = form ? form.getBoundingClientRect().top : Infinity
+      setShowStickyCTA(window.scrollY > 500 && formTop > window.innerHeight * 0.6)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  return (
+    <div className={`relative min-h-screen bg-[#030814] text-white ${displaySerif.variable}`}>
+      {/* Hotjar Tracking Code for igani.co */}
+      <Script
+        id="hotjar"
+        strategy="afterInteractive"
+        dangerouslySetInnerHTML={{
+          __html: `
+            (function(h,o,t,j,a,r){
+              h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+              h._hjSettings={hjid:6586485,hjsv:6};
+              a=o.getElementsByTagName('head')[0];
+              r=o.createElement('script');r.async=1;
+              r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+              a.appendChild(r);
+            })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+          `,
+        }}
+      />
+      <GrainOverlay />
+      <CursorGlow />
+      <SectionRail items={RAIL} />
+
+      {/* Floating pill header, same shape as the home page's */}
+      <header className="fixed inset-x-0 top-3 z-50 px-3 sm:top-4 sm:px-6">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-[#04101e]/70 py-2.5 pl-5 pr-2.5 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:pl-8">
+          <IganiLogo className="h-9 w-28" />
+          <button
+            onClick={scrollToForm}
+            className="inline-flex items-center gap-2 rounded-full bg-[#2f6fd8] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4080E0] sm:px-5"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Free Consultation
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Sticky CTA */}
+      <AnimatePresence>
+        {showStickyCTA && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#030814]/85 p-4 backdrop-blur-xl lg:hidden"
+          >
+            <button
+              onClick={scrollToForm}
+              className="w-full rounded-full bg-white py-3.5 text-sm font-semibold text-[#04101e]"
+            >
+              Fix your front door
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <main className="relative">
+        <Hero onCta={scrollToForm} onSeeWhy={scrollTo('reason')} />
+        <FunnelBanner />
+        <CompareSlider />
+        <Proof />
+        <WhatWeBuild />
+        <FinalCTA />
+      </main>
+
+      <footer className="border-t border-white/[0.06] px-4 pb-28 pt-8 text-center text-[13px] text-white/45 lg:pb-8">
+        © 2026 IGANI. All rights reserved. ·{' '}
+        <a href="mailto:info@igani.co" className="text-[#9ec0f5] hover:text-white">
+          info@igani.co
+        </a>
+      </footer>
+    </div>
+  )
+}

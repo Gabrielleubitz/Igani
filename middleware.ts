@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const FUNNEL_PATHS = ['/funnels', '/funnel2']
+const FUNNEL_PATHS = ['/funnels', '/funnel2', '/funnel3']
 
 export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || ''

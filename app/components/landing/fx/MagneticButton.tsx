@@ -7,6 +7,8 @@ type MagneticButtonProps = {
   children: ReactNode
   href?: string
   onClick?: () => void
+  type?: 'button' | 'submit'
+  disabled?: boolean
   variant?: 'primary' | 'ghost'
   className?: string
   strength?: number
@@ -17,6 +19,8 @@ export function MagneticButton({
   children,
   href,
   onClick,
+  type = 'button',
+  disabled,
   variant = 'primary',
   className = '',
   strength = 0.35,
@@ -51,7 +55,7 @@ export function MagneticButton({
       {children}
     </a>
   ) : (
-    <button type="button" onClick={onClick} className={`${base} ${styles} ${className}`}>
+    <button type={type} disabled={disabled} onClick={onClick} className={`${base} ${styles} disabled:opacity-60 ${className}`}>
       {children}
     </button>
   )
