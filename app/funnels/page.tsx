@@ -83,13 +83,6 @@ export default function FunnelsPage() {
         )}
       </AnimatePresence>
 
-      <header className="relative z-20 px-4 py-4 sm:px-6">
-        <div className="mx-auto max-w-7xl">
-          <IganiLogo className="h-10 w-32" />
-        </div>
-      </header>
-
-      <FunnelBanner />
 
       <ScrollProgress
         items={PROGRESS}
@@ -102,7 +95,16 @@ export default function FunnelsPage() {
 
       {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative z-10">
-        <Hero onCta={scrollToForm} />
+        {/* Opening screen shares the closing section's violet so the page starts on its boldest note */}
+        <div className="bg-[radial-gradient(120%_80%_at_50%_0%,#8a2bff_0%,#6a00f0_45%,#3d0099_100%)]">
+          <header className="relative z-20 px-4 py-4 sm:px-6">
+            <div className="mx-auto max-w-7xl">
+              <IganiLogo className="h-10 w-32" />
+            </div>
+          </header>
+          <FunnelBanner />
+          <Hero onCta={scrollToForm} />
+        </div>
         <SectionSheet id="sheet-reason" layer={1} className="bg-[#121218]">
           <CompareSlider />
         </SectionSheet>

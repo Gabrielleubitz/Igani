@@ -78,19 +78,6 @@ export default function Funnel2Page() {
         )}
       </AnimatePresence>
 
-      <header className="relative z-20 px-6 py-6 sm:px-10">
-        <div className="mx-auto flex max-w-6xl items-center justify-between border-b border-[#E2D9CB] pb-6">
-          <ElegantLogo />
-          <button
-            onClick={scrollToForm}
-            className="hidden text-[11px] uppercase tracking-[0.32em] text-[#1F1C18] underline-offset-8 transition-colors hover:text-[#A9845A] hover:underline sm:block"
-          >
-            Begin
-          </button>
-        </div>
-      </header>
-
-      <FunnelBanner />
 
       <ScrollProgress
         items={PROGRESS}
@@ -103,7 +90,23 @@ export default function Funnel2Page() {
 
       {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative z-10">
-        <Hero onCta={scrollToForm} />
+        {/* Opening screen shares the closing section's gold so the page starts on its boldest note */}
+        <div className="bg-[linear-gradient(165deg,#D2B07C_0%,#B08D5E_50%,#8C6B44_100%)]">
+          <header className="relative z-20 px-6 py-6 sm:px-10">
+            <div className="mx-auto flex max-w-6xl items-center justify-between border-b border-[#1F1C18]/20 pb-6">
+              <ElegantLogo />
+              <button
+                onClick={scrollToForm}
+                className="hidden text-[11px] uppercase tracking-[0.32em] text-[#1F1C18] underline-offset-8 transition-colors hover:text-[#F7F3EC] hover:underline sm:block"
+              >
+                Begin
+              </button>
+            </div>
+          </header>
+
+          <FunnelBanner />
+          <Hero onCta={scrollToForm} />
+        </div>
         <SectionSheet id="sheet-reason" layer={1} className="bg-[#EFE8DC]">
           <CompareSlider />
         </SectionSheet>

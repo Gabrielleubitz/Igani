@@ -62,8 +62,8 @@ export function FinalCTA() {
         cue={<div className="text-[11px] uppercase tracking-[0.4em] text-[#1F1C18]/70">Continue below</div>}
       >
         <span className="text-[11px] uppercase tracking-[0.4em] text-[#1F1C18]/70">IV. The bottom line</span>
-        <h2 className="mt-6 border-0 pb-0 font-cormorant text-6xl font-normal leading-[1.02] sm:text-8xl">
-          Ready for a site that <em className="text-[#F7F3EC]">actually closes</em> for you?
+        <h2 className="mt-6 border-0 pb-0 font-cormorant text-6xl font-normal leading-[1] sm:text-9xl">
+          Stop <em className="text-[#F7F3EC]">leaking</em> clients.
         </h2>
       </SettleHeadline>
 

@@ -68,8 +68,9 @@ export function FinalCTA() {
           <span className="font-display text-lg leading-none text-white">04</span>
           <span>The bottom line</span>
         </div>
-        <h2 className="border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.035em] text-white sm:text-7xl lg:text-8xl">
-          Ready for a site that <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">actually closes</span> for you?
+        <h2 className="border-none pb-0 text-balance text-6xl font-semibold leading-[0.96] tracking-[-0.04em] text-white sm:text-8xl lg:text-[9rem]">
+          Stop <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">leaking</span> clients
+          <span className="text-[#04101e]">.</span>
         </h2>
       </SettleHeadline>
 

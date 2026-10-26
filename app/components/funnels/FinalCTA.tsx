@@ -79,8 +79,8 @@ export function FinalCTA() {
           </div>
         }
       >
-        <h2 className="border-0 pb-0 font-clash text-5xl font-bold leading-[1.02] text-white sm:text-7xl lg:text-8xl">
-          Ready for a site that <span className="text-[#00F0FF] drop-shadow-[0_0_30px_rgba(0,240,255,0.6)]">actually closes</span> for you?
+        <h2 className="border-0 pb-0 font-clash text-6xl font-bold leading-[0.98] text-white sm:text-8xl lg:text-[9rem]">
+          Stop <span className="text-[#00F0FF] drop-shadow-[0_0_30px_rgba(0,240,255,0.6)]">leaking</span> clients.
         </h2>
       </SettleHeadline>
 

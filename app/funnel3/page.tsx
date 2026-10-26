@@ -110,11 +110,14 @@ export default function Funnel3Page() {
         )}
       </AnimatePresence>
 
-      <FunnelBanner className="mt-[76px] sm:mt-[92px]" />
 
       {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative">
-        <Hero onCta={scrollToForm} onSeeWhy={scrollTo('reason')} />
+        {/* Opening screen shares the closing section's brand blue so the page starts on its boldest note */}
+        <div className="bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]">
+          <FunnelBanner className="mt-[76px] sm:mt-[92px]" />
+          <Hero onCta={scrollToForm} onSeeWhy={scrollTo('reason')} />
+        </div>
         <SectionSheet id="sheet-reason" layer={1} className="bg-[#061225]">
           <CompareSlider />
         </SectionSheet>
