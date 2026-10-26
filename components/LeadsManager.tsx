@@ -81,7 +81,7 @@ export function LeadsManager() {
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = searchTerm === '' ||
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (lead.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (lead.phone && lead.phone.includes(searchTerm))
 
     const matchesSource = sourceFilter === 'all' || lead.source === sourceFilter
@@ -333,10 +333,12 @@ export function LeadsManager() {
                       </span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-slate-300 text-sm">
-                      <div className="flex items-center gap-1">
-                        <Mail className="w-4 h-4" />
-                        {lead.email}
-                      </div>
+                      {lead.email && (
+                        <div className="flex items-center gap-1">
+                          <Mail className="w-4 h-4" />
+                          {lead.email}
+                        </div>
+                      )}
                       {lead.phone && (
                         <div className="flex items-center gap-1">
                           <Phone className="w-4 h-4" />

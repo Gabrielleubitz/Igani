@@ -106,9 +106,9 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { name, email, phone, source, sourceDetails, message } = body
 
-    if (!name || !email) {
+    if (!name || (!email && !phone)) {
       return NextResponse.json(
-        { error: 'Name and email are required' },
+        { error: 'Name and an email or phone number are required' },
         { status: 400 }
       )
     }
@@ -125,7 +125,8 @@ export async function POST(request: Request) {
 
     const leadData: Omit<Lead, 'id'> = {
       name,
-      email,
+      // Phone-only funnel leads store an empty email so list/search code can keep treating it as a string
+      email: email || '',
       phone,
       source: source || 'main_site',
       sourceDetails,
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
     await sendAdminNotification(
       `[IGANI] New lead: ${leadData.name}`,
       html,
-      `Lead from ${leadData.email}: ${leadData.message || '(no message)'}`
+      `Lead from ${leadData.email || leadData.phone}: ${leadData.message || '(no message)'}`
     )
 
     return NextResponse.json({ success: true, lead: { ...leadData, id: leadId } }, {

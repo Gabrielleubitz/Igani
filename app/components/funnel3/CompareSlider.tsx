@@ -1,10 +1,11 @@
 'use client'
 
-import { KeyboardEvent, PointerEvent, useCallback, useRef, useState } from 'react'
+import { KeyboardEvent, PointerEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { SectionHeading } from '@/app/components/landing/fx/SectionHeading'
 import { SideNote } from '@/app/components/landing/fx/SideNote'
 import { ArrowUpRight } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { AnimationPlaybackControls, animate, motion, useInView } from 'framer-motion'
+import { useReducedMotionSafe } from '@/app/components/funnel-shared/useReducedMotionSafe'
 import { useCaseStudy } from '@/app/components/funnel-shared/useCaseStudy'
 import { Screenshot } from '@/app/components/funnel-shared/Screenshot'
 
@@ -68,6 +69,40 @@ export function CompareSlider() {
   const frameRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState(50)
   const [dragging, setDragging] = useState(false)
+  const reduce = useReducedMotionSafe()
+  const inView = useInView(frameRef, { once: true, amount: 0.6 })
+  const motionRef = useRef<AnimationPlaybackControls | null>(null)
+  const touchedRef = useRef(false)
+  // Touch gesture bookkeeping: a touch only moves the line once it is clearly horizontal, so vertical scrolls pass through
+  const gestureRef = useRef<{ x: number; y: number; type: string; moved: boolean } | null>(null)
+
+  const posRef = useRef(50)
+  posRef.current = pos
+
+  const glideTo = useCallback(
+    (to: number | number[], duration = 0.6) => {
+      motionRef.current?.stop()
+      const target = Array.isArray(to) ? to[to.length - 1] : to
+      if (reduce) {
+        setPos(target)
+        return
+      }
+      motionRef.current = animate(posRef.current, to, { duration, ease: [0.22, 1, 0.36, 1], onUpdate: setPos })
+    },
+    [reduce]
+  )
+
+  const takeControl = () => {
+    touchedRef.current = true
+    motionRef.current?.stop()
+  }
+
+  // One gentle sweep the first time it's seen, so it's obvious the line moves
+  useEffect(() => {
+    if (!inView || touchedRef.current || reduce) return
+    const id = window.setTimeout(() => !touchedRef.current && glideTo([22, 78, 50], 2.6), 500)
+    return () => window.clearTimeout(id)
+  }, [inView, reduce, glideTo])
 
   const setFromClientX = useCallback((clientX: number) => {
     const el = frameRef.current
@@ -77,14 +112,36 @@ export function CompareSlider() {
   }, [])
 
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    takeControl()
+    gestureRef.current = { x: e.clientX, y: e.clientY, type: e.pointerType, moved: false }
+    if (e.pointerType === 'touch') return
     e.currentTarget.setPointerCapture(e.pointerId)
     setDragging(true)
     setFromClientX(e.clientX)
   }
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const g = gestureRef.current
+    if (g?.type === 'touch' && !dragging) {
+      const dx = Math.abs(e.clientX - g.x)
+      const dy = Math.abs(e.clientY - g.y)
+      if (dx > 8 || dy > 8) g.moved = true
+      if (dx > 8 && dx > dy) {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setDragging(true)
+      }
+      return
+    }
     if (dragging) setFromClientX(e.clientX)
   }
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    const g = gestureRef.current
+    // A clean tap on touch jumps the line to that spot
+    if (g?.type === 'touch' && !dragging && !g.moved) glideTo(((e.clientX - e.currentTarget.getBoundingClientRect().left) / e.currentTarget.getBoundingClientRect().width) * 100, 0.4)
+    gestureRef.current = null
+    setDragging(false)
+  }
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    takeControl()
     if (e.key === 'ArrowLeft') setPos((p) => Math.max(0, p - 5))
     if (e.key === 'ArrowRight') setPos((p) => Math.min(100, p + 5))
     if (e.key === 'Home') setPos(0)
@@ -110,8 +167,11 @@ export function CompareSlider() {
           ref={frameRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={() => setDragging(false)}
-          onPointerCancel={() => setDragging(false)}
+          onPointerUp={onPointerUp}
+          onPointerCancel={() => {
+            gestureRef.current = null
+            setDragging(false)
+          }}
           className={`relative aspect-[4/5] w-full touch-pan-y select-none overflow-hidden rounded-[28px] border border-white/[0.08] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] sm:aspect-[16/9] ${
             dragging ? 'cursor-grabbing' : 'cursor-ew-resize'
           }`}
@@ -147,9 +207,31 @@ export function CompareSlider() {
           </div>
         </div>
 
-        <div className="mt-4 flex justify-between text-[13px] text-white/50">
-          <span>{cs ? `Before · ${cs.before.caption}` : 'Ugly · low trust'}</span>
-          <span className="text-white/80">{cs ? `After · ${cs.after.caption}` : 'Modern · high conversion'}</span>
+        {/* Snap buttons: a no-drag way to compare, especially on phones */}
+        <div className="mt-4 flex items-center justify-between gap-3 text-[13px]">
+          <button
+            type="button"
+            onClick={() => {
+              takeControl()
+              glideTo(100)
+            }}
+            aria-pressed={pos > 95}
+            className={`rounded-full border px-4 py-2 transition-colors ${pos > 95 ? 'border-white/40 bg-white/10 text-white' : 'border-white/10 text-white/55 hover:text-white'}`}
+          >
+            ← {cs ? `Before · ${cs.before.caption}` : 'Before'}
+          </button>
+          <span className="hidden text-white/35 sm:inline">{cs ? '' : 'ugly · low trust vs. modern · high conversion'}</span>
+          <button
+            type="button"
+            onClick={() => {
+              takeControl()
+              glideTo(0)
+            }}
+            aria-pressed={pos < 5}
+            className={`rounded-full border px-4 py-2 transition-colors ${pos < 5 ? 'border-white/40 bg-white/10 text-white' : 'border-white/10 text-white/80 hover:text-white'}`}
+          >
+            {cs ? `After · ${cs.after.caption}` : 'After'} →
+          </button>
         </div>
 
         {cs && (
