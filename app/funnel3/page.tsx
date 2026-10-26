@@ -19,7 +19,7 @@ import { SectionSheet } from '@/app/components/funnel-shared/SectionSheet'
 import { ScrollProgress } from '@/app/components/funnel-shared/ScrollProgress'
 
 const scrollTo = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
-const scrollToForm = scrollTo('build')
+const scrollToForm = scrollTo('build-form')
 
 const RAIL = [
   { id: 'reason', index: '01', label: 'The reason' },
@@ -36,7 +36,7 @@ export default function Funnel3Page() {
   // Mobile sticky CTA: show after the hero, hide once the form is on screen
   useEffect(() => {
     const handleScroll = () => {
-      const form = document.getElementById('build')
+      const form = document.getElementById('build-form')
       const formTop = form ? form.getBoundingClientRect().top : Infinity
       setShowStickyCTA(window.scrollY > 500 && formTop > window.innerHeight * 0.6)
     }
@@ -127,7 +127,8 @@ export default function Funnel3Page() {
         <SectionSheet
           id="sheet-build"
           layer={4}
-          className="bg-[radial-gradient(120%_70%_at_50%_0%,#123a7a_0%,#071a3a_40%,#030814_100%)]"
+          fill={false}
+          className="bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]"
         >
           <FinalCTA />
         </SectionSheet>

@@ -2,13 +2,16 @@
 
 import { KeyboardEvent, PointerEvent, useCallback, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
+import { ArrowUpRight } from 'lucide-react'
+import { useCaseStudy } from '@/app/components/funnel-shared/useCaseStudy'
+import { Screenshot } from '@/app/components/funnel-shared/Screenshot'
 
 /** Deliberately dated mock site: flat greys, serif, bevels, clutter. */
-function UglySite() {
+function UglySite({ name = 'Smith & Co.' }: { name?: string }) {
   return (
     <div className="absolute inset-0 bg-[#d9d9d9] p-4 font-serif text-[#222] sm:p-6">
       <div className="flex items-center justify-between border-b-4 border-double border-[#777] pb-2">
-        <span className="text-lg font-bold text-[#1a3c8a] sm:text-2xl">Smith &amp; Co. Services</span>
+        <span className="text-lg font-bold text-[#1a3c8a] sm:text-2xl">{name} Services</span>
         <span className="hidden text-xs underline text-[#0000ee] sm:inline">Home | About | Contact Us | Links</span>
       </div>
       <div className="mt-3 overflow-hidden whitespace-nowrap bg-[#ffff99] px-2 py-1 text-xs text-[#b00]">
@@ -41,13 +44,13 @@ function UglySite() {
 }
 
 /** Fluid modern mock: dark glass, bold type, glow. */
-function ModernSite() {
+function ModernSite({ name = 'smith/co' }: { name?: string }) {
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0A0A0C] p-4 text-white sm:p-6">
       <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-[#7000FF]/40 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-[#00F0FF]/25 blur-3xl" />
       <div className="relative flex items-center justify-between">
-        <span className="font-clash text-lg font-semibold sm:text-xl">smith/co</span>
+        <span className="font-clash text-lg font-semibold sm:text-xl">{name}</span>
         <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.2em] backdrop-blur">
           Book a call
         </span>
@@ -78,6 +81,7 @@ function ModernSite() {
 }
 
 export function CompareSlider() {
+  const cs = useCaseStudy()
   const frameRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState(50)
   const [dragging, setDragging] = useState(false)
@@ -122,8 +126,8 @@ export function CompareSlider() {
         </motion.div>
 
         <div className="mb-3 flex justify-between font-mono text-[10px] uppercase tracking-[0.2em] text-white/40 sm:text-xs">
-          <span>Ugly / Low trust</span>
-          <span className="text-[#00F0FF]/80">Modern / High conversion</span>
+          <span>{cs ? `Before · ${cs.before.caption}` : 'Ugly / Low trust'}</span>
+          <span className="text-[#00F0FF]/80">{cs ? `After · ${cs.after.caption}` : 'Modern / High conversion'}</span>
         </div>
 
         <div
@@ -136,9 +140,17 @@ export function CompareSlider() {
             dragging ? 'cursor-grabbing' : 'cursor-ew-resize'
           }`}
         >
-          <ModernSite />
+          {cs?.after.image ? (
+            <Screenshot src={cs.after.image} mobileSrc={cs.after.mobileImage} alt={`${cs.client} — ${cs.after.caption}`} />
+          ) : (
+            <ModernSite name={cs?.client.toLowerCase()} />
+          )}
           <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-            <UglySite />
+            {cs?.before.image ? (
+              <Screenshot src={cs.before.image} mobileSrc={cs.before.mobileImage} alt={`${cs.client} — ${cs.before.caption}`} />
+            ) : (
+              <UglySite name={cs?.client} />
+            )}
           </div>
 
           <div className="pointer-events-none absolute inset-y-0" style={{ left: `${pos}%` }}>
@@ -160,6 +172,49 @@ export function CompareSlider() {
             <span aria-hidden className="font-mono text-sm">‹ ›</span>
           </div>
         </div>
+
+        {cs && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="mt-6 flex flex-col gap-5 rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+          >
+            <div>
+              <div className="font-mono text-[10px] uppercase tracking-[0.25em] text-[#00F0FF]">Real project · built by Igani</div>
+              <div className="mt-2 font-clash text-2xl font-semibold text-white">{cs.client}</div>
+              <div className="text-sm text-white/55">
+                {cs.industry}
+                {cs.location ? ` · ${cs.location}` : ''}
+              </div>
+              {cs.quote && (
+                <blockquote className="mt-3 max-w-md text-sm italic text-white/70">
+                  &ldquo;{cs.quote.text}&rdquo; — {cs.quote.author}
+                  {cs.quote.role ? `, ${cs.quote.role}` : ''}
+                </blockquote>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {cs.results.map((r) => (
+                <div key={r.label} className="rounded-2xl border border-white/10 px-4 py-2">
+                  <div className="font-clash text-xl font-bold text-white">{r.value}</div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.15em] text-white/50">{r.label}</div>
+                </div>
+              ))}
+              {cs.url && (
+                <a
+                  href={cs.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-[#00F0FF]/50 px-4 py-2 font-mono text-xs uppercase tracking-[0.2em] text-[#00F0FF] transition-colors hover:bg-[#00F0FF]/10"
+                >
+                  See it live <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
+          </motion.div>
+        )}
       </div>
     </section>
   )

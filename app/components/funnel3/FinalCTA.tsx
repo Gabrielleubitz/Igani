@@ -1,9 +1,11 @@
 'use client'
 
 import { ChangeEvent, FormEvent, useState } from 'react'
+import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
-import { SectionHeading } from '@/app/components/landing/fx/SectionHeading'
 import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
+import { SideNote } from '@/app/components/landing/fx/SideNote'
+import { SettleHeadline } from '@/app/components/funnel-shared/SettleHeadline'
 
 const MARQUEE = 'eat with your eyes · convert with style · '
 
@@ -48,27 +50,41 @@ export function FinalCTA() {
   }
 
   return (
-    <section id="build" className="relative scroll-mt-20 overflow-hidden py-20 sm:py-28">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -bottom-40 right-0 h-[600px] w-[600px] rounded-full bg-[#4080E0]/12 blur-[160px]" />
-      </div>
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
-        {[0, 1].map((i) => (
-          <span key={i} className="funnel-marquee shrink-0 pr-[0.3em] font-display text-[20vw] leading-none text-white/[0.035] md:text-[12rem]" style={{ animationDuration: '60s' }}>
-            {MARQUEE.repeat(3)}
-          </span>
-        ))}
-      </div>
+    <section id="build" className="relative scroll-mt-20">
+      <SettleHeadline
+        className="pt-20"
+        backdrop={
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
+            {[0, 1].map((i) => (
+              <span key={i} className="funnel-marquee shrink-0 pr-[0.3em] font-display text-[20vw] leading-none text-white/[0.08] md:text-[12rem]" style={{ animationDuration: '60s' }}>
+                {MARQUEE.repeat(3)}
+              </span>
+            ))}
+          </div>
+        }
+        cue={<SideNote arrow="down" className="!text-white/85">your turn</SideNote>}
+      >
+        <div className="mb-8 flex items-baseline justify-center gap-3 text-[13px] text-white/70">
+          <span className="font-display text-lg leading-none text-white">04</span>
+          <span>The bottom line</span>
+        </div>
+        <h2 className="border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.035em] text-white sm:text-7xl lg:text-8xl">
+          Ready for a site that <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">actually closes</span> for you?
+        </h2>
+      </SettleHeadline>
 
-      <div className="relative mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-[1fr_1fr] lg:px-8">
-        <SectionHeading
-          index="04"
-          label="The bottom line"
-          title="Ready for a site that *actually closes* for you?"
-          sub="Leave your details. We’ll call you today — a real conversation, not a brochure."
-        />
-
-        <div className="relative self-end rounded-3xl border border-white/[0.08] bg-[#061225]/70 backdrop-blur-xl">
+      <motion.div
+        id="build-form"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: '-80px' }}
+        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        className="relative mx-auto max-w-xl scroll-mt-28 px-4 pb-28 sm:px-6"
+      >
+        <p className="!mt-0 mb-6 text-center text-lg leading-relaxed text-white/85">
+          Leave your details. We&rsquo;ll call you today — a real conversation, not a brochure.
+        </p>
+        <div className="relative rounded-3xl border border-white/10 bg-[#04101e] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]">
           {status === 'success' ? (
             <div className="flex flex-col items-center p-10 text-center">
               <CheckCircle2 className="h-10 w-10 text-[#4080E0]" />
@@ -106,7 +122,7 @@ export function FinalCTA() {
             </form>
           )}
         </div>
-      </div>
+      </motion.div>
     </section>
   )
 }

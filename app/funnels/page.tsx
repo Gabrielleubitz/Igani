@@ -21,7 +21,7 @@ const PROGRESS = [
   { id: 'sheet-build', label: 'The bottom line' },
 ]
 
-const scrollToForm = () => document.getElementById('build')?.scrollIntoView({ behavior: 'smooth' })
+const scrollToForm = () => document.getElementById('build-form')?.scrollIntoView({ behavior: 'smooth' })
 
 export default function FunnelsPage() {
   const [showStickyCTA, setShowStickyCTA] = useState(false)
@@ -29,7 +29,7 @@ export default function FunnelsPage() {
   // Mobile sticky CTA: show after the hero, hide once the form is on screen
   useEffect(() => {
     const handleScroll = () => {
-      const form = document.getElementById('build')
+      const form = document.getElementById('build-form')
       const formTop = form ? form.getBoundingClientRect().top : Infinity
       setShowStickyCTA(window.scrollY > 500 && formTop > window.innerHeight * 0.6)
     }
@@ -115,7 +115,8 @@ export default function FunnelsPage() {
         <SectionSheet
           id="sheet-build"
           layer={4}
-          className="bg-[radial-gradient(120%_70%_at_50%_0%,#2a0f5c_0%,#120a24_45%,#0A0A0C_100%)]"
+          fill={false}
+          className="bg-[radial-gradient(120%_80%_at_50%_0%,#8a2bff_0%,#6a00f0_45%,#3d0099_100%)]"
         >
           <FinalCTA />
         </SectionSheet>

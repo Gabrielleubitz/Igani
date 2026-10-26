@@ -2,13 +2,15 @@
 
 import { KeyboardEvent, PointerEvent, useCallback, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
+import { useCaseStudy } from '@/app/components/funnel-shared/useCaseStudy'
+import { Screenshot } from '@/app/components/funnel-shared/Screenshot'
 
 /** Deliberately dated mock site: flat greys, clutter, bevels. */
-function DatedSite() {
+function DatedSite({ name = 'Arden Interiors' }: { name?: string }) {
   return (
     <div className="absolute inset-0 bg-[#d6d6d6] p-4 font-serif text-[#222] sm:p-6">
       <div className="flex items-center justify-between border-b-4 border-double border-[#777] pb-2">
-        <span className="text-lg font-bold text-[#1a3c8a] sm:text-2xl">Arden Interiors</span>
+        <span className="text-lg font-bold text-[#1a3c8a] sm:text-2xl">{name}</span>
       </div>
       <div className="mt-3 overflow-hidden whitespace-nowrap bg-[#ffff99] px-2 py-1 text-xs text-[#b00]">
         ★★★ WELCOME!!! CALL NOW FOR A FREE QUOTE ★★★
@@ -35,11 +37,11 @@ function DatedSite() {
 }
 
 /** Refined mock: ivory, serif, space. */
-function RefinedSite() {
+function RefinedSite({ name = 'Arden' }: { name?: string }) {
   return (
     <div className="absolute inset-0 bg-[#FBF8F3] p-4 text-[#1F1C18] sm:p-6">
       <div className="flex items-center justify-between border-b border-[#E2D9CB] pb-3">
-        <span className="ml-auto font-cormorant text-xl italic sm:text-2xl">Arden</span>
+        <span className="ml-auto font-cormorant text-xl italic sm:text-2xl">{name}</span>
       </div>
       <div className="ml-auto mt-8 w-1/2 pl-4 sm:mt-12">
         <span className="text-[9px] uppercase tracking-[0.3em] text-[#A9845A] sm:text-[10px]">Interiors · London</span>
@@ -61,6 +63,7 @@ function RefinedSite() {
 }
 
 export function CompareSlider() {
+  const cs = useCaseStudy()
   const frameRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState(50)
   const [dragging, setDragging] = useState(false)
@@ -107,8 +110,8 @@ export function CompareSlider() {
         </motion.div>
 
         <div className="mb-4 flex justify-between text-[10px] uppercase tracking-[0.3em] text-[#6E665C]">
-          <span>Before</span>
-          <span className="text-[#A9845A]">After</span>
+          <span>{cs ? `Before · ${cs.before.caption}` : 'Before'}</span>
+          <span className="text-[#A9845A]">{cs ? `After · ${cs.after.caption}` : 'After'}</span>
         </div>
 
         <div
@@ -121,9 +124,17 @@ export function CompareSlider() {
             dragging ? 'cursor-grabbing' : 'cursor-ew-resize'
           }`}
         >
-          <RefinedSite />
+          {cs?.after.image ? (
+            <Screenshot src={cs.after.image} mobileSrc={cs.after.mobileImage} alt={`${cs.client} — ${cs.after.caption}`} />
+          ) : (
+            <RefinedSite name={cs?.client} />
+          )}
           <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-            <DatedSite />
+            {cs?.before.image ? (
+              <Screenshot src={cs.before.image} mobileSrc={cs.before.mobileImage} alt={`${cs.client} — ${cs.before.caption}`} />
+            ) : (
+              <DatedSite name={cs?.client} />
+            )}
           </div>
 
           <div className="pointer-events-none absolute inset-y-0 w-px -translate-x-1/2 bg-[#A9845A]" style={{ left: `${pos}%` }} />
@@ -143,6 +154,52 @@ export function CompareSlider() {
             <span aria-hidden>⟷</span>
           </div>
         </div>
+
+        {cs && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            className="mt-8 grid gap-6 border-t border-[#D8CCBA] pt-6 sm:grid-cols-[1fr_auto] sm:items-end"
+          >
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.35em] text-[#A9845A]">A real project · built by Igani</div>
+              <div className="mt-3 font-cormorant text-4xl text-[#1F1C18]">{cs.client}</div>
+              <div className="mt-1 text-sm text-[#6E665C]">
+                {cs.industry}
+                {cs.location ? ` · ${cs.location}` : ''}
+              </div>
+              {cs.quote && (
+                <blockquote className="mt-4 max-w-md font-cormorant text-xl italic leading-snug text-[#4A443D]">
+                  &ldquo;{cs.quote.text}&rdquo;
+                  <span className="mt-1 block font-sans text-xs not-italic tracking-wide text-[#6E665C]">
+                    — {cs.quote.author}
+                    {cs.quote.role ? `, ${cs.quote.role}` : ''}
+                  </span>
+                </blockquote>
+              )}
+            </div>
+            <div className="flex flex-wrap items-end gap-6">
+              {cs.results.map((r) => (
+                <div key={r.label}>
+                  <div className="font-cormorant text-4xl text-[#1F1C18]">{r.value}</div>
+                  <div className="text-[10px] uppercase tracking-[0.25em] text-[#6E665C]">{r.label}</div>
+                </div>
+              ))}
+              {cs.url && (
+                <a
+                  href={cs.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="border-b border-[#1F1C18] pb-1 text-[11px] uppercase tracking-[0.32em] text-[#1F1C18] transition-colors hover:border-[#A9845A] hover:text-[#A9845A]"
+                >
+                  Visit the site ↗
+                </a>
+              )}
+            </div>
+          </motion.div>
+        )}
       </div>
     </section>
   )

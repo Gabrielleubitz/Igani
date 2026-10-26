@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useState } from 'react'
 import { motion } from 'framer-motion'
 import { GlowButton } from './GlowButton'
+import { SettleHeadline } from '@/app/components/funnel-shared/SettleHeadline'
 
 const MARQUEE = 'EAT WITH YOUR EYES • CONVERT WITH STYLE • '
 
@@ -12,7 +13,7 @@ function Marquee({ reverse = false }: { reverse?: boolean }) {
       {[0, 1].map((i) => (
         <span
           key={i}
-          className={`funnel-marquee shrink-0 pr-[0.3em] font-clash text-[18vw] font-bold leading-none text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.09)] md:text-[11rem] ${
+          className={`funnel-marquee shrink-0 pr-[0.3em] font-clash text-[18vw] font-bold leading-none text-transparent [-webkit-text-stroke:1px_rgba(255,255,255,0.14)] md:text-[11rem] ${
             reverse ? '[animation-direction:reverse]' : ''
           }`}
         >
@@ -64,31 +65,42 @@ export function FinalCTA() {
   }
 
   return (
-    <section id="build" className="relative scroll-mt-8 overflow-hidden py-28">
-      <div className="pointer-events-none absolute inset-0 flex flex-col justify-center gap-4">
-        <Marquee />
-        <Marquee reverse />
-      </div>
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[480px] w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7000FF]/20 blur-[120px]" />
+    <section id="build" className="relative">
+      <SettleHeadline
+        backdrop={
+          <div className="pointer-events-none absolute inset-0 flex flex-col justify-center gap-4">
+            <Marquee />
+            <Marquee reverse />
+          </div>
+        }
+        cue={
+          <div className="font-mono text-xs uppercase tracking-[0.3em] text-white/70">
+            Your move <span className="inline-block animate-bounce">↓</span>
+          </div>
+        }
+      >
+        <h2 className="border-0 pb-0 font-clash text-5xl font-bold leading-[1.02] text-white sm:text-7xl lg:text-8xl">
+          Ready for a site that <span className="text-[#00F0FF] drop-shadow-[0_0_30px_rgba(0,240,255,0.6)]">actually closes</span> for you?
+        </h2>
+      </SettleHeadline>
 
       <motion.div
+        id="build-form"
         initial={{ opacity: 0, y: 30 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-        className="relative mx-auto max-w-xl px-4 text-center sm:px-6"
+        className="relative mx-auto max-w-xl scroll-mt-16 px-4 pb-28 sm:px-6"
       >
-        <h2 className="border-0 pb-0 font-clash text-4xl font-bold leading-tight text-white sm:text-6xl">
-          Ready for a site that <span className="bg-gradient-to-r from-[#00F0FF] to-[#7000FF] bg-clip-text text-transparent">actually closes</span> for you?
-        </h2>
+        <div className="text-center font-mono text-xs uppercase tracking-[0.25em] text-white/70">Leave your details · we call you today</div>
 
         {status === 'success' ? (
-          <div className="mt-10 rounded-2xl border border-[#00F0FF]/50 bg-[#00F0FF]/10 p-6 text-white shadow-[0_0_40px_-10px_rgba(0,240,255,0.7)]">
+          <div className="mt-8 rounded-2xl border border-[#00F0FF]/50 bg-[#0A0A0C]/60 p-6 text-white shadow-[0_0_40px_-10px_rgba(0,240,255,0.7)]">
             <p className="font-clash text-2xl font-semibold">You&rsquo;re in.</p>
             <p className="mt-1 text-white/70">We&rsquo;ll call you today.</p>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="mt-10 space-y-3 text-left">
+          <form onSubmit={onSubmit} className="mt-8 space-y-3 rounded-3xl border border-white/15 bg-[#0A0A0C]/55 p-5 text-left backdrop-blur-xl sm:p-7">
             <input name="name" value={form.name} onChange={onChange} required autoComplete="name" placeholder="Your name" aria-label="Your name" className={inputClass} />
             <input name="phone" type="tel" value={form.phone} onChange={onChange} required autoComplete="tel" placeholder="Phone number" aria-label="Phone number" className={inputClass} />
             <input name="email" type="email" value={form.email} onChange={onChange} required autoComplete="email" placeholder="Email address" aria-label="Email address" className={inputClass} />
@@ -96,11 +108,11 @@ export function FinalCTA() {
               {status === 'submitting' ? 'BUILDING…' : 'BUILD MY SITE'}
             </GlowButton>
             {status === 'error' && (
-              <p role="alert" className="text-center text-sm text-red-400">
+              <p role="alert" className="text-center text-sm text-red-300">
                 Something went wrong. Email us at info@igani.co.
               </p>
             )}
-            <p className="pt-2 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/40">
+            <p className="pt-2 text-center font-mono text-[11px] uppercase tracking-[0.2em] text-white/50">
               We call you today · No obligation
             </p>
           </form>
