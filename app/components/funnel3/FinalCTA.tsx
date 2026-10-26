@@ -48,7 +48,7 @@ export function FinalCTA() {
   }
 
   return (
-    <section id="build" className="relative scroll-mt-20 overflow-hidden border-t border-white/[0.06] py-20 sm:py-28">
+    <section id="build" className="relative scroll-mt-20 overflow-hidden py-20 sm:py-28">
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -bottom-40 right-0 h-[600px] w-[600px] rounded-full bg-[#4080E0]/12 blur-[160px]" />
       </div>

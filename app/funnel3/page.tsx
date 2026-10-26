@@ -15,6 +15,8 @@ import { CompareSlider } from '@/app/components/funnel3/CompareSlider'
 import { Proof } from '@/app/components/funnel3/Proof'
 import { WhatWeBuild } from '@/app/components/funnel3/WhatWeBuild'
 import { FinalCTA } from '@/app/components/funnel3/FinalCTA'
+import { SectionSheet } from '@/app/components/funnel-shared/SectionSheet'
+import { ScrollProgress } from '@/app/components/funnel-shared/ScrollProgress'
 
 const scrollTo = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
 const scrollToForm = scrollTo('build')
@@ -25,6 +27,8 @@ const RAIL = [
   { id: 'build-what', index: '03', label: 'What we build' },
   { id: 'build', index: '04', label: 'The bottom line' },
 ]
+
+const PROGRESS = RAIL.map((r) => ({ id: `sheet-${r.id}`, label: r.label }))
 
 export default function Funnel3Page() {
   const [showStickyCTA, setShowStickyCTA] = useState(false)
@@ -63,6 +67,15 @@ export default function Funnel3Page() {
       <GrainOverlay />
       <CursorGlow />
       <SectionRail items={RAIL} />
+      <ScrollProgress
+        items={PROGRESS}
+        positionClass="top-[70px] sm:top-[86px]"
+        barClass="border border-white/10 bg-[#04101e]/70"
+        trackClass="bg-white/10"
+        fillClass="bg-[#4080E0]"
+        labelClass="text-white/40"
+        activeLabelClass="text-white"
+      />
 
       {/* Floating pill header, same shape as the home page's */}
       <header className="fixed inset-x-0 top-3 z-50 px-3 sm:top-4 sm:px-6">
@@ -97,16 +110,30 @@ export default function Funnel3Page() {
         )}
       </AnimatePresence>
 
+      <FunnelBanner className="mt-[76px] sm:mt-[92px]" />
+
+      {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative">
         <Hero onCta={scrollToForm} onSeeWhy={scrollTo('reason')} />
-        <FunnelBanner />
-        <CompareSlider />
-        <Proof />
-        <WhatWeBuild />
-        <FinalCTA />
+        <SectionSheet id="sheet-reason" layer={1} className="bg-[#061225]">
+          <CompareSlider />
+        </SectionSheet>
+        <SectionSheet id="sheet-proof" layer={2} fill={false} className="bg-[#EEF3FC]">
+          <Proof />
+        </SectionSheet>
+        <SectionSheet id="sheet-build-what" layer={3} className="bg-[#030814]">
+          <WhatWeBuild />
+        </SectionSheet>
+        <SectionSheet
+          id="sheet-build"
+          layer={4}
+          className="bg-[radial-gradient(120%_70%_at_50%_0%,#123a7a_0%,#071a3a_40%,#030814_100%)]"
+        >
+          <FinalCTA />
+        </SectionSheet>
       </main>
 
-      <footer className="border-t border-white/[0.06] px-4 pb-28 pt-8 text-center text-[13px] text-white/45 lg:pb-8">
+      <footer className="relative z-[5] bg-[#030814] px-4 pb-28 pt-8 text-center text-[13px] text-white/45 lg:pb-8">
         © 2026 IGANI. All rights reserved. ·{' '}
         <a href="mailto:info@igani.co" className="text-[#9ec0f5] hover:text-white">
           info@igani.co

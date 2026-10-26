@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { animate, motion, useInView, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion'
+import { animate, motion, useInView, useScroll, useSpring, useTransform } from 'framer-motion'
+import { useReducedMotionSafe } from '@/app/components/funnel-shared/useReducedMotionSafe'
 import { ElegantButton } from './ElegantButton'
 
 const ease = [0.22, 1, 0.36, 1] as const
@@ -10,11 +11,15 @@ const ease = [0.22, 1, 0.36, 1] as const
 function SecondsCounter() {
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true })
-  const reduce = useReducedMotion()
-  const [value, setValue] = useState(reduce ? 0.05 : 0)
+  const reduce = useReducedMotionSafe()
+  const [value, setValue] = useState(0)
 
   useEffect(() => {
-    if (!inView || reduce) return
+    if (!inView) return
+    if (reduce) {
+      setValue(0.05)
+      return
+    }
     const controls = animate(0, 0.05, { duration: 2, delay: 1.1, ease, onUpdate: setValue })
     return () => controls.stop()
   }, [inView, reduce])
@@ -25,7 +30,7 @@ function SecondsCounter() {
 /** A refined site, rendered as a framed card that turns slowly in 3D as you scroll. */
 function FramedSite() {
   const ref = useRef<HTMLDivElement>(null)
-  const reduce = useReducedMotion()
+  const reduce = useReducedMotionSafe()
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] })
   const rotY = useSpring(useTransform(scrollYProgress, [0.2, 0.8], [-14, 10]), { stiffness: 60, damping: 20 })
   const rotX = useSpring(useTransform(scrollYProgress, [0.2, 0.8], [6, -4]), { stiffness: 60, damping: 20 })

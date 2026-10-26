@@ -11,6 +11,15 @@ import { Proof } from '@/app/components/funnel2/Proof'
 import { WhatWeBuild } from '@/app/components/funnel2/WhatWeBuild'
 import { FinalCTA } from '@/app/components/funnel2/FinalCTA'
 import { cormorant } from '@/app/components/funnel2/fonts'
+import { SectionSheet } from '@/app/components/funnel-shared/SectionSheet'
+import { ScrollProgress } from '@/app/components/funnel-shared/ScrollProgress'
+
+const PROGRESS = [
+  { id: 'sheet-reason', label: 'The reason' },
+  { id: 'sheet-proof', label: 'The proof' },
+  { id: 'sheet-build-what', label: 'What we build' },
+  { id: 'sheet-build', label: 'The bottom line' },
+]
 
 const scrollToForm = () => document.getElementById('build')?.scrollIntoView({ behavior: 'smooth' })
 
@@ -83,12 +92,30 @@ export default function Funnel2Page() {
 
       <FunnelBanner />
 
+      <ScrollProgress
+        items={PROGRESS}
+        barClass="mt-2 border border-[#E2D9CB] bg-[#F7F3EC]/85"
+        trackClass="bg-[#A9845A]/20"
+        fillClass="bg-[#A9845A]"
+        labelClass="uppercase tracking-[0.2em] text-[#A9845A]/60"
+        activeLabelClass="uppercase tracking-[0.2em] text-[#A9845A]"
+      />
+
+      {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative z-10">
         <Hero onCta={scrollToForm} />
-        <CompareSlider />
-        <Proof />
-        <WhatWeBuild />
-        <FinalCTA />
+        <SectionSheet id="sheet-reason" layer={1} className="bg-[#EFE8DC]">
+          <CompareSlider />
+        </SectionSheet>
+        <SectionSheet id="sheet-proof" layer={2} fill={false} className="bg-[#1F1C18]">
+          <Proof />
+        </SectionSheet>
+        <SectionSheet id="sheet-build-what" layer={3} className="bg-[#F7F3EC]">
+          <WhatWeBuild />
+        </SectionSheet>
+        <SectionSheet id="sheet-build" layer={4} className="bg-[#1F1C18]">
+          <FinalCTA />
+        </SectionSheet>
       </main>
 
       <footer className="bg-[#1F1C18] px-6 pb-28 pt-2 text-center lg:pb-10">

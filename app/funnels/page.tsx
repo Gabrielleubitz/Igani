@@ -11,6 +11,15 @@ import { ProofCards } from '@/app/components/funnels/ProofCards'
 import { BentoBuild } from '@/app/components/funnels/BentoBuild'
 import { FinalCTA } from '@/app/components/funnels/FinalCTA'
 import { clashDisplay, funnelMono } from '@/app/components/funnels/fonts'
+import { SectionSheet } from '@/app/components/funnel-shared/SectionSheet'
+import { ScrollProgress } from '@/app/components/funnel-shared/ScrollProgress'
+
+const PROGRESS = [
+  { id: 'sheet-reason', label: 'The reason' },
+  { id: 'sheet-proof', label: 'The proof' },
+  { id: 'sheet-build-what', label: 'What we build' },
+  { id: 'sheet-build', label: 'The bottom line' },
+]
 
 const scrollToForm = () => document.getElementById('build')?.scrollIntoView({ behavior: 'smooth' })
 
@@ -82,15 +91,37 @@ export default function FunnelsPage() {
 
       <FunnelBanner />
 
+      <ScrollProgress
+        items={PROGRESS}
+        barClass="mt-2 border border-white/10 bg-[#0A0A0C]/75"
+        trackClass="bg-white/10"
+        fillClass="bg-gradient-to-r from-[#00F0FF] to-[#7000FF]"
+        labelClass="font-mono uppercase tracking-[0.15em] text-white/40"
+        activeLabelClass="font-mono uppercase tracking-[0.15em] text-white"
+      />
+
+      {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative z-10">
         <Hero onCta={scrollToForm} />
-        <CompareSlider />
-        <ProofCards />
-        <BentoBuild />
-        <FinalCTA />
+        <SectionSheet id="sheet-reason" layer={1} className="bg-[#121218]">
+          <CompareSlider />
+        </SectionSheet>
+        <SectionSheet id="sheet-proof" layer={2} fill={false} className="bg-[#ECEEF3]">
+          <ProofCards />
+        </SectionSheet>
+        <SectionSheet id="sheet-build-what" layer={3} className="bg-[#0A0A0C]">
+          <BentoBuild />
+        </SectionSheet>
+        <SectionSheet
+          id="sheet-build"
+          layer={4}
+          className="bg-[radial-gradient(120%_70%_at_50%_0%,#2a0f5c_0%,#120a24_45%,#0A0A0C_100%)]"
+        >
+          <FinalCTA />
+        </SectionSheet>
       </main>
 
-      <footer className="relative z-10 border-t border-white/10 px-4 pb-28 pt-8 text-center lg:pb-8">
+      <footer className="relative z-10 bg-[#0A0A0C] px-4 pb-28 pt-8 text-center lg:pb-8">
         <p className="font-mono text-xs text-white/40">
           © 2026 IGANI. All rights reserved. •{' '}
           <a href="mailto:info@igani.co" className="text-[#00F0FF] hover:text-white">

@@ -6,7 +6,7 @@ import { getPromoBannerSettings } from '@/lib/firestore'
 import { PromoBannerSettings } from '@/types'
 
 /** Admin-controlled promo banner (same structure as the site-wide PromoBanner). */
-export function FunnelBanner() {
+export function FunnelBanner({ className = '' }: { className?: string }) {
   const [bannerSettings, setBannerSettings] = useState<PromoBannerSettings | null>(null)
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export function FunnelBanner() {
 
   return (
     <div
-      className={`relative z-20 flex items-center ${
+      className={`relative z-20 flex items-center ${className} ${
         bannerSettings.glowEffect ? 'shadow-[0_4px_20px_-2px_rgba(0,0,0,0.3)]' : 'shadow-md'
       } ${bannerSettings.subtitle && bannerSettings.animationType !== 'marquee' ? 'min-h-[72px]' : 'min-h-[52px]'} py-3 px-4 sm:px-6 lg:px-8`}
       style={{

@@ -123,7 +123,7 @@ function SpeedDemo() {
 
 export function WhatWeBuild() {
   return (
-    <section id="build-what" className="relative scroll-mt-20 border-t border-white/[0.06] py-20 sm:py-28">
+    <section id="build-what" className="relative scroll-mt-20 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <SectionHeading index="03" label="What we build" title="Sites that sell *before* you speak." className="mb-12" />
 

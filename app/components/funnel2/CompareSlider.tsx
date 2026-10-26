@@ -88,7 +88,7 @@ export function CompareSlider() {
   }
 
   return (
-    <section className="border-t border-[#E2D9CB] px-6 py-28 sm:px-10">
+    <section className="px-6 py-28 sm:px-10">
       <div className="mx-auto max-w-5xl">
         <motion.div
           initial={{ opacity: 0, y: 24 }}

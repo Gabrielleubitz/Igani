@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { animate, motion, useInView, useReducedMotion } from 'framer-motion'
+import { animate, motion, useInView } from 'framer-motion'
+import { useReducedMotionSafe } from '@/app/components/funnel-shared/useReducedMotionSafe'
 import { GlowButton } from './GlowButton'
 
 const HeroScene = dynamic(() => import('./HeroScene').then((m) => m.HeroScene), { ssr: false })
@@ -13,11 +14,15 @@ const HEADLINE = ['YOUR', 'WEBSITE', 'IS', 'LEAKING', 'CLIENTS.']
 function SecondsCounter() {
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true })
-  const reduce = useReducedMotion()
-  const [value, setValue] = useState(reduce ? 0.05 : 0)
+  const reduce = useReducedMotionSafe()
+  const [value, setValue] = useState(0)
 
   useEffect(() => {
-    if (!inView || reduce) return
+    if (!inView) return
+    if (reduce) {
+      setValue(0.05)
+      return
+    }
     const controls = animate(0, 0.05, {
       duration: 1.6,
       delay: 0.9,

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { animate, motion, useInView, useReducedMotion } from 'framer-motion'
+import { animate, motion, useInView } from 'framer-motion'
+import { useReducedMotionSafe } from '@/app/components/funnel-shared/useReducedMotionSafe'
 import { ArrowDown, ArrowRight } from 'lucide-react'
 import { HeroCanvas } from '@/app/components/landing/hero/HeroCanvas'
 import { HeroCube } from '@/app/components/landing/hero/HeroCube'
@@ -14,11 +15,15 @@ const EASE = [0.22, 1, 0.36, 1] as const
 function SecondsCounter() {
   const ref = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true })
-  const reduce = useReducedMotion()
-  const [value, setValue] = useState(reduce ? 0.05 : 0)
+  const reduce = useReducedMotionSafe()
+  const [value, setValue] = useState(0)
 
   useEffect(() => {
-    if (!inView || reduce) return
+    if (!inView) return
+    if (reduce) {
+      setValue(0.05)
+      return
+    }
     const controls = animate(0, 0.05, { duration: 1.8, delay: 1.2, ease: EASE, onUpdate: setValue })
     return () => controls.stop()
   }, [inView, reduce])
@@ -112,7 +117,7 @@ export function Hero({ onCta, onSeeWhy }: { onCta: () => void; onSeeWhy: () => v
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.1, duration: 1 }}
-        className="relative z-10 mx-auto flex w-full max-w-6xl flex-wrap items-end justify-between gap-4 px-4 pb-7 sm:px-6 lg:px-8"
+        className="relative z-10 mx-auto flex w-full max-w-6xl flex-wrap items-end justify-between gap-4 px-4 pb-16 sm:px-6 lg:px-8"
       >
         <p className="!mt-0 flex items-center gap-2 text-[13px] text-white/60">
           <span className="relative flex h-1.5 w-1.5">

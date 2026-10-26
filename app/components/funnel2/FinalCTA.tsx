@@ -47,7 +47,7 @@ export function FinalCTA() {
   }
 
   return (
-    <section id="build" className="relative overflow-hidden bg-[#1F1C18] py-32 text-[#F7F3EC]">
+    <section id="build" className="relative overflow-hidden py-32 text-[#F7F3EC]">
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
         {[0, 1].map((i) => (
           <span key={i} className="elegant-marquee shrink-0 pr-[0.4em] font-cormorant text-[22vw] italic leading-none text-[#F7F3EC]/[0.05] md:text-[13rem]">
