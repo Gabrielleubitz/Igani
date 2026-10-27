@@ -1,5 +1,6 @@
 /** Defaults when Firestore / admin leave a field empty */
-export const DEFAULT_INSTAGRAM_URL = 'https://www.instagram.com/igani.co/'
+/** Igani's Instagram — fixed here rather than read from admin settings */
+export const INSTAGRAM_URL = 'https://www.instagram.com/igani_dev'
 export const DEFAULT_TIKTOK_URL = 'https://www.tiktok.com/@igani.co'
 export const DEFAULT_WHATSAPP_FALLBACK = '+972584477757'
 

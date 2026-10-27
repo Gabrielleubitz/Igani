@@ -13,23 +13,15 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [language, setLanguageState] = useState<Language>('en')
 
-  // Load language from localStorage on mount
+  // The site is English-only. Clear any Hebrew choice saved before the toggle was removed.
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('language') as Language
-    if (savedLanguage === 'en' || savedLanguage === 'he') {
-      setLanguageState(savedLanguage)
-      // Update document direction for RTL
-      document.documentElement.dir = savedLanguage === 'he' ? 'rtl' : 'ltr'
-      document.documentElement.lang = savedLanguage
-    }
+    localStorage.removeItem('language')
+    document.documentElement.dir = 'ltr'
+    document.documentElement.lang = 'en'
   }, [])
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang)
-    localStorage.setItem('language', lang)
-    // Update document direction for RTL
-    document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr'
-    document.documentElement.lang = lang
   }
 
   return (

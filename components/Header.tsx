@@ -1,16 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { scrollToSection } from '@/app/components/funnel-shared/SectionSheet'
+import { scrollToSection as scrollToHomeSection } from '@/app/components/funnel-shared/SectionSheet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
 import { HamburgerMenu } from '@/components/HamburgerMenu'
-import LanguageToggle from '@/components/LanguageToggle'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
 import { useSiteSettings } from '@/hooks/useSiteSettings'
 import {
-  DEFAULT_INSTAGRAM_URL,
+  INSTAGRAM_URL,
   getWhatsAppChatHref,
   tiktokHrefFromSettings,
 } from '@/lib/siteSocial'
@@ -19,7 +18,6 @@ import {
   Home,
   Folder,
   Info,
-  MessageSquare,
   Package,
   ArrowLeft,
   Instagram,
@@ -66,22 +64,17 @@ export default function Header({
   const { settings } = useSiteSettings()
 
   const nav = siteContent.navigation
-  const instagramHref = settings.instagramUrl?.trim() || DEFAULT_INSTAGRAM_URL
+  const instagramHref = INSTAGRAM_URL
   const tiktokHref = tiktokHrefFromSettings(settings.tiktokUrl)
   const whatsappHref = getWhatsAppChatHref(settings, nav.whatsappPrefillMessage[currentLanguage])
   const defaultBackButtonText = backButtonText || nav.backToHome[currentLanguage]
 
   const scrollToSection = (sectionId: string) => {
     if (window.location.pathname === '/') {
-      scrollToSection(sectionId)
+      scrollToHomeSection(sectionId)
     } else {
       window.location.href = `/#${sectionId}`
     }
-    setIsMenuOpen(false)
-  }
-
-  const handleContactClick = () => {
-    window.location.href = '/contact'
     setIsMenuOpen(false)
   }
 
@@ -173,7 +166,7 @@ export default function Header({
             </div>
           </div>
 
-          {/* RIGHT — language toggle + CTA (desktop) / hamburger (mobile) */}
+          {/* RIGHT — socials (desktop) / hamburger (mobile) */}
           <div className="flex shrink-0 items-center justify-end gap-2 lg:min-w-0 lg:justify-self-end">
             <div className="hidden lg:flex lg:items-center lg:gap-1.5">
               <a
@@ -203,14 +196,6 @@ export default function Header({
               >
                 <WhatsAppGlyph className="h-[22px] w-[22px]" />
               </a>
-              <LanguageToggle />
-              <button
-                onClick={handleContactClick}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4080E0] to-[#2060C0] px-5 py-2 text-sm font-medium text-white shadow-lg shadow-[#4080E0]/20 transition-all duration-300 hover:from-[#5090F0] hover:to-[#3070D0] hover:shadow-[#4080E0]/35"
-              >
-                <MessageSquare className="h-4 w-4" />
-                {nav.freeConsultation[currentLanguage]}
-              </button>
             </div>
             <div className="lg:hidden">
               <HamburgerMenu
@@ -299,18 +284,6 @@ export default function Header({
                     WhatsApp
                   </a>
                 </div>
-
-                <div className="mt-3 border-t border-white/10 pt-3">
-                  <LanguageToggle variant="mobile" />
-                </div>
-
-                <button
-                  onClick={handleContactClick}
-                  className="mt-2 flex items-center gap-3 w-full rounded-xl bg-gradient-to-r from-[#4080E0] to-[#2060C0] px-4 py-3 text-sm font-medium text-white shadow-lg shadow-[#4080E0]/20 transition-all hover:from-[#5090F0] hover:to-[#3070D0]"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                  {nav.freeConsultation[currentLanguage]}
-                </button>
               </div>
             </motion.div>
           )}
