@@ -280,7 +280,7 @@ export default function AboutPageClient() {
                     <div className="space-y-4 text-lg leading-relaxed text-white/70">
                       {'paragraphs' in section &&
                         section.paragraphs?.map((para) => (
-                          <p key={para} className="!mt-0">
+                          <p key={para} className="first:!mt-0">
                             <T>{para}</T>
                           </p>
                         ))}
