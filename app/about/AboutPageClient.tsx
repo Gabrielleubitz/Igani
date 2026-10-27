@@ -3,12 +3,9 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { User, Target, Heart, Lightbulb, Award, Users, ChevronDown, ChevronUp, Mail, Instagram, Linkedin, ArrowRight } from 'lucide-react'
-import { StarryBackground } from '@/components/ui/starry-background'
-import { SplashCursor } from '@/components/ui/splash-cursor'
-import { AnimatedButton } from '@/components/ui/animated-button'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
+import { User, Plus, Mail, Instagram, Linkedin, ArrowRight } from 'lucide-react'
+import { PageIntro, PageShell, SerifAccent } from '@/app/components/landing/fx/PageShell'
+import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
 import { getAboutUsSections, getAboutUsSettings, getPackageFAQs, getTeamMembers } from '@/lib/firestore'
 import { AboutUsSection, AboutUsSettings, PackageFAQ, TeamMember } from '@/types'
 import { T } from '@/components/T'
@@ -56,11 +53,11 @@ function TeamMemberCard({
   return (
     <motion.div
       id={teamMemberSlug(member.name)}
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: index * 0.1 }}
-      viewport={{ once: true }}
-      className={`flex h-full flex-col overflow-hidden rounded-2xl border border-slate-700/50 bg-slate-800/60 shadow-xl shadow-slate-950/50 backdrop-blur-sm ${hasContact ? 'group' : ''}`}
+      initial={{ y: 30 }}
+      whileInView={{ y: 0 }}
+      transition={{ duration: 0.7, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+      viewport={{ once: true, margin: '0px 0px -10% 0px' }}
+      className={`flex h-full flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#061225]/80 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl ${hasContact ? 'group' : ''}`}
     >
       {/* Image fills top of card */}
       <div className="relative aspect-[3/4] w-full min-h-[260px] sm:min-h-[300px]">
@@ -71,13 +68,13 @@ function TeamMemberCard({
             className="h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-cyan-500/25 to-blue-500/20">
-            <User className="h-20 w-20 text-cyan-400/90 sm:h-24 sm:w-24" />
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#4080E0]/25 to-[#081833]">
+            <User className="h-20 w-20 text-[#9ec0f5]/80 sm:h-24 sm:w-24" />
           </div>
         )}
         {hasContact && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/90 opacity-0 transition-opacity duration-300 ease-out pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[#030814]/90 opacity-0 transition-opacity duration-300 ease-out pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto">
+            <span className="text-xs text-white/60">
               Contact
             </span>
             <div className="flex flex-wrap items-center justify-center gap-2">
@@ -134,8 +131,8 @@ function TeamMemberCard({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col border-t border-slate-700/50 p-5 md:p-6">
-        <h3 className="text-xl font-bold text-white">
+      <div className="flex flex-1 flex-col border-t border-white/[0.08] p-6 md:p-7">
+        <h3 className="text-2xl font-semibold tracking-[-0.02em] text-white">
           <Link
             href={`/about/team/${teamMemberSlug(member.name)}`}
             className="transition-colors hover:text-[#80A0E0]"
@@ -143,9 +140,9 @@ function TeamMemberCard({
             {member.name}
           </Link>
         </h3>
-        <p className="mb-3 text-sm font-medium text-cyan-400">{member.position}</p>
+        <p className="font-display mb-3 text-lg text-[#dbe6ff]">{member.position}</p>
         <p
-          className={`text-sm leading-relaxed text-slate-300 ${!expanded && showReadMore ? 'line-clamp-4' : ''}`}
+          className={`text-[15px] leading-relaxed text-white/70 ${!expanded && showReadMore ? 'line-clamp-4' : ''}`}
         >
           {member.bio}
         </p>
@@ -153,7 +150,7 @@ function TeamMemberCard({
           <button
             type="button"
             onClick={onToggleBio}
-            className="mt-4 self-start text-sm font-semibold text-cyan-400 transition-colors hover:text-cyan-300"
+            className="mt-4 self-start text-sm font-medium text-[#9ec0f5] underline decoration-white/20 underline-offset-4 transition-colors hover:text-white"
             aria-expanded={expanded}
           >
             {expanded ? <T>Read less</T> : <T>Read more</T>}
@@ -161,10 +158,10 @@ function TeamMemberCard({
         )}
         <Link
           href={`/about/team/${teamMemberSlug(member.name)}`}
-          className="mt-auto inline-flex items-center gap-2 self-start rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 pt-5 text-sm font-semibold text-cyan-400 transition-colors hover:border-cyan-400/50 hover:bg-cyan-500/20 hover:text-cyan-300"
+          className="group/link mt-auto inline-flex items-center gap-2 self-start pt-6 text-sm font-semibold text-white transition-colors hover:text-[#9ec0f5]"
         >
           <T>View profile</T>
-          <ArrowRight className="h-4 w-4" />
+          <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5" />
         </Link>
       </div>
     </motion.div>
@@ -214,16 +211,6 @@ export default function AboutPageClient() {
     loadData()
   }, [])
 
-  const getSectionIcon = (type: string) => {
-    switch (type) {
-      case 'mission': return Target
-      case 'values': return Heart
-      case 'team': return Users
-      case 'story': return Lightbulb
-      default: return Award
-    }
-  }
-
   const toggleFAQ = (faqId: string) => {
     setExpandedFAQ(prev => ({
       ...prev,
@@ -231,272 +218,169 @@ export default function AboutPageClient() {
     }))
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 relative">
-        <StarryBackground />
-        <SplashCursor />
-        <div className="relative z-10 flex items-center justify-center min-h-screen">
-          <div className="text-slate-400"><T>Loading about us...</T></div>
-        </div>
-      </div>
-    )
-  }
+  const defaultSections = [
+    {
+      id: 'mission',
+      title: 'Our Mission',
+      paragraphs: [
+        "At IGANI, we're passionate about creating exceptional digital experiences that drive real business results. We believe that great design and flawless functionality should go hand in hand, delivering websites and applications that not only look stunning but perform beautifully.",
+        'Our team combines technical expertise with creative vision to help businesses establish a powerful online presence that sets them apart from the competition.',
+      ],
+    },
+    {
+      id: 'values',
+      title: 'Our Values',
+      paragraphs: [
+        'Quality first: we never compromise on quality, ensuring every project meets the highest standards of design and development.',
+        'Client partnership: we work closely with our clients as true partners, understanding their vision and bringing it to life.',
+        'Innovation: we stay at the forefront of technology and design trends to deliver cutting-edge solutions.',
+      ],
+    },
+  ]
 
   return (
-    <div className="min-h-screen bg-slate-900 relative">
-      <StarryBackground />
-      
-      {/* Splash Cursor Animation - Full Page */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <SplashCursor />
-      </div>
-      
-      {/* Header with Back Button */}
-      <Header
-        showBackButton={true}
-        backButtonText="Back to Home"
-        backButtonHref="/"
-      />
-      
-      <div className="relative z-10">
-        {/* Hero Section */}
-        <section className="pt-32 pb-16 px-4">
-          <div className="max-w-7xl mx-auto text-center">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6 px-2"
+    <PageShell>
+      <PageIntro label="About" aside="three founders, one room." title={settings.pageTitle} sub={settings.pageSubtitle} />
+
+      {/* Story: editorial rows — index + title on the left, the words on the right */}
+      <section className="relative pb-24 sm:pb-32">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+          {isLoading ? (
+            <div className="space-y-6" aria-busy="true">
+              {[0, 1].map((i) => (
+                <div key={i} className="h-48 animate-pulse rounded-3xl border border-white/[0.06] bg-white/[0.02]" />
+              ))}
+            </div>
+          ) : (
+            <div>
+              {(sections.length > 0
+                ? sections.map((sec) => ({ id: sec.id, title: sec.title, html: sec.content }))
+                : defaultSections.map((sec) => ({ id: sec.id, title: sec.title, paragraphs: sec.paragraphs }))
+              ).map((section, index) => (
+                <motion.div
+                  key={section.id}
+                  initial={{ y: 30 }}
+                  whileInView={{ y: 0 }}
+                  viewport={{ once: true, margin: '0px 0px -10% 0px' }}
+                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+                  className="grid gap-6 border-t border-white/[0.12] py-12 lg:grid-cols-[0.8fr_1.4fr] lg:gap-16 lg:py-16"
+                >
+                  <div>
+                    <span className="font-display text-5xl italic leading-none text-[#4080E0]">0{index + 1}</span>
+                    <h2 className="mt-4 border-none pb-0 text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
+                      <SerifAccent text={section.title} />
+                    </h2>
+                  </div>
+                  {'html' in section && section.html ? (
+                    <div
+                      className="max-w-none text-lg leading-relaxed text-white/70 [&_a]:text-[#9ec0f5] [&_a]:underline [&_li]:mt-2 [&_p+p]:mt-4 [&_strong]:font-semibold [&_strong]:text-white [&_ul]:list-disc [&_ul]:ps-5"
+                      dangerouslySetInnerHTML={{ __html: section.html }}
+                    />
+                  ) : (
+                    <div className="space-y-4 text-lg leading-relaxed text-white/70">
+                      {'paragraphs' in section &&
+                        section.paragraphs?.map((para) => (
+                          <p key={para} className="!mt-0">
+                            <T>{para}</T>
+                          </p>
+                        ))}
+                    </div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Team */}
+      {teamMembers.length > 0 && (
+        <section id="team" className="relative scroll-mt-24 bg-[#081833] py-24 sm:py-32" aria-labelledby="team-heading">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-10 flex items-baseline justify-between gap-6 border-t border-white/[0.12] pt-3 text-[13px] text-white/60">
+              <span>The team</span>
+              <span className="hidden sm:block">you&rsquo;ll talk to us, not an account manager.</span>
+            </div>
+            <h2
+              id="team-heading"
+              className="mb-12 max-w-3xl border-none pb-0 text-balance text-4xl font-semibold leading-[1.0] tracking-[-0.025em] text-white sm:text-5xl lg:text-6xl"
             >
-              {settings.pageTitle}
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="text-xl text-slate-400 max-w-3xl mx-auto"
-            >
-              {settings.pageSubtitle}
-            </motion.p>
+              <SerifAccent text={settings.teamSectionTitle || 'The people *doing the work*.'} />
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {teamMembers.map((member, index) => (
+                <TeamMemberCard
+                  key={member.id}
+                  member={member}
+                  index={index}
+                  expanded={expandedTeamMemberId === member.id}
+                  onToggleBio={() => {
+                    setExpandedTeamMemberId((prev) => (prev === member.id ? null : member.id))
+                  }}
+                />
+              ))}
+            </div>
           </div>
         </section>
+      )}
 
-        {/* Dynamic Sections */}
-        {sections.length > 0 ? (
-          <section className="py-16 px-4">
-            <div className="max-w-7xl mx-auto">
-              <div className="space-y-24">
-                {sections.map((section, index) => {
-                  const Icon = getSectionIcon(section.type)
-                  return (
-                    <motion.div
-                      key={section.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 md:p-12 shadow-lg shadow-slate-950/50"
-                    >
-                      <div className="flex items-center gap-4 mb-6">
-                        <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                          <Icon className="w-6 h-6 text-cyan-400" />
-                        </div>
-                        <h2 className="text-3xl md:text-4xl font-bold text-white">
-                          {section.title}
-                        </h2>
-                      </div>
-                      <div 
-                        className="text-lg text-slate-300 leading-relaxed prose prose-slate max-w-none"
-                        dangerouslySetInnerHTML={{ __html: section.content }}
-                      />
-                    </motion.div>
-                  )
-                })}
-              </div>
+      {/* FAQ */}
+      {faqs.length > 0 && (
+        <section className="relative py-24 sm:py-32">
+          <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.4fr] lg:gap-16 lg:px-8">
+            <div>
+              <div className="mb-8 border-t border-white/[0.12] pt-3 text-[13px] text-white/60">Questions</div>
+              <h2 className="border-none pb-0 text-4xl font-semibold leading-[1.0] tracking-[-0.025em] text-white sm:text-5xl">
+                <SerifAccent text="Asked *often*." />
+              </h2>
             </div>
-          </section>
-        ) : (
-          // Default content when no sections are configured
-          <section className="py-16 px-4">
-            <div className="max-w-7xl mx-auto">
-              <div className="space-y-24">
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6 }}
-                  viewport={{ once: true }}
-                  className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 md:p-12 shadow-lg shadow-slate-950/50"
-                >
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                      <Target className="w-6 h-6 text-cyan-400" />
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-bold text-white">
-                      <T>Our Mission</T>
-                    </h2>
-                  </div>
-                  <div className="text-lg text-slate-300 leading-relaxed">
-                    <p className="mb-4">
-                      <T>At IGANI, we're passionate about creating exceptional digital experiences that drive real business results. We believe that great design and flawless functionality should go hand in hand, delivering websites and applications that not only look stunning but perform beautifully.</T>
-                    </p>
-                    <p>
-                      <T>Our team combines technical expertise with creative vision to help businesses establish a powerful online presence that sets them apart from the competition.</T>
-                    </p>
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.2 }}
-                  viewport={{ once: true }}
-                  className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-2xl p-8 md:p-12 shadow-lg shadow-slate-950/50"
-                >
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 rounded-lg flex items-center justify-center">
-                      <Heart className="w-6 h-6 text-cyan-400" />
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-bold text-white">
-                      <T>Our Values</T>
-                    </h2>
-                  </div>
-                  <div className="text-lg text-slate-300 leading-relaxed">
-                    <p className="mb-4">
-                      <strong className="text-white"><T>Quality First:</T></strong> <T>We never compromise on quality, ensuring every project meets the highest standards of design and development.</T>
-                    </p>
-                    <p className="mb-4">
-                      <strong className="text-white"><T>Client Partnership:</T></strong> <T>We work closely with our clients as true partners, understanding their vision and bringing it to life.</T>
-                    </p>
-                    <p>
-                      <strong className="text-white"><T>Innovation:</T></strong> <T>We stay at the forefront of technology and design trends to deliver cutting-edge solutions.</T>
-                    </p>
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* Team Members Section */}
-        {teamMembers.length > 0 && (
-          <section id="team" className="py-16 px-4" aria-labelledby="team-heading">
-            <div className="max-w-7xl mx-auto">
-              <motion.h2
-                id="team-heading"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                viewport={{ once: true }}
-                className="text-3xl md:text-4xl font-bold text-white mb-10 text-center"
-              >
-                {settings.teamSectionTitle || 'Our Team'}
-              </motion.h2>
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                {teamMembers.map((member, index) => (
-                  <TeamMemberCard
-                    key={member.id}
-                    member={member}
-                    index={index}
-                    expanded={expandedTeamMemberId === member.id}
-                    onToggleBio={() => {
-                      setExpandedTeamMemberId((prev) =>
-                        prev === member.id ? null : member.id
-                      )
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* FAQ Section */}
-        {faqs.length > 0 && (
-          <section className="py-16 px-4">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-                  <T>Frequently Asked Questions</T>
-                </h2>
-              </div>
-
-              <div className="space-y-4">
-                {faqs.map((faq) => (
-                  <motion.div
-                    key={faq.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    className="bg-slate-800/60 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden"
-                  >
+            <div className="border-b border-white/[0.12]">
+              {faqs.map((faq) => {
+                const open = !!expandedFAQ[faq.id]
+                return (
+                  <div key={faq.id} className="border-t border-white/[0.12]">
                     <button
+                      type="button"
                       onClick={() => toggleFAQ(faq.id)}
-                      className="w-full px-6 py-4 text-left flex items-center justify-between hover:bg-slate-700/50 transition-colors"
+                      aria-expanded={open}
+                      className="flex w-full items-center justify-between gap-6 py-6 text-left"
                     >
-                      <h3 className="text-white font-semibold">{faq.question}</h3>
-                      {expandedFAQ[faq.id] ? (
-                        <ChevronUp className="w-5 h-5 text-slate-400" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-slate-400" />
-                      )}
+                      <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
+                      <Plus className={`h-5 w-5 shrink-0 text-white/60 transition-transform duration-300 ${open ? 'rotate-45 text-white' : ''}`} />
                     </button>
-                    {expandedFAQ[faq.id] && (
-                      <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className="px-6 pb-4"
-                      >
-                        <p className="text-slate-300 leading-relaxed">{faq.answer}</p>
+                    {open && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pb-6">
+                        <p className="!mt-0 max-w-2xl leading-relaxed text-white/70">{faq.answer}</p>
                       </motion.div>
                     )}
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* CTA Section */}
-        <section className="py-16 px-4 bg-gradient-to-r from-cyan-600/10 to-blue-600/10 backdrop-blur-sm">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="mb-8"
-            >
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                <T>Ready to Work Together?</T>
-              </h2>
-              <p className="text-lg text-slate-300 mb-8">
-                <T>Let's discuss your project and create something amazing together.</T>
-              </p>
-            </motion.div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <AnimatedButton
-                variant="primary"
-                size="large"
-                onClick={() => window.location.href = '/contact'}
-              >
-                <T>Start Your Project</T>
-              </AnimatedButton>
-
-              <AnimatedButton
-                variant="secondary"
-                size="large"
-                onClick={() => window.location.href = '/packages'}
-              >
-                <T>View Our Services</T>
-              </AnimatedButton>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </section>
-        
-        {/* Footer */}
-        <Footer />
-      </div>
-    </div>
+      )}
+
+      {/* Closing call to action — the same blue the home page ends on */}
+      <section className="relative overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#1d4fa3_0%,#0c2552_50%,#0a1f47_100%)] py-24 sm:py-32">
+        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="mx-auto max-w-4xl border-none pb-0 text-balance text-[clamp(40px,6vw,88px)] font-semibold leading-[0.98] tracking-[-0.035em] text-white">
+            <SerifAccent text="Ready to work *together*?" />
+          </h2>
+          <p className="mx-auto !mt-6 max-w-xl text-lg leading-relaxed text-white/75">
+            Tell us what you&rsquo;re building. We&rsquo;ll come back with real questions, not a brochure.
+          </p>
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+            <MagneticButton href="/start">
+              Start a project
+              <ArrowRight className="h-4 w-4" />
+            </MagneticButton>
+            <MagneticButton variant="ghost" href="/packages">
+              See packages
+            </MagneticButton>
+          </div>
+        </div>
+      </section>
+    </PageShell>
   )
 }

@@ -234,7 +234,7 @@ export function LiveBuildDemo() {
                     {revealed.has('button') && (
                       <motion.a
                         key="button"
-                        href="/contact"
+                        href="/start"
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
                         className="mt-auto block w-full rounded-full bg-[#4080E0] py-2.5 text-center text-sm font-semibold text-white shadow-[0_10px_30px_-10px_rgba(64,128,224,0.9)] transition-colors hover:bg-[#5090F0]"

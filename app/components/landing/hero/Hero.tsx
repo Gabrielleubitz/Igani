@@ -138,7 +138,7 @@ export function Hero({ onSeeWork, latestProject }: HeroProps) {
           transition={{ duration: 0.8, ease: EASE, delay: 0.7 }}
           className="mt-10 flex flex-wrap items-center gap-3"
         >
-          <MagneticButton href="/contact">
+          <MagneticButton href="/start">
             {c.ctaPrimary[language]}
             <ArrowRight className="h-4 w-4" />
           </MagneticButton>
