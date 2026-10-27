@@ -26,7 +26,8 @@ export function SectionRail({ items }: SectionRailProps) {
       for (const it of items) {
         const el = document.getElementById(it.id)
         if (!el) continue
-        if (el.offsetTop <= probe) current = it.id
+        // Page-relative top: offsetTop is relative to the nearest positioned parent (e.g. a section sheet)
+        if (el.getBoundingClientRect().top + window.scrollY <= probe) current = it.id
       }
       setActive(current)
       setShown(window.scrollY > window.innerHeight * 0.7)
