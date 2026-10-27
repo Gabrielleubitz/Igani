@@ -141,7 +141,7 @@ export function HorizontalProcess() {
   )
 
   return (
-    <section id="process" className="relative scroll-mt-20 border-t border-white/[0.06]">
+    <section id="process" className="relative scroll-mt-20">
       {mounted && isDesktop ? (
         <DesktopTrack heading={heading} steps={steps} rtl={language === 'he'} hint={c.hint[language]} />
       ) : (

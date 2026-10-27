@@ -19,6 +19,8 @@ import { SectionRail } from '@/app/components/landing/fx/SectionRail'
 import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
 import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
+import { SectionSheet } from '@/app/components/funnel-shared/SectionSheet'
+import { ExitDim } from '@/app/components/funnel-shared/ExitDim'
 import { defaultSettings } from '@/data/defaultSettings'
 import { getWebsites, getSettings, getTestimonials, getTeamMembers } from '@/lib/firestore'
 import { Website, SiteSettings, Testimonial, TeamMember } from '@/types'
@@ -89,48 +91,68 @@ export default function HomePage() {
       <SectionRail items={rail} />
       <Header />
 
-      <Hero onSeeWork={scrollToCapabilities} latestProject={latestProject} />
+      {/* Opening chapter: hero + proof strip, with room at the bottom for the first sheet to overlap */}
+      <div className="relative z-0 pb-10">
+        <Hero onSeeWork={scrollToCapabilities} latestProject={latestProject} />
+        <ProofStrip projectsLive={websites.length} founders={team.length} />
+        <ExitDim />
+      </div>
 
-      <ProofStrip projectsLive={websites.length} founders={team.length} />
+      {/* Each chapter is a sheet that slides up over the last, alternating navy surfaces so every section reads as its own stop */}
+      <SectionSheet dimOnExit id="sheet-capabilities" layer={1} fill={false} className="bg-[#081833]">
+        <Capabilities />
+      </SectionSheet>
 
-      <Capabilities />
-
-      <FoundersStatement team={team} />
-
-      <HorizontalProcess />
+      <SectionSheet dimOnExit id="sheet-process" layer={2} fill={false} className="bg-[#030814]">
+        <FoundersStatement team={team} />
+        <HorizontalProcess />
+      </SectionSheet>
 
       {/* Work */}
-      <section id="portfolio" className="relative scroll-mt-20 border-t border-white/[0.06] py-20 sm:py-28">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading
-            index={work.index}
-            label={work.label[language]}
-            aside={workAside}
-            title={work.title[language]}
-            className="mb-12"
-          />
-          <div className="mb-6 hidden sm:block [@media(pointer:coarse)]:!hidden">
-            <SideNote arrow="down">{work.note[language]}</SideNote>
+      <SectionSheet dimOnExit id="sheet-portfolio" layer={3} fill={false} className="bg-[#081833]">
+        <section id="portfolio" className="relative scroll-mt-20 py-20 sm:py-28">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+            <SectionHeading
+              index={work.index}
+              label={work.label[language]}
+              aside={workAside}
+              title={work.title[language]}
+              className="mb-12"
+            />
+            <div className="mb-6 hidden sm:block [@media(pointer:coarse)]:!hidden">
+              <SideNote arrow="down">{work.note[language]}</SideNote>
+            </div>
           </div>
-        </div>
-        {portfolioWebsites.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '-80px' }}
-            transition={{ duration: 0.7 }}
-            className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8"
-          >
-            <PortfolioInfiniteScroll websites={portfolioWebsites} />
-          </motion.div>
-        )}
-      </section>
+          {portfolioWebsites.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.7 }}
+              className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8"
+            >
+              <PortfolioInfiniteScroll websites={portfolioWebsites} />
+            </motion.div>
+          )}
+        </section>
+      </SectionSheet>
 
-      <WhySection settings={settings} testimonials={featuredTestimonials} />
+      <SectionSheet dimOnExit id="sheet-about" layer={4} fill={false} className="bg-[#030814]">
+        <WhySection settings={settings} testimonials={featuredTestimonials} />
+      </SectionSheet>
 
-      <ContactSection settings={settings} />
+      <SectionSheet
+        id="sheet-contact"
+        layer={5}
+        fill={false}
+        className="bg-[radial-gradient(120%_70%_at_50%_0%,#1d4fa3_0%,#0c2552_45%,#061225_100%)]"
+      >
+        <ContactSection settings={settings} />
+      </SectionSheet>
 
+      <div className="relative z-[6] bg-[#030814] pt-4">
       <Footer />
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { ReactNode, useRef } from 'react'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { useReducedMotionSafe } from './useReducedMotionSafe'
+import { ExitDim } from './ExitDim'
 
 type SectionSheetProps = {
   id: string
@@ -12,6 +13,8 @@ type SectionSheetProps = {
   className?: string
   /** Fill most of a screen and centre the content: one idea per screen. */
   fill?: boolean
+  /** Darken this sheet as the next one covers it. */
+  dimOnExit?: boolean
   children: ReactNode
 }
 
@@ -20,7 +23,7 @@ type SectionSheetProps = {
  * As it arrives it grows from 94% to full width and its top corners square
  * off when it reaches the top of the screen, so every section clearly lands.
  */
-export function SectionSheet({ id, layer, className = '', fill = true, children }: SectionSheetProps) {
+export function SectionSheet({ id, layer, className = '', fill = true, dimOnExit = false, children }: SectionSheetProps) {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotionSafe()
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'start start'] })
@@ -41,6 +44,7 @@ export function SectionSheet({ id, layer, className = '', fill = true, children 
       } ${className}`}
     >
       {children}
+      {dimOnExit && <ExitDim />}
     </motion.div>
   )
 }
