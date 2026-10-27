@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { scrollToSection } from '@/app/components/funnel-shared/SectionSheet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
 import { HamburgerMenu } from '@/components/HamburgerMenu'
@@ -38,6 +39,29 @@ export default function Header({
   onBackClick
 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  // Home page only: SectionRail broadcasts the current chapter; while scrolling down the
+  // centre of the pill shows it in place of the nav links (restored on scroll-up or hover)
+  const [chapter, setChapter] = useState<{ index: string; label: string } | null>(null)
+  const [scrollingDown, setScrollingDown] = useState(false)
+  const [navHover, setNavHover] = useState(false)
+
+  useEffect(() => {
+    const onChapter = (e: Event) => setChapter((e as CustomEvent).detail)
+    let lastY = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      if (Math.abs(y - lastY) > 6) setScrollingDown(y > lastY)
+      lastY = y
+    }
+    window.addEventListener('igani:chapter', onChapter)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('igani:chapter', onChapter)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [])
+
+  const showChapter = !!chapter && scrollingDown && !navHover
   const { language: currentLanguage } = useLanguage()
   const { settings } = useSiteSettings()
 
@@ -49,7 +73,7 @@ export default function Header({
 
   const scrollToSection = (sectionId: string) => {
     if (window.location.pathname === '/') {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
+      scrollToSection(sectionId)
     } else {
       window.location.href = `/#${sectionId}`
     }
@@ -107,7 +131,24 @@ export default function Header({
           </div>
 
           {/* CENTRE — nav links (desktop only), centered in the bar via 1fr / auto / 1fr grid */}
-          <div className="hidden min-w-0 lg:flex lg:justify-center lg:gap-1 lg:justify-self-center">
+          <div
+            className="relative hidden min-w-0 lg:flex lg:justify-center lg:gap-1 lg:justify-self-center"
+            onMouseEnter={() => setNavHover(true)}
+            onMouseLeave={() => setNavHover(false)}
+          >
+            {chapter && (
+              <span
+                aria-live="polite"
+                className={`pointer-events-none absolute inset-0 flex items-center justify-center gap-2 whitespace-nowrap text-sm text-white transition-opacity duration-[250ms] ease-out ${
+                  showChapter ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <span className="font-display text-lg leading-none text-[#9ec0f5]">{chapter.index}</span>
+                <span className="text-white/40">—</span>
+                {chapter.label}
+              </span>
+            )}
+            <div className={`flex gap-1 transition-opacity duration-[250ms] ease-out ${showChapter ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
             {navigationItems.map(item =>
               item.type === 'page' ? (
                 <a
@@ -129,6 +170,7 @@ export default function Header({
                 </button>
               )
             )}
+            </div>
           </div>
 
           {/* RIGHT — language toggle + CTA (desktop) / hamburger (mobile) */}

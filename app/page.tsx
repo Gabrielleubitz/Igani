@@ -13,14 +13,13 @@ import { FoundersStatement } from '@/app/components/landing/FoundersStatement'
 import { HorizontalProcess } from '@/app/components/landing/HorizontalProcess'
 import { WhySection } from '@/app/components/landing/WhySection'
 import { ContactSection } from '@/app/components/landing/ContactSection'
-import { SectionHeading } from '@/app/components/landing/fx/SectionHeading'
 import { SideNote } from '@/app/components/landing/fx/SideNote'
 import { SectionRail } from '@/app/components/landing/fx/SectionRail'
 import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
 import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
-import { SectionSheet } from '@/app/components/funnel-shared/SectionSheet'
-import { ExitDim } from '@/app/components/funnel-shared/ExitDim'
+import { HoldStill, SectionSheet, scrollToSection } from '@/app/components/funnel-shared/SectionSheet'
+import { ChapterBody, ChapterOpener } from '@/app/components/landing/fx/ChapterOpener'
 import { defaultSettings } from '@/data/defaultSettings'
 import { getWebsites, getSettings, getTestimonials, getTeamMembers } from '@/lib/firestore'
 import { Website, SiteSettings, Testimonial, TeamMember } from '@/types'
@@ -67,7 +66,7 @@ export default function HomePage() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]?.title
 
   const scrollToCapabilities = () => {
-    document.getElementById('capabilities')?.scrollIntoView({ behavior: 'smooth' })
+    scrollToSection('capabilities')
   }
 
   const work = landingContent.work
@@ -91,67 +90,74 @@ export default function HomePage() {
       <SectionRail items={rail} />
       <Header />
 
-      {/* Opening chapter: hero + proof strip, with room at the bottom for the first sheet to overlap */}
-      <div className="relative z-0 pb-10">
+      {/* Opening chapter: hero + proof strip. Holds still for its last screen so the first sheet visibly covers it */}
+      <HoldStill className="relative z-0 pb-10">
         <Hero onSeeWork={scrollToCapabilities} latestProject={latestProject} />
         <ProofStrip projectsLive={websites.length} founders={team.length} />
-        <ExitDim />
-      </div>
+      </HoldStill>
 
-      {/* Each chapter is a sheet that slides up over the last, alternating navy surfaces so every section reads as its own stop */}
-      <SectionSheet dimOnExit id="sheet-capabilities" layer={1} fill={false} className="bg-[#081833]">
+      {/* Chapters: each sheet slides up over the last one, which holds still and darkens beneath it.
+          Surfaces alternate navy / deep navy, with one light chapter (process) as the break and blue to close. */}
+      <SectionSheet hold veilPrevious id="sheet-capabilities" layer={1} fill={false} className="bg-[#081833]">
         <Capabilities />
       </SectionSheet>
 
-      <SectionSheet dimOnExit id="sheet-process" layer={2} fill={false} className="bg-[#030814]">
+      <SectionSheet hold veilPrevious id="sheet-founders" layer={2} fill={false} className="bg-[#030814]">
         <FoundersStatement team={team} />
+      </SectionSheet>
+
+      <SectionSheet hold veilPrevious id="sheet-process" layer={3} fill={false} className="bg-[#EEF1F6]">
         <HorizontalProcess />
       </SectionSheet>
 
       {/* Work */}
-      <SectionSheet dimOnExit id="sheet-portfolio" layer={3} fill={false} className="bg-[#081833]">
-        <section id="portfolio" className="relative scroll-mt-20 py-20 sm:py-28">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <SectionHeading
-              index={work.index}
-              label={work.label[language]}
-              aside={workAside}
-              title={work.title[language]}
-              className="mb-12"
-            />
-            <div className="mb-6 hidden sm:block [@media(pointer:coarse)]:!hidden">
+      <SectionSheet hold veilPrevious id="sheet-portfolio" layer={4} fill={false} className="bg-[#081833]">
+        <section id="portfolio" className="relative scroll-mt-20">
+          <ChapterOpener index={work.index} label={work.label[language]} aside={workAside} title={work.title[language]}>
+            <div className="mt-8 hidden sm:block [@media(pointer:coarse)]:!hidden">
               <SideNote arrow="down">{work.note[language]}</SideNote>
             </div>
-          </div>
-          {portfolioWebsites.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '-80px' }}
-              transition={{ duration: 0.7 }}
-              className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8"
-            >
-              <PortfolioInfiniteScroll websites={portfolioWebsites} />
-            </motion.div>
-          )}
+          </ChapterOpener>
+          <ChapterBody className="bg-[#081833] pb-24 pt-14 sm:pb-32 sm:pt-20">
+            {/* Full bleed: the carousel runs edge to edge */}
+            {portfolioWebsites.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.7 }}
+              >
+                <PortfolioInfiniteScroll websites={portfolioWebsites} />
+              </motion.div>
+            )}
+          </ChapterBody>
         </section>
       </SectionSheet>
 
-      <SectionSheet dimOnExit id="sheet-about" layer={4} fill={false} className="bg-[#030814]">
+      <SectionSheet hold veilPrevious id="sheet-about" layer={5} fill={false} className="bg-[#030814]">
         <WhySection settings={settings} testimonials={featuredTestimonials} />
       </SectionSheet>
 
       <SectionSheet
+        hold
+        veilPrevious
         id="sheet-contact"
-        layer={5}
+        layer={6}
         fill={false}
-        className="bg-[radial-gradient(120%_70%_at_50%_0%,#1d4fa3_0%,#0c2552_45%,#061225_100%)]"
+        className="bg-[radial-gradient(120%_70%_at_50%_0%,#1d4fa3_0%,#0c2552_45%,#0a1f47_100%)]"
       >
         <ContactSection settings={settings} />
       </SectionSheet>
 
-      <div className="relative z-[6] bg-[#030814] pt-4">
+      <div className="relative z-[7] -mt-6 rounded-t-[32px] bg-[#030814] pt-6 shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.5)]">
       <Footer />
+        {/* Sign-off: the page clearly ends here */}
+        <div
+          aria-hidden
+          className="select-none overflow-hidden pb-[1vw] pt-6 text-center text-[20vw] font-semibold leading-[0.8] tracking-[-0.06em] text-[#081833]"
+        >
+          Igani
+        </div>
       </div>
     </div>
   )

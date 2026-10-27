@@ -12,7 +12,7 @@ import { SiteSettings } from '@/types'
 import PhoneInput, { validatePhone } from '@/components/PhoneInput'
 import { ContactInquirySuccess } from '@/components/ContactInquirySuccess'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
-import { SectionHeading } from './fx/SectionHeading'
+import { ChapterBody, ChapterOpener } from './fx/ChapterOpener'
 import { SpotlightCard } from './fx/SpotlightCard'
 
 const INPUT =
@@ -83,21 +83,21 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
   ]
 
   return (
-    <section id="contact" className="relative scroll-mt-20 py-20 sm:py-28">
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -bottom-40 right-0 h-[600px] w-[600px] rounded-full bg-[#4080E0]/12 blur-[160px]" />
+    <section id="contact" className="relative scroll-mt-20">
+      <ChapterOpener
+        index={c.index}
+        label={c.label[language]}
+        aside={c.aside[language]}
+        title={c.title[language]}
+        sub={c.sub[language]}
+      />
+
+      <ChapterBody className="bg-[#0a1f47] pb-24 pt-16 sm:pb-28 sm:pt-20">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-[32px]">
+        <div className="absolute -bottom-40 right-0 h-[600px] w-[600px] rounded-full bg-[#4080E0]/20 blur-[160px]" />
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <SectionHeading
-          index={c.index}
-          label={c.label[language]}
-          aside={c.aside[language]}
-          title={c.title[language]}
-          sub={c.sub[language]}
-          className="mb-12"
-        />
-
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_1.5fr]">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -247,6 +247,7 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
           </motion.div>
         </div>
       </div>
+      </ChapterBody>
     </section>
   )
 }

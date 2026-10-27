@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { scrollToSection } from '@/app/components/funnel-shared/SectionSheet'
 
 export type RailItem = { id: string; index: string; label: string }
 
@@ -46,10 +47,18 @@ export function SectionRail({ items }: SectionRailProps) {
   }, [items])
 
   const jump = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    scrollToSection(id)
   }
 
   const activeIndex = Math.max(0, items.findIndex((it) => it.id === active))
+  const activeItem = items.find((it) => it.id === active) ?? null
+
+  // Tell the header which chapter we're in, so it can show it while scrolling
+  useEffect(() => {
+    const detail = activeItem ? { index: activeItem.index, label: activeItem.label } : null
+    window.dispatchEvent(new CustomEvent('igani:chapter', { detail }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeItem?.index, activeItem?.label])
 
   return (
     <motion.nav
@@ -68,6 +77,21 @@ export function SectionRail({ items }: SectionRailProps) {
           animate={{ top: 8 + activeIndex * 38 }}
           transition={{ type: 'spring', stiffness: 380, damping: 32 }}
         />
+        {/* Active chapter's name, always shown beside its numeral */}
+        {activeItem && (
+          <motion.span
+            key={activeItem.id}
+            aria-hidden
+            initial={{ opacity: 0, x: -6 }}
+            animate={{ opacity: 1, x: 0, top: 8 + activeIndex * 38 }}
+            transition={{ duration: 0.3 }}
+            className="pointer-events-none absolute left-full ml-3 hidden h-9 items-center min-[1600px]:flex"
+          >
+            <span className="whitespace-nowrap rounded-full border border-white/10 bg-[#061225]/85 px-3 py-1 text-xs text-[#9FB0CC] backdrop-blur-xl">
+              {activeItem.label}
+            </span>
+          </motion.span>
+        )}
         {items.map((it) => {
           const on = active === it.id
           return (
@@ -86,9 +110,10 @@ export function SectionRail({ items }: SectionRailProps) {
               >
                 {it.index}
               </span>
-              {/* Hover-only tooltip; sits in the margin, never over content */}
+              {/* Hover-only tooltip for the other chapters; sits in the margin, never over content */}
               <span
                 role="presentation"
+                hidden={on}
                 className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 translate-x-1 whitespace-nowrap rounded-full border border-white/10 bg-[#061225]/90 px-3 py-1.5 text-xs text-white/85 opacity-0 shadow-lg backdrop-blur-xl transition-all duration-200 group-hover:translate-x-0 group-hover:opacity-100 group-focus-visible:translate-x-0 group-focus-visible:opacity-100"
               >
                 {it.label}
