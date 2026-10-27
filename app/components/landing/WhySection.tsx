@@ -13,6 +13,8 @@ import { ChapterBody, ChapterOpener } from './fx/ChapterOpener'
 type WhySectionProps = {
   settings: SiteSettings
   testimonials: Testimonial[]
+  /** Reserve the testimonial block's space until data arrives, so the page doesn't jump */
+  testimonialsLoading?: boolean
 }
 
 /** One testimonial at a time, set large in the serif, with a small switcher. */
@@ -87,7 +89,7 @@ function Testimonials({ testimonials }: { testimonials: Testimonial[] }) {
   )
 }
 
-export function WhySection({ settings, testimonials }: WhySectionProps) {
+export function WhySection({ settings, testimonials, testimonialsLoading = false }: WhySectionProps) {
   const { language } = useLanguage()
   const home = siteContent.home
 
@@ -140,6 +142,7 @@ export function WhySection({ settings, testimonials }: WhySectionProps) {
             </ol>
           </div>
 
+          {testimonialsLoading && <div aria-hidden className="mt-24 h-[470px] sm:mt-32" />}
           {testimonials.length > 0 && <Testimonials testimonials={testimonials} />}
         </div>
       </ChapterBody>

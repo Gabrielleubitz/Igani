@@ -32,6 +32,8 @@ export default function HomePage() {
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
   const [websites, setWebsites] = useState<Website[]>([])
   const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  // Until data arrives, reserve the space it will take so held sections don't jump
+  const [dataLoaded, setDataLoaded] = useState(false)
   const [team, setTeam] = useState<TeamMember[]>([])
 
   useEffect(() => {
@@ -51,6 +53,8 @@ export default function HomePage() {
         console.error('Error loading data from Firebase:', error)
         setWebsites([])
         setTestimonials([])
+      } finally {
+        setDataLoaded(true)
       }
     }
     loadData()
@@ -120,6 +124,7 @@ export default function HomePage() {
           </ChapterOpener>
           <ChapterBody className="bg-[#081833] pb-24 pt-14 sm:pb-32 sm:pt-20">
             {/* Full bleed: the carousel runs edge to edge */}
+            {!dataLoaded && <div aria-hidden className="h-[328px]" />}
             {portfolioWebsites.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 24 }}
@@ -135,11 +140,11 @@ export default function HomePage() {
       </SectionSheet>
 
       <SectionSheet hold veilPrevious id="sheet-about" layer={5} fill={false} className="bg-[#030814]">
-        <WhySection settings={settings} testimonials={featuredTestimonials} />
+        <WhySection settings={settings} testimonials={featuredTestimonials} testimonialsLoading={!dataLoaded} />
       </SectionSheet>
 
+      {/* Last chapter doesn't hold: nothing comes after it to cover it, and holding would let the footer cover the form */}
       <SectionSheet
-        hold
         veilPrevious
         id="sheet-contact"
         layer={6}

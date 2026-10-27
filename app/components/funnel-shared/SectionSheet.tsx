@@ -23,24 +23,27 @@ type SectionSheetProps = {
   children: ReactNode
 }
 
-/** `top` for a sticky element whose bottom should stop at the bottom of the viewport. */
-export function useHoldTop(ref: React.RefObject<HTMLElement>, enabled: boolean) {
-  const [top, setTop] = useState(0)
+/**
+ * Measures an element's height so it can be held with
+ * `top: min(0px, 100svh - height)` — its last screen pinned to the bottom of
+ * the viewport. Uses the small viewport unit rather than window.innerHeight,
+ * so mobile toolbars showing/hiding never shift a held section.
+ */
+export function useHeight(ref: React.RefObject<HTMLElement>, enabled: boolean) {
+  const [height, setHeight] = useState(0)
   useEffect(() => {
     const el = ref.current
     if (!enabled || !el) return
-    const measure = () => setTop(Math.min(0, window.innerHeight - el.offsetHeight))
+    const measure = () => setHeight(el.offsetHeight)
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(el)
-    window.addEventListener('resize', measure)
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', measure)
-    }
+    return () => ro.disconnect()
   }, [ref, enabled])
-  return top
+  return height
 }
+
+const holdTop = (height: number) => `min(0px, calc(100svh - ${height}px))`
 
 /**
  * A section rendered as a rounded sheet that rides up over the previous one.
@@ -58,22 +61,20 @@ export function SectionSheet({
 }: SectionSheetProps) {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotionSafe()
-  const holdTop = useHoldTop(ref, hold && !reduce)
+  const holding = hold && !reduce
+  const height = useHeight(ref, holding)
   const { scrollYProgress } = useScroll({ target: ref, offset: hold ? ['start end', 'start 0.35'] : ['start end', 'start start'] })
   const scale = useTransform(scrollYProgress, hold ? [0, 1] : [0, 0.7], [0.94, 1])
   const radius = useTransform(scrollYProgress, hold ? [0.55, 1] : [0.75, 1], [40, 0])
   const veil = useTransform(scrollYProgress, [0, 1], [0, 0.7])
 
-  return (
-    <>
-    {/* In-flow marker: where this sheet really sits, even while it's held (see scrollToSection) */}
-    {hold && <div data-hold-marker aria-hidden />}
+  const sheet = (
     <div
       ref={ref}
       id={id}
       data-hold-sheet={hold ? '' : undefined}
-      style={{ zIndex: layer, ...(hold && !reduce ? { position: 'sticky', top: holdTop } : {}) }}
-      className="relative -mt-10"
+      style={{ zIndex: layer, ...(holding ? { position: 'sticky', top: holdTop(height) } : {}) }}
+      className={`relative ${holding ? '' : '-mt-10'}`}
     >
       {veilPrevious && !reduce && (
         <motion.div
@@ -91,26 +92,39 @@ export function SectionSheet({
         {children}
       </motion.div>
     </div>
-    </>
+  )
+
+  if (!holding) return sheet
+
+  // The hold is bounded: the wrapper gives the sheet exactly one extra screen to
+  // stay pinned (the runway), and its negative bottom margin pulls the next sheet
+  // up over that screen. After it, the covered sheet scrolls off the page like
+  // normal content, so its animations pause instead of running underneath forever.
+  return (
+    <div data-hold-wrap="" className="relative -mt-10 mb-[-100svh]" style={{ zIndex: layer }}>
+      {sheet}
+      <div aria-hidden className="h-[100svh]" />
+    </div>
   )
 }
 
 /**
  * Smooth-scroll to a section by id. Held sheets are `position: sticky`, so a
- * section inside one that has already been passed reports its held position,
- * not its real one, and `scrollIntoView` lands in the wrong place. Measure from
- * the sheet's in-flow marker instead.
+ * section inside one that is currently held reports its held position, not its
+ * real one, and `scrollIntoView` lands in the wrong place. Measure from the
+ * sheet's in-flow wrapper instead.
  */
 export function scrollToSection(id: string, behavior: ScrollBehavior = 'smooth') {
   const el = document.getElementById(id)
   if (!el) return
   const sheet = el.closest<HTMLElement>('[data-hold-sheet]')
-  const marker = sheet?.previousElementSibling as HTMLElement | null
-  if (!sheet || !marker?.hasAttribute('data-hold-marker')) {
+  const wrap = sheet?.parentElement
+  if (!sheet || !wrap?.hasAttribute('data-hold-wrap')) {
     el.scrollIntoView({ behavior, block: 'start' })
     return
   }
-  const sheetTop = marker.getBoundingClientRect().top + window.scrollY + parseFloat(getComputedStyle(sheet).marginTop)
+  // The wrapper never sticks and the sheet sits at its very top, so it marks where the sheet really is
+  const sheetTop = wrap.getBoundingClientRect().top + window.scrollY
   const offsetInSheet = el.getBoundingClientRect().top - sheet.getBoundingClientRect().top
   const scrollMargin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0
   window.scrollTo({ top: sheetTop + offsetInSheet - scrollMargin, behavior })
@@ -120,10 +134,14 @@ export function scrollToSection(id: string, behavior: ScrollBehavior = 'smooth')
 export function HoldStill({ className = '', children }: { className?: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotionSafe()
-  const top = useHoldTop(ref, !reduce)
+  const height = useHeight(ref, !reduce)
+  if (reduce) return <div className={className}>{children}</div>
   return (
-    <div ref={ref} style={reduce ? undefined : { position: 'sticky', top }} className={className}>
-      {children}
+    <div className="relative mb-[-100svh]">
+      <div ref={ref} style={{ position: 'sticky', top: holdTop(height) }} className={className}>
+        {children}
+      </div>
+      <div aria-hidden className="h-[100svh]" />
     </div>
   )
 }
