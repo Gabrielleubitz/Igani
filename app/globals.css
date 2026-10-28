@@ -326,3 +326,10 @@
     .elegant-marquee { animation: none; }
   }
 }
+
+/* Funnels "Our work" gallery: a full-page screenshot scrolling itself inside its frame */
+@keyframes work-scroll {
+  0%, 8% { background-position: 50% 0%; }
+  46%, 54% { background-position: 50% 100%; }
+  92%, 100% { background-position: 50% 0%; }
+}

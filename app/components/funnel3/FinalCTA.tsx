@@ -6,6 +6,7 @@ import { ArrowRight, CheckCircle2, Star } from 'lucide-react'
 import { getTestimonials } from '@/lib/firestore'
 import { Testimonial } from '@/types'
 import { SideNote } from '@/app/components/landing/fx/SideNote'
+import { WorkStrip } from '@/app/components/funnel-shared/WorkShowcase'
 import { SettleHeadline } from '@/app/components/funnel-shared/SettleHeadline'
 
 const MARQUEE = 'eat with your eyes · convert with style · '
@@ -85,7 +86,7 @@ export function FinalCTA() {
         cue={<SideNote arrow="down" className="!text-white/85">your turn</SideNote>}
       >
         <div className="mb-8 flex items-baseline justify-center gap-3 text-[13px] text-white/70">
-          <span className="font-display text-lg leading-none text-white">04</span>
+          <span className="font-display text-lg leading-none text-white">05</span>
           <span>The bottom line</span>
         </div>
         <h2 className="border-none pb-0 text-balance text-6xl font-semibold leading-[0.96] tracking-[-0.04em] text-white sm:text-8xl lg:text-[9rem]">
@@ -115,6 +116,8 @@ export function FinalCTA() {
             Drop your URL and number. We&rsquo;ll record a 3-minute video teardown of your current site and text it to you
             within 24 hours.
           </p>
+
+          <WorkStrip className="mt-8" labelClass="text-white/70" frameClass="border-white/20" />
 
           {quote && (
             <figure className="mx-auto mt-8 max-w-md rounded-2xl border border-white/15 bg-white/[0.08] p-5 text-left backdrop-blur-md lg:mx-0">

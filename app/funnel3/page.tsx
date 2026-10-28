@@ -13,6 +13,7 @@ import { displaySerif } from '@/app/components/landing/fx/fonts'
 import { Hero } from '@/app/components/funnel3/Hero'
 import { CompareSlider } from '@/app/components/funnel3/CompareSlider'
 import { Proof } from '@/app/components/funnel3/Proof'
+import { OurWork } from '@/app/components/funnel3/OurWork'
 import { WhatWeBuild } from '@/app/components/funnel3/WhatWeBuild'
 import { FinalCTA } from '@/app/components/funnel3/FinalCTA'
 import { SectionSheet } from '@/app/components/funnel-shared/SectionSheet'
@@ -24,8 +25,9 @@ const scrollToForm = scrollTo('build-form')
 const RAIL = [
   { id: 'reason', index: '01', label: 'The reason' },
   { id: 'proof', index: '02', label: 'The proof' },
-  { id: 'build-what', index: '03', label: 'What we build' },
-  { id: 'build', index: '04', label: 'The bottom line' },
+  { id: 'work', index: '03', label: 'Our work' },
+  { id: 'build-what', index: '04', label: 'What we build' },
+  { id: 'build', index: '05', label: 'The bottom line' },
 ]
 
 const PROGRESS = RAIL.map((r) => ({ id: `sheet-${r.id}`, label: r.label }))
@@ -124,12 +126,15 @@ export default function Funnel3Page() {
         <SectionSheet id="sheet-proof" layer={2} fill={false} className="bg-[#EEF3FC]">
           <Proof />
         </SectionSheet>
-        <SectionSheet id="sheet-build-what" layer={3} className="bg-[#030814]">
+        <SectionSheet id="sheet-work" layer={3} fill={false} className="bg-[#061225]">
+          <OurWork onWant={scrollToForm} />
+        </SectionSheet>
+        <SectionSheet id="sheet-build-what" layer={4} className="bg-[#030814]">
           <WhatWeBuild />
         </SectionSheet>
         <SectionSheet
           id="sheet-build"
-          layer={4}
+          layer={5}
           fill={false}
           className="bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]"
         >
@@ -137,7 +142,7 @@ export default function Funnel3Page() {
         </SectionSheet>
       </main>
 
-      <footer className="relative z-[5] bg-[#030814] px-4 pb-28 pt-8 text-center text-[13px] text-white/45 lg:pb-8">
+      <footer className="relative z-[6] bg-[#030814] px-4 pb-28 pt-8 text-center text-[13px] text-white/45 lg:pb-8">
         © 2026 IGANI. All rights reserved. ·{' '}
         <a href="mailto:info@igani.co" className="text-[#9ec0f5] hover:text-white">
           info@igani.co
