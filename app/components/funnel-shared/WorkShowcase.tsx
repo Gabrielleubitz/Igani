@@ -41,14 +41,41 @@ const PHONE_RATIO = 844 / 390
 
 /**
  * A screenshot that slowly scrolls itself top-to-bottom and back while `active`,
- * so a full-page capture reads as a live site. Single-screen captures stay still.
+ * so a full-page capture reads as a live site. With a `video` (a recording of
+ * scrolling the real page) it plays that instead, while active.
  */
-function LiveScreen({ src, height, width, frameRatio, active, load }: { src: string; height: number; width: number; frameRatio: number; active: boolean; load: boolean }) {
+function LiveScreen({ shot, width, frameRatio, active, load }: { shot: WorkProject['desktop']; width: number; frameRatio: number; active: boolean; load: boolean }) {
   const reduce = useReducedMotionSafe()
-  const overflow = height / width / frameRatio
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const useVideo = Boolean(shot.video) && !reduce
+
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    if (active && load) v.play().catch(() => {})
+    else v.pause()
+  }, [active, load])
+
+  if (useVideo) {
+    return (
+      <video
+        ref={videoRef}
+        aria-hidden
+        src={load ? shot.video : undefined}
+        poster={load ? shot.src : undefined}
+        muted
+        loop
+        playsInline
+        preload="none"
+        className="absolute inset-0 h-full w-full bg-black/20 object-cover object-top"
+      />
+    )
+  }
+
+  const overflow = shot.height / width / frameRatio
   const scrolls = overflow > 1.15 && !reduce
   const style: CSSProperties = {
-    backgroundImage: load ? `url(${src})` : undefined,
+    backgroundImage: load ? `url(${shot.src})` : undefined,
     backgroundSize: '100% auto',
     backgroundPosition: '50% 0%',
     backgroundRepeat: 'no-repeat',
@@ -73,7 +100,7 @@ function BrowserFrame({ project, theme, active, load }: { project: WorkProject; 
         <span className="w-[42px]" aria-hidden />
       </div>
       <div className="relative" style={{ aspectRatio: '16 / 10' }}>
-        <LiveScreen src={project.desktop.src} height={project.desktop.height} width={1200} frameRatio={BROWSER_RATIO} active={active} load={load} />
+        <LiveScreen shot={project.desktop} width={1200} frameRatio={BROWSER_RATIO} active={active} load={load} />
       </div>
     </div>
   )
@@ -83,7 +110,7 @@ function PhoneFrame({ project, theme, active, load, className = '' }: { project:
   return (
     <div className={`rounded-[16%/7.5%] border bg-[#05070c] p-[2.5%] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.9)] ${theme.frame} ${className}`}>
       <div className="relative overflow-hidden rounded-[13%/6%]" style={{ aspectRatio: '390 / 844' }}>
-        <LiveScreen src={project.mobile.src} height={project.mobile.height} width={600} frameRatio={PHONE_RATIO} active={active} load={load} />
+        <LiveScreen shot={project.mobile} width={600} frameRatio={PHONE_RATIO} active={active} load={load} />
         <span aria-hidden className="absolute left-1/2 top-[1.6%] h-[3.2%] w-[30%] -translate-x-1/2 rounded-full bg-black" />
       </div>
     </div>
@@ -176,8 +203,16 @@ function Lightbox({ project, theme, onClose, onWant }: { project: WorkProject; t
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`mx-auto overflow-hidden rounded-2xl border ${theme.frame} max-w-[420px] md:max-w-5xl`}>
-          <img src={project.mobile.src} alt={`${project.client} on a phone`} className="block w-full md:hidden" />
-          <img src={project.desktop.src} alt={`${project.client} on a computer`} className="hidden w-full md:block" />
+          {project.mobile.video ? (
+            <video src={project.mobile.video} poster={project.mobile.src} autoPlay muted loop playsInline aria-label={`${project.client} on a phone`} className="block w-full md:hidden" />
+          ) : (
+            <img src={project.mobile.src} alt={`${project.client} on a phone`} className="block w-full md:hidden" />
+          )}
+          {project.desktop.video ? (
+            <video src={project.desktop.video} poster={project.desktop.src} autoPlay muted loop playsInline aria-label={`${project.client} on a computer`} className="hidden w-full md:block" />
+          ) : (
+            <img src={project.desktop.src} alt={`${project.client} on a computer`} className="hidden w-full md:block" />
+          )}
         </div>
       </motion.div>
 

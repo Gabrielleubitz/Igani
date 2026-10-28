@@ -3,10 +3,14 @@
  *
  * Screenshots live in /public/work/: `desktop` is 1200px wide and `mobile`
  * 600px wide (390pt phone at 2x). Full-page captures scroll by themselves
- * inside their frames; a single-screen capture just sits still.
+ * inside their frames. Sites whose content only appears as you scroll get a
+ * `video` instead: a recording of scrolling through the page, with the
+ * screenshot as its poster.
  * `accent` tints the glow behind the project while it's on screen.
  * Keep `line` to what we built: no invented numbers.
  */
+type Shot = { src: string; height: number; video?: string }
+
 export type WorkProject = {
   id: string
   client: string
@@ -16,15 +20,15 @@ export type WorkProject = {
   url: string
   /** Shown in the browser frame's address bar */
   domain: string
-  desktop: { src: string; height: number }
-  mobile: { src: string; height: number }
+  desktop: Shot
+  mobile: Shot
   thumb: string
   accent: string
 }
 
-const shot = (id: string, desktopHeight: number, mobileHeight: number) => ({
-  desktop: { src: `/work/${id}-desktop.webp`, height: desktopHeight },
-  mobile: { src: `/work/${id}-mobile.webp`, height: mobileHeight },
+const shot = (id: string, desktopHeight: number, mobileHeight: number, video = false) => ({
+  desktop: { src: `/work/${id}-desktop.webp`, height: desktopHeight, ...(video && { video: `/work/${id}-desktop.mp4` }) },
+  mobile: { src: `/work/${id}-mobile.webp`, height: mobileHeight, ...(video && { video: `/work/${id}-mobile.mp4` }) },
   thumb: `/work/${id}-thumb.webp`,
 })
 
