@@ -41,7 +41,7 @@ export const workProjects: WorkProject[] = [
     line: 'A bold, booking-first site: address, phone and “Book now” before you scroll.',
     url: 'https://www.cryotherapyrejuvenate.com/',
     domain: 'cryotherapyrejuvenate.com',
-    ...shot('cryo', 750, 1298),
+    ...shot('cryo', 750, 1298, true),
     accent: '#2f6fff',
   },
   {
@@ -72,7 +72,7 @@ export const workProjects: WorkProject[] = [
     line: 'Appointments, clients and websites for small businesses, in one system.',
     url: 'https://caleno.co',
     domain: 'caleno.co',
-    ...shot('caleno', 750, 1298),
+    ...shot('caleno', 750, 1298, true),
     accent: '#2fa3b8',
   },
   {
