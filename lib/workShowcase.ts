@@ -34,17 +34,6 @@ const shot = (id: string, desktopHeight: number, mobileHeight: number, video = f
 
 export const workProjects: WorkProject[] = [
   {
-    id: 'cryo',
-    client: 'Cryotherapy Rejuvenate',
-    kind: 'Wellness clinic',
-    location: 'Dickson City, PA',
-    line: 'A bold, booking-first site: address, phone and “Book now” before you scroll.',
-    url: 'https://www.cryotherapyrejuvenate.com/',
-    domain: 'cryotherapyrejuvenate.com',
-    ...shot('cryo', 750, 1298, true),
-    accent: '#2f6fff',
-  },
-  {
     id: 'gabai',
     client: 'Gabai Real Estate',
     kind: 'Real estate',
@@ -66,16 +55,6 @@ export const workProjects: WorkProject[] = [
     accent: '#d9b89a',
   },
   {
-    id: 'caleno',
-    client: 'Caleno',
-    kind: 'Booking & business platform',
-    line: 'Appointments, clients and websites for small businesses, in one system.',
-    url: 'https://caleno.co',
-    domain: 'caleno.co',
-    ...shot('caleno', 750, 1298, true),
-    accent: '#2fa3b8',
-  },
-  {
     id: 'callmap',
     client: 'Callmap.ai',
     kind: 'AI software',
@@ -84,5 +63,26 @@ export const workProjects: WorkProject[] = [
     domain: 'callmap.ai',
     ...shot('callmap', 3750, 5193),
     accent: '#14c4e4',
+  },
+  {
+    id: 'cryo',
+    client: 'Cryotherapy Rejuvenate',
+    kind: 'Wellness clinic',
+    location: 'Dickson City, PA',
+    line: 'A bold, booking-first site: address, phone and “Book now” before you scroll.',
+    url: 'https://www.cryotherapyrejuvenate.com/',
+    domain: 'cryotherapyrejuvenate.com',
+    ...shot('cryo', 750, 1298, true),
+    accent: '#2f6fff',
+  },
+  {
+    id: 'caleno',
+    client: 'Caleno',
+    kind: 'Booking & business platform',
+    line: 'Appointments, clients and websites for small businesses, in one system.',
+    url: 'https://caleno.co',
+    domain: 'caleno.co',
+    ...shot('caleno', 750, 1298, true),
+    accent: '#2fa3b8',
   },
 ]

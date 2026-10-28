@@ -29,7 +29,7 @@ export function OurWork({ onWant }: { onWant: () => void }) {
           label="Our work"
           aside="tap any site to look closer"
           title="Real businesses. *Live today.*"
-          sub="Every one of these was designed and built by us, for owners who were tired of a site that didn’t sell them."
+          sub="A few examples of the sites we’ve designed and built, for owners who were tired of a site that didn’t sell them."
           className="mb-12 lg:mb-0"
         />
       </div>

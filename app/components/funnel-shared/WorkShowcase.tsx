@@ -108,8 +108,8 @@ function BrowserFrame({ project, theme, active, load }: { project: WorkProject; 
 
 function PhoneFrame({ project, theme, active, load, className = '' }: { project: WorkProject; theme: WorkTheme; active: boolean; load: boolean; className?: string }) {
   return (
-    <div className={`rounded-[16%/7.5%] border bg-[#05070c] p-[2.5%] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.9)] ${theme.frame} ${className}`}>
-      <div className="relative overflow-hidden rounded-[13%/6%]" style={{ aspectRatio: '390 / 844' }}>
+    <div className={`rounded-[14%/6.5%] border bg-[#05070c] p-[1.2%] shadow-[0_30px_60px_-20px_rgba(0,0,0,0.9)] ${theme.frame} ${className}`}>
+      <div className="relative overflow-hidden rounded-[12.5%/5.8%]" style={{ aspectRatio: '390 / 844' }}>
         <LiveScreen shot={project.mobile} width={600} frameRatio={PHONE_RATIO} active={active} load={load} />
         <span aria-hidden className="absolute left-1/2 top-[1.6%] h-[3.2%] w-[30%] -translate-x-1/2 rounded-full bg-black" />
       </div>

@@ -88,7 +88,7 @@ export default function Funnel3Page() {
             className="inline-flex items-center gap-2 rounded-full bg-[#2f6fd8] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4080E0] sm:px-5"
           >
             <MessageSquare className="h-4 w-4" />
-            Free site teardown
+            Get in touch today
           </button>
         </div>
       </header>
@@ -106,7 +106,7 @@ export default function Funnel3Page() {
               onClick={scrollToForm}
               className="w-full rounded-full bg-white py-3.5 text-sm font-semibold text-[#04101e]"
             >
-              Get my free site teardown
+              Get in touch today
             </button>
           </motion.div>
         )}
