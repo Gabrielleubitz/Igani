@@ -56,6 +56,8 @@ function ModernMock({ name }: { name: string }) {
  */
 export function BeforeAfter({ study, sample = false }: { study: CaseStudy; sample?: boolean }) {
   const frameRef = useRef<HTMLDivElement>(null)
+  // Desktop captures with no phone versions: keep the frame 16:9 on phones too, so the whole screen shows
+  const desktopShotsOnly = Boolean(study.before.image && study.after.image && !study.before.mobileImage && !study.after.mobileImage)
   const [pos, setPos] = useState(50)
   const posRef = useRef(50)
   posRef.current = pos
@@ -156,7 +158,9 @@ export function BeforeAfter({ study, sample = false }: { study: CaseStudy; sampl
           gestureRef.current = null
           setDragging(false)
         }}
-        className={`relative aspect-[4/5] w-full touch-pan-y select-none overflow-hidden rounded-[28px] border border-white/[0.08] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] sm:aspect-[16/9] ${
+        className={`relative w-full touch-pan-y select-none overflow-hidden rounded-[28px] border border-white/[0.08] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] sm:aspect-[16/9] ${
+          desktopShotsOnly ? 'aspect-[16/9]' : 'aspect-[4/5]'
+        } ${
           dragging ? 'cursor-grabbing' : 'cursor-ew-resize'
         }`}
       >
