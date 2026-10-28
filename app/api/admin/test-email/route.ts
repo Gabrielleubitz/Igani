@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { sendAdminNotification } from '@/lib/mailjet'
-
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFY_EMAIL || 'gabrielleubitz@gmail.com'
+import { adminEmails, sendAdminNotification } from '@/lib/mailjet'
 
 export async function POST() {
   try {
@@ -31,7 +29,7 @@ export async function POST() {
     }
     return NextResponse.json({
       success: true,
-      message: `Test email sent to ${ADMIN_EMAIL}`,
+      message: `Test email sent to ${adminEmails.join(', ')}`,
       configured: true
     })
   } catch (error) {
