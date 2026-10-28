@@ -383,18 +383,20 @@ export function WorkGallery({ theme, onWant }: { theme: WorkTheme; onWant: () =>
   const reduce = useReducedMotionSafe()
   const [open, setOpen] = useState<WorkProject | null>(null)
   const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  // Render only the layout for this screen, so the hidden one never loads or plays videos
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const update = () => setWide(mq.matches)
+    update()
+    mq.addEventListener('change', update)
+    return () => mq.removeEventListener('change', update)
+  }, [])
 
   return (
     <>
-      {!reduce && (
-        <div className="hidden lg:block">
-          <PinnedRow theme={theme} onOpen={setOpen} />
-        </div>
-      )}
-      <div className={reduce ? '' : 'lg:hidden'}>
-        <SwipeRow theme={theme} onOpen={setOpen} />
-      </div>
+      {wide && !reduce ? <PinnedRow theme={theme} onOpen={setOpen} /> : <SwipeRow theme={theme} onOpen={setOpen} />}
       {mounted && (
         <AnimatePresence>
           {open && (
