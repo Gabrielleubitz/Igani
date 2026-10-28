@@ -69,7 +69,7 @@ export function SitePreviewFrame({ title, url, viewMode }: SitePreviewFrameProps
   })()
 
   return (
-    <div className={`overflow-hidden rounded-xl border-4 border-slate-700/30 bg-white shadow-2xl ${frameClasses}`}>
+    <div className={`overflow-hidden rounded-2xl border border-white/10 bg-white shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] ${frameClasses}`}>
       <div className="flex h-full flex-col bg-white">
         <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-2.5">
           <div className="flex min-w-0 items-center gap-2 text-xs text-slate-500">
@@ -81,7 +81,7 @@ export function SitePreviewFrame({ title, url, viewMode }: SitePreviewFrameProps
               href={liveUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-cyan-700 hover:bg-cyan-50"
+              className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-[#2A5FB8] hover:bg-[#EEF1F6]"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               <T>Live</T>
@@ -104,7 +104,7 @@ export function SitePreviewFrame({ title, url, viewMode }: SitePreviewFrameProps
         <div className="relative min-h-0 flex-1 bg-white">
           {isLoading && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-white/95 text-slate-600">
-              <Loader2 className="h-8 w-8 animate-spin text-cyan-600" />
+              <Loader2 className="h-8 w-8 animate-spin text-[#4080E0]" />
               <p className="text-sm font-medium"><T>Loading live site…</T></p>
             </div>
           )}
