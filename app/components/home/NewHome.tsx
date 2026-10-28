@@ -9,47 +9,46 @@ import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
 import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
 import { HoldStill, SectionSheet, scrollToSection } from '@/app/components/funnel-shared/SectionSheet'
-import { getPackages, getTeamMembers, getWebsites } from '@/lib/firestore'
+import { getSettings, getTeamMembers, getWebsites } from '@/lib/firestore'
 import { caseStudies } from '@/lib/caseStudies'
-import { Package, TeamMember, Website } from '@/types'
+import { SiteSettings, TeamMember, Website } from '@/types'
+import { defaultSettings } from '@/data/defaultSettings'
+import { ContactSection } from '@/app/components/landing/ContactSection'
 import { HomeHero } from './HomeHero'
 import { WorkSection } from './WorkSection'
 import { WhyCrucial } from './WhyCrucial'
 import { TeamSection } from './TeamSection'
 import { ProcessSection } from './ProcessSection'
-import { OfferSection } from './OfferSection'
-import { ScheduleCall } from './ScheduleCall'
 
 const RAIL = [
   { id: 'work', index: '01', label: 'Our work' },
   { id: 'why', index: '02', label: 'Why it matters' },
   { id: 'team', index: '03', label: 'Our team' },
   { id: 'process', index: '04', label: 'The process' },
-  { id: 'offer', index: '05', label: 'What we offer' },
-  { id: 'schedule', index: '06', label: 'Schedule a call' },
+  { id: 'contact', index: '05', label: 'Get in touch' },
 ]
 
 /**
- * Home page, in the order: hero → our work (before/afters) → why this change
- * is crucial → our team → the process → what we offer → schedule a call.
- * `showSamples` shows the not-yet-real before/after samples (preview only).
+ * Home page, in the order: hero → our work (two before/afters, then every
+ * site we've built) → why this change is crucial → our team → the process →
+ * the contact form.
  */
-export function NewHome({ showSamples = false }: { showSamples?: boolean }) {
+export function NewHome() {
   const [websites, setWebsites] = useState<Website[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
-  const [packages, setPackages] = useState<Package[]>([])
+  const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       getWebsites().catch(() => [] as Website[]),
       getTeamMembers().catch(() => [] as TeamMember[]),
-      getPackages().catch(() => [] as Package[]),
+      getSettings().catch(() => null),
     ])
       .then(([w, t, p]) => {
         setWebsites([...w].sort((a, b) => Number(b.featured) - Number(a.featured) || a.order - b.order))
         setTeam(t.filter((m) => m.published).sort((a, b) => a.order - b.order))
-        setPackages(p.filter((x) => x.published).sort((a, b) => a.order - b.order))
+        if (p) setSettings(p)
       })
       .finally(() => setLoading(false))
   }, [])
@@ -68,7 +67,7 @@ export function NewHome({ showSamples = false }: { showSamples?: boolean }) {
 
       {/* Chapters slide up over one another; one light chapter (why it matters) as the break, blue to close */}
       <SectionSheet hold veilPrevious id="sheet-work" layer={1} fill={false} className="bg-[#081833]">
-        <WorkSection studies={caseStudies} showSamples={showSamples} websites={websites} loading={loading} />
+        <WorkSection studies={caseStudies} websites={websites} loading={loading} />
       </SectionSheet>
 
       <SectionSheet hold veilPrevious id="sheet-why" layer={2} fill={false} className="bg-[#EEF1F6]">
@@ -83,22 +82,18 @@ export function NewHome({ showSamples = false }: { showSamples?: boolean }) {
         <ProcessSection />
       </SectionSheet>
 
-      <SectionSheet hold veilPrevious id="sheet-offer" layer={5} fill={false} className="bg-[#030814]">
-        <OfferSection packages={packages} loading={loading} />
-      </SectionSheet>
-
-      {/* Last chapter doesn't hold, so the footer can never cover it */}
+      {/* Last chapter doesn't hold, so the footer can never cover the form */}
       <SectionSheet
         veilPrevious
-        id="sheet-schedule"
-        layer={6}
+        id="sheet-contact"
+        layer={5}
         fill={false}
-        className="bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]"
+        className="bg-[radial-gradient(120%_70%_at_50%_0%,#1d4fa3_0%,#0c2552_45%,#0a1f47_100%)]"
       >
-        <ScheduleCall />
+        <ContactSection settings={settings} />
       </SectionSheet>
 
-      <div className="relative z-[7] -mt-6 rounded-t-[32px] bg-[#030814] pt-6 shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.5)]">
+      <div className="relative z-[6] -mt-6 rounded-t-[32px] bg-[#030814] pt-6 shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.5)]">
         <Footer />
         {/* Sign-off: the page clearly ends here */}
         <div

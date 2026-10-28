@@ -125,7 +125,10 @@ export function scrollToSection(id: string, behavior: ScrollBehavior = 'smooth')
   }
   // The wrapper never sticks and the sheet sits at its very top, so it marks where the sheet really is
   const sheetTop = wrap.getBoundingClientRect().top + window.scrollY
-  const offsetInSheet = el.getBoundingClientRect().top - sheet.getBoundingClientRect().top
+  // Walk layout offsets rather than comparing screen rects: the sheet may still be
+  // scaled down mid-arrival, which would shrink a screen-measured offset
+  let offsetInSheet = 0
+  for (let n: HTMLElement | null = el; n && n !== sheet; n = n.offsetParent as HTMLElement | null) offsetInSheet += n.offsetTop
   const scrollMargin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0
   window.scrollTo({ top: sheetTop + offsetInSheet - scrollMargin, behavior })
 }
