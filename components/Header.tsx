@@ -249,41 +249,6 @@ export default function Header({
                   )
                 )}
 
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3">
-                  <a
-                    href={instagramHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={nav.instagramAria[currentLanguage]}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="inline-flex min-w-[calc(50%-4px)] flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-pink-400"
-                  >
-                    <Instagram className="h-5 w-5" />
-                    Instagram
-                  </a>
-                  <a
-                    href={tiktokHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={nav.tiktokAria[currentLanguage]}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="inline-flex min-w-[calc(50%-4px)] flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
-                  >
-                    <TikTokGlyph className="h-5 w-5" />
-                    TikTok
-                  </a>
-                  <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={nav.whatsappAria[currentLanguage]}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-emerald-400"
-                  >
-                    <WhatsAppGlyph className="h-5 w-5" />
-                    WhatsApp
-                  </a>
-                </div>
               </div>
             </motion.div>
           )}
