@@ -6,10 +6,20 @@ import { CaseStudy } from './funnelCaseStudy'
  * For each real project: put the two screenshots in /public/case-studies/
  * (same size, ideally 1600×900 desktop captures from the top of the
  * homepage; optional 1080×1350 phone captures), fill in the fields, and
- * set `ready: true`. Only ready entries are shown to visitors; the
- * samples below appear only on /home-preview, marked as samples.
+ * set `ready: true`. Ready entries are shown first; until there are two,
+ * the home page fills the gap with the samples below, marked as samples.
  */
 export const caseStudies: CaseStudy[] = [
+  {
+    ready: true,
+    client: 'Gabai Real Estate',
+    industry: 'Real estate',
+    location: 'Jerusalem',
+    url: 'https://www.gabairealestate.com',
+    before: { image: '/case-studies/gabai-before.jpg', caption: 'Their old site' },
+    after: { image: '/case-studies/gabai-after.jpg', caption: 'The site we built' },
+    results: [],
+  },
   {
     ready: false,
     client: 'Sample project A',
