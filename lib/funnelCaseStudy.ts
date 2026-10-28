@@ -25,13 +25,13 @@ export type CaseStudy = {
 }
 
 export const caseStudy: CaseStudy = {
-  ready: false,
-  client: 'Smith & Co.',
-  industry: 'Home services',
-  location: 'Netanya',
-  url: undefined,
-  before: { image: undefined, caption: 'Their old site' },
-  after: { image: undefined, caption: 'The site we built' },
+  ready: true,
+  client: 'Gabai Real Estate',
+  industry: 'Real estate',
+  location: 'Jerusalem',
+  url: 'https://www.gabairealestate.com',
+  before: { image: '/case-studies/gabai-before.jpg', caption: 'Their old site' },
+  after: { image: '/case-studies/gabai-after.jpg', caption: 'The site we built' },
   results: [],
   quote: undefined,
 }

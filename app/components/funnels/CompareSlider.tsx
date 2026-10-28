@@ -82,6 +82,8 @@ function ModernSite({ name = 'smith/co' }: { name?: string }) {
 
 export function CompareSlider() {
   const cs = useCaseStudy()
+  // Desktop captures with no phone versions: keep the frame 16:9 on phones too, so the whole screen shows
+  const desktopShotsOnly = Boolean(cs?.before.image && cs.after.image && !cs.before.mobileImage && !cs.after.mobileImage)
   const frameRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState(50)
   const [dragging, setDragging] = useState(false)
@@ -136,7 +138,7 @@ export function CompareSlider() {
           onPointerMove={onPointerMove}
           onPointerUp={() => setDragging(false)}
           onPointerCancel={() => setDragging(false)}
-          className={`relative aspect-[4/5] w-full touch-pan-y select-none overflow-hidden rounded-3xl border border-white/10 sm:aspect-[16/9] ${
+          className={`relative ${desktopShotsOnly ? 'aspect-[16/9]' : 'aspect-[4/5]'} w-full touch-pan-y select-none overflow-hidden rounded-3xl border border-white/10 sm:aspect-[16/9] ${
             dragging ? 'cursor-grabbing' : 'cursor-ew-resize'
           }`}
         >

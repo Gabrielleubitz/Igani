@@ -1,4 +1,4 @@
-import { CaseStudy } from './funnelCaseStudy'
+import { CaseStudy, caseStudy } from './funnelCaseStudy'
 
 /**
  * Before/after projects for the home page's "Our work" section.
@@ -10,16 +10,8 @@ import { CaseStudy } from './funnelCaseStudy'
  * the home page fills the gap with the samples below, marked as samples.
  */
 export const caseStudies: CaseStudy[] = [
-  {
-    ready: true,
-    client: 'Gabai Real Estate',
-    industry: 'Real estate',
-    location: 'Jerusalem',
-    url: 'https://www.gabairealestate.com',
-    before: { image: '/case-studies/gabai-before.jpg', caption: 'Their old site' },
-    after: { image: '/case-studies/gabai-after.jpg', caption: 'The site we built' },
-    results: [],
-  },
+  // The same project the funnels show
+  caseStudy,
   {
     ready: false,
     client: 'Sample project A',
