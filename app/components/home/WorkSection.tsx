@@ -19,8 +19,8 @@ export function WorkSection({
   websites: Website[]
   loading: boolean
 }) {
-  // Real projects first; until there are two, fill with the samples
-  const list = [...studies.filter((s) => s.ready), ...studies.filter((s) => !s.ready)].slice(0, 2)
+  // Only real projects; add more in lib/caseStudies.ts as they're ready
+  const list = studies.filter((s) => s.ready).slice(0, 2)
 
   return (
     <section id="work" className="relative scroll-mt-20">
