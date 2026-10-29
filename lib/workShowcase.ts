@@ -17,7 +17,10 @@ export type WorkProject = {
   kind: string
   location?: string
   line: string
-  url: string
+  /** Live site; concept designs have none */
+  url?: string
+  /** A design we made to show a style, not a client's site */
+  concept?: boolean
   /** Shown in the browser frame's address bar */
   domain: string
   desktop: Shot
@@ -86,3 +89,33 @@ export const workProjects: WorkProject[] = [
     accent: '#2fa3b8',
   },
 ]
+
+/** Real estate funnel: the real-estate client first, then concept agent sites in two styles. */
+export const realEstateProjects: WorkProject[] = [
+  { ...workProjects.find((p) => p.id === 'gabai')!, line: 'From a dated template to a premium showcase for high-end Jerusalem properties.' },
+  {
+    id: 'lux',
+    client: 'Elena Marlowe',
+    kind: 'Luxury agent',
+    location: 'Malibu to Bel Air',
+    line: 'Listing-first and editorial: MLS search on the first screen, featured homes, neighborhood pages and a private valuation form.',
+    domain: 'igani.co/concepts/luxury',
+    concept: true,
+    ...shot('lux', 2973, 5193),
+    accent: '#b89b6a',
+  },
+  {
+    id: 'fam',
+    client: 'The Harper Home Team',
+    kind: 'Family-home team',
+    location: 'Cedar Park, TX',
+    line: 'Warm and local: school-zone search, new listings, a “What’s my home worth?” form front and centre, and the whole team.',
+    domain: 'igani.co/concepts/family',
+    concept: true,
+    ...shot('fam', 2608, 5193),
+    accent: '#2f6b4f',
+  },
+]
+
+/** The rest of our work, shown small as credibility on the real estate funnel. */
+export const alsoTrustedBy: WorkProject[] = workProjects.filter((p) => p.id !== 'gabai')

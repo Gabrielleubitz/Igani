@@ -33,6 +33,8 @@ export type WorkTheme = {
   panel: string
   /** Name font, e.g. a display serif */
   nameFont?: string
+  /** "Concept" pill next to a concept project's name */
+  badge?: string
 }
 
 // Frame proportions: the browser screen is 16:10, the phone screen 390×844
@@ -135,17 +137,20 @@ function Showpiece({ project, theme, active, load, onOpen }: { project: WorkProj
   )
 }
 
-function Caption({ project, theme, onOpen, index }: { project: WorkProject; theme: WorkTheme; onOpen: () => void; index: number }) {
+function Caption({ project, theme, onOpen, index, total }: { project: WorkProject; theme: WorkTheme; onOpen: () => void; index: number; total: number }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
       <div className="max-w-xl">
         <div className={`text-[13px] ${theme.meta}`}>
-          <span className={theme.counter}>{String(index + 1).padStart(2, '0')} / {String(workProjects.length).padStart(2, '0')}</span>
+          <span className={theme.counter}>{String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</span>
           <span className="mx-2">·</span>
           {project.kind}
           {project.location ? ` · ${project.location}` : ''}
         </div>
-        <h3 className={`mt-1.5 border-none pb-0 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl ${theme.title} ${theme.nameFont ?? ''}`}>{project.client}</h3>
+        <h3 className={`mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-none pb-0 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl ${theme.title} ${theme.nameFont ?? ''}`}>
+          {project.client}
+          {project.concept && <span className={`rounded-full border px-2.5 py-0.5 font-sans text-[11px] font-medium uppercase tracking-[0.15em] ${theme.badge}`}>Concept</span>}
+        </h3>
         <p className={`!mt-1.5 text-[15px] leading-relaxed ${theme.body}`}>{project.line}</p>
       </div>
       <button type="button" onClick={onOpen} className={`inline-flex shrink-0 items-center gap-1.5 self-start text-sm font-semibold sm:self-auto ${theme.link}`}>
@@ -218,10 +223,14 @@ function Lightbox({ project, theme, onClose, onWant }: { project: WorkProject; t
 
       <div className={`border-t px-4 py-3 sm:px-6 ${theme.panel}`} onClick={(e) => e.stopPropagation()}>
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3">
-          <a href={project.url} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1.5 text-sm ${theme.link}`}>
-            Visit the live site
-            <ArrowUpRight className="h-4 w-4" />
-          </a>
+          {project.url ? (
+            <a href={project.url} target="_blank" rel="noopener noreferrer" className={`inline-flex items-center gap-1.5 text-sm ${theme.link}`}>
+              Visit the live site
+              <ArrowUpRight className="h-4 w-4" />
+            </a>
+          ) : (
+            <span className={`text-sm ${theme.meta}`}>A concept design by IGANI</span>
+          )}
           <button type="button" onClick={onWant} className={`inline-flex flex-1 items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold sm:flex-none ${theme.button}`}>
             I want one like this
             <ArrowRight className="h-4 w-4" />
@@ -245,8 +254,8 @@ function Glow({ color }: { color: string }) {
 }
 
 /** Desktop: the stage holds while scrolling moves the row of sites sideways, one per step. */
-function PinnedRow({ theme, onOpen }: { theme: WorkTheme; onOpen: (p: WorkProject) => void }) {
-  const n = workProjects.length
+function PinnedRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme: WorkTheme; onOpen: (p: WorkProject) => void }) {
+  const n = projects.length
   const [active, setActive] = useState(0)
   const firstRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ step: 0, offset: 0 })
@@ -265,14 +274,14 @@ function PinnedRow({ theme, onOpen }: { theme: WorkTheme; onOpen: (p: WorkProjec
 
   return (
     <PinnedStage screens={n - 1} className="overflow-clip pb-6 pt-28">
-      {(progress) => <PinnedTrack progress={progress} n={n} size={size} active={active} setActive={setActive} firstRef={firstRef} theme={theme} onOpen={onOpen} />}
+      {(progress) => <PinnedTrack projects={projects} progress={progress} size={size} active={active} setActive={setActive} firstRef={firstRef} theme={theme} onOpen={onOpen} />}
     </PinnedStage>
   )
 }
 
 function PinnedTrack({
+  projects,
   progress,
-  n,
   size,
   active,
   setActive,
@@ -280,8 +289,8 @@ function PinnedTrack({
   theme,
   onOpen,
 }: {
+  projects: WorkProject[]
   progress: import('framer-motion').MotionValue<number>
-  n: number
   size: { step: number; offset: number }
   active: number
   setActive: (i: number) => void
@@ -289,19 +298,20 @@ function PinnedTrack({
   theme: WorkTheme
   onOpen: (p: WorkProject) => void
 }) {
+  const n = projects.length
   // Small dead zones at both ends so the first and last sites get a beat on their own
   const x = useTransform(progress, [0.06, 0.94], [size.offset, size.offset - (n - 1) * size.step], { clamp: true })
   useMotionValueEvent(progress, 'change', (v) => {
     const i = Math.round(Math.min(1, Math.max(0, (v - 0.06) / 0.88)) * (n - 1))
     if (i !== active) setActive(i)
   })
-  const project = workProjects[active]
+  const project = projects[active]
 
   return (
     <div className="relative w-full">
       <Glow color={project.accent} />
       <motion.div style={{ x }} className="relative flex gap-16">
-        {workProjects.map((p, i) => (
+        {projects.map((p, i) => (
           <div
             key={p.id}
             ref={i === 0 ? firstRef : undefined}
@@ -315,7 +325,7 @@ function PinnedTrack({
       <div className="relative mx-auto mt-14 w-[min(66%,calc((100svh-380px)*1.5))]">
         <AnimatePresence mode="wait">
           <motion.div key={project.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
-            <Caption project={project} theme={theme} index={active} onOpen={() => onOpen(project)} />
+            <Caption project={project} theme={theme} index={active} total={n} onOpen={() => onOpen(project)} />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -324,7 +334,7 @@ function PinnedTrack({
 }
 
 /** Phones (and reduced motion): swipeable cards, one site per screen. */
-function SwipeRow({ theme, onOpen }: { theme: WorkTheme; onOpen: (p: WorkProject) => void }) {
+function SwipeRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme: WorkTheme; onOpen: (p: WorkProject) => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
   const [seen, setSeen] = useState(false)
@@ -347,26 +357,26 @@ function SwipeRow({ theme, onOpen }: { theme: WorkTheme; onOpen: (p: WorkProject
 
   return (
     <div className="relative">
-      <Glow color={workProjects[active]?.accent ?? workProjects[0].accent} />
+      <Glow color={projects[active]?.accent ?? projects[0].accent} />
       <div
         ref={ref}
         onScroll={onScroll}
         className="relative flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden"
       >
-        {workProjects.map((p, i) => (
+        {projects.map((p, i) => (
           <div key={p.id} className="w-[86%] shrink-0 snap-center sm:w-[70%]">
             <div className="pb-[12%]">
               <Showpiece project={p} theme={theme} active={seen && i === active} load={seen && Math.abs(i - active) <= 1} onOpen={() => onOpen(p)} />
             </div>
             <div className="mt-2">
-              <Caption project={p} theme={theme} index={i} onOpen={() => onOpen(p)} />
+              <Caption project={p} theme={theme} index={i} total={projects.length} onOpen={() => onOpen(p)} />
             </div>
           </div>
         ))}
         <div aria-hidden className="w-px shrink-0" />
       </div>
       <div className="mt-4 flex justify-center gap-2" aria-hidden>
-        {workProjects.map((p, i) => (
+        {projects.map((p, i) => (
           <span key={p.id} className={`h-1.5 rounded-full transition-all duration-300 ${i === active ? `w-6 ${theme.dotActive}` : `w-1.5 ${theme.dot}`}`} />
         ))}
       </div>
@@ -379,7 +389,7 @@ function SwipeRow({ theme, onOpen }: { theme: WorkTheme; onOpen: (p: WorkProject
  * phone version in front. Pinned sideways scroll on desktop, swipe cards on
  * phones, and a full-screen look that ends on the call to action.
  */
-export function WorkGallery({ theme, onWant }: { theme: WorkTheme; onWant: () => void }) {
+export function WorkGallery({ theme, onWant, projects = workProjects }: { theme: WorkTheme; onWant: () => void; projects?: WorkProject[] }) {
   const reduce = useReducedMotionSafe()
   const [open, setOpen] = useState<WorkProject | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -396,7 +406,7 @@ export function WorkGallery({ theme, onWant }: { theme: WorkTheme; onWant: () =>
 
   return (
     <>
-      {wide && !reduce ? <PinnedRow theme={theme} onOpen={setOpen} /> : <SwipeRow theme={theme} onOpen={setOpen} />}
+      {wide && !reduce ? <PinnedRow projects={projects} theme={theme} onOpen={setOpen} /> : <SwipeRow projects={projects} theme={theme} onOpen={setOpen} />}
       {mounted && (
         <AnimatePresence>
           {open && (
@@ -417,13 +427,27 @@ export function WorkGallery({ theme, onWant }: { theme: WorkTheme; onWant: () =>
   )
 }
 
-/** Small strip of the same projects, for beside a form: "you'd be in good company". */
-export function WorkStrip({ className = '', labelClass = '', frameClass = '' }: { className?: string; labelClass?: string; frameClass?: string }) {
+/** Small strip of projects, e.g. beside a form ("you'd be in good company") or as "also trusted by". */
+export function WorkStrip({
+  className = '',
+  labelClass = '',
+  frameClass = '',
+  label = 'You’d be in good company',
+  projects = workProjects,
+  listClass = 'justify-center lg:justify-start',
+}: {
+  className?: string
+  labelClass?: string
+  frameClass?: string
+  label?: string
+  projects?: WorkProject[]
+  listClass?: string
+}) {
   return (
     <div className={className}>
-      <div className={`text-[13px] ${labelClass}`}>You&rsquo;d be in good company</div>
-      <ul className="mt-3 flex flex-wrap justify-center gap-1.5 sm:gap-2 lg:justify-start">
-        {workProjects.map((p) => (
+      <div className={`text-[13px] ${labelClass}`}>{label}</div>
+      <ul className={`mt-3 flex flex-wrap gap-1.5 sm:gap-2 ${listClass}`}>
+        {projects.map((p) => (
           <li key={p.id} title={p.client} className={`w-[60px] overflow-hidden rounded-lg border sm:w-[84px] ${frameClass}`}>
             <img src={p.thumb} alt={p.client} loading="lazy" className="block aspect-[16/10] w-full object-cover object-top" />
           </li>

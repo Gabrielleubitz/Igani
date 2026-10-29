@@ -64,7 +64,18 @@ function ModernSite({ name = 'smith/co' }: { name?: string }) {
   )
 }
 
-export function CompareSlider() {
+type Heading = { index: string; label: string; aside?: string; title: string; sub?: string }
+
+const DEFAULT_HEADING: Heading = {
+  index: '01',
+  label: 'The reason',
+  aside: 'drag the line',
+  title: 'Design is *trust*.',
+  sub: 'Before they read your copy, they’ve already decided if you’re expensive or cheap.',
+}
+
+/** Before/after of a real project. `heading` and `caption` let other funnels tell it their way. */
+export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?: Heading; caption?: string } = {}) {
   const cs = useCaseStudy()
   // Desktop captures with no phone versions: keep the frame 16:9 on phones too, so the whole screen shows
   const desktopShotsOnly = Boolean(cs?.before.image && cs.after.image && !cs.before.mobileImage && !cs.after.mobileImage)
@@ -153,14 +164,7 @@ export function CompareSlider() {
   return (
     <section id="reason" className="relative scroll-mt-20 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <SectionHeading
-          index="01"
-          label="The reason"
-          aside="drag the line"
-          title="Design is *trust*."
-          sub="Before they read your copy, they’ve already decided if you’re expensive or cheap."
-          className="mb-12"
-        />
+        <SectionHeading {...heading} className="mb-12" />
         <div className="mb-4 hidden sm:block [@media(pointer:coarse)]:!hidden">
           <SideNote arrow="down">go on, drag it</SideNote>
         </div>
@@ -254,6 +258,7 @@ export function CompareSlider() {
                 {cs.industry}
                 {cs.location ? ` · ${cs.location}` : ''}
               </div>
+              {caption && <p className="!mt-3 max-w-md text-[15px] leading-relaxed text-white/80">{caption}</p>}
               {cs.quote && (
                 <blockquote className="mt-3 max-w-md font-display text-lg leading-snug text-[#dbe6ff]">
                   &ldquo;{cs.quote.text}&rdquo;

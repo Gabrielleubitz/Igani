@@ -1,9 +1,12 @@
 'use client'
 
+import { ReactNode } from 'react'
 import { MotionValue, motion } from 'framer-motion'
 import { CountUp, PinnedStage, useStatReveal } from '@/app/components/funnel-shared/PinnedStage'
 
-const STATS = [
+type Stat = { value: number; unit: string; source: string; body: string }
+
+const STATS: Stat[] = [
   {
     value: 50,
     unit: 'ms',
@@ -24,16 +27,16 @@ const STATS = [
   },
 ]
 
-function Stat({ progress, i }: { progress: MotionValue<number>; i: number }) {
-  const s = STATS[i]
-  const { opacity, y } = useStatReveal(progress, i, STATS.length)
+function StatCard({ progress, i, stats }: { progress: MotionValue<number>; i: number; stats: Stat[] }) {
+  const s = stats[i]
+  const { opacity, y } = useStatReveal(progress, i, stats.length)
   return (
     <motion.div
       style={{ opacity, y }}
       className="grid grid-cols-[auto_1fr] items-baseline gap-x-5 border-t border-[#04101e]/10 py-4 md:block md:rounded-3xl md:border md:border-[#04101e]/10 md:bg-white md:p-8 md:shadow-[0_30px_60px_-30px_rgba(4,16,30,0.25)]"
     >
       <div className="flex items-baseline gap-1 text-5xl font-semibold tracking-[-0.04em] text-[#04101e] md:text-7xl">
-        <CountUp progress={progress} i={i} count={STATS.length} to={s.value} />
+        <CountUp progress={progress} i={i} count={stats.length} to={s.value} />
         <span className="font-display text-[0.7em] font-normal tracking-normal text-[#2f6fd8]">{s.unit}</span>
       </div>
       <div>
@@ -47,7 +50,8 @@ function Stat({ progress, i }: { progress: MotionValue<number>; i: number }) {
   )
 }
 
-export function Proof() {
+/** Pinned stats that count up as you scroll. Other funnels pass their own headline and stat wording. */
+export function Proof({ title, stats = STATS }: { title?: ReactNode; stats?: Stat[] } = {}) {
   return (
     <section id="proof" className="relative scroll-mt-20">
       <PinnedStage className="pb-24 pt-28 sm:pt-32 md:pb-10">
@@ -62,11 +66,15 @@ export function Proof() {
               <span className="hidden sm:block">keep scrolling — watch the numbers</span>
             </div>
             <h2 className="mb-6 border-none pb-0 text-4xl font-semibold leading-[1.0] tracking-[-0.025em] text-[#04101e] sm:text-5xl md:mb-12 lg:text-6xl">
-              No stories. <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#2f6fd8]">Just</span> data.
+              {title ?? (
+                <>
+                  No stories. <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#2f6fd8]">Just</span> data.
+                </>
+              )}
             </h2>
             <div className="md:grid md:grid-cols-3 md:gap-4">
-              {STATS.map((_, i) => (
-                <Stat key={i} progress={progress} i={i} />
+              {stats.map((_, i) => (
+                <StatCard key={i} progress={progress} i={i} stats={stats} />
               ))}
             </div>
           </div>
