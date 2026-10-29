@@ -234,27 +234,6 @@ function BrandDemo() {
   )
 }
 
-/** Page load that finishes in under a second. */
-function SpeedDemo() {
-  return (
-    <div>
-      <div className="flex justify-between text-[13px] text-white/55">
-        <span>Load time on a phone</span>
-        <span className="tabular-nums text-white/85">0.8s</span>
-      </div>
-      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-        <motion.div
-          initial={{ width: '0%' }}
-          whileInView={{ width: '100%' }}
-          viewport={inView}
-          transition={{ duration: 0.8, delay: 0.3, ease: 'easeOut' }}
-          className="h-full rounded-full bg-gradient-to-r from-[#4080E0] to-[#9ec0f5]"
-        />
-      </div>
-    </div>
-  )
-}
-
 /** 04 — What we build: what agents measure. Listings, leads and brand. */
 export function WhatWeBuild() {
   return (
@@ -281,12 +260,9 @@ export function WhatWeBuild() {
             index="04"
             title="A brand that’s yours, not your brokerage’s."
             body="Your name, your face, your story. Take it with you if you ever switch brokerages."
-            className="md:col-span-2"
+            className="md:col-span-3"
           >
             <BrandDemo />
-          </Card>
-          <Card index="05" title="Built for phones." body="Most home searches happen on mobile. Sub-second load times keep them scrolling.">
-            <SpeedDemo />
           </Card>
         </div>
       </div>
