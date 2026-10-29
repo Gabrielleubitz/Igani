@@ -35,6 +35,8 @@ export type WorkTheme = {
   nameFont?: string
   /** "Concept" pill next to a concept project's name */
   badge?: string
+  /** Show the kind of site instead of client names, and no "Concept" pill */
+  hideNames?: boolean
 }
 
 // Frame proportions: the browser screen is 16:10, the phone screen 390×844
@@ -144,12 +146,14 @@ function Caption({ project, theme, onOpen, index, total }: { project: WorkProjec
         <div className={`text-[13px] ${theme.meta}`}>
           <span className={theme.counter}>{String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}</span>
           <span className="mx-2">·</span>
-          {project.kind}
-          {project.location ? ` · ${project.location}` : ''}
+          {theme.hideNames ? project.location : project.kind}
+          {!theme.hideNames && project.location ? ` · ${project.location}` : ''}
         </div>
         <h3 className={`mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-none pb-0 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl ${theme.title} ${theme.nameFont ?? ''}`}>
-          {project.client}
-          {project.concept && <span className={`rounded-full border px-2.5 py-0.5 font-sans text-[11px] font-medium uppercase tracking-[0.15em] ${theme.badge}`}>Concept</span>}
+          {theme.hideNames ? project.kind : project.client}
+          {project.concept && !theme.hideNames && (
+            <span className={`rounded-full border px-2.5 py-0.5 font-sans text-[11px] font-medium uppercase tracking-[0.15em] ${theme.badge}`}>Concept</span>
+          )}
         </h3>
         <p className={`!mt-1.5 text-[15px] leading-relaxed ${theme.body}`}>{project.line}</p>
       </div>
@@ -189,10 +193,10 @@ function Lightbox({ project, theme, onClose, onWant }: { project: WorkProject; t
     >
       <div className="flex items-center justify-between gap-4 px-4 py-3 sm:px-6" onClick={(e) => e.stopPropagation()}>
         <div className="min-w-0">
-          <div className={`truncate text-lg font-semibold ${theme.title} ${theme.nameFont ?? ''}`}>{project.client}</div>
+          <div className={`truncate text-lg font-semibold ${theme.title} ${theme.nameFont ?? ''}`}>{theme.hideNames ? project.kind : project.client}</div>
           <div className={`truncate text-[13px] ${theme.meta}`}>
-            {project.kind}
-            {project.location ? ` · ${project.location}` : ''}
+            {theme.hideNames ? project.location : project.kind}
+            {!theme.hideNames && project.location ? ` · ${project.location}` : ''}
           </div>
         </div>
         <button ref={closeRef} type="button" onClick={onClose} aria-label="Close" className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border ${theme.frame} ${theme.title}`}>
@@ -228,6 +232,8 @@ function Lightbox({ project, theme, onClose, onWant }: { project: WorkProject; t
               Visit the live site
               <ArrowUpRight className="h-4 w-4" />
             </a>
+          ) : theme.hideNames ? (
+            <span />
           ) : (
             <span className={`text-sm ${theme.meta}`}>A concept design by IGANI</span>
           )}

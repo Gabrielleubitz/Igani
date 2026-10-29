@@ -90,9 +90,13 @@ export const workProjects: WorkProject[] = [
   },
 ]
 
-/** Real estate funnel: the real-estate client first, then concept agent sites in five styles. */
+/** Real estate funnel: the real-estate client first, then concept agent sites in three styles. */
 export const realEstateProjects: WorkProject[] = [
-  { ...workProjects.find((p) => p.id === 'gabai')!, line: 'From a dated template to a premium showcase for high-end Jerusalem properties.' },
+  {
+    ...workProjects.find((p) => p.id === 'gabai')!,
+    kind: 'Boutique brokerage',
+    line: 'From a dated template to a premium showcase for high-end Jerusalem properties.',
+  },
   {
     id: 'lux',
     client: 'Elena Marlowe',
@@ -125,28 +129,6 @@ export const realEstateProjects: WorkProject[] = [
     concept: true,
     ...shot('cst', 2917, 5193),
     accent: '#ff6f61',
-  },
-  {
-    id: 'res',
-    client: 'The Linden',
-    kind: 'New development',
-    location: 'Residences in the park',
-    line: 'A launch site for a new building: forest-green editorial design, angled photography, a live residences price list and register-interest form.',
-    domain: 'igani.co/concepts/residences',
-    concept: true,
-    ...shot('res', 3416, 5193),
-    accent: '#6f9a4a',
-  },
-  {
-    id: 'fam',
-    client: 'The Harper Home Team',
-    kind: 'Family-home team',
-    location: 'Cedar Park, TX',
-    line: 'Warm and local: school-zone search, new listings, a “What’s my home worth?” form front and centre, and the whole team.',
-    domain: 'igani.co/concepts/family',
-    concept: true,
-    ...shot('fam', 2608, 5193),
-    accent: '#2f6b4f',
   },
 ]
 

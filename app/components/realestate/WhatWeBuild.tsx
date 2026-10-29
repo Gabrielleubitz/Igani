@@ -260,7 +260,7 @@ export function WhatWeBuild() {
   return (
     <section id="build-what" className="relative scroll-mt-20 py-20 sm:py-28">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <SectionHeading index="04" label="What we build" title="Sites that win the listing *before* you walk in." className="mb-12" />
+        <SectionHeading index="05" label="What we build" title="Sites that win the listing *before* you walk in." className="mb-12" />
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card

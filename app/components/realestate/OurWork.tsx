@@ -20,6 +20,7 @@ const THEME: WorkTheme = {
   overlay: 'bg-[#030814]/90',
   panel: 'border-white/10 bg-[#030814]',
   badge: 'border-[#9ec0f5]/40 text-[#9ec0f5]',
+  hideNames: true,
 }
 
 // Gabai case study. Add the result once the client confirms one (e.g. "Inquiries now come in through the website"); it stays hidden while empty.

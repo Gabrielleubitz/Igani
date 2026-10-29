@@ -72,7 +72,7 @@ export function FinalCTA() {
         cue={<SideNote arrow="down" className="!text-white/85">your turn</SideNote>}
       >
         <div className="mb-8 flex items-baseline justify-center gap-3 text-[13px] text-white/70">
-          <span className="font-display text-lg leading-none text-white">05</span>
+          <span className="font-display text-lg leading-none text-white">06</span>
           <span>The bottom line</span>
         </div>
         <h2 className="mx-auto max-w-5xl border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-7xl lg:text-8xl">
