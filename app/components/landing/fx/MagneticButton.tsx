@@ -6,6 +6,8 @@ import { motion, useMotionValue, useSpring } from 'framer-motion'
 type MagneticButtonProps = {
   children: ReactNode
   href?: string
+  /** Open the link in a new tab (e.g. WhatsApp) */
+  external?: boolean
   onClick?: () => void
   type?: 'button' | 'submit'
   disabled?: boolean
@@ -18,6 +20,7 @@ type MagneticButtonProps = {
 export function MagneticButton({
   children,
   href,
+  external,
   onClick,
   type = 'button',
   disabled,
@@ -51,7 +54,12 @@ export function MagneticButton({
       : 'border border-white/20 bg-white/[0.04] text-white hover:border-white/40 hover:bg-white/[0.08] backdrop-blur-md'
 
   const inner = href ? (
-    <a href={href} onClick={onClick} className={`${base} ${styles} ${className}`}>
+    <a
+      href={href}
+      onClick={onClick}
+      {...(external && { target: '_blank', rel: 'noopener noreferrer' })}
+      className={`${base} ${styles} ${className}`}
+    >
       {children}
     </a>
   ) : (

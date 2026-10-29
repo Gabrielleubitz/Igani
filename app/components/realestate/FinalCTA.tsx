@@ -3,10 +3,12 @@
 import { ChangeEvent, FormEvent, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
+import { WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { SideNote } from '@/app/components/landing/fx/SideNote'
 import { SettleHeadline } from '@/app/components/funnel-shared/SettleHeadline'
 import { caseStudy } from '@/lib/funnelCaseStudy'
 import { WhoWeAre } from './WhoWeAre'
+import { WHATSAPP_HREF } from './contact'
 
 const MARQUEE = 'win the listing · capture the lead · own your brand · '
 
@@ -15,7 +17,7 @@ const INPUT =
 
 const EMPTY = { website: '', name: '', market: '', phone: '' }
 
-/** 05 — The bottom line: the free market teardown, with the founders right above it. */
+/** 06 — The bottom line: ask for a call back (or message us on WhatsApp), with the founders right above it. */
 export function FinalCTA() {
   const [form, setForm] = useState(EMPTY)
   const [submittedName, setSubmittedName] = useState('')
@@ -37,10 +39,10 @@ export function FinalCTA() {
           name: form.name,
           phone: form.phone,
           source: 'landing_page',
-          sourceDetails: { page: '/realestate', form: 'market_teardown', campaign: 'real_estate' },
-          message: `Real estate market teardown (agent) — market: ${form.market.trim()}; website: ${
+          sourceDetails: { page: '/realestate', form: 'call_back', campaign: 'real_estate' },
+          message: `Call-back request (real estate agent) — market: ${form.market.trim() || 'not given'}; website: ${
             form.website.trim() || 'none yet'
-          }. Compare to the top 3 agents in their market and text a 3-minute video to this number.`,
+          }. Call them back.`,
         }),
       })
       if (response.ok) {
@@ -93,16 +95,25 @@ export function FinalCTA() {
       >
         <div className="text-center lg:text-left">
           <div className="flex items-baseline justify-center gap-3 text-[13px] text-white/75 lg:justify-start">
-            <span className="font-display text-lg leading-none text-white">free</span>
-            your 3-minute market teardown
+            <span className="font-display text-lg leading-none text-white">talk</span>
+            to a founder, not a sales rep
           </div>
           <h3 className="mt-4 text-balance text-3xl font-semibold leading-[1.05] tracking-[-0.025em] text-white sm:text-4xl">
-            See where you&rsquo;re losing sellers, <span className="font-display font-normal text-[#e9f0ff]">and to whom</span>.
+            Leave your number. <span className="font-display font-normal text-[#e9f0ff]">We&rsquo;ll call you back.</span>
           </h3>
           <p className="!mt-4 text-lg leading-relaxed text-white/85">
-            Send us your site. We&rsquo;ll compare it to the top 3 agents in your market and text you a 3-minute video showing exactly where
-            you&rsquo;re losing sellers and buyers, within 24 hours.
+            Tell us where you work and we&rsquo;ll call you within one business day to talk through what a site that wins listings would look
+            like for you.
           </p>
+          <a
+            href={WHATSAPP_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.12]"
+          >
+            <WhatsAppGlyph className="h-4 w-4" />
+            Rather chat? Talk to us on WhatsApp
+          </a>
 
           {quote && (
             <figure className="mx-auto mt-8 max-w-md rounded-2xl border border-white/15 bg-white/[0.08] p-5 text-left backdrop-blur-md lg:mx-0">
@@ -123,26 +134,10 @@ export function FinalCTA() {
                 Got it{submittedName ? `, ${submittedName}` : ''}
                 <span className="text-[#4080E0]">.</span>
               </div>
-              <div className="mt-2 max-w-xs text-white/65">Your market teardown is on its way. We&rsquo;ll text it to you within 24 hours.</div>
+              <div className="mt-2 max-w-xs text-white/65">We&rsquo;ll call you back within one business day.</div>
             </div>
           ) : (
             <form onSubmit={onSubmit} className="space-y-4 p-6 sm:p-8">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-website">
-                  Your website <span className="font-normal text-white/40">(optional)</span>
-                </label>
-                <input
-                  id="re-website"
-                  name="website"
-                  inputMode="url"
-                  autoComplete="url"
-                  placeholder="youragentsite.com"
-                  value={form.website}
-                  onChange={onChange}
-                  className={INPUT}
-                />
-                <p className="!mt-1.5 text-[12px] text-white/45">No site yet? We&rsquo;ll show you what top agents near you are doing.</p>
-              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-name">
@@ -151,26 +146,25 @@ export function FinalCTA() {
                   <input id="re-name" name="name" value={form.name} onChange={onChange} required autoComplete="name" className={INPUT} />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-market">
-                    Your market
+                  <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-phone">
+                    Phone
                   </label>
-                  <input
-                    id="re-market"
-                    name="market"
-                    value={form.market}
-                    onChange={onChange}
-                    required
-                    placeholder="City or area"
-                    autoComplete="address-level2"
-                    className={INPUT}
-                  />
+                  <input id="re-phone" name="phone" type="tel" value={form.phone} onChange={onChange} required autoComplete="tel" className={INPUT} />
                 </div>
               </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-phone">
-                  Phone (for the text)
-                </label>
-                <input id="re-phone" name="phone" type="tel" value={form.phone} onChange={onChange} required autoComplete="tel" className={INPUT} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-market">
+                    Your market <span className="font-normal text-white/40">(optional)</span>
+                  </label>
+                  <input id="re-market" name="market" value={form.market} onChange={onChange} placeholder="City or area" autoComplete="address-level2" className={INPUT} />
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-website">
+                    Your website <span className="font-normal text-white/40">(optional)</span>
+                  </label>
+                  <input id="re-website" name="website" inputMode="url" autoComplete="url" placeholder="youragentsite.com" value={form.website} onChange={onChange} className={INPUT} />
+                </div>
               </div>
               {status === 'error' && (
                 <div role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm font-medium text-red-300">
@@ -182,10 +176,10 @@ export function FinalCTA() {
                 disabled={status === 'submitting'}
                 className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-[#04101e] shadow-[0_0_0_1px_rgba(255,255,255,0.15),0_12px_40px_-12px_rgba(64,128,224,0.9)] transition-colors hover:bg-[#e6eefc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {status === 'submitting' ? 'Sending…' : 'Send my teardown'}
+                {status === 'submitting' ? 'Sending…' : 'Call me back'}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
-              <p className="!mt-4 text-center text-[13px] leading-relaxed text-white/60">No spam. No pitch deck. Just a 3-minute video from a real person.</p>
+              <p className="!mt-4 text-center text-[13px] leading-relaxed text-white/60">No spam. No pitch deck. Just a call from a real person.</p>
             </form>
           )}
         </div>

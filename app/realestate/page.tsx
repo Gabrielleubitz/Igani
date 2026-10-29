@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Script from 'next/script'
-import { MessageSquare } from 'lucide-react'
+import { PhoneCall } from 'lucide-react'
+import { WhatsAppGlyph } from '@/components/SocialGlyphs'
+import { WHATSAPP_HREF } from '@/app/components/realestate/contact'
 import { IganiLogo } from '@/components/IganiLogo'
 import { FunnelBanner } from '@/app/components/funnels/FunnelBanner'
 import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
@@ -108,13 +110,25 @@ export default function RealEstatePage() {
       <header className="fixed inset-x-0 top-3 z-50 px-3 sm:top-4 sm:px-6">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-[#04101e]/70 py-2.5 pl-5 pr-2.5 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:pl-8">
           <IganiLogo className="h-9 w-28" />
-          <button
-            onClick={scrollToForm}
-            className="inline-flex items-center gap-2 rounded-full bg-[#2f6fd8] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4080E0] sm:px-5"
-          >
-            <MessageSquare className="h-4 w-4" />
-            Get in touch today
-          </button>
+          <div className="flex items-center gap-2">
+            <a
+              href={WHATSAPP_HREF}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Talk to us on WhatsApp"
+              className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:px-4"
+            >
+              <WhatsAppGlyph className="h-4 w-4" />
+              <span className="hidden sm:inline">WhatsApp</span>
+            </a>
+            <button
+              onClick={scrollToForm}
+              className="inline-flex items-center gap-2 rounded-full bg-[#2f6fd8] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4080E0] sm:px-5"
+            >
+              <PhoneCall className="h-4 w-4" />
+              Call me back
+            </button>
+          </div>
         </div>
       </header>
 
@@ -127,12 +141,20 @@ export default function RealEstatePage() {
             exit={{ y: 100, opacity: 0 }}
             className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#030814]/85 p-4 backdrop-blur-xl lg:hidden"
           >
-            <button
-              onClick={scrollToForm}
-              className="w-full rounded-full bg-white py-3.5 text-sm font-semibold text-[#04101e]"
-            >
-              Get in touch today
-            </button>
+            <div className="flex gap-2">
+              <button onClick={scrollToForm} className="flex-1 rounded-full bg-white py-3.5 text-sm font-semibold text-[#04101e]">
+                Call me back
+              </button>
+              <a
+                href={WHATSAPP_HREF}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/20 py-3.5 text-sm font-semibold text-white"
+              >
+                <WhatsAppGlyph className="h-4 w-4" />
+                WhatsApp
+              </a>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -143,7 +165,7 @@ export default function RealEstatePage() {
         {/* Opening screen shares the closing section's brand blue so the page starts on its boldest note */}
         <div className="bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]">
           <FunnelBanner className="mt-[76px] sm:mt-[92px]" />
-          <Hero onCta={scrollToForm} onSeeWork={scrollTo('reason')} />
+          <Hero onCta={scrollToForm} />
         </div>
         <SectionSheet id="sheet-reason" layer={1} className="bg-[#061225]">
           <CompareSlider

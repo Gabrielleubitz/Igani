@@ -1,9 +1,11 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowDown, ArrowRight } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
 import { FocusIn } from '@/app/components/funnel-shared/FocusIn'
+import { WHATSAPP_HREF } from './contact'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -14,7 +16,7 @@ const fadeUp = (delay: number) => ({
 })
 
 /** Brand-blue opener: an agent's website is their first listing presentation. */
-export function Hero({ onCta, onSeeWork }: { onCta: () => void; onSeeWork: () => void }) {
+export function Hero({ onCta }: { onCta: () => void }) {
   return (
     <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI for real estate">
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-white/15 blur-[140px]" />
@@ -41,12 +43,12 @@ export function Hero({ onCta, onSeeWork }: { onCta: () => void; onSeeWork: () =>
 
         <motion.div {...fadeUp(1.3)} className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <MagneticButton onClick={onCta}>
-            Get my free site teardown
+            Call me back
             <ArrowRight className="h-4 w-4" />
           </MagneticButton>
-          <MagneticButton variant="ghost" onClick={onSeeWork}>
-            See a before &amp; after
-            <ArrowDown className="h-4 w-4" />
+          <MagneticButton variant="ghost" href={WHATSAPP_HREF} external>
+            <WhatsAppGlyph className="h-4 w-4" />
+            Talk to us on WhatsApp
           </MagneticButton>
         </motion.div>
       </div>

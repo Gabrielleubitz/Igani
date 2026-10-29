@@ -9,7 +9,7 @@ import { TeamMember } from '@/types'
 // Short role for under each face; the team page's titles run long
 const shortRole = (position: string) => position.split('|')[0].trim()
 
-/** "Who we are": the three founders' faces, names and where they're based, right above the form. The teardown comes from one of them. */
+/** "Who we are": the three founders' faces, names and where they're based, right above the form. The call back comes from one of them. */
 export function WhoWeAre() {
   const [team, setTeam] = useState<TeamMember[]>([])
   useEffect(() => {
@@ -46,8 +46,8 @@ export function WhoWeAre() {
           ))}
         </ul>
         <p className="!mt-7 text-center text-lg leading-relaxed text-white sm:text-xl">
-          We specialize in real estate websites, so we already know listings, lead capture, and what makes sellers pick up the phone. Your teardown video
-          comes from one of us, not a bot.
+          We specialize in real estate websites, so we already know listings, lead capture, and what makes sellers pick up the phone. When you ask for a call,
+          one of us calls you back, not a sales rep.
         </p>
       </div>
     </div>
