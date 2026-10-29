@@ -151,7 +151,7 @@ function Caption({ project, theme, onOpen, index, total }: { project: WorkProjec
         </div>
         <h3 className={`mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 border-none pb-0 text-2xl font-semibold tracking-[-0.02em] sm:text-3xl ${theme.title} ${theme.nameFont ?? ''}`}>
           {theme.hideNames ? project.kind : project.client}
-          {project.concept && !theme.hideNames && (
+          {project.concept && (
             <span className={`rounded-full border px-2.5 py-0.5 font-sans text-[11px] font-medium uppercase tracking-[0.15em] ${theme.badge}`}>Concept</span>
           )}
         </h3>

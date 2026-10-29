@@ -102,7 +102,7 @@ export const realEstateProjects: WorkProject[] = [
     client: 'Elena Marlowe',
     kind: 'Luxury agent',
     location: 'Malibu to Bel Air',
-    line: 'Listing-first and editorial: MLS search on the first screen, featured homes, neighborhood pages and a private valuation form.',
+    line: 'Listing-first and editorial: home search on the first screen, featured homes, neighborhood pages and a private valuation form.',
     domain: 'igani.co/concepts/luxury',
     concept: true,
     ...shot('lux', 2973, 5193),

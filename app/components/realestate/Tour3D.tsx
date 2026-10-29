@@ -14,7 +14,7 @@ const ROOMS = [
   { name: 'Terrace', from: 8.3, plan: { x: 116, y: 4, w: 40, h: 102 } },
 ]
 
-const PERKS = ['Buyers walk every room, any time of night', 'Works on any phone, no app', 'Embedded right on your listing pages']
+const PERKS = ['Your Matterport tours, embedded on your own listing pages', 'Buyers walk every room, any time of night', 'Works on any phone, no app']
 
 function roomAt(t: number) {
   let i = 0
@@ -92,9 +92,9 @@ export function Tour3D() {
         <SectionHeading
           index="04"
           label="3D tours"
-          aside="the listing they can walk through"
+          aside="Matterport, built into your site"
           title="Let buyers *walk in* before they drive over."
-          sub="Immersive 3D walkthroughs built right into your listings. Serious buyers tour at midnight and show up ready to make an offer, and sellers see marketing other agents don’t offer."
+          sub="We integrate Matterport 3D tours right into your listing pages, so buyers walk through on your site, not someone else’s. Serious buyers tour at midnight and show up ready to make an offer, and sellers see marketing other agents don’t offer."
           className="mb-12"
         />
 
@@ -115,7 +115,7 @@ export function Tour3D() {
                 preload="none"
                 controls={reduce}
                 onTimeUpdate={onTime}
-                aria-label="A 3D walkthrough of a home: kitchen, dining, living room and terrace"
+                aria-label="A Matterport 3D walkthrough of a home: kitchen, dining, living room and terrace"
                 className="absolute inset-0 h-full w-full object-cover"
               />
               {/* HUD */}

@@ -98,7 +98,7 @@ function ValuationDemo() {
       >
         <div className="flex items-center justify-between text-[12px] text-[#b9cdf3]">
           <span>New lead · just now</span>
-          <span className="rounded-full bg-white/10 px-2 py-0.5">Follow Up Boss</span>
+          <span className="rounded-full bg-white/10 px-2 py-0.5">Your CRM</span>
         </div>
         <div className="mt-3 text-[15px] font-semibold text-white">Seller lead: {ADDRESS}</div>
         <div className="mt-1 text-[13px] text-white/60">Valuation request · wants to sell in 3–6 months</div>
@@ -248,12 +248,12 @@ export function WhatWeBuild() {
           <Card
             index="01"
             title="Leads that land in your CRM."
-            body="“What’s my home worth?” and showing-request forms that send every lead straight to Follow Up Boss, kvCORE, or your inbox."
+            body="“What’s my home worth?” and showing-request forms that send every lead straight to your CRM or your inbox, the moment it comes in."
             className="md:col-span-2"
           >
             <ValuationDemo />
           </Card>
-          <Card index="02" title="Your listings, beautifully." body="IDX/MLS integration, so your listings and your market’s homes look like a magazine, not a spreadsheet.">
+          <Card index="02" title="Your listings, beautifully." body="Your listings and featured homes laid out like a magazine, not a spreadsheet, with a showing request one tap away.">
             <ListingsDemo />
           </Card>
           <Card index="03" title="Neighborhood pages that rank." body="Local pages that bring in buyers and sellers searching your area on Google.">
