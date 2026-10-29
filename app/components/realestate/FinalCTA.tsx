@@ -79,7 +79,7 @@ export function FinalCTA() {
         </div>
         <h2 className="mx-auto max-w-5xl border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-7xl lg:text-8xl">
           Stop losing <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">buyers</span> to agents with better websites
-          <span className="text-[#04101e]">.</span>
+          <span className="text-white">.</span>
         </h2>
       </SettleHeadline>
 

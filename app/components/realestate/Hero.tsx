@@ -30,7 +30,7 @@ export function Hero({ onCta }: { onCta: () => void }) {
           <h1 className="text-balance text-[clamp(2.6rem,8vw,6.5rem)] font-semibold leading-[0.96] tracking-[-0.035em] text-white">
             Buyers Google you{' '}
             <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">before</span> they call you
-            <span className="text-[#04101e]">.</span>
+            <span className="text-white">.</span>
           </h1>
         </FocusIn>
 
