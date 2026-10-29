@@ -90,7 +90,7 @@ export const workProjects: WorkProject[] = [
   },
 ]
 
-/** Real estate funnel: the real-estate client first, then concept agent sites in two styles. */
+/** Real estate funnel: the real-estate client first, then concept agent sites in four styles. */
 export const realEstateProjects: WorkProject[] = [
   { ...workProjects.find((p) => p.id === 'gabai')!, line: 'From a dated template to a premium showcase for high-end Jerusalem properties.' },
   {
@@ -103,6 +103,28 @@ export const realEstateProjects: WorkProject[] = [
     concept: true,
     ...shot('lux', 2973, 5193),
     accent: '#b89b6a',
+  },
+  {
+    id: 'urb',
+    client: 'Kai Mercer',
+    kind: 'Condo specialist',
+    location: 'Manhattan',
+    line: 'Data-forward and bold: a live market ticker, building-by-building price per foot, and comps “from your line, not your zip code”.',
+    domain: 'igani.co/concepts/urban',
+    concept: true,
+    ...shot('urb', 2820, 5193),
+    accent: '#c6f03a',
+  },
+  {
+    id: 'cst',
+    client: 'Coral & Co.',
+    kind: 'Coastal agent',
+    location: 'Miami Beach',
+    line: 'Art-deco sunshine: arched listings, a neon after-dark neighborhood guide, and a valuation form you actually want to fill in.',
+    domain: 'igani.co/concepts/coastal',
+    concept: true,
+    ...shot('cst', 2917, 5193),
+    accent: '#ff6f61',
   },
   {
     id: 'fam',
