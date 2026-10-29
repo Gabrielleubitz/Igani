@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Script from 'next/script'
-import { PhoneCall } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { WHATSAPP_HREF } from '@/app/components/realestate/contact'
 import { IganiLogo } from '@/components/IganiLogo'
@@ -109,7 +109,7 @@ export default function RealEstatePage() {
       {/* Floating pill header, same shape as the home page's */}
       <header className="fixed inset-x-0 top-3 z-50 px-3 sm:top-4 sm:px-6">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-[#04101e]/70 py-2.5 pl-5 pr-2.5 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:pl-8">
-          <IganiLogo className="h-9 w-28" />
+          <IganiLogo className="h-9 w-24 shrink-0 sm:w-28" />
           <div className="flex items-center gap-2">
             <a
               href={WHATSAPP_HREF}
@@ -123,10 +123,10 @@ export default function RealEstatePage() {
             </a>
             <button
               onClick={scrollToForm}
-              className="inline-flex items-center gap-2 rounded-full bg-[#2f6fd8] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#4080E0] sm:px-5"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#2f6fd8] px-3.5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#4080E0] sm:gap-2 sm:px-5 sm:text-sm"
             >
-              <PhoneCall className="h-4 w-4" />
-              Call me back
+              I want a site like this
+              <ArrowRight className="hidden h-4 w-4 sm:block" />
             </button>
           </div>
         </div>
@@ -143,7 +143,7 @@ export default function RealEstatePage() {
           >
             <div className="flex gap-2">
               <button onClick={scrollToForm} className="flex-1 rounded-full bg-white py-3.5 text-sm font-semibold text-[#04101e]">
-                Call me back
+                I want a site like this
               </button>
               <a
                 href={WHATSAPP_HREF}

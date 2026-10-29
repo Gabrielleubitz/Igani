@@ -176,7 +176,7 @@ export function FinalCTA() {
                 disabled={status === 'submitting'}
                 className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-4 text-sm font-semibold text-[#04101e] shadow-[0_0_0_1px_rgba(255,255,255,0.15),0_12px_40px_-12px_rgba(64,128,224,0.9)] transition-colors hover:bg-[#e6eefc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4080E0] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {status === 'submitting' ? 'Sending…' : 'Call me back'}
+                {status === 'submitting' ? 'Sending…' : 'I want a site like this'}
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
               </button>
               <p className="!mt-4 text-center text-[13px] leading-relaxed text-white/60">No spam. No pitch deck. Just a call from a real person.</p>

@@ -43,7 +43,7 @@ export function Hero({ onCta }: { onCta: () => void }) {
 
         <motion.div {...fadeUp(1.3)} className="mt-10 flex flex-wrap items-center justify-center gap-3">
           <MagneticButton onClick={onCta}>
-            Call me back
+            I want a site like this
             <ArrowRight className="h-4 w-4" />
           </MagneticButton>
           <MagneticButton variant="ghost" href={WHATSAPP_HREF} external>
