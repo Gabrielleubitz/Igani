@@ -13,13 +13,16 @@ const inView = { once: true, amount: 0.5 } as const
 function Card({ index, title, body, className = '', children }: { index: string; title: string; body: string; className?: string; children: ReactNode }) {
   return (
     <motion.div whileHover={{ y: -4 }} transition={spring} className={className}>
-      <SpotlightCard className="flex h-full flex-col p-6 sm:p-8">
-        <div className="mb-8 flex flex-1 flex-col justify-center">{children}</div>
-        <p className="!mt-0 flex items-baseline gap-3 text-sm text-white/55">
-          <span className="font-display text-lg text-white/70">{index}</span>
-        </p>
-        <h3 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{title}</h3>
-        <div className="mt-3 max-w-md text-[15px] leading-relaxed text-white/70">{body}</div>
+      <SpotlightCard className="h-full p-6 sm:p-8">
+        {/* SpotlightCard wraps its children in a full-height box, so the column lives here */}
+        <div className="flex h-full flex-col">
+          <div className="mb-8 flex flex-1 flex-col justify-center">{children}</div>
+          <p className="!mt-0 flex items-baseline gap-3 text-sm text-white/55">
+            <span className="font-display text-lg text-white/70">{index}</span>
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{title}</h3>
+          <div className="mt-3 max-w-md text-[15px] leading-relaxed text-white/70">{body}</div>
+        </div>
       </SpotlightCard>
     </motion.div>
   )
@@ -246,7 +249,7 @@ export function WhatWeBuild() {
             index="01"
             title="Leads that land in your CRM."
             body="“What’s my home worth?” and showing-request forms that send every lead straight to Follow Up Boss, kvCORE, or your inbox."
-            className="md:col-span-2 md:row-span-2"
+            className="md:col-span-2"
           >
             <ValuationDemo />
           </Card>
@@ -260,7 +263,7 @@ export function WhatWeBuild() {
             index="04"
             title="A brand that’s yours, not your brokerage’s."
             body="Your name, your face, your story. Take it with you if you ever switch brokerages."
-            className="md:col-span-3"
+            className="md:col-span-2"
           >
             <BrandDemo />
           </Card>
