@@ -26,7 +26,7 @@ export function Hero({ onCta, onSeeWork }: { onCta: () => void; onSeeWork: () =>
 
         <FocusIn>
           <h1 className="text-balance text-[clamp(2.6rem,8vw,6.5rem)] font-semibold leading-[0.96] tracking-[-0.035em] text-white">
-            Sellers Google you{' '}
+            Buyers Google you{' '}
             <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">before</span> they call you
             <span className="text-[#04101e]">.</span>
           </h1>
