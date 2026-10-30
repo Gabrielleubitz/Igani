@@ -49,3 +49,28 @@ describe('filterLeads / buildReport', () => {
     expect(r.perDay.at(-1)?.count).toBe(3)
   })
 })
+
+import { csvToLeadRows, parseCsv, splitDue } from '@/components/crm/crm-utils'
+
+describe('csv import', () => {
+  it('parses quoted cells and maps headers', () => {
+    const rows = parseCsv('Email,First Name,Company,Message\r\nA@X.com,Ann,"Acme, Inc","say ""hi""\nline2"\n\nbad,Bob,,\na@x.com,Dup,,\n')
+    expect(rows[1]?.[2]).toBe('Acme, Inc')
+    const { leads, errors } = csvToLeadRows(rows)
+    expect(leads).toEqual([{ email: 'a@x.com', firstName: 'Ann', company: 'Acme, Inc', message: 'say "hi"\nline2' }])
+    expect(errors.map((e) => e.reason)).toEqual(['Invalid email "bad"', 'Duplicate of an earlier row (a@x.com)'])
+  })
+  it('requires an email column', () => {
+    expect(csvToLeadRows(parseCsv('name\nx')).errors[0]?.reason).toMatch(/email/)
+  })
+})
+
+describe('splitDue', () => {
+  it('splits overdue and due today', () => {
+    const now = new Date('2026-05-10T12:00:00Z')
+    const mk = (id: string, dueAt: string | null, done = false) => ({ id, leadId: 'l', title: id, dueAt: dueAt ? new Date(dueAt) : null, assigneeId: 'u', done })
+    const r = splitDue([mk('a', '2026-05-09T00:00:00Z'), mk('b', '2026-05-10T20:00:00Z'), mk('c', '2026-05-11T01:00:00Z'), mk('d', null), mk('e', '2026-05-01T00:00:00Z', true)], now)
+    expect(r.overdue.map((t) => t.id)).toEqual(['a'])
+    expect(r.today.map((t) => t.id)).toEqual(['b'])
+  })
+})

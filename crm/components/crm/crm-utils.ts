@@ -120,3 +120,95 @@ export function buildReport(
     perDay: [...perDay].map(([day, count]) => ({ day, count })),
   }
 }
+
+/** Minimal RFC-4180 CSV parser (quoted cells, escaped quotes, CRLF/LF). Returns rows of cells. */
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let quoted = false
+  const src = text.replace(/^﻿/, '')
+  for (let i = 0; i < src.length; i++) {
+    const c = src[i]
+    if (quoted) {
+      if (c === '"') {
+        if (src[i + 1] === '"') {
+          cell += '"'
+          i++
+        } else quoted = false
+      } else cell += c
+    } else if (c === '"') quoted = true
+    else if (c === ',') {
+      row.push(cell)
+      cell = ''
+    } else if (c === '\n' || c === '\r') {
+      if (c === '\r' && src[i + 1] === '\n') i++
+      row.push(cell)
+      cell = ''
+      if (row.some((x) => x.trim())) rows.push(row)
+      row = []
+    } else cell += c
+  }
+  row.push(cell)
+  if (row.some((x) => x.trim())) rows.push(row)
+  return rows
+}
+
+const HEADER_MAP: Record<string, string> = {
+  email: 'email', 'e-mail': 'email', 'email address': 'email',
+  'first name': 'firstName', firstname: 'firstName', first: 'firstName',
+  'last name': 'lastName', lastname: 'lastName', last: 'lastName',
+  phone: 'phone', company: 'company', website: 'website', message: 'message',
+  budget: 'budget', source: 'source', 'utm campaign': 'utmCampaign',
+}
+
+export interface ImportRow {
+  email: string
+  firstName?: string
+  lastName?: string
+  phone?: string
+  company?: string
+  website?: string
+  message?: string
+  budget?: string
+  source?: string
+}
+
+/** Turn parsed CSV (first row = headers) into lead rows; bad/duplicate-in-file rows reported in `errors`. */
+export function csvToLeadRows(rows: string[][]): { leads: ImportRow[]; errors: { line: number; reason: string }[] } {
+  const errors: { line: number; reason: string }[] = []
+  if (rows.length === 0) return { leads: [], errors: [{ line: 1, reason: 'Empty file' }] }
+  const cols = (rows[0] ?? []).map((h) => HEADER_MAP[h.trim().toLowerCase()])
+  if (!cols.includes('email')) return { leads: [], errors: [{ line: 1, reason: 'No "email" column found' }] }
+  const seen = new Set<string>()
+  const leads: ImportRow[] = []
+  rows.slice(1).forEach((r, idx) => {
+    const line = idx + 2
+    const o: Record<string, string> = {}
+    cols.forEach((k, i) => {
+      const v = r[i]?.trim()
+      if (k && v) o[k] = v
+    })
+    const email = o.email?.toLowerCase()
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return void errors.push({ line, reason: `Invalid email "${o.email ?? ''}"` })
+    if (seen.has(email)) return void errors.push({ line, reason: `Duplicate of an earlier row (${email})` })
+    seen.add(email)
+    leads.push({ ...o, email })
+  })
+  return { leads, errors }
+}
+
+export interface DueSplit {
+  overdue: CrmTask[]
+  today: CrmTask[]
+}
+
+/** Open tasks that are past due, or due before the end of `now`'s UTC day. */
+export function splitDue(tasks: CrmTask[], now: Date = new Date()): DueSplit {
+  const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+  const open = tasks.filter((t) => !t.done && t.dueAt)
+  return {
+    overdue: open.filter((t) => t.dueAt!.getTime() < now.getTime()),
+    today: open.filter((t) => t.dueAt!.getTime() >= now.getTime() && t.dueAt!.getTime() < endOfDay.getTime()),
+  }
+}
