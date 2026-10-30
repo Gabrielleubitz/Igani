@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import { BrandedPage } from '@/components/brand/BrandedPage'
 import { SignInButton } from '@/components/AuthButtons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -11,10 +11,9 @@ function safeCallback(value: string | string[] | undefined): string {
 
 export default function LoginPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }): React.ReactElement {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-sm">
+    <BrandedPage>
+      <Card>
         <CardHeader className="items-center text-center">
-          <Image src="/igani-logo.png" alt="Igani" width={110} height={32} priority className="mb-4 h-8 w-auto" />
           <CardTitle>Igani CRM</CardTitle>
           <CardDescription>Team access only. Sign in with your whitelisted Google account.</CardDescription>
         </CardHeader>
@@ -22,6 +21,6 @@ export default function LoginPage({ searchParams }: { searchParams: Record<strin
           <SignInButton callbackUrl={safeCallback(searchParams.callbackUrl)} />
         </CardContent>
       </Card>
-    </main>
+    </BrandedPage>
   )
 }

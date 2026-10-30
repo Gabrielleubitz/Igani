@@ -1,3 +1,4 @@
+import { BrandedPage } from '@/components/brand/BrandedPage'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -14,8 +15,8 @@ const MESSAGES: Record<string, string> = {
 export default function UnauthorizedPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }): React.ReactElement {
   const reason = typeof searchParams.reason === 'string' ? searchParams.reason : typeof searchParams.error === 'string' ? searchParams.error : ''
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-md">
+    <BrandedPage wide>
+      <Card>
         <CardHeader>
           <CardTitle>Access denied</CardTitle>
           <CardDescription>{MESSAGES[reason] ?? 'You are not allowed to use Igani CRM with this account.'}</CardDescription>
@@ -26,6 +27,6 @@ export default function UnauthorizedPage({ searchParams }: { searchParams: Recor
           </Link>
         </CardContent>
       </Card>
-    </main>
+    </BrandedPage>
   )
 }

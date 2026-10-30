@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import { Logo } from '@/components/brand/Logo'
 import { ConfirmInviteButton } from '@/components/ConfirmInviteButton'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,7 +14,7 @@ function Shell({ title, description, children }: { title: string; description: s
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <Image src="/igani-logo.png" alt="Igani" width={90} height={26} className="mb-4 h-6 w-auto self-start" />
+          <Logo height={24} className="mb-4 self-start" />
           <CardTitle>{title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>

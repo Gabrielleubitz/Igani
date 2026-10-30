@@ -4,23 +4,30 @@
 
 @layer base {
   :root {
-    --background: 0 0% 4%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 4%;
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 64%;
-    --destructive: 0 63% 45%;
+    /* Igani brand: ink #002040, surface #204060, accent #4080E0 */
+    --background: 210 100% 6%;
+    --foreground: 0 0% 96%;
+    --card: 210 70% 10%;
+    --card-foreground: 0 0% 96%;
+    --primary: 216 74% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 50% 18%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 210 45% 15%;
+    --muted-foreground: 215 20% 68%;
+    --accent: 216 60% 70%;
+    --success: 152 55% 42%;
+    --warning: 38 92% 55%;
+    --destructive: 0 63% 48%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 83%;
+    --border: 210 40% 20%;
+    --input: 210 40% 24%;
+    --ring: 216 74% 58%;
     --radius: 0.5rem;
   }
   * { @apply border-border; }
   body { @apply bg-background text-foreground antialiased; }
+  :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
 }

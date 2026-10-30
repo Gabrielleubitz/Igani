@@ -1,12 +1,12 @@
 /** Shared Igani email styling (dark / minimalist). */
 export const colors = {
-  bg: '#0a0a0a',
-  card: '#141414',
-  border: '#262626',
-  text: '#fafafa',
-  muted: '#a3a3a3',
-  accent: '#ffffff',
-  accentText: '#0a0a0a',
+  bg: '#001429',
+  card: '#002040',
+  border: '#204060',
+  text: '#f5f5f5',
+  muted: '#9fb3c8',
+  accent: '#4080E0',
+  accentText: '#ffffff',
 } as const
 
 export const font =
