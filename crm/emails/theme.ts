@@ -1,4 +1,4 @@
-/** Shared Igani email styling (dark / minimalist). */
+/** Shared Igani email styling (dark navy). Logo rule: dark bg -> igani-logo.png (white wordmark); any white bg -> "igani-logo 2.png" (dark wordmark). */
 export const colors = {
   bg: '#001429',
   card: '#002040',
