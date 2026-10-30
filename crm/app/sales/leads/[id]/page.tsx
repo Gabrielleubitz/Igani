@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { AddNoteForm, AddTaskForm, CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
-import { foldTasks } from '@/components/crm/crm-utils'
+import { AddNoteForm, AddTaskForm, CompleteTaskButton, LogTouchButtons } from '@/components/crm/LeadNotesTasks'
+import { foldTasks, leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { EditContactForm } from '@/components/crm/EditContactForm'
 import { LeadControls } from '@/components/LeadControls'
 import { Badge } from '@/components/ui/badge'
@@ -16,6 +16,7 @@ const LABELS: Record<string, string> = {
   'note.added': 'Note',
   'task.created': 'Task created',
   'task.completed': 'Task completed',
+  'touch.logged': 'Touch',
 }
 
 export default async function LeadPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
@@ -40,12 +41,16 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   ])
   const tz = me.timeZone
   const tasks = foldTasks(logs).sort((a, b) => Number(a.done) - Number(b.done) || (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity))
+  const score = leadScore(lead)
+  const lastTouch = logs.find((l) => l.actor !== null || l.action === 'note.added')?.createdAt ?? lead.createdAt
+  const stale = staleDays(lead.status, lastTouch)
   const canEdit = true // contacts are open to every authenticated role
 
   const describe = (l: (typeof logs)[number]): string => {
     const m = (l.metadata ?? {}) as Record<string, unknown>
     if (l.action === 'note.added') return String(m.body ?? '')
     if (l.action === 'task.created') return String(m.title ?? '')
+    if (l.action === 'touch.logged') return `${String(m.kind ?? '')}${m.summary ? ` — ${String(m.summary)}` : ''}`
     const rest = Object.entries(m).map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
     return rest.join(' · ')
   }
@@ -61,6 +66,20 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
           <p className="text-sm text-muted-foreground">
             {[lead.company, lead.email, lead.phone].filter(Boolean).join(' · ')}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <Badge variant={score >= 65 ? 'default' : 'secondary'}>
+              {scoreLabel(score)} · {score}
+            </Badge>
+            {stale !== null ? <Badge variant="outline">No contact for {stale} days</Badge> : null}
+            <a href={`mailto:${lead.email}`} className="underline underline-offset-4">
+              Email
+            </a>
+            {lead.phone ? (
+              <a href={`tel:${lead.phone}`} className="underline underline-offset-4">
+                Call
+              </a>
+            ) : null}
+          </div>
         </div>
         <LeadControls
           leadId={lead.id}
@@ -140,7 +159,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         <div className="space-y-6 lg:col-span-2">
           {canEdit ? (
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="space-y-4 pt-6">
+                <LogTouchButtons leadId={lead.id} />
                 <AddNoteForm leadId={lead.id} />
               </CardContent>
             </Card>

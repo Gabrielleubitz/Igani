@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildReport, csvCell, filterLeads, foldTasks, toCsv } from '@/components/crm/crm-utils'
+import { buildReport, csvCell, filterLeads, foldTasks, leadScore, scoreLabel, staleDays, toCsv } from '@/components/crm/crm-utils'
 
 describe('csv', () => {
   it('quotes and neutralises formulas', () => {
@@ -72,5 +72,20 @@ describe('splitDue', () => {
     const r = splitDue([mk('a', '2026-05-09T00:00:00Z'), mk('b', '2026-05-10T20:00:00Z'), mk('c', '2026-05-11T01:00:00Z'), mk('d', null), mk('e', '2026-05-01T00:00:00Z', true)], now)
     expect(r.overdue.map((t) => t.id)).toEqual(['a'])
     expect(r.today.map((t) => t.id)).toEqual(['b'])
+  })
+})
+
+describe('leadScore / staleDays', () => {
+  const lead = { status: 'PROPOSAL_SENT', email: 'a@acme.com', phone: '1', company: 'Acme', website: null, budget: '10k', message: 'hi', dealValue: 5000 }
+  it('scores qualified leads hot and closed leads zero', () => {
+    expect(scoreLabel(leadScore(lead))).toBe('Hot')
+    expect(leadScore({ ...lead, status: 'WON' })).toBe(0)
+    expect(scoreLabel(leadScore({ ...lead, status: 'NEW', email: 'a@gmail.com', phone: null, company: null, budget: null, message: null, dealValue: null }))).toBe('Cold')
+  })
+  it('flags only open leads quiet for a week', () => {
+    const now = new Date('2026-03-31T00:00:00Z')
+    expect(staleDays('NEW', new Date('2026-03-20T00:00:00Z'), now)).toBe(11)
+    expect(staleDays('NEW', new Date('2026-03-30T00:00:00Z'), now)).toBeNull()
+    expect(staleDays('LOST', new Date('2026-01-01T00:00:00Z'), now)).toBeNull()
   })
 })

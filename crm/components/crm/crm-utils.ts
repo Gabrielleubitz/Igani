@@ -217,3 +217,45 @@ export function splitDue(tasks: CrmTask[], now: Date = new Date()): DueSplit {
     today: open.filter((t) => t.dueAt!.getTime() >= now.getTime() && t.dueAt!.getTime() < endOfDay.getTime()),
   }
 }
+
+const OPEN_STATUSES: readonly string[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT']
+const STAGE_POINTS: Record<string, number> = { NEW: 10, CONTACTED: 25, DEMO_SCHEDULED: 45, PROPOSAL_SENT: 60 }
+
+/** Days since the last touch (activity or creation) before an open lead counts as stale. */
+export const STALE_DAYS = 7
+
+export interface ScoreInput {
+  status: string
+  email: string
+  phone: string | null
+  company: string | null
+  website: string | null
+  budget: string | null
+  message: string | null
+  dealValue: number | null
+}
+
+/** 0–100 heat score: pipeline stage plus how complete/qualified the contact is. Closed leads score 0. */
+export function leadScore(l: ScoreInput): number {
+  if (!OPEN_STATUSES.includes(l.status)) return 0
+  let n = STAGE_POINTS[l.status] ?? 0
+  if (l.phone) n += 8
+  if (l.company) n += 8
+  if (l.website) n += 4
+  if (l.budget) n += 10
+  if (l.message) n += 5
+  if (l.dealValue && l.dealValue > 0) n += 10
+  if (!/@(gmail|yahoo|hotmail|outlook|icloud)\./i.test(l.email)) n += 5
+  return Math.min(100, n)
+}
+
+export function scoreLabel(score: number): 'Hot' | 'Warm' | 'Cold' {
+  return score >= 65 ? 'Hot' : score >= 35 ? 'Warm' : 'Cold'
+}
+
+/** Whole days an open lead has gone untouched, or null if it is closed or touched within STALE_DAYS. */
+export function staleDays(status: string, lastTouch: Date, now: Date = new Date()): number | null {
+  if (!OPEN_STATUSES.includes(status)) return null
+  const d = Math.floor((now.getTime() - lastTouch.getTime()) / 864e5)
+  return d >= STALE_DAYS ? d : null
+}

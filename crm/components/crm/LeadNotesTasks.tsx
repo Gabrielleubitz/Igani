@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { addNote, completeTask, createTask } from '@/app/sales/actions'
+import { addNote, completeTask, createTask, logTouch } from '@/app/sales/actions'
 import { Button } from '@/components/ui/button'
 import { TASK_PRIORITIES, type TaskPriority } from '@/components/crm/crm-utils'
 import { Input, Select, Textarea } from '@/components/ui/input'
@@ -93,5 +93,42 @@ export function CompleteTaskButton({ leadId, taskId }: { leadId: string; taskId:
     >
       Done
     </Button>
+  )
+}
+
+const TOUCHES = [
+  ['call', 'Log call'],
+  ['email', 'Log email'],
+  ['meeting', 'Log meeting'],
+  ['whatsapp', 'Log WhatsApp'],
+] as const
+
+export function LogTouchButtons({ leadId }: { leadId: string }): React.ReactElement {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {TOUCHES.map(([kind, label]) => (
+        <Button
+          key={kind}
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() => {
+            const summary = window.prompt(`${label}: what was discussed? (optional)`)
+            if (summary === null) return
+            start(async () => {
+              const res = await logTouch(leadId, kind, summary)
+              setError(res.ok ? null : res.error)
+              router.refresh()
+            })
+          }}
+        >
+          {label}
+        </Button>
+      ))}
+      {error ? <span className="text-xs text-red-400">{error}</span> : null}
+    </div>
   )
 }

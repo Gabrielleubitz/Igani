@@ -29,6 +29,25 @@ export async function addNote(leadId: string, body: string): Promise<ActionResul
   }
 }
 
+const TOUCH_KINDS = ['call', 'email', 'meeting', 'whatsapp'] as const
+
+/** Log an outbound touch (call/email/…) on a lead; resets the stale-lead clock. */
+export async function logTouch(leadId: string, kind: (typeof TOUCH_KINDS)[number], summary: string): Promise<ActionResult> {
+  try {
+    const user = await requireUser()
+    const id = z.string().cuid().parse(leadId)
+    const k = z.enum(TOUCH_KINDS).parse(kind)
+    const text = z.string().trim().max(2000).parse(summary)
+    await assertOwnsLead(id, user)
+    await logActivity({ entityType: 'LEAD', entityId: id, actorId: user.id, action: 'touch.logged', metadata: { kind: k, summary: text } })
+    revalidatePath(`/sales/leads/${id}`)
+    revalidatePath('/sales/today')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
 export async function createTask(leadId: string, title: string, dueAt: string | null, priority: TaskPriority = 'MEDIUM'): Promise<ActionResult> {
   try {
     const user = await requireUser()

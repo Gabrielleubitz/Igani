@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
 const TABS = [
+  { href: '/sales/today', label: 'Today' },
   { href: '/sales/leads', label: 'Contacts' },
   { href: '/sales', label: 'Pipeline' },
   { href: '/sales/board', label: 'Board' },

@@ -6,6 +6,7 @@ import { SignOutButton } from './AuthButtons'
 
 const NAV: { href: string; label: string; roles: SessionUser['role'][] }[] = [
   { href: '/admin/dashboard', label: 'Overview', roles: ['ADMIN'] },
+  { href: '/sales/today', label: 'Today', roles: ['ADMIN', 'SALES', 'MARKETING'] },
   { href: '/sales/leads', label: 'Contacts', roles: ['ADMIN', 'SALES', 'MARKETING'] },
   { href: '/sales', label: 'Pipeline', roles: ['ADMIN', 'SALES'] },
   { href: '/sales/board', label: 'Board', roles: ['ADMIN', 'SALES', 'MARKETING'] },
