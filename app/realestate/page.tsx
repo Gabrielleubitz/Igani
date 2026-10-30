@@ -13,6 +13,7 @@ import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { SectionRail } from '@/app/components/landing/fx/SectionRail'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
 import { Hero } from '@/app/components/realestate/Hero'
+import { HeroBackdrop } from '@/app/components/realestate/HeroBackdrop'
 import { CompareSlider } from '@/app/components/funnel3/CompareSlider'
 import { Proof } from '@/app/components/funnel3/Proof'
 import { OurWork } from '@/app/components/realestate/OurWork'
@@ -163,7 +164,8 @@ export default function RealEstatePage() {
       {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative">
         {/* Opening screen shares the closing section's brand blue so the page starts on its boldest note */}
-        <div className="bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]">
+        <div className="relative bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]">
+          <HeroBackdrop />
           <FunnelBanner className="mt-[76px] sm:mt-[92px]" />
           <Hero onCta={scrollToForm} />
         </div>

@@ -21,7 +21,7 @@ export function Hero({ onCta }: { onCta: () => void }) {
     <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI for real estate">
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-white/15 blur-[140px]" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 pb-24 pt-32 text-center sm:px-6 lg:px-8">
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 pb-24 pt-32 text-center [text-shadow:0_1px_20px_rgba(8,32,100,0.55)] sm:px-6 lg:px-8">
         <motion.p {...fadeUp(0)} className="mb-8 text-sm text-white/75">
           IGANI · Websites for real estate agents &amp; brokerages
         </motion.p>

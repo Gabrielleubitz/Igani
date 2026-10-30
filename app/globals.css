@@ -333,3 +333,9 @@
   46%, 54% { background-position: 50% 100%; }
   92%, 100% { background-position: 50% 0%; }
 }
+
+/* Real estate funnel hero: the photo behind the headline drifts very slowly */
+@keyframes hero-drift {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to { transform: scale(1.12) translate3d(-1.5%, -1%, 0); }
+}
