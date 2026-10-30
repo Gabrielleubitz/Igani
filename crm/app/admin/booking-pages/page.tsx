@@ -1,3 +1,5 @@
+import { DangerButton } from '../_components/DangerButton'
+import { deleteBookingPage } from '@/app/actions/admin'
 import { BookingPageForm } from '@/components/admin/forms'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { appUrl } from '@/lib/env'
@@ -44,6 +46,9 @@ export default async function BookingPagesPage(): Promise<React.ReactElement> {
                 hostId: p.hostId,
               }}
             />
+            <div className="mt-3">
+              <DangerButton label="Delete page" confirm={`Delete /book/${p.slug}? Existing bookings are kept.`} action={async () => { 'use server'; return deleteBookingPage(p.id) }} />
+            </div>
           </CardContent>
         </Card>
       ))}

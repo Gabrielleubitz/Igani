@@ -63,6 +63,11 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
       for (const [key, value] of Object.entries(data) as [keyof typeof data, string | undefined][]) {
         if (value !== undefined && existing[key] == null) fill[key] = value
       }
+      // A returning lead's new message must reach reps: append it (dated) to the stored message.
+      if (payload.message && existing.message && payload.message !== existing.message) {
+        const stamp = new Date().toISOString().slice(0, 10)
+        fill.message = `${existing.message}\n\n--- resubmitted ${stamp} ---\n${payload.message}`.slice(0, 20000)
+      }
       if (Object.keys(fill).length > 0) await tx.lead.update({ where: { id: existing.id }, data: fill })
       await logActivity(
         {
@@ -101,8 +106,12 @@ function isUniqueViolation(err: unknown): boolean {
  * serialises concurrent webhooks so reps are rotated strictly in order.
  * Returns the assignee id, or null if there are no reps or the lead was already assigned.
  */
-export async function assignLeadRoundRobin(leadId: string): Promise<string | null> {
+export async function assignLeadRoundRobin(leadId: string, opts: { force?: boolean } = {}): Promise<string | null> {
   return prisma.$transaction(async (tx) => {
+    if (!opts.force) {
+      const off = await tx.siteSetting.findUnique({ where: { key: 'roundRobin.enabled' } })
+      if (off && off.value === false) return null
+    }
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('igani:lead-round-robin'))`
     const lead = await tx.lead.findUnique({ where: { id: leadId }, select: { assignedToId: true } })
     if (!lead || lead.assignedToId) return null
@@ -149,14 +158,44 @@ export async function assignLeadManually(leadId: string, assigneeId: string | nu
   })
 }
 
-export async function changeLeadStatus(leadId: string, status: LeadStatus, actorId: string | null): Promise<void> {
+export interface StatusExtras {
+  lostReason?: string
+  dealValue?: number
+}
+
+export async function changeLeadStatus(leadId: string, status: LeadStatus, actorId: string | null, extras: StatusExtras = {}): Promise<void> {
+  if (status === 'LOST' && !extras.lostReason?.trim()) throw new Error('A reason is required when marking a lead as lost')
   await prisma.$transaction(async (tx) => {
     const before = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { status: true } })
     if (before.status === status) return
-    await tx.lead.update({ where: { id: leadId }, data: { status } })
+    await tx.lead.update({
+      where: { id: leadId },
+      data: {
+        status,
+        lostReason: status === 'LOST' ? extras.lostReason!.trim() : null,
+        ...(extras.dealValue !== undefined ? { dealValue: extras.dealValue } : {}),
+      },
+    })
     await logActivity(
-      { entityType: 'LEAD', entityId: leadId, action: 'lead.status_changed', actorId, metadata: { from: before.status, to: status } },
+      { entityType: 'LEAD', entityId: leadId, action: 'lead.status_changed', actorId, metadata: { from: before.status, to: status, ...extras } },
       tx,
     )
   })
+}
+
+/** Move every open lead and future booking from one user to another (or unassign leads when toId is null). */
+export async function reassignUserWork(fromId: string, toId: string | null, actorId: string, tx: Prisma.TransactionClient): Promise<number> {
+  const leads = await tx.lead.findMany({ where: { assignedToId: fromId }, select: { id: true } })
+  if (leads.length === 0) return 0
+  await tx.lead.updateMany({ where: { assignedToId: fromId }, data: { assignedToId: toId } })
+  await tx.activityLog.createMany({
+    data: leads.map((l) => ({
+      entityType: 'LEAD' as const,
+      entityId: l.id,
+      action: 'lead.assigned',
+      actorId,
+      metadata: { from: fromId, to: toId, strategy: 'reassign-on-deactivate' },
+    })),
+  })
+  return leads.length
 }

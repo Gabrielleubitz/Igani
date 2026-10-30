@@ -6,6 +6,8 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { normalizeEmail, requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { reassignUserWork } from '@/lib/leads'
+import { SETTING_SCHEMAS, isSettingKey } from '@/lib/settings'
 import { parseHHmm } from '@/lib/slots'
 import { toActionError, type ActionResult } from './result'
 
@@ -21,7 +23,10 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
     }
     const row = await prisma.$transaction(async (tx) => {
       const allowed = await tx.allowedUser.upsert({ where: { email: data.email }, create: data, update: { role: data.role, active: data.active } })
+      const users = await tx.user.findMany({ where: { email: data.email }, select: { id: true } })
       await tx.user.updateMany({ where: { email: data.email }, data: { role: data.active ? data.role : null } })
+      // Deactivated (or moved off SALES/ADMIN) users must not keep owning leads.
+      if (users[0] && (!data.active || data.role === 'MARKETING')) await reassignUserWork(users[0].id, null, admin.id, tx)
       await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: data }, tx)
       return allowed
     })
@@ -97,6 +102,72 @@ export async function upsertBookingPage(input: z.input<typeof bookingPageSchema>
       await logActivity({ entityType: 'BOOKING_PAGE', entityId: page.id, action: 'booking_page.upserted', actorId: admin.id, metadata: data }, tx)
     })
     revalidatePath('/admin/booking-pages')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Remove a whitelist entry entirely. Their leads become unassigned; their sign-in is revoked. */
+export async function removeAllowedUser(email: string): Promise<ActionResult<{ unassignedLeads: number }>> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const e = emailSchema.parse(email)
+    if (e === admin.email) throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'You cannot remove yourself' }])
+    const unassignedLeads = await prisma.$transaction(async (tx) => {
+      const allowed = await tx.allowedUser.findUnique({ where: { email: e } })
+      if (!allowed) throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'Not on the whitelist' }])
+      const user = await tx.user.findUnique({ where: { email: e }, select: { id: true } })
+      let n = 0
+      if (user) {
+        n = await reassignUserWork(user.id, null, admin.id, tx)
+        await tx.session.deleteMany({ where: { userId: user.id } })
+        await tx.user.update({ where: { id: user.id }, data: { role: null } })
+        await tx.bookingPage.updateMany({ where: { hostId: user.id }, data: { active: false } })
+      }
+      await tx.allowedUser.delete({ where: { email: e } })
+      await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.removed', actorId: admin.id, metadata: { email: e, unassignedLeads: n } }, tx)
+      return n
+    })
+    revalidatePath('/admin/users')
+    return { ok: true, data: { unassignedLeads } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Delete a public booking page. Existing bookings are kept (link cleared). */
+export async function deleteBookingPage(id: string): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const pageId = z.string().cuid().parse(id)
+    await prisma.$transaction(async (tx) => {
+      const page = await tx.bookingPage.delete({ where: { id: pageId } })
+      await logActivity({ entityType: 'BOOKING_PAGE', entityId: pageId, action: 'booking_page.deleted', actorId: admin.id, metadata: { slug: page.slug } }, tx)
+    })
+    revalidatePath('/admin/booking-pages')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Save one or more site settings (validated against SETTING_SCHEMAS). */
+export async function saveSettings(values: Record<string, unknown>): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const entries = Object.entries(values)
+    for (const [key] of entries) {
+      if (!isSettingKey(key)) throw new z.ZodError([{ code: 'custom', path: [key], message: 'Unknown setting' }])
+    }
+    const parsed = entries.map(([key, v]) => [key, SETTING_SCHEMAS[key as keyof typeof SETTING_SCHEMAS].parse(v)] as const)
+    await prisma.$transaction(async (tx) => {
+      for (const [key, value] of parsed) {
+        await tx.siteSetting.upsert({ where: { key }, create: { key, value }, update: { value } })
+      }
+      await logActivity({ entityType: 'SETTING', entityId: 'site', action: 'settings.updated', actorId: admin.id, metadata: Object.fromEntries(parsed) }, tx)
+    })
+    revalidatePath('/admin/settings')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)

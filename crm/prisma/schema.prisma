@@ -44,6 +44,7 @@ enum EntityType {
   ALLOWED_USER
   BOOKING_PAGE
   AVAILABILITY
+  SETTING
 }
 
 // ─── Access control ──────────────────────────────────────────────────────────
@@ -84,6 +85,7 @@ model User {
   availability    Availability[]
   bookingPages    BookingPage[]
   activityLogs    ActivityLog[]
+  leadNotes       LeadNote[]
 
   @@index([role])
 }
@@ -146,12 +148,19 @@ model Lead {
   utmContent   String?
   budget       String?
   status       LeadStatus @default(NEW)
+  /// Why a lead was LOST (required when moving to LOST)
+  lostReason   String?
+  /// Deal value in whole currency units, set on WON/proposal
+  dealValue    Int?
+  /// Soft-delete: hidden from pipelines, restorable by admin
+  archived     Boolean    @default(false)
   assignedToId String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
   assignedTo User?     @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   bookings   Booking[]
+  notes      LeadNote[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -243,4 +252,24 @@ model ActivityLog {
   @@index([entityType, entityId, createdAt])
   @@index([actorId, createdAt])
   @@index([createdAt])
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  leadId    String
+  authorId  String?
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  lead   Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([leadId, createdAt])
+}
+
+/// Admin-editable site/CRM settings (key → JSON value). See lib/settings.ts for known keys.
+model SiteSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
 }
