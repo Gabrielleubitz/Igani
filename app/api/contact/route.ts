@@ -26,6 +26,30 @@ export async function POST(request: NextRequest) {
 
     await saveContactSubmission(submissionData)
 
+    // Forward to the Igani CRM (best effort: never block the visitor's form)
+    const crmUrl = process.env.CRM_LEAD_WEBHOOK_URL
+    const crmKey = process.env.CRM_LEAD_WEBHOOK_SECRET
+    if (crmUrl && crmKey) {
+      try {
+        const res = await fetch(crmUrl, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-api-key': crmKey },
+          body: JSON.stringify({
+            email: submissionData.email,
+            firstName: submissionData.firstName,
+            lastName: submissionData.lastName,
+            phone: submissionData.phone,
+            message: `${submissionData.projectType}: ${submissionData.message}`,
+            source: 'igani.co contact form',
+          }),
+          signal: AbortSignal.timeout(8000),
+        })
+        if (!res.ok) console.error('CRM lead webhook failed:', res.status)
+      } catch (err) {
+        console.error('CRM lead webhook error:', err)
+      }
+    }
+
     const html = buildContactNotificationEmail(submissionData)
     await sendAdminNotification(
       `[IGANI] New contact: ${submissionData.firstName} ${submissionData.lastName}`,
