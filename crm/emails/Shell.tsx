@@ -24,7 +24,7 @@ export function Shell({ preview, eyebrow, title, logoUrl, brandName = 'Igani', s
       <Preview>{preview}</Preview>
       <Body style={{ backgroundColor: colors.bg, fontFamily: font, margin: 0, padding: '40px 0' }}>
         <Container style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px' }}>
-          <Img src={logoUrl} alt={brandName} width={96} height={28} style={{ marginBottom: 32 }} />
+          <Img src={logoUrl} alt={brandName} width={112} height={47} style={{ marginBottom: 32 }} />
           <Section style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 32 }}>
             <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>{eyebrow}</Text>
             <Text style={{ color: colors.text, fontSize: 24, fontWeight: 600, lineHeight: '32px', margin: '8px 0 24px' }}>{title}</Text>

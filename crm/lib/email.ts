@@ -56,7 +56,12 @@ async function brand(): Promise<{ brandName: string; supportEmail: string }> {
   return { brandName, supportEmail }
 }
 
-const logoUrl = (): string => appUrl('/igani-logo.png')
+/** Emails render in inboxes, so the logo must be a public https URL (never localhost). */
+const PUBLIC_LOGO_URL = 'https://app.igani.co/igani-logo.png'
+const logoUrl = (): string => {
+  const url = appUrl('/igani-logo.png')
+  return url.startsWith('https://') && !url.includes('localhost') ? url : PUBLIC_LOGO_URL
+}
 
 export async function sendBookingInviteEmail(b: BookingEmailData & { acceptUrl: string }): Promise<string> {
   const element = BookingInvite({ ...b, logoUrl: logoUrl(), ...(await brand()) })
