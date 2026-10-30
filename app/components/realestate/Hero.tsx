@@ -28,14 +28,14 @@ export function Hero({ onCta }: { onCta: () => void }) {
 
         <FocusIn>
           <h1 className="text-balance text-[clamp(2.6rem,8vw,6.5rem)] font-semibold leading-[0.96] tracking-[-0.035em] text-white">
-            Buyers Google you{' '}
-            <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">before</span> they call you
+            Buyers tour your{' '}
+            <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">website</span> before your listings
             <span className="text-white">.</span>
           </h1>
         </FocusIn>
 
         <motion.p {...fadeUp(1.0)} className="!mt-6 text-xl font-medium text-white sm:text-2xl">
-          Make sure what they find wins the listing.
+          Give them a reason to book the showing.
         </motion.p>
         <motion.p {...fadeUp(1.15)} className="!mt-4 max-w-xl text-lg leading-relaxed text-white/85">
           If your site looks like 2018, sellers assume your marketing is too, and they call the agent whose site looks like a luxury brand.

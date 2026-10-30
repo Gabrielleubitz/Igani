@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 
 const TITLE = 'IGANI | Websites for Real Estate Agents'
 const DESCRIPTION =
-  'Buyers Google you before they call you. Websites that win the listing: home valuation and showing-request forms that send leads to your CRM, Matterport 3D tours, and a brand that’s yours.'
+  'Buyers tour your website before your listings. Websites that win the listing: home valuation and showing-request forms that send leads to your CRM, Matterport 3D tours, and a brand that’s yours.'
 
 // The social tags are set here too: without them Facebook and X show the main site's title and description
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     url: '/realestate',
     siteName: 'IGANI',
     type: 'website',
-    images: [{ url: '/og/realestate.jpg', width: 1200, height: 630, alt: 'Buyers Google you before they call you. Websites for real estate agents by IGANI' }],
+    images: [{ url: '/og/realestate.jpg', width: 1200, height: 630, alt: 'Buyers tour your website before your listings. Websites for real estate agents by IGANI' }],
   },
   twitter: {
     card: 'summary_large_image',
