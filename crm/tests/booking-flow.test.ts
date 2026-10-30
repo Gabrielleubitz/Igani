@@ -45,6 +45,7 @@ d('booking confirmation flow', async () => {
   let hostId = ''
 
   beforeEach(async () => {
+    await prisma.siteSetting.deleteMany()
     await prisma.activityLog.deleteMany()
     await prisma.booking.deleteMany()
     await prisma.availability.deleteMany()
