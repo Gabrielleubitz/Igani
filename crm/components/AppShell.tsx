@@ -5,7 +5,12 @@ import type { SessionUser } from '@/lib/auth'
 import { SignOutButton } from './AuthButtons'
 
 const NAV: { href: string; label: string; roles: SessionUser['role'][] }[] = [
+  { href: '/admin/dashboard', label: 'Overview', roles: ['ADMIN'] },
+  { href: '/admin/leads', label: 'Leads', roles: ['ADMIN'] },
   { href: '/sales', label: 'Pipeline', roles: ['ADMIN', 'SALES'] },
+  { href: '/sales/board', label: 'Board', roles: ['ADMIN', 'SALES'] },
+  { href: '/sales/tasks', label: 'Tasks', roles: ['ADMIN', 'SALES'] },
+  { href: '/sales/reports', label: 'Reports', roles: ['ADMIN', 'SALES'] },
   { href: '/sales/invite', label: 'New invite', roles: ['ADMIN', 'SALES'] },
   { href: '/sales/availability', label: 'My hours', roles: ['ADMIN', 'SALES'] },
   { href: '/marketing', label: 'Marketing', roles: ['ADMIN', 'MARKETING'] },
@@ -13,6 +18,7 @@ const NAV: { href: string; label: string; roles: SessionUser['role'][] }[] = [
   { href: '/admin/booking-pages', label: 'Booking pages', roles: ['ADMIN'] },
   { href: '/admin/users', label: 'Team', roles: ['ADMIN'] },
   { href: '/admin/audit', label: 'Audit log', roles: ['ADMIN'] },
+  { href: '/admin/settings', label: 'Settings', roles: ['ADMIN'] },
 ]
 
 export function AppShell({ user, children }: { user: SessionUser; children: ReactNode }): React.ReactElement {
