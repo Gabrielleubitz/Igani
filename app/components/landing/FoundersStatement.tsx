@@ -6,7 +6,6 @@ import { ArrowRight } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { landingContent } from '@/lib/landingContent'
 import { TeamMember } from '@/types'
-import { TextReveal } from './fx/TextReveal'
 
 type FoundersStatementProps = {
   team: TeamMember[]
@@ -28,21 +27,33 @@ export function FoundersStatement({ team }: FoundersStatementProps) {
   const people = team.slice(0, 3)
 
   return (
-    <section className="relative border-t border-white/[0.06] py-16 sm:py-24">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <TextReveal
-          text={c.statement[language]}
-          as="p"
-          stagger={0.06}
-          className="!mt-0 max-w-5xl text-balance text-3xl font-semibold leading-[1.08] tracking-[-0.025em] text-white sm:text-5xl lg:text-[3.6rem]"
-        />
+    <section className="relative flex min-h-[80svh] items-center py-24 sm:py-32">
+      <div className="mx-auto flex max-w-6xl flex-col items-center px-4 text-center sm:px-6 lg:px-8">
+        {/* Rises into place without fading, so it's fully readable by the time it's mid-screen */}
+        <motion.p
+          initial={{ y: 40 }}
+          whileInView={{ y: 0 }}
+          viewport={{ once: true, margin: '0px 0px -10% 0px' }}
+          transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          className="!mt-0 max-w-[18ch] text-balance text-[clamp(40px,5vw,80px)] font-semibold leading-[1.04] tracking-[-0.03em] text-white"
+        >
+          {c.statement[language].split('*').map((seg, i) =>
+            i % 2 === 1 ? (
+              <span key={i} className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#dbe6ff]">
+                {seg}
+              </span>
+            ) : (
+              seg
+            )
+          )}
+        </motion.p>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.35 }}
-          className="mt-12 flex flex-wrap items-center gap-x-10 gap-y-6"
+          transition={{ duration: 0.6, delay: 0.25 }}
+          className="mt-14 flex flex-col items-center gap-6"
         >
           {people.length > 0 && (
             <div className="flex items-center">
@@ -66,7 +77,7 @@ export function FoundersStatement({ team }: FoundersStatementProps) {
                   </Link>
                 ))}
               </div>
-              <div className="ml-5">
+              <div className="ms-5 text-start">
                 <p className="font-display !mt-0 text-xl text-[#dbe6ff]">— {c.signoff[language]}</p>
                 <p className="!mt-0.5 text-sm text-white/55">
                   {people.map((m) => m.name.split(' ')[0]).join(', ')}

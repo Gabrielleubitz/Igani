@@ -1,28 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { scrollToSection as scrollToHomeSection } from '@/app/components/funnel-shared/SectionSheet'
 import { motion, AnimatePresence } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
 import { HamburgerMenu } from '@/components/HamburgerMenu'
-import LanguageToggle from '@/components/LanguageToggle'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
 import { useSiteSettings } from '@/hooks/useSiteSettings'
 import {
-  DEFAULT_INSTAGRAM_URL,
+  INSTAGRAM_URL,
   getWhatsAppChatHref,
   tiktokHrefFromSettings,
 } from '@/lib/siteSocial'
 import { TikTokGlyph, WhatsAppGlyph } from '@/components/SocialGlyphs'
-import {
-  Home,
-  Folder,
-  Info,
-  MessageSquare,
-  Package,
-  ArrowLeft,
-  Instagram,
-} from 'lucide-react'
+import { ArrowLeft, ArrowRight, Instagram } from 'lucide-react'
 
 interface HeaderProps {
   showBackButton?: boolean
@@ -38,26 +30,44 @@ export default function Header({
   onBackClick
 }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  // Home page only: SectionRail broadcasts the current chapter; while scrolling down the
+  // centre of the pill shows it in place of the nav links (restored on scroll-up or hover)
+  const [chapter, setChapter] = useState<{ index: string; label: string } | null>(null)
+  const [scrollingDown, setScrollingDown] = useState(false)
+  const [navHover, setNavHover] = useState(false)
+
+  useEffect(() => {
+    const onChapter = (e: Event) => setChapter((e as CustomEvent).detail)
+    let lastY = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      if (Math.abs(y - lastY) > 6) setScrollingDown(y > lastY)
+      lastY = y
+    }
+    window.addEventListener('igani:chapter', onChapter)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('igani:chapter', onChapter)
+      window.removeEventListener('scroll', onScroll)
+    }
+  }, [])
+
+  const showChapter = !!chapter && scrollingDown && !navHover
   const { language: currentLanguage } = useLanguage()
   const { settings } = useSiteSettings()
 
   const nav = siteContent.navigation
-  const instagramHref = settings.instagramUrl?.trim() || DEFAULT_INSTAGRAM_URL
+  const instagramHref = INSTAGRAM_URL
   const tiktokHref = tiktokHrefFromSettings(settings.tiktokUrl)
   const whatsappHref = getWhatsAppChatHref(settings, nav.whatsappPrefillMessage[currentLanguage])
   const defaultBackButtonText = backButtonText || nav.backToHome[currentLanguage]
 
   const scrollToSection = (sectionId: string) => {
     if (window.location.pathname === '/') {
-      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth' })
+      scrollToHomeSection(sectionId)
     } else {
       window.location.href = `/#${sectionId}`
     }
-    setIsMenuOpen(false)
-  }
-
-  const handleContactClick = () => {
-    window.location.href = '/contact'
     setIsMenuOpen(false)
   }
 
@@ -74,10 +84,10 @@ export default function Header({
   }
 
   const navigationItems = [
-    { id: 'home',      label: nav.home[currentLanguage],      icon: Home,    type: 'section' as const },
-    { id: 'portfolio', label: nav.portfolio[currentLanguage], icon: Folder,  type: 'section' as const },
-    { id: 'packages',  label: nav.packages[currentLanguage],  icon: Package, type: 'page'    as const, href: '/packages' },
-    { id: 'about',     label: nav.about[currentLanguage],     icon: Info,    type: 'page'    as const, href: '/about' },
+    { id: 'home',      label: nav.home[currentLanguage], type: 'section' as const },
+    { id: 'portfolio', label: nav.portfolio[currentLanguage], type: 'section' as const },
+    { id: 'packages',  label: nav.packages[currentLanguage], type: 'page'    as const, href: '/packages' },
+    { id: 'about',     label: nav.about[currentLanguage], type: 'page'    as const, href: '/about' },
   ]
 
   return (
@@ -107,7 +117,24 @@ export default function Header({
           </div>
 
           {/* CENTRE — nav links (desktop only), centered in the bar via 1fr / auto / 1fr grid */}
-          <div className="hidden min-w-0 lg:flex lg:justify-center lg:gap-1 lg:justify-self-center">
+          <div
+            className="relative hidden min-w-0 lg:flex lg:justify-center lg:gap-1 lg:justify-self-center"
+            onMouseEnter={() => setNavHover(true)}
+            onMouseLeave={() => setNavHover(false)}
+          >
+            {chapter && (
+              <span
+                aria-live="polite"
+                className={`pointer-events-none absolute inset-0 flex items-center justify-center gap-2 whitespace-nowrap text-sm text-white transition-opacity duration-[250ms] ease-out ${
+                  showChapter ? 'opacity-100' : 'opacity-0'
+                }`}
+              >
+                <span className="font-display text-lg leading-none text-[#9ec0f5]">{chapter.index}</span>
+                <span className="text-white/40">—</span>
+                {chapter.label}
+              </span>
+            )}
+            <div className={`flex gap-1 transition-opacity duration-[250ms] ease-out ${showChapter ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
             {navigationItems.map(item =>
               item.type === 'page' ? (
                 <a
@@ -129,9 +156,10 @@ export default function Header({
                 </button>
               )
             )}
+            </div>
           </div>
 
-          {/* RIGHT — language toggle + CTA (desktop) / hamburger (mobile) */}
+          {/* RIGHT — socials (desktop) / hamburger (mobile) */}
           <div className="flex shrink-0 items-center justify-end gap-2 lg:min-w-0 lg:justify-self-end">
             <div className="hidden lg:flex lg:items-center lg:gap-1.5">
               <a
@@ -161,14 +189,6 @@ export default function Header({
               >
                 <WhatsAppGlyph className="h-[22px] w-[22px]" />
               </a>
-              <LanguageToggle />
-              <button
-                onClick={handleContactClick}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#4080E0] to-[#2060C0] px-5 py-2 text-sm font-medium text-white shadow-lg shadow-[#4080E0]/20 transition-all duration-300 hover:from-[#5090F0] hover:to-[#3070D0] hover:shadow-[#4080E0]/35"
-              >
-                <MessageSquare className="h-4 w-4" />
-                {nav.freeConsultation[currentLanguage]}
-              </button>
             </div>
             <div className="lg:hidden">
               <HamburgerMenu
@@ -187,89 +207,44 @@ export default function Header({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="mt-2 rounded-2xl border border-white/[0.10] bg-[#010814]/75 px-4 py-4 shadow-xl backdrop-blur-[36px] backdrop-saturate-[180%] shadow-[0_8px_40px_-4px_rgba(0,0,20,0.65),inset_0_1px_0_rgba(255,255,255,0.10)] lg:hidden"
+              className="mt-2 rounded-[28px] border border-white/[0.10] bg-[#030814] px-6 pb-6 pt-2 shadow-[0_24px_60px_-12px_rgba(0,0,0,0.8)] lg:hidden"
             >
-              <div className="flex flex-col gap-1">
-                {showBackButton && (
-                  <button
-                    onClick={handleBackClick}
-                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                    {defaultBackButtonText}
-                  </button>
-                )}
-                {navigationItems.map(item =>
-                  item.type === 'page' ? (
-                    <a
-                      key={item.id}
-                      href={item.href}
-                      className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <item.icon className="h-5 w-5" />
+              {showBackButton && (
+                <button
+                  onClick={handleBackClick}
+                  className="flex items-center gap-2 pt-4 text-[13px] text-white/60 transition-colors hover:text-white"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  {defaultBackButtonText}
+                </button>
+              )}
+              <nav aria-label="Menu" className="flex flex-col">
+                {navigationItems.map((item, i) => {
+                  const content = (
+                    <>
+                      <span className="w-6 shrink-0 font-display text-[15px] font-normal italic text-[#4080E0]">0{i + 1}</span>
                       {item.label}
+                    </>
+                  )
+                  return item.type === 'page' ? (
+                    <a key={item.id} href={item.href} onClick={() => setIsMenuOpen(false)} className="group flex w-full items-baseline gap-4 border-b border-white/[0.08] py-4 text-left text-[28px] font-semibold leading-none tracking-[-0.02em] text-white transition-colors last:border-b-0 hover:text-[#9ec0f5]">
+                      {content}
                     </a>
                   ) : (
-                    <button
-                      key={item.id}
-                      onClick={() => scrollToSection(item.id)}
-                      className="flex items-center gap-3 w-full rounded-xl px-4 py-3 text-sm text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.label}
+                    <button key={item.id} onClick={() => scrollToSection(item.id)} className="group flex w-full items-baseline gap-4 border-b border-white/[0.08] py-4 text-left text-[28px] font-semibold leading-none tracking-[-0.02em] text-white transition-colors last:border-b-0 hover:text-[#9ec0f5]">
+                      {content}
                     </button>
                   )
-                )}
-
-                <div className="mt-3 flex flex-wrap gap-2 border-t border-white/10 pt-3">
-                  <a
-                    href={instagramHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={nav.instagramAria[currentLanguage]}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="inline-flex min-w-[calc(50%-4px)] flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-pink-400"
-                  >
-                    <Instagram className="h-5 w-5" />
-                    Instagram
-                  </a>
-                  <a
-                    href={tiktokHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={nav.tiktokAria[currentLanguage]}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="inline-flex min-w-[calc(50%-4px)] flex-1 items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
-                  >
-                    <TikTokGlyph className="h-5 w-5" />
-                    TikTok
-                  </a>
-                  <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={nav.whatsappAria[currentLanguage]}
-                    onClick={() => setIsMenuOpen(false)}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 py-3 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-emerald-400"
-                  >
-                    <WhatsAppGlyph className="h-5 w-5" />
-                    WhatsApp
-                  </a>
-                </div>
-
-                <div className="mt-3 border-t border-white/10 pt-3">
-                  <LanguageToggle variant="mobile" />
-                </div>
-
-                <button
-                  onClick={handleContactClick}
-                  className="mt-2 flex items-center gap-3 w-full rounded-xl bg-gradient-to-r from-[#4080E0] to-[#2060C0] px-4 py-3 text-sm font-medium text-white shadow-lg shadow-[#4080E0]/20 transition-all hover:from-[#5090F0] hover:to-[#3070D0]"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                  {nav.freeConsultation[currentLanguage]}
-                </button>
-              </div>
+                })}
+              </nav>
+              <a
+                href="/start"
+                onClick={() => setIsMenuOpen(false)}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-[15px] font-semibold text-[#04101e] transition-colors hover:bg-[#dbe6ff]"
+              >
+                Start a project
+                <ArrowRight className="h-4 w-4" />
+              </a>
             </motion.div>
           )}
         </AnimatePresence>

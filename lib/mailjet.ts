@@ -9,12 +9,19 @@ const apiKey = process.env.MAILJET_API_KEY
 const secretKey = process.env.MAILJET_SECRET_KEY
 const fromEmail = process.env.MAILJET_FROM_EMAIL || process.env.MAILJET_SENDER_EMAIL || 'noreply@igani.co'
 const fromName = process.env.MAILJET_FROM_NAME || 'IGANI'
-const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || 'gabrielleubitz@gmail.com'
+// Every admin notification (leads, contact, funnels) goes to all of these. ADMIN_NOTIFY_EMAIL may list several, comma-separated.
+export const adminEmails = Array.from(
+  new Set(
+    [...(process.env.ADMIN_NOTIFY_EMAIL || 'gabrielleubitz@gmail.com').split(','), 'iganileubitz@gmail.com']
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+  )
+)
 
 export const mailjetConfigured = !!(apiKey && secretKey)
 
 export interface SendEmailOptions {
-  to: string
+  to: string | string[]
   subject: string
   htmlPart: string
   textPart?: string
@@ -35,7 +42,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
     Messages: [
       {
         From: { Email: fromEmail, Name: fromName },
-        To: [{ Email: options.to, Name: 'Admin' }],
+        To: (Array.isArray(options.to) ? options.to : [options.to]).map((email) => ({ Email: email, Name: 'Admin' })),
         Subject: options.subject,
         HTMLPart: options.htmlPart,
         ...(options.textPart && { TextPart: options.textPart })
@@ -66,7 +73,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
 }
 
 /**
- * Send a notification email to the configured admin (gabrielleubitz@gmail.com).
+ * Send a notification email to the admins (ADMIN_NOTIFY_EMAIL plus iganileubitz@gmail.com).
  */
 export async function sendAdminNotification(
   subject: string,
@@ -74,7 +81,7 @@ export async function sendAdminNotification(
   textPart?: string
 ): Promise<boolean> {
   return sendEmail({
-    to: adminEmail,
+    to: adminEmails,
     subject,
     htmlPart,
     textPart

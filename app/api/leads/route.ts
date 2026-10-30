@@ -3,6 +3,7 @@ import { collection, getDocs, addDoc, query, orderBy, Timestamp } from 'firebase
 import { db } from '@/lib/firebase'
 import { sendAdminNotification } from '@/lib/mailjet'
 import { buildLeadNotificationEmail } from '@/lib/email-templates'
+import { appendLeadToSheet } from '@/lib/googleSheet'
 
 interface Lead {
   id: string
@@ -106,9 +107,9 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { name, email, phone, source, sourceDetails, message } = body
 
-    if (!name || !email) {
+    if (!name || (!email && !phone)) {
       return NextResponse.json(
-        { error: 'Name and email are required' },
+        { error: 'Name and an email or phone number are required' },
         { status: 400 }
       )
     }
@@ -125,7 +126,8 @@ export async function POST(request: Request) {
 
     const leadData: Omit<Lead, 'id'> = {
       name,
-      email,
+      // Phone-only funnel leads store an empty email so list/search code can keep treating it as a string
+      email: email || '',
       phone,
       source: source || 'main_site',
       sourceDetails,
@@ -145,11 +147,23 @@ export async function POST(request: Request) {
       message: leadData.message,
       sourceDetails: leadData.sourceDetails
     })
-    await sendAdminNotification(
-      `[IGANI] New lead: ${leadData.name}`,
-      html,
-      `Lead from ${leadData.email}: ${leadData.message || '(no message)'}`
-    )
+    await Promise.all([
+      sendAdminNotification(
+        `[IGANI] New lead: ${leadData.name}`,
+        html,
+        `Lead from ${leadData.email || leadData.phone}: ${leadData.message || '(no message)'}`
+      ),
+      appendLeadToSheet({
+        name: leadData.name,
+        email: leadData.email,
+        phone: leadData.phone,
+        source: leadData.source,
+        page: leadData.sourceDetails?.page,
+        form: leadData.sourceDetails?.form,
+        campaign: leadData.sourceDetails?.campaign,
+        message: leadData.message,
+      }),
+    ])
 
     return NextResponse.json({ success: true, lead: { ...leadData, id: leadId } }, {
       headers: {

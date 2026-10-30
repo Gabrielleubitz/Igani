@@ -7,7 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
 import { useSiteSettings } from '@/hooks/useSiteSettings'
 import {
-  DEFAULT_INSTAGRAM_URL,
+  INSTAGRAM_URL,
   getWhatsAppChatHref,
   tiktokHrefFromSettings,
 } from '@/lib/siteSocial'
@@ -20,7 +20,7 @@ export default function Footer() {
   const nav = siteContent.navigation
   const { settings } = useSiteSettings()
 
-  const instagramHref = settings.instagramUrl?.trim() || DEFAULT_INSTAGRAM_URL
+  const instagramHref = INSTAGRAM_URL
   const tiktokHref = tiktokHrefFromSettings(settings.tiktokUrl)
   const whatsappHref = getWhatsAppChatHref(settings, nav.whatsappPrefillMessage[language])
 

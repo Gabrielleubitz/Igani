@@ -4,6 +4,9 @@ import { AboutJsonLd } from '@/components/AboutJsonLd'
 import { buildFounderKeywords, getFounderProfiles } from '@/lib/seo/founders'
 import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
 
+// Team bios are edited in the admin; rebuild these pages from Firestore every few minutes
+export const revalidate = 300
+
 export async function generateMetadata(): Promise<Metadata> {
   const [settings, founders] = await Promise.all([
     getAboutUsSettings(),

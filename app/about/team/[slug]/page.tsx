@@ -12,6 +12,9 @@ import {
 } from '@/lib/seo/founders'
 import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
 
+// Team bios are edited in the admin; rebuild these pages from Firestore every few minutes
+export const revalidate = 300
+
 type PageProps = {
   params: { slug: string }
 }
@@ -108,7 +111,7 @@ export default async function FounderProfilePage({ params }: PageProps) {
             Meet the full team
           </Link>
           <Link
-            href="/contact"
+            href="/start"
             className="inline-flex items-center rounded-full bg-[#4080E0] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#5090F0]"
           >
             Work with {SITE_NAME}

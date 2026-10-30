@@ -4,7 +4,7 @@ import { ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { landingContent } from '@/lib/landingContent'
-import { SectionHeading } from './fx/SectionHeading'
+import { ChapterBody, ChapterOpener } from './fx/ChapterOpener'
 import { TextReveal } from './fx/TextReveal'
 import { SideNote } from './fx/SideNote'
 import { LiveBuildDemo } from './demos/LiveBuildDemo'
@@ -21,50 +21,45 @@ type PanelProps = {
   children: ReactNode
 }
 
+/** One capability as a full-width row: copy on one side, the live demo (60%) on the other, alternating. */
 function Panel({ index, label, title, body, note, chips, children }: PanelProps) {
+  const flip = index % 2 === 1
   return (
     <motion.article
-      initial={{ opacity: 0, y: 40 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-120px' }}
+      initial={{ y: 40 }}
+      whileInView={{ y: 0 }}
+      viewport={{ once: true, margin: '0px 0px -10% 0px' }}
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-      className="rounded-[28px] border border-white/[0.08] bg-[#061225]/85 p-4 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] backdrop-blur-2xl sm:p-6 lg:sticky lg:p-8"
-      style={{ top: `calc(5.5rem + ${index * 14}px)` }}
+      className={`grid items-center gap-8 lg:gap-14 ${flip ? 'lg:grid-cols-[3fr_2fr]' : 'lg:grid-cols-[2fr_3fr]'}`}
     >
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
-      />
-      <div className="grid gap-8 lg:grid-cols-[0.8fr_1.6fr] lg:gap-12">
-        <div className="flex flex-col">
-          <p className="!mt-0 flex items-baseline gap-3 text-sm text-white/55">
-            <span className="font-display text-lg text-white/70">0{index + 1}</span>
-            {label}
-          </p>
-          <TextReveal
-            as="h3"
-            text={title}
-            stagger={0.05}
-            className="mt-4 text-balance text-3xl font-semibold leading-[1.05] tracking-[-0.02em] text-white sm:text-4xl"
-          />
-          <p className="!mt-5 text-[15px] leading-relaxed text-white/70 sm:text-base">{body}</p>
-          {chips && (
-            <div className="mt-6 flex flex-wrap gap-2">
-              {chips.map((chip) => (
-                <span key={chip} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-white/70">
-                  {chip}
-                </span>
-              ))}
-            </div>
-          )}
-          {note && (
-            <div className="mt-auto hidden pt-8 lg:block">
-              <SideNote arrow="right">{note}</SideNote>
-            </div>
-          )}
-        </div>
-        <div className="min-w-0">{children}</div>
+      <div className={`flex flex-col ${flip ? 'lg:order-2' : ''}`}>
+        <p className="!mt-0 flex items-baseline gap-3 text-sm text-white/55">
+          <span className="font-display text-lg text-white/70">0{index + 1}</span>
+          {label}
+        </p>
+        <TextReveal
+          as="h3"
+          text={title}
+          stagger={0.05}
+          className="mt-4 text-balance text-3xl font-semibold leading-[1.05] tracking-[-0.02em] text-white sm:text-4xl"
+        />
+        <p className="!mt-5 text-[15px] leading-relaxed text-white/70 sm:text-base">{body}</p>
+        {chips && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {chips.map((chip) => (
+              <span key={chip} className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-white/70">
+                {chip}
+              </span>
+            ))}
+          </div>
+        )}
+        {note && (
+          <div className="hidden pt-8 lg:block">
+            <SideNote arrow={flip ? 'left' : 'right'}>{note}</SideNote>
+          </div>
+        )}
       </div>
+      <div className={`min-w-0 ${flip ? 'lg:order-1' : ''}`}>{children}</div>
     </motion.article>
   )
 }
@@ -74,23 +69,23 @@ export function Capabilities() {
   const c = landingContent.capabilities
 
   return (
-    <section id="capabilities" className="relative scroll-mt-20 py-20 sm:py-28">
-      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+    <section id="capabilities" className="relative scroll-mt-20">
+      <ChapterOpener
+        index={c.index}
+        label={c.label[language]}
+        aside={c.aside[language]}
+        title={c.title[language]}
+        sub={c.sub[language]}
+      />
+
+      <ChapterBody className="bg-[#081833] pb-24 pt-16 sm:pb-32 sm:pt-24">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-t-[32px]">
         <div className="absolute -left-40 top-40 h-[520px] w-[520px] rounded-full bg-[#4080E0]/15 blur-[140px]" />
         <div className="absolute -right-40 bottom-40 h-[520px] w-[520px] rounded-full bg-[#1b3f8a]/25 blur-[140px]" />
       </div>
 
       <div className="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <SectionHeading
-          index={c.index}
-          label={c.label[language]}
-          aside={c.aside[language]}
-          title={c.title[language]}
-          sub={c.sub[language]}
-          className="mb-12"
-        />
-
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-20 lg:gap-[120px]">
           <Panel
             index={0}
             label={c.build.label[language]}
@@ -123,6 +118,7 @@ export function Capabilities() {
           </Panel>
         </div>
       </div>
+      </ChapterBody>
     </section>
   )
 }

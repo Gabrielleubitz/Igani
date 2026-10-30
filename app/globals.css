@@ -262,95 +262,80 @@
     margin-left: 0;
   }
 
-  /* Hamburger Menu Styles */
-  .hamburger-menu {
-    background: rgba(30, 41, 59, 0.6);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    backdrop-filter: blur(8px);
-    cursor: pointer;
-    padding: 8px;
-    position: relative;
-    transition: all 0.2s ease;
-    border-radius: 12px;
-    min-width: 70px;
+}
+/* Funnels landing: gradient pulse on headline hover + infinite marquee */
+@layer utilities {
+  .font-clash {
+    font-family: var(--font-clash), var(--font-outfit), system-ui, sans-serif;
   }
+  .funnels-root .font-mono {
+    font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @keyframes funnel-pulse {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .funnel-pulse {
+    transition: filter 0.4s ease;
+  }
+  .group:hover .funnel-pulse {
+    animation: funnel-pulse 2.4s ease-in-out infinite;
+    filter: drop-shadow(0 0 32px rgba(0, 240, 255, 0.6));
+  }
+  @keyframes funnel-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  .funnel-marquee {
+    animation: funnel-marquee 40s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .group:hover .funnel-pulse,
+    .funnel-marquee {
+      animation: none;
+    }
+  }
+}
 
-  .hamburger-menu:hover {
-    transform: scale(1.05);
-    border-color: rgba(139, 183, 249, 0.4);
-    background: rgba(30, 41, 59, 0.8);
-    box-shadow: 0 0 20px rgba(139, 183, 249, 0.2);
+/* Funnel 2 (elegant): soft gold shimmer on headline hover + slow serif marquee */
+@layer utilities {
+  .font-cormorant {
+    font-family: var(--font-cormorant), Georgia, 'Times New Roman', serif;
   }
+  .elegant-shimmer {
+    background-image: linear-gradient(100deg, #1F1C18 0%, #1F1C18 40%, #A9845A 50%, #1F1C18 60%, #1F1C18 100%);
+    background-size: 250% 100%;
+    background-position: 100% 0;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transition: background-position 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .group:hover .elegant-shimmer {
+    background-position: 0% 0;
+  }
+  @keyframes elegant-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  .elegant-marquee {
+    animation: elegant-marquee 70s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .elegant-shimmer { transition: none; }
+    .elegant-marquee { animation: none; }
+  }
+}
 
-  .hamburger-menu:active {
-    transform: scale(0.98);
-  }
+/* Funnels "Our work" gallery: a full-page screenshot scrolling itself inside its frame */
+@keyframes work-scroll {
+  0%, 8% { background-position: 50% 0%; }
+  46%, 54% { background-position: 50% 100%; }
+  92%, 100% { background-position: 50% 0%; }
+}
 
-  /* Icon wrapper */
-  .hamburger-icon-wrapper {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .hamburger-icon-wrapper svg {
-    width: 100%;
-    height: auto;
-    overflow: visible;
-  }
-
-  /* Menu label */
-  .hamburger-label {
-    font-size: 9px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    color: #94a3b8;
-    transition: color 0.2s ease;
-    text-transform: uppercase;
-    margin-top: -2px;
-  }
-
-  .hamburger-menu:hover .hamburger-label {
-    color: #8FB7F9;
-  }
-
-  .hamburger-menu.open .hamburger-label {
-    color: #f87171;
-  }
-
-  /* Oval animations */
-  .hamburger-menu .oval-back,
-  .hamburger-menu .oval-front {
-    transition: opacity 0.3s ease;
-  }
-
-  .hamburger-menu.open .oval-back,
-  .hamburger-menu.open .oval-front {
-    opacity: 0;
-  }
-
-  /* Pillar group transforms */
-  .hamburger-menu .pillar-group-left,
-  .hamburger-menu .pillar-group-right {
-    transform-origin: 53px 49px; /* Center of the logo */
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Open state - form X shape */
-  .hamburger-menu.open .pillar-group-left {
-    transform: rotate(45deg);
-  }
-
-  .hamburger-menu.open .pillar-group-right {
-    transform: rotate(-45deg);
-  }
-
-  /* Focus styles for accessibility */
-  .hamburger-menu:focus-visible {
-    outline: 2px solid #8FB7F9;
-    outline-offset: 2px;
-    border-radius: 12px;
-  }
+/* Real estate funnel hero: the photo behind the headline drifts very slowly */
+@keyframes hero-drift {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to { transform: scale(1.12) translate3d(-1.5%, -1%, 0); }
 }
