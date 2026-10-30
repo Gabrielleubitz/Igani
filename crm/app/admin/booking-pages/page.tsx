@@ -4,6 +4,7 @@ import { BookingPageForm } from '@/components/admin/forms'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { appUrl } from '@/lib/env'
 import { prisma } from '@/lib/prisma'
+import { getSetting } from '@/lib/settings'
 
 export const metadata = { title: 'Booking pages' }
 
@@ -21,7 +22,7 @@ export default async function BookingPagesPage(): Promise<React.ReactElement> {
           <CardTitle>New page</CardTitle>
         </CardHeader>
         <CardContent>
-          {hostOptions.length ? <BookingPageForm hosts={hostOptions} /> : <p className="text-sm text-muted-foreground">A SALES or ADMIN user must sign in first.</p>}
+          {hostOptions.length ? <BookingPageForm hosts={hostOptions} defaultDuration={await getSetting('booking.defaultDurationMinutes')} /> : <p className="text-sm text-muted-foreground">A SALES or ADMIN user must sign in first.</p>}
         </CardContent>
       </Card>
       {pages.map((p) => (

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { GoogleNotConnectedError, calendarForHost } from './google'
 import { prisma } from './prisma'
 import { civilDate, computeSlots, overlaps, windowsForDate, type Interval } from './slots'
+import { getSetting } from './settings'
 
 /** Minimum lead time before a slot can be booked. */
 export const MIN_NOTICE_MINUTES = 60
@@ -80,6 +81,7 @@ export async function getAvailableSlots(
     durationMinutes,
     now: options.now ?? new Date(),
     minNoticeMinutes: MIN_NOTICE_MINUTES,
+    bufferMinutes: await getSetting('booking.bufferMinutes'),
   })
 }
 

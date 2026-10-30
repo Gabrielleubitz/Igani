@@ -11,6 +11,8 @@ export interface BookingInviteProps {
   timeZone: string
   acceptUrl: string
   logoUrl: string
+  brandName?: string
+  supportEmail?: string
   notes?: string | null
 }
 
@@ -23,6 +25,8 @@ export function BookingInvite({
   timeZone,
   acceptUrl,
   logoUrl,
+  brandName = 'Igani',
+  supportEmail,
   notes,
 }: BookingInviteProps): React.ReactElement {
   const when = formatWhen(startTime, endTime, timeZone)
@@ -32,14 +36,14 @@ export function BookingInvite({
       <Preview>{`${hostName} invited you: ${title}`}</Preview>
       <Body style={{ backgroundColor: colors.bg, fontFamily: font, margin: 0, padding: '40px 0' }}>
         <Container style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px' }}>
-          <Img src={logoUrl} alt="Igani" width={96} height={28} style={{ marginBottom: 32 }} />
+          <Img src={logoUrl} alt={brandName} width={96} height={28} style={{ marginBottom: 32 }} />
           <Section style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 32 }}>
             <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>
               Meeting invitation
             </Text>
             <Text style={{ color: colors.text, fontSize: 24, fontWeight: 600, lineHeight: '32px', margin: '8px 0 24px' }}>{title}</Text>
             <Text style={{ color: colors.muted, fontSize: 15, lineHeight: '24px', margin: '0 0 24px' }}>
-              Hi {guestName}, {hostName} from Igani would like to meet with you:
+              Hi {guestName}, {hostName} from {brandName} would like to meet with you:
             </Text>
             <Section style={{ borderLeft: `2px solid ${colors.accent}`, paddingLeft: 16, marginBottom: 28 }}>
               <Text style={{ color: colors.text, fontSize: 16, fontWeight: 600, margin: 0 }}>{when.date}</Text>
@@ -67,7 +71,7 @@ export function BookingInvite({
           </Section>
           <Hr style={{ borderColor: colors.border, margin: '32px 0 16px' }} />
           <Text style={{ color: colors.muted, fontSize: 12, margin: 0 }}>
-            Igani · <Link href="https://igani.co" style={{ color: colors.muted }}>igani.co</Link>
+            {brandName} · <Link href="https://igani.co" style={{ color: colors.muted }}>igani.co</Link>{supportEmail ? ` · ${supportEmail}` : ''}
           </Text>
         </Container>
       </Body>

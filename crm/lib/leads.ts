@@ -183,6 +183,38 @@ export async function changeLeadStatus(leadId: string, status: LeadStatus, actor
   })
 }
 
+/** Apply an assignee and/or status change to many leads in one transaction (all or nothing, set-based queries). */
+export async function bulkUpdateLeadsTx(
+  ids: string[],
+  change: { assigneeId?: string | null; status?: LeadStatus },
+  actorId: string,
+): Promise<void> {
+  if (change.status === 'LOST') throw new Error('A reason is required when marking a lead as lost')
+  await prisma.$transaction(async (tx) => {
+    const before = await tx.lead.findMany({ where: { id: { in: ids } }, select: { id: true, status: true, assignedToId: true } })
+    if (before.length !== ids.length) throw new Error('Some leads no longer exist')
+    if (change.assigneeId) {
+      const user = await tx.user.findUnique({ where: { id: change.assigneeId }, select: { role: true } })
+      if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) throw new Error('Assignee must be a SALES or ADMIN user')
+    }
+    const logs: Prisma.ActivityLogCreateManyInput[] = []
+    if (change.assigneeId !== undefined) {
+      await tx.lead.updateMany({ where: { id: { in: ids } }, data: { assignedToId: change.assigneeId } })
+      for (const l of before)
+        logs.push({ entityType: 'LEAD', entityId: l.id, action: 'lead.assigned', actorId, metadata: { from: l.assignedToId, to: change.assigneeId, strategy: 'bulk' } })
+    }
+    if (change.status) {
+      const changing = before.filter((l) => l.status !== change.status)
+      if (changing.length) {
+        await tx.lead.updateMany({ where: { id: { in: changing.map((l) => l.id) } }, data: { status: change.status, lostReason: null } })
+        for (const l of changing)
+          logs.push({ entityType: 'LEAD', entityId: l.id, action: 'lead.status_changed', actorId, metadata: { from: l.status, to: change.status } })
+      }
+    }
+    if (logs.length) await tx.activityLog.createMany({ data: logs })
+  })
+}
+
 /** Move every open lead and future booking from one user to another (or unassign leads when toId is null). */
 export async function reassignUserWork(fromId: string, toId: string | null, actorId: string, tx: Prisma.TransactionClient): Promise<number> {
   const leads = await tx.lead.findMany({ where: { assignedToId: fromId }, select: { id: true } })

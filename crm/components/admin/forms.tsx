@@ -82,9 +82,9 @@ export interface BookingPageValues {
   hostId: string
 }
 
-export function BookingPageForm({ hosts, initial }: { hosts: { id: string; label: string }[]; initial?: BookingPageValues }): React.ReactElement {
+export function BookingPageForm({ hosts, initial, defaultDuration = 30 }: { hosts: { id: string; label: string }[]; initial?: BookingPageValues; defaultDuration?: number }): React.ReactElement {
   const [v, setV] = useState<BookingPageValues>(
-    initial ?? { slug: '', title: 'Intro call with Igani', description: '', durationMinutes: 30, requiresApproval: false, active: true, hostId: hosts[0]?.id ?? '' },
+    initial ?? { slug: '', title: 'Intro call with Igani', description: '', durationMinutes: defaultDuration, requiresApproval: false, active: true, hostId: hosts[0]?.id ?? '' },
   )
   const [pending, msg, run] = useAction()
   const set = (patch: Partial<BookingPageValues>): void => setV((x) => ({ ...x, ...patch }))

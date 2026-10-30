@@ -5,6 +5,7 @@ import { BookingConfirmed } from '@/emails/BookingConfirmed'
 import { BookingInvite } from '@/emails/BookingInvite'
 import { appUrl, env } from './env'
 import { buildIcs } from './ics'
+import { getSetting } from './settings'
 
 let client: Resend | undefined
 function resend(): Resend {
@@ -46,10 +47,15 @@ export interface BookingEmailData {
   notes?: string | null
 }
 
+async function brand(): Promise<{ brandName: string; supportEmail: string }> {
+  const [brandName, supportEmail] = await Promise.all([getSetting('brand.name'), getSetting('brand.supportEmail')])
+  return { brandName, supportEmail }
+}
+
 const logoUrl = (): string => appUrl('/igani-logo.png')
 
 export async function sendBookingInviteEmail(b: BookingEmailData & { acceptUrl: string }): Promise<string> {
-  const element = BookingInvite({ ...b, logoUrl: logoUrl() })
+  const element = BookingInvite({ ...b, logoUrl: logoUrl(), ...(await brand()) })
   return send({
     to: b.guestEmail,
     replyTo: b.hostEmail,
@@ -74,7 +80,7 @@ export async function sendBookingConfirmedEmail(b: BookingEmailData & { meetUrl:
     attendeeName: b.guestName,
     attendeeEmail: b.guestEmail,
   })
-  const element = BookingConfirmed({ ...b, logoUrl: logoUrl(), icsFileName })
+  const element = BookingConfirmed({ ...b, logoUrl: logoUrl(), icsFileName, ...(await brand()) })
   return send({
     to: b.guestEmail,
     replyTo: b.hostEmail,

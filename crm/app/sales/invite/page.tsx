@@ -2,6 +2,7 @@ import { InviteForm } from '@/components/InviteForm'
 import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
+import { getSetting } from '@/lib/settings'
 
 export const metadata = { title: 'New invite' }
 
@@ -25,6 +26,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
         </p>
       </div>
       <InviteForm
+        defaultDuration={await getSetting('booking.defaultDurationMinutes')}
         leads={leads.map((l) => ({ id: l.id, email: l.email, name: leadName(l) }))}
         initialLeadId={typeof searchParams.leadId === 'string' ? searchParams.leadId : undefined}
       />

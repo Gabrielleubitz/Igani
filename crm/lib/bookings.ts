@@ -2,6 +2,7 @@ import 'server-only'
 import type { Booking, BookingSource, Prisma } from '@prisma/client'
 import { logActivity } from './audit'
 import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, isSlotStillFree } from './calendar'
+import { getSetting } from './settings'
 import { sendApprovalRequestEmail, sendBookingConfirmedEmail, type BookingEmailData } from './email'
 import { env } from './env'
 import { prisma } from './prisma'
@@ -258,6 +259,7 @@ export async function notifyAdminsOfPendingBooking(bookingId: string): Promise<v
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean)
-  const to = Array.from(new Set([...admins.map((a) => a.email), ...extra]))
+  const configured = await getSetting('notifications.emails')
+  const to = Array.from(new Set([...admins.map((a) => a.email), ...extra, ...configured]))
   await sendApprovalRequestEmail(to, await emailDataFor(bookingId))
 }

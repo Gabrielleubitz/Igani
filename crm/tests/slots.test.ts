@@ -63,3 +63,16 @@ describe('computeSlots', () => {
     ])).toEqual([{ start: d('2026-11-02T09:00:00Z'), end: d('2026-11-02T11:00:00Z') }])
   })
 })
+
+describe('computeSlots buffer', () => {
+  it('keeps the buffer free around busy intervals', async () => {
+    const { computeSlots } = await import('@/lib/slots')
+    const t = (h: number, m = 0) => new Date(Date.UTC(2026, 10, 2, h, m))
+    const args = { windows: [{ start: t(9), end: t(12) }], busy: [{ start: t(10), end: t(10, 30) }], durationMinutes: 30, now: t(0) }
+    expect(computeSlots(args)).toContain(t(9, 30).toISOString())
+    const buffered = computeSlots({ ...args, bufferMinutes: 15 })
+    expect(buffered).not.toContain(t(9, 30).toISOString())
+    expect(buffered).not.toContain(t(10, 30).toISOString())
+    expect(buffered).toContain(t(11).toISOString())
+  })
+})

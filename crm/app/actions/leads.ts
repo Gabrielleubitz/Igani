@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { logActivity } from '@/lib/audit'
-import { assignLeadManually, assignLeadRoundRobin, changeLeadStatus } from '@/lib/leads'
+import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
@@ -172,10 +172,7 @@ export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: 
     const ids = z.array(z.string().cuid()).min(1).max(500).parse(leadIds)
     const ch = z.object({ assigneeId: z.string().cuid().nullable().optional(), status: z.nativeEnum(LeadStatus).optional() }).parse(change)
     if (ch.status === 'LOST') throw new BookingError('Mark leads as lost one by one so a reason is recorded.', 'INVALID_STATE')
-    for (const id of ids) {
-      if (ch.assigneeId !== undefined) await assignLeadManually(id, ch.assigneeId, admin.id)
-      if (ch.status) await changeLeadStatus(id, ch.status, admin.id)
-    }
+    await bulkUpdateLeadsTx(ids, ch, admin.id)
     revalidatePath('/admin/leads')
     revalidatePath('/sales')
     return { ok: true, data: { count: ids.length } }

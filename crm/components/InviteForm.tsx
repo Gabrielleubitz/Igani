@@ -12,7 +12,7 @@ interface LeadOption {
   email: string
 }
 
-export function InviteForm({ leads, initialLeadId }: { leads: LeadOption[]; initialLeadId?: string }): React.ReactElement {
+export function InviteForm({ leads, initialLeadId, defaultDuration = 30 }: { leads: LeadOption[]; initialLeadId?: string; defaultDuration?: number }): React.ReactElement {
   const initial = leads.find((l) => l.id === initialLeadId)
   const [leadId, setLeadId] = useState(initial?.id ?? '')
   const [guestName, setGuestName] = useState(initial?.name ?? '')
@@ -20,7 +20,7 @@ export function InviteForm({ leads, initialLeadId }: { leads: LeadOption[]; init
   const [title, setTitle] = useState('Igani intro call')
   const [notes, setNotes] = useState('')
   const [date, setDate] = useState(todayIso())
-  const [duration, setDuration] = useState(30)
+  const [duration, setDuration] = useState(defaultDuration)
   const [slots, setSlots] = useState<string[]>([])
   const [slot, setSlot] = useState<string | null>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)

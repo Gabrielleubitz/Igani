@@ -25,6 +25,8 @@ export interface BookingConfirmedProps {
   meetUrl: string
   /** Absolute URL of the Igani logo (white wordmark for the dark background) */
   logoUrl: string
+  brandName?: string
+  supportEmail?: string
   /** Set when an .ics file is attached to the email; shows the "add to calendar" hint */
   icsFileName?: string
   notes?: string | null
@@ -39,6 +41,8 @@ export function BookingConfirmed({
   timeZone,
   meetUrl,
   logoUrl,
+  brandName = 'Igani',
+  supportEmail,
   icsFileName,
   notes,
 }: BookingConfirmedProps): React.ReactElement {
@@ -49,7 +53,7 @@ export function BookingConfirmed({
       <Preview>{`Confirmed: ${title} — ${when.date}`}</Preview>
       <Body style={{ backgroundColor: colors.bg, fontFamily: font, margin: 0, padding: '40px 0' }}>
         <Container style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px' }}>
-          <Img src={logoUrl} alt="Igani" width={96} height={28} style={{ marginBottom: 32 }} />
+          <Img src={logoUrl} alt={brandName} width={96} height={28} style={{ marginBottom: 32 }} />
           <Section
             style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 32 }}
           >
@@ -61,7 +65,7 @@ export function BookingConfirmed({
             </Text>
             <Text style={{ color: colors.text, fontSize: 15, margin: '0 0 4px' }}>Hi {guestName},</Text>
             <Text style={{ color: colors.muted, fontSize: 15, lineHeight: '24px', margin: '0 0 24px' }}>
-              You&apos;re booked with {hostName} from Igani. Here are the details:
+              You&apos;re booked with {hostName} from {brandName}. Here are the details:
             </Text>
             <Section style={{ borderLeft: `2px solid ${colors.accent}`, paddingLeft: 16, marginBottom: 28 }}>
               <Text style={{ color: colors.text, fontSize: 16, fontWeight: 600, margin: 0 }}>{when.date}</Text>
@@ -99,7 +103,7 @@ export function BookingConfirmed({
           </Section>
           <Hr style={{ borderColor: colors.border, margin: '32px 0 16px' }} />
           <Text style={{ color: colors.muted, fontSize: 12, margin: 0 }}>
-            Igani · <Link href="https://igani.co" style={{ color: colors.muted }}>igani.co</Link>
+            {brandName} · <Link href="https://igani.co" style={{ color: colors.muted }}>igani.co</Link>{supportEmail ? ` · ${supportEmail}` : ''}
           </Text>
         </Container>
       </Body>

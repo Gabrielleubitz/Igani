@@ -92,19 +92,22 @@ export interface SlotOptions {
   /** Slots starting before now + minNoticeMinutes are dropped */
   now: Date
   minNoticeMinutes?: number
+  /** Gap kept free around every busy interval */
+  bufferMinutes?: number
 }
 
 /**
  * Back-to-back, non-overlapping slots of `durationMinutes` inside each working window,
  * skipping any slot that intersects a busy interval. Returns ISO start timestamps.
  */
-export function computeSlots({ windows, busy, durationMinutes, now, minNoticeMinutes = 0 }: SlotOptions): string[] {
+export function computeSlots({ windows, busy, durationMinutes, now, minNoticeMinutes = 0, bufferMinutes = 0 }: SlotOptions): string[] {
   if (!Number.isInteger(durationMinutes) || durationMinutes < 5 || durationMinutes > 480) {
     throw new Error('durationMinutes must be an integer between 5 and 480')
   }
   const step = durationMinutes * 60_000
   const earliest = now.getTime() + minNoticeMinutes * 60_000
-  const mergedBusy = mergeIntervals(busy)
+  const pad = bufferMinutes * 60_000
+  const mergedBusy = mergeIntervals(busy.map((b) => ({ start: new Date(b.start.getTime() - pad), end: new Date(b.end.getTime() + pad) })))
   const slots: string[] = []
   for (const w of mergeIntervals(windows)) {
     for (let t = w.start.getTime(); t + step <= w.end.getTime(); t += step) {
