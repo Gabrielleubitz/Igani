@@ -133,3 +133,10 @@ The current implementation makes it easy to swap storage backends.
 ---
 
 **Next Steps**: Deploy and test! Your landing page upgrades should now work perfectly on Vercel.
+## Vercel integration (API)
+
+Set `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID` (optional `VERCEL_TEAM_ID`) and `VERCEL_DEPLOY_HOOK_URL` (Project Settings → Git → Deploy Hooks), plus `ADMIN_SECRET_KEY`.
+
+- `GET /api/admin/vercel` — last 10 deployments (state, url, commit).
+- `POST /api/admin/vercel` — trigger a redeploy.
+- Both need `Authorization: Bearer $ADMIN_SECRET_KEY`. `/api/health` reports `vercel` in `checks`.

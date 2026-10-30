@@ -9,6 +9,7 @@ export async function GET() {
     stripe: false,
     openai: false,
     github: false,
+    vercel: false,
     storage: false
   }
 
@@ -53,6 +54,9 @@ export async function GET() {
     process.env.GITHUB_APP_PRIVATE_KEY &&
     process.env.GITHUB_APP_CLIENT_ID
   )
+
+  // Vercel integration - env only
+  checks.vercel = !!(process.env.VERCEL_API_TOKEN && process.env.VERCEL_PROJECT_ID)
 
   // Storage - env only
   checks.storage = !!(
