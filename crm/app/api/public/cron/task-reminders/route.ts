@@ -18,7 +18,7 @@ function authorised(req: Request): boolean {
 const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 
 /**
- * Cron endpoint (Vercel cron sends `Authorization: Bearer $CRON_SECRET`).
+ * Cron endpoint, public path in middleware but gated by the bearer secret (Vercel cron sends `Authorization: Bearer $CRON_SECRET`).
  * Emails each assignee one digest of tasks that are overdue / due today and not reminded yet,
  * then logs `task.reminded` so nobody is emailed twice about the same task.
  */

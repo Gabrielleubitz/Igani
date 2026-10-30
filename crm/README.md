@@ -41,6 +41,16 @@ curl -X POST https://app.igani.co/api/v1/leads \
 ```
 `201 {id, duplicate:false}` new lead · `200 {id, duplicate:true}` existing email · `401` bad key · `422` invalid.
 
+## Task reminders (cron)
+
+`vercel.json` runs `GET /api/public/cron/task-reminders` hourly. It emails each assignee a digest of overdue / due-today
+tasks (once per task). Set `CRON_SECRET` in the Vercel project env; Vercel then sends `Authorization: Bearer $CRON_SECRET`.
+The path is public in the middleware but returns `401` without the exact secret (and always when `CRON_SECRET` is unset).
+
+```bash
+curl -i https://app.igani.co/api/public/cron/task-reminders -H "Authorization: Bearer $CRON_SECRET"   # 200 {checked, emailed}
+```
+
 ## Tests
 
 ```bash
