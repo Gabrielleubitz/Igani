@@ -317,7 +317,7 @@ export default function TestimonialsManager() {
                     </div>
                   </div>
                   <blockquote className="text-slate-300 text-sm leading-relaxed">
-                    "{testimonial.message}"
+                    &quot;{testimonial.message}&quot;
                   </blockquote>
                 </div>
                 <div className="flex gap-2 ml-4">

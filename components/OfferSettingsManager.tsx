@@ -246,8 +246,8 @@ export function OfferSettingsManager() {
             <ul className="space-y-1 text-blue-400">
               <li>• Set the exact date and time when your offer expires</li>
               <li>• The landing page will show a real-time countdown timer</li>
-              <li>• When the time expires, visitors will see "Offer has ended" instead</li>
-              <li>• Times are displayed in the visitor's local timezone</li>
+              <li>• When the time expires, visitors will see &quot;Offer has ended&quot; instead</li>
+              <li>• Times are displayed in the visitor&apos;s local timezone</li>
             </ul>
           </div>
         </div>

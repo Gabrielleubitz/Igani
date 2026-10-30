@@ -43,7 +43,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-bold text-white mb-4"><T>Agreement to Terms</T></h2>
                 <p className="leading-relaxed">
-                  <T>By accessing or using Igani's services, you agree to be bound by these Terms of Service. If you disagree with any part of these terms, you may not access our services.</T>
+                  <T>By accessing or using Igani&apos;s services, you agree to be bound by these Terms of Service. If you disagree with any part of these terms, you may not access our services.</T>
                 </p>
               </section>
 

@@ -335,7 +335,6 @@ export const updateSupportInquiry = async (
       updateData.statusUpdatedAt = Timestamp.now();
     }
     if (updates.internalNotes !== undefined) updateData.internalNotes = updates.internalNotes;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await updateDoc(doc(db, SUPPORT_INQUIRIES_COLLECTION, id), updateData as any);
   } catch (error) {
     console.error('Error updating support inquiry:', error);

@@ -339,7 +339,7 @@ export default function PackagesPage() {
                 <T>Ready to Start Your Project?</T>
               </h2>
               <p className="text-lg text-slate-300 mb-8">
-                <T>Let's discuss your needs and find the perfect solution for your business.</T>
+                <T>Let&apos;s discuss your needs and find the perfect solution for your business.</T>
               </p>
             </motion.div>
 

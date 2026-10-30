@@ -501,7 +501,7 @@ export default function FunnelsPage() {
 
                     {submitStatus === 'success' ? (
                       <div className="bg-green-100 border-2 border-green-500 text-green-800 p-4 rounded-lg text-center font-bold">
-                        Success! We'll call you today.
+                        Success! We&apos;ll call you today.
                       </div>
                     ) : (
                       <button
@@ -514,7 +514,7 @@ export default function FunnelsPage() {
                     )}
                     
                     <div className="text-center text-sm text-slate-600 font-medium">
-                      ✓ We'll contact you today.<br />
+                      ✓ We&apos;ll contact you today.<br />
                       ✓ No obligation. Just a quick call.
                     </div>
                   </form>
@@ -669,7 +669,7 @@ export default function FunnelsPage() {
                       <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
-                  <p className="text-slate-300 text-sm italic">"{testimonial}"</p>
+                  <p className="text-slate-300 text-sm italic">&quot;{testimonial}&quot;</p>
                 </div>
               ))}
             </motion.div>
@@ -693,7 +693,7 @@ export default function FunnelsPage() {
                 )}
               </div>
               <h2 className="text-4xl lg:text-6xl font-black text-white mb-6">
-                Don't Let Your Competition Win Again
+                Don&apos;t Let Your Competition Win Again
               </h2>
               <p className="text-xl text-slate-900 mb-2">
                 <strong>Only 12 spots left at this price.</strong>
@@ -753,7 +753,7 @@ export default function FunnelsPage() {
 
                 {submitStatus2 === 'success' ? (
                   <div className="bg-green-100 border-2 border-green-500 text-green-800 p-4 rounded-lg text-center font-bold">
-                    Success! We'll call you today.
+                    Success! We&apos;ll call you today.
                   </div>
                 ) : (
                   <button

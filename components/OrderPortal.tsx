@@ -163,7 +163,7 @@ export function OrderPortal({ order }: OrderPortalProps) {
               <div className="border rounded-lg p-4">
                 <h5 className="font-medium text-slate-900">Firebase</h5>
                 <p className="text-sm text-slate-600 mt-1">
-                  Google's platform with Firestore
+                  Google&apos;s platform with Firestore
                 </p>
                 <a 
                   href="https://console.firebase.google.com/"
@@ -251,7 +251,7 @@ export function OrderPortal({ order }: OrderPortalProps) {
           <a href="mailto:support@igani.co" className="underline">
             support@igani.co
           </a>
-          {' '}and we'll help you get your event site deployed.
+          {' '}and we&apos;ll help you get your event site deployed.
         </p>
       </div>
     </div>

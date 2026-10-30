@@ -338,7 +338,7 @@ export default function AboutPageClient() {
                   </div>
                   <div className="text-lg text-slate-300 leading-relaxed">
                     <p className="mb-4">
-                      <T>At IGANI, we're passionate about creating exceptional digital experiences that drive real business results. We believe that great design and flawless functionality should go hand in hand, delivering websites and applications that not only look stunning but perform beautifully.</T>
+                      <T>At IGANI, we&apos;re passionate about creating exceptional digital experiences that drive real business results. We believe that great design and flawless functionality should go hand in hand, delivering websites and applications that not only look stunning but perform beautifully.</T>
                     </p>
                     <p>
                       <T>Our team combines technical expertise with creative vision to help businesses establish a powerful online presence that sets them apart from the competition.</T>
@@ -470,7 +470,7 @@ export default function AboutPageClient() {
                 <T>Ready to Work Together?</T>
               </h2>
               <p className="text-lg text-slate-300 mb-8">
-                <T>Let's discuss your project and create something amazing together.</T>
+                <T>Let&apos;s discuss your project and create something amazing together.</T>
               </p>
             </motion.div>
 

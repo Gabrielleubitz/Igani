@@ -48,7 +48,7 @@ export default async function OrderPage({ params }: OrderPageProps) {
               Your Event Site is Ready!
             </h1>
             <p className="text-slate-600">
-              Here's everything you need to deploy your event site.
+              Here&apos;s everything you need to deploy your event site.
             </p>
           </div>
 

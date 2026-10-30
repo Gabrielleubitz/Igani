@@ -1167,7 +1167,7 @@ export default function AdminPackagesPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      What's Included *
+                      What&apos;s Included *
                     </label>
                     <div className="space-y-2">
                       {packageForm.includes.map((include, index) => (
@@ -1452,7 +1452,7 @@ export default function AdminPackagesPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                      What's Included *
+                      What&apos;s Included *
                     </label>
                     <div className="space-y-2">
                       {maintenanceForm.includes.map((include, index) => (

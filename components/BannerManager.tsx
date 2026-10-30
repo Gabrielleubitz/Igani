@@ -235,7 +235,7 @@ export function BannerManager() {
                 placeholder="e.g., 'Sale' or '50%'"
               />
               <p className="text-slate-500 text-xs mt-1">
-                Highlights a specific word in your title with a different color. Example: if title is "Black Friday Sale - 50% OFF", set accent word to "50%" to make it stand out.
+                Highlights a specific word in your title with a different color. Example: if title is &quot;Black Friday Sale - 50% OFF&quot;, set accent word to &quot;50%&quot; to make it stand out.
               </p>
             </div>
             <div>
@@ -641,7 +641,7 @@ export function BannerManager() {
             </div>
           </div>
           <p className="text-slate-400 text-sm mt-3">
-            💡 Tip: Click "Preview" button to see the banner on your actual site with <code className="bg-slate-700 px-1 rounded">?previewBanner=true</code>
+            💡 Tip: Click &quot;Preview&quot; button to see the banner on your actual site with <code className="bg-slate-700 px-1 rounded">?previewBanner=true</code>
             {settings.ctaUrl && <><br/>✨ Banner will be clickable and open: <span className="text-cyan-400">{settings.ctaUrl}</span></>}
           </p>
         </div>

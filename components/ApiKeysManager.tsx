@@ -98,7 +98,7 @@ function NewKeyBanner({ result, onDismiss }: { result: NewKeyResult; onDismiss: 
         onClick={onDismiss}
         className="mt-4 text-xs text-slate-500 hover:text-slate-300 transition-colors"
       >
-        I've saved it — dismiss
+        I&apos;ve saved it — dismiss
       </button>
     </motion.div>
   )
