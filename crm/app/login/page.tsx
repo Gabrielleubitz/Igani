@@ -1,4 +1,5 @@
 import { BrandedPage } from '@/components/brand/BrandedPage'
+import { DevLogin } from '@/components/DevLogin'
 import { SignInButton } from '@/components/AuthButtons'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -19,6 +20,7 @@ export default function LoginPage({ searchParams }: { searchParams: Record<strin
         </CardHeader>
         <CardContent>
           <SignInButton callbackUrl={safeCallback(searchParams.callbackUrl)} />
+          {process.env.NODE_ENV !== 'production' && process.env.DEV_LOGIN === '1' ? <DevLogin callbackUrl={safeCallback(searchParams.callbackUrl)} /> : null}
         </CardContent>
       </Card>
     </BrandedPage>

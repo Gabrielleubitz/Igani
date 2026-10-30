@@ -2,6 +2,7 @@ import 'server-only'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import type { Role } from '@prisma/client'
 import { getServerSession, type NextAuthOptions } from 'next-auth'
+import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { redirect } from 'next/navigation'
 import { logActivity } from './audit'
@@ -30,6 +31,9 @@ async function activeRoleFor(email: string | null | undefined): Promise<Role | n
   return allowed?.active ? allowed.role : null
 }
 
+/** Dev/QA-only email login. Never enabled in production builds, and still requires an active whitelist entry. */
+const devLoginEnabled = (): boolean => process.env.NODE_ENV !== 'production' && process.env.DEV_LOGIN === '1'
+
 export function authOptions(): NextAuthOptions {
   const e = env()
   return {
@@ -45,6 +49,21 @@ export function authOptions(): NextAuthOptions {
           params: { scope: GOOGLE_SCOPES, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' },
         },
       }),
+      ...(devLoginEnabled()
+        ? [
+            CredentialsProvider({
+              name: 'Dev login',
+              credentials: { email: { label: 'Whitelisted email', type: 'email' } },
+              async authorize(creds) {
+                const email = creds?.email ? normalizeEmail(creds.email) : ''
+                const role = await activeRoleFor(email)
+                if (!role) return null
+                const user = await prisma.user.upsert({ where: { email }, create: { email, name: email, role }, update: { role } })
+                return { id: user.id, email: user.email, name: user.name }
+              },
+            }),
+          ]
+        : []),
     ],
     callbacks: {
       async signIn({ user, account, profile }) {
