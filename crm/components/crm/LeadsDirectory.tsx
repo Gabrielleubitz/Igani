@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { LeadsTable } from '@/app/admin/_components/LeadsTable'
 import { NewLeadForm } from '@/app/admin/_components/NewLeadForm'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input, Select } from '@/components/ui/input'
+import { Select } from '@/components/ui/input'
 import { LEAD_STATUSES, leadName } from '@/lib/format'
 import { PAGE_SIZE, buildLeadWhere, parseLeadFilters } from '@/lib/lead-query'
 import { prisma } from '@/lib/prisma'
@@ -46,7 +46,7 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Leads {f.archived ? '(archived)' : ''}</h1>
       <form className="flex flex-wrap items-end gap-2" method="get">
-        <Input name="q" placeholder="Search name, email, company, phone" defaultValue={f.q} className="w-72" />
+        {f.q ? <input type="hidden" name="q" value={f.q} /> : null}
         <Select name="status" defaultValue={f.status ?? ''} className="w-44">
           <option value="">All stages</option>
           {LEAD_STATUSES.map((s) => (

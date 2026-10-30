@@ -1,10 +1,10 @@
 'use client'
 
 import type { LeadStatus } from '@prisma/client'
-import { flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState, type VisibilityState } from '@tanstack/react-table'
+import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState, type VisibilityState } from '@tanstack/react-table'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useMemo, useState, useTransition } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { archiveLeads, bulkUpdateLeads, deleteLeads, exportLeadsCsv, updateLead, updateLeadStatus } from '@/app/actions/leads'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -78,11 +78,34 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
       URL.revokeObjectURL(url)
     })
 
+  const [tagFor, setTagFor] = useState<string | null>(null)
+  const [tagText, setTagText] = useState('')
   const addTag = (l: LeadRow): void => {
-    const tag = window.prompt('Add a tag')?.trim().toLowerCase()
-    if (tag) run(() => updateLead(l.id, { tags: [...l.tags, tag] }), 'Tag added.')
+    const tag = tagText.trim().toLowerCase()
+    setTagFor(null)
+    setTagText('')
+    if (tag && !l.tags.includes(tag)) run(() => updateLead(l.id, { tags: [...l.tags, tag] }), 'Tag added.')
   }
-  const [search, setSearch] = useState('')
+  const pathname = usePathname()
+  const params = useSearchParams()
+  const [search, setSearch] = useState(query.q ?? '')
+  const first = useRef(true)
+  // Debounced server-side search so every page of the directory is searched.
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    const t = setTimeout(() => {
+      const next = new URLSearchParams(params.toString())
+      if (search.trim()) next.set('q', search.trim())
+      else next.delete('q')
+      next.delete('page')
+      router.replace(`${pathname}?${next}`)
+    }, 250)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search])
   const [sorting, setSorting] = useState<SortingState>([])
   const [visibility, setVisibility] = useState<VisibilityState>({})
   const columns = useMemo<ColumnDef<LeadRow>[]>(
@@ -94,7 +117,13 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
       { id: 'tags', header: 'Tags', accessorFn: (l) => l.tags.join(' '), cell: ({ row }) => (
         <div className="flex flex-wrap items-center gap-1">
           {row.original.tags.map((t) => <Badge key={t} variant="secondary">{t}</Badge>)}
-          <button type="button" className="text-xs text-muted-foreground underline" onClick={() => addTag(row.original)}>+ tag</button>
+          {tagFor === row.original.id ? (
+            <form onSubmit={(e) => { e.preventDefault(); addTag(row.original) }}>
+              <input autoFocus aria-label="New tag" className="h-6 w-24 rounded border px-1 text-xs" value={tagText} onChange={(e) => setTagText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') { setTagText(''); setTagFor(null) } }} />
+            </form>
+          ) : (
+            <button type="button" className="text-xs text-muted-foreground underline" onClick={() => { setTagText(''); setTagFor(row.original.id) }}>+ tag</button>
+          )}
         </div>
       ) },
       { accessorKey: 'status', header: 'Stage', cell: ({ row }) => (
@@ -108,19 +137,16 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
       { accessorKey: 'createdAt', header: 'Created', cell: ({ row }) => row.original.createdAt.slice(0, 10) },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sel, pending],
+    [sel, pending, tagFor, tagText],
   )
   const table = useReactTable({
     data: rows,
     columns,
-    state: { globalFilter: search, sorting, columnVisibility: visibility },
-    onGlobalFilterChange: setSearch,
+    state: { sorting, columnVisibility: visibility },
     onSortingChange: setSorting,
     onColumnVisibilityChange: setVisibility,
     getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    globalFilterFn: 'includesString',
   })
 
   return (
@@ -163,7 +189,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
         {msg ? <span className="text-xs text-muted-foreground">{msg}</span> : null}
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Input aria-label="Instant search" placeholder="Instant search this page…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 w-64" />
+        <Input aria-label="Instant search" placeholder="Search name, email, company, phone…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 w-64" />
         <details className="relative text-sm">
           <summary className="cursor-pointer rounded-md border px-3 py-1.5">Columns</summary>
           <div className="absolute z-10 mt-1 space-y-1 rounded-md border bg-card p-3 shadow">

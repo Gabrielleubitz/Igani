@@ -78,7 +78,8 @@ const optText = (max: number) =>
     .trim()
     .max(max)
     .optional()
-    .transform((v) => v || null)
+    // undefined = field not supplied (leave untouched); '' = clear it
+    .transform((v) => (v === undefined ? undefined : v || null))
 
 const leadEditSchema = z.object({
   firstName: optText(100),

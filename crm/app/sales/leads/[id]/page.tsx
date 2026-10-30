@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { AddNoteForm, AddTaskForm, CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
 import { foldTasks } from '@/components/crm/crm-utils'
+import { EditContactForm } from '@/components/crm/EditContactForm'
 import { LeadControls } from '@/components/LeadControls'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -100,6 +101,19 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               <Link href={`/sales/invite?leadId=${lead.id}`} className="mt-3 block text-sm underline underline-offset-4">
                 Send meeting invite →
               </Link>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit contact</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EditContactForm
+                key={lead.updatedAt.toISOString()}
+                leadId={lead.id}
+                initial={{ firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, dealValue: lead.dealValue, tags: lead.tags }}
+              />
             </CardContent>
           </Card>
 
