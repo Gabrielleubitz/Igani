@@ -1,0 +1,246 @@
+// Igani CRM & scheduling platform (app.igani.co)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  SALES
+  MARKETING
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  DEMO_SCHEDULED
+  PROPOSAL_SENT
+  WON
+  LOST
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum BookingSource {
+  SALES_INVITE
+  PUBLIC_PAGE
+}
+
+enum EntityType {
+  LEAD
+  BOOKING
+  USER
+  ALLOWED_USER
+  BOOKING_PAGE
+  AVAILABILITY
+}
+
+// ─── Access control ──────────────────────────────────────────────────────────
+
+/// Whitelist: only these emails may sign in. Role here is the source of truth.
+model AllowedUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      Role
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role, active])
+}
+
+// ─── NextAuth (Prisma adapter) ───────────────────────────────────────────────
+
+model User {
+  id                 String    @id @default(cuid())
+  name               String?
+  email              String?   @unique
+  emailVerified      DateTime?
+  image              String?
+  role               Role?
+  /// IANA zone for working hours, e.g. "Asia/Jerusalem"
+  timeZone           String    @default("UTC")
+  /// Round-robin cursor: rep with the oldest value gets the next lead
+  lastLeadAssignedAt DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  accounts        Account[]
+  sessions        Session[]
+  assignedLeads   Lead[]         @relation("LeadAssignee")
+  hostBookings    Booking[]      @relation("BookingHost")
+  createdBookings Booking[]      @relation("BookingCreator")
+  availability    Availability[]
+  bookingPages    BookingPage[]
+  activityLogs    ActivityLog[]
+
+  @@index([role])
+}
+
+/// Google OAuth tokens live here (access_token, refresh_token, expires_at, scope)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── CRM ─────────────────────────────────────────────────────────────────────
+
+model Lead {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  firstName    String?
+  lastName     String?
+  phone        String?
+  company      String?
+  website      String?
+  message      String?    @db.Text
+  source       String     @default("igani.co")
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign  String?
+  utmTerm      String?
+  utmContent   String?
+  budget       String?
+  status       LeadStatus @default(NEW)
+  assignedToId String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  assignedTo User?     @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  bookings   Booking[]
+
+  @@index([status, createdAt])
+  @@index([assignedToId, status])
+}
+
+// ─── Scheduling ──────────────────────────────────────────────────────────────
+
+/// Weekly working hours. Times are "HH:mm" in the host's timeZone.
+model Availability {
+  id        String @id @default(cuid())
+  hostId    String
+  /// 0 = Sunday … 6 = Saturday
+  dayOfWeek Int
+  startTime String
+  endTime   String
+
+  host User @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  @@unique([hostId, dayOfWeek, startTime])
+  @@index([hostId, dayOfWeek])
+}
+
+/// Public booking page served at /book/[slug]
+model BookingPage {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  title            String
+  description      String?  @db.Text
+  durationMinutes  Int      @default(30)
+  /// false = instant confirmation, true = admin must approve
+  requiresApproval Boolean  @default(false)
+  active           Boolean  @default(true)
+  hostId           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  host     User      @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([hostId])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  status        BookingStatus @default(PENDING)
+  source        BookingSource
+  inviteToken   String?       @unique
+  meetUrl       String?
+  googleEventId String?
+  startTime     DateTime
+  endTime       DateTime
+  title         String
+  notes         String?       @db.Text
+  guestName     String
+  guestEmail    String
+  hostId        String
+  leadId        String?
+  bookingPageId String?
+  createdById   String?
+  confirmedAt   DateTime?
+  cancelledAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  host        User         @relation("BookingHost", fields: [hostId], references: [id], onDelete: Restrict)
+  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  bookingPage BookingPage? @relation(fields: [bookingPageId], references: [id], onDelete: SetNull)
+  createdBy   User?        @relation("BookingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([hostId, status, startTime])
+  @@index([leadId])
+  @@index([status, createdAt])
+}
+
+// ─── Audit ───────────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String     @id @default(cuid())
+  entityId   String
+  entityType EntityType
+  /// null = system / webhook / public visitor
+  actorId    String?
+  action     String
+  metadata   Json?
+  createdAt  DateTime   @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+}
