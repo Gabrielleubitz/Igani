@@ -12,7 +12,7 @@ const LOGO = 'https://app.igani.co/igani-logo%202.png'
 const when = { startTime: new Date('2026-11-02T15:00:00Z'), endTime: new Date('2026-11-02T15:30:00Z'), timeZone: 'UTC' }
 
 describe('email logo', () => {
-  it('every template uses the dark wordmark on a white chip, never the white wordmark', async () => {
+  it('every template uses the dark wordmark bare on a white card (no box), never the white wordmark', async () => {
     const emails: React.ReactElement[] = [
       React.createElement(BookingInvite, { hostName: 'Ann', guestName: 'Bo', title: 'Intro', ...when, acceptUrl: 'https://x', logoUrl: LOGO, brandName: 'Igani' } as never),
       React.createElement(BookingConfirmed, { guestName: 'Bo', hostName: 'Ann', title: 'Intro', ...when, logoUrl: LOGO, brandName: 'Igani', icsFileName: 'a.ics' } as never),
@@ -26,6 +26,8 @@ describe('email logo', () => {
       expect(html).toContain('src="https://app.igani.co/igani-logo%202.png"')
       expect(html).not.toMatch(/igani-logo\.png/)
       expect(html).toContain('background-color:#ffffff')
+      expect(html).not.toMatch(/background-color:#ffffff;border-radius:10px;padding:10px 14px/)
+      expect(html).not.toContain('#001429;font-family')
     }
   })
 })

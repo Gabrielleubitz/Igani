@@ -1,12 +1,15 @@
-/** Shared Igani email styling (dark navy). Logo rule: dark bg -> igani-logo.png (white wordmark); any white bg -> "igani-logo 2.png" (dark wordmark). */
+/** Shared Igani email styling (white cards, navy brand). Logo rule: white bg -> "igani-logo 2.png" (dark wordmark), shown bare with no box. */
 export const colors = {
-  bg: '#001429',
-  card: '#002040',
-  border: '#204060',
-  text: '#f5f5f5',
-  muted: '#9fb3c8',
-  accent: '#4080E0',
+  bg: '#f1f4f8',
+  card: '#ffffff',
+  border: '#e2e8f0',
+  text: '#0b1f3a',
+  muted: '#5b6b7f',
+  accent: '#2f6fd6',
   accentText: '#ffffff',
+  brand: '#001429',
+  panel: '#f6f8fb',
+  danger: '#d64545',
 } as const
 
 export const font =

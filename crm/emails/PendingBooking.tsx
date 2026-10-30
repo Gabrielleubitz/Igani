@@ -1,6 +1,6 @@
 import { Text } from '@react-email/components'
 import * as React from 'react'
-import { p, Shell } from './Shell'
+import { DetailCard, p, Shell } from './Shell'
 import { colors, formatWhen } from './theme'
 
 export interface PendingBookingProps {
@@ -24,11 +24,13 @@ export function PendingBooking({ guestName, guestEmail, hostName, title, startTi
       <Text style={p}>
         <strong style={{ color: colors.text }}>{guestName}</strong> ({guestEmail}) requested a meeting with {hostName}.
       </Text>
-      <Text style={{ ...p, color: colors.text, borderLeft: `2px solid ${colors.accent}`, paddingLeft: 16 }}>
-        {when.date}
-        <br />
-        {when.time}
-      </Text>
+      <DetailCard
+        rows={[
+          { label: 'Guest', value: `${guestName} (${guestEmail})` },
+          { label: 'Date', value: when.date },
+          { label: 'Time', value: when.time },
+        ]}
+      />
     </Shell>
   )
 }

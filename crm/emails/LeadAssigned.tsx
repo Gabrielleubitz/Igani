@@ -1,7 +1,6 @@
 import { Text } from '@react-email/components'
 import * as React from 'react'
-import { p, Shell } from './Shell'
-import { colors } from './theme'
+import { DetailCard, p, Shell } from './Shell'
 
 export interface LeadAssignedProps {
   repName: string
@@ -18,9 +17,15 @@ export interface LeadAssignedProps {
 export function LeadAssigned({ repName, leadName, leadEmail, company, source, leadUrl, logoUrl, brandName, supportEmail }: LeadAssignedProps): React.ReactElement {
   return (
     <Shell preview={`New lead assigned: ${leadName}`} eyebrow="New lead" title={`${leadName} is yours`} logoUrl={logoUrl} brandName={brandName} supportEmail={supportEmail} cta={{ href: leadUrl, label: 'Open contact' }}>
-      <Text style={p}>
-        Hi {repName}, a lead was assigned to you: <strong style={{ color: colors.text }}>{leadName}</strong> ({leadEmail}){company ? ` at ${company}` : ''}, source: {source}. Reach out soon.
-      </Text>
+      <Text style={p}>Hi {repName}, a new lead was assigned to you. Reach out soon.</Text>
+      <DetailCard
+        rows={[
+          { label: 'Name', value: leadName },
+          { label: 'Email', value: leadEmail },
+          ...(company ? [{ label: 'Company', value: company }] : []),
+          { label: 'Source', value: source },
+        ]}
+      />
     </Shell>
   )
 }
