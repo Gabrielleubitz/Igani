@@ -259,3 +259,8 @@ export function staleDays(status: string, lastTouch: Date, now: Date = new Date(
   const d = Math.floor((now.getTime() - lastTouch.getTime()) / 864e5)
   return d >= STALE_DAYS ? d : null
 }
+
+/** Prisma `where` for leads a user may see: admins all; others their own plus unassigned (matches the lead page). */
+export function visibleLeadsWhere(role: string, userId: string): { OR?: ({ assignedToId: string } | { assignedToId: null })[] } {
+  return role === 'ADMIN' ? {} : { OR: [{ assignedToId: userId }, { assignedToId: null }] }
+}

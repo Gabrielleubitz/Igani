@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildReport, csvCell, filterLeads, foldTasks, leadScore, scoreLabel, staleDays, toCsv } from '@/components/crm/crm-utils'
+import { buildReport, csvCell, filterLeads, foldTasks, leadScore, scoreLabel, staleDays, toCsv, visibleLeadsWhere } from '@/components/crm/crm-utils'
 
 describe('csv', () => {
   it('quotes and neutralises formulas', () => {
@@ -87,5 +87,12 @@ describe('leadScore / staleDays', () => {
     expect(staleDays('NEW', new Date('2026-03-20T00:00:00Z'), now)).toBe(11)
     expect(staleDays('NEW', new Date('2026-03-30T00:00:00Z'), now)).toBeNull()
     expect(staleDays('LOST', new Date('2026-01-01T00:00:00Z'), now)).toBeNull()
+  })
+})
+
+describe('visibleLeadsWhere', () => {
+  it('admins see all; others only own or unassigned leads', () => {
+    expect(visibleLeadsWhere('ADMIN', 'u1')).toEqual({})
+    expect(visibleLeadsWhere('SALES', 'u1')).toEqual({ OR: [{ assignedToId: 'u1' }, { assignedToId: null }] })
   })
 })

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { CrmSubNav } from '@/components/crm/CrmSubNav'
 import { CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
-import { foldTasks, leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
+import { foldTasks, leadScore, scoreLabel, staleDays, visibleLeadsWhere } from '@/components/crm/crm-utils'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -15,9 +15,11 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const now = new Date()
   const endOfDay = new Date(now.getTime() + 864e5)
   const mine = user.role === 'ADMIN' ? {} : { assignedToId: user.id }
+  const visible = await prisma.lead.findMany({ where: visibleLeadsWhere(user.role, user.id), select: { id: true } })
+  const visibleIds = visible.map((l) => l.id)
   const [me, taskLogs, meetings, openLeads] = await Promise.all([
     prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
-    prisma.activityLog.findMany({ where: { entityType: 'LEAD', action: { in: ['task.created', 'task.completed'] } }, orderBy: { createdAt: 'desc' }, take: 3000 }),
+    prisma.activityLog.findMany({ where: { entityType: 'LEAD', entityId: { in: visibleIds }, action: { in: ['task.created', 'task.completed'] } } }),
     prisma.booking.findMany({
       where: { status: 'CONFIRMED', startTime: { gte: now, lt: endOfDay }, ...(user.role === 'ADMIN' ? {} : { hostId: user.id }) },
       orderBy: { startTime: 'asc' },
