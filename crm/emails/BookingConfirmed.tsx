@@ -5,13 +5,13 @@ import {
   Head,
   Hr,
   Html,
-  Img,
   Link,
   Preview,
   Section,
   Text,
 } from '@react-email/components'
 import * as React from 'react'
+import { EmailLogo } from './EmailLogo'
 import { colors, font, formatWhen } from './theme'
 
 export interface BookingConfirmedProps {
@@ -23,7 +23,7 @@ export interface BookingConfirmedProps {
   /** IANA zone used to display the time, e.g. "Asia/Jerusalem" */
   timeZone: string
   meetUrl: string
-  /** Absolute URL of the Igani logo (white wordmark for the dark background) */
+  /** Absolute URL of the Igani logo (dark wordmark, shown on a white chip) */
   logoUrl: string
   brandName?: string
   supportEmail?: string
@@ -53,7 +53,7 @@ export function BookingConfirmed({
       <Preview>{`Confirmed: ${title} — ${when.date}`}</Preview>
       <Body style={{ backgroundColor: colors.bg, fontFamily: font, margin: 0, padding: '40px 0' }}>
         <Container style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px' }}>
-          <Img src={logoUrl} alt={brandName} width={96} height={28} style={{ marginBottom: 32 }} />
+          <EmailLogo src={logoUrl} alt={brandName} />
           <Section
             style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 32 }}
           >
@@ -119,7 +119,7 @@ BookingConfirmed.PreviewProps = {
   endTime: new Date('2026-11-02T09:30:00Z'),
   timeZone: 'Asia/Jerusalem',
   meetUrl: 'https://meet.google.com/abc-defg-hij',
-  logoUrl: 'https://app.igani.co/igani-logo.png',
+  logoUrl: 'https://app.igani.co/igani-logo%202.png',
   icsFileName: 'igani-meeting.ics',
 } satisfies BookingConfirmedProps
 

@@ -1,5 +1,6 @@
-import { Body, Button, Container, Head, Hr, Html, Img, Link, Preview, Section, Text } from '@react-email/components'
+import { Body, Button, Container, Head, Hr, Html, Link, Preview, Section, Text } from '@react-email/components'
 import * as React from 'react'
+import { EmailLogo } from './EmailLogo'
 import { colors, font, formatWhen } from './theme'
 
 export interface BookingInviteProps {
@@ -36,7 +37,7 @@ export function BookingInvite({
       <Preview>{`${hostName} invited you: ${title}`}</Preview>
       <Body style={{ backgroundColor: colors.bg, fontFamily: font, margin: 0, padding: '40px 0' }}>
         <Container style={{ maxWidth: 520, margin: '0 auto', padding: '0 20px' }}>
-          <Img src={logoUrl} alt={brandName} width={112} height={47} style={{ marginBottom: 32 }} />
+          <EmailLogo src={logoUrl} alt={brandName} />
           <Section style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 12, padding: 32 }}>
             <Text style={{ color: colors.muted, fontSize: 12, letterSpacing: 2, textTransform: 'uppercase', margin: 0 }}>
               Meeting invitation

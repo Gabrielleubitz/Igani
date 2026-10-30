@@ -57,9 +57,9 @@ async function brand(): Promise<{ brandName: string; supportEmail: string }> {
 }
 
 /** Emails render in inboxes, so the logo must be a public https URL (never localhost). */
-const PUBLIC_LOGO_URL = 'https://app.igani.co/igani-logo.png'
+const PUBLIC_LOGO_URL = 'https://app.igani.co/igani-logo%202.png'
 const logoUrl = (): string => {
-  const url = appUrl('/igani-logo.png')
+  const url = appUrl('/igani-logo%202.png')
   return url.startsWith('https://') && !url.includes('localhost') ? url : PUBLIC_LOGO_URL
 }
 
