@@ -3,7 +3,7 @@
 import type { Role } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { upsertAllowedUser, upsertBookingPage } from '@/app/actions/admin'
+import { resendInvite, upsertAllowedUser, upsertBookingPage } from '@/app/actions/admin'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select } from '@/components/ui/input'
 
@@ -67,6 +67,11 @@ export function AllowedUserToggle({ email, role, active }: { email: string; role
       <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => upsertAllowedUser({ email, role, active: !active }))}>
         {active ? 'Deactivate' : 'Activate'}
       </Button>
+      {active ? (
+        <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => resendInvite(email))}>
+          Resend invite
+        </Button>
+      ) : null}
       {msg && msg !== 'Saved.' ? <span className="text-xs text-red-400">{msg}</span> : null}
     </div>
   )

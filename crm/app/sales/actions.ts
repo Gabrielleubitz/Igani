@@ -4,20 +4,20 @@ import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { toActionError, type ActionResult } from '@/app/actions/result'
+import { TASK_PRIORITIES, type TaskPriority } from '@/components/crm/crm-utils'
 import { logActivity } from '@/lib/audit'
 import { requireUser, type SessionUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { prisma } from '@/lib/prisma'
 
 async function assertOwnsLead(leadId: string, user: SessionUser): Promise<void> {
-  const lead = await prisma.lead.findUnique({ where: { id: leadId }, select: { assignedToId: true } })
+  const lead = await prisma.lead.findUnique({ where: { id: leadId }, select: { id: true } })
   if (!lead) throw new BookingError('Lead not found.', 'NOT_FOUND')
-  if (user.role === 'SALES' && lead.assignedToId !== user.id) throw new BookingError('Claim this lead first.', 'FORBIDDEN')
 }
 
 export async function addNote(leadId: string, body: string): Promise<ActionResult> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
+    const user = await requireUser()
     const id = z.string().cuid().parse(leadId)
     const text = z.string().trim().min(1).max(5000).parse(body)
     await assertOwnsLead(id, user)
@@ -29,11 +29,12 @@ export async function addNote(leadId: string, body: string): Promise<ActionResul
   }
 }
 
-export async function createTask(leadId: string, title: string, dueAt: string | null): Promise<ActionResult> {
+export async function createTask(leadId: string, title: string, dueAt: string | null, priority: TaskPriority = 'MEDIUM'): Promise<ActionResult> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
+    const user = await requireUser()
     const id = z.string().cuid().parse(leadId)
     const t = z.string().trim().min(1).max(200).parse(title)
+    const prio = z.enum(TASK_PRIORITIES).parse(priority)
     const due = dueAt ? z.coerce.date().parse(dueAt).toISOString() : null
     await assertOwnsLead(id, user)
     await logActivity({
@@ -41,7 +42,7 @@ export async function createTask(leadId: string, title: string, dueAt: string | 
       entityId: id,
       actorId: user.id,
       action: 'task.created',
-      metadata: { taskId: randomUUID(), title: t, dueAt: due, assigneeId: user.id },
+      metadata: { taskId: randomUUID(), title: t, dueAt: due, assigneeId: user.id, priority: prio },
     })
     revalidatePath(`/sales/leads/${id}`)
     revalidatePath('/sales/tasks')
@@ -53,7 +54,7 @@ export async function createTask(leadId: string, title: string, dueAt: string | 
 
 export async function completeTask(leadId: string, taskId: string): Promise<ActionResult> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
+    const user = await requireUser()
     const id = z.string().cuid().parse(leadId)
     const tid = z.string().uuid().parse(taskId)
     await assertOwnsLead(id, user)

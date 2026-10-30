@@ -77,6 +77,7 @@ export function authOptions(): NextAuthOptions {
 
         // Returning user: sync role and refresh stored Google tokens (the adapter only writes them on first link).
         await prisma.user.updateMany({ where: { email: normalizeEmail(email) }, data: { role } })
+        await prisma.allowedUser.updateMany({ where: { email: normalizeEmail(email), invitedAt: { not: null }, inviteAcceptedAt: null }, data: { inviteAcceptedAt: new Date(), inviteToken: null } })
         if (account?.provider === 'google') {
           await prisma.account.updateMany({
             where: { provider: 'google', providerAccountId: account.providerAccountId },

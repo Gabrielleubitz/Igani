@@ -4,7 +4,8 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { addNote, completeTask, createTask } from '@/app/sales/actions'
 import { Button } from '@/components/ui/button'
-import { Input, Textarea } from '@/components/ui/input'
+import { TASK_PRIORITIES, type TaskPriority } from '@/components/crm/crm-utils'
+import { Input, Select, Textarea } from '@/components/ui/input'
 
 export function AddNoteForm({ leadId }: { leadId: string }): React.ReactElement {
   const router = useRouter()
@@ -40,6 +41,7 @@ export function AddTaskForm({ leadId }: { leadId: string }): React.ReactElement 
   const [pending, start] = useTransition()
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
+  const [priority, setPriority] = useState<TaskPriority>('MEDIUM')
   const [error, setError] = useState<string | null>(null)
   return (
     <form
@@ -47,7 +49,7 @@ export function AddTaskForm({ leadId }: { leadId: string }): React.ReactElement 
       onSubmit={(e) => {
         e.preventDefault()
         start(async () => {
-          const res = await createTask(leadId, title, due ? new Date(due).toISOString() : null)
+          const res = await createTask(leadId, title, due ? new Date(due).toISOString() : null, priority)
           setError(res.ok ? null : res.error)
           if (res.ok) {
             setTitle('')
@@ -59,6 +61,13 @@ export function AddTaskForm({ leadId }: { leadId: string }): React.ReactElement 
     >
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Follow up…" className="h-9 w-64" maxLength={200} />
       <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="h-9 w-52" />
+      <Select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="h-9 w-32">
+        {TASK_PRIORITIES.map((x) => (
+          <option key={x} value={x}>
+            {x.toLowerCase()}
+          </option>
+        ))}
+      </Select>
       <Button size="sm" type="submit" disabled={pending || !title.trim()}>
         Add task
       </Button>

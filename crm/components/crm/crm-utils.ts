@@ -18,6 +18,9 @@ export interface TaskLog {
   metadata: unknown
 }
 
+export const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'] as const
+export type TaskPriority = (typeof TASK_PRIORITIES)[number]
+
 export interface CrmTask {
   id: string
   leadId: string
@@ -25,6 +28,7 @@ export interface CrmTask {
   dueAt: Date | null
   assigneeId: string | null
   done: boolean
+  priority: TaskPriority
 }
 
 /** Tasks live in the activity log (`task.created` / `task.completed`); fold them into current state. */
@@ -43,6 +47,7 @@ export function foldTasks(logs: TaskLog[]): CrmTask[] {
         dueAt: typeof m.dueAt === 'string' ? new Date(m.dueAt) : null,
         assigneeId: typeof m.assigneeId === 'string' ? m.assigneeId : null,
         done: false,
+        priority: (TASK_PRIORITIES as readonly unknown[]).includes(m.priority) ? (m.priority as TaskPriority) : 'MEDIUM',
       })
     } else if (l.action === 'task.completed') {
       const t = tasks.get(taskId)

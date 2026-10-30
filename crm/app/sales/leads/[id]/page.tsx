@@ -18,7 +18,7 @@ const LABELS: Record<string, string> = {
 }
 
 export default async function LeadPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
-  const user = await requireUser(['ADMIN', 'SALES'])
+  const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
   const lead = await prisma.lead.findUnique({
     where: { id: params.id },
@@ -39,7 +39,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   ])
   const tz = me.timeZone
   const tasks = foldTasks(logs).sort((a, b) => Number(a.done) - Number(b.done) || (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity))
-  const canEdit = isAdmin || lead.assignedToId === user.id
+  const canEdit = true // contacts are open to every authenticated role
 
   const describe = (l: (typeof logs)[number]): string => {
     const m = (l.metadata ?? {}) as Record<string, unknown>
@@ -112,7 +112,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               {tasks.map((t) => (
                 <div key={t.id} className="flex items-center justify-between gap-2 text-sm">
                   <div className={t.done ? 'text-muted-foreground line-through' : ''}>
-                    {t.title}
+                    {t.title} <span className="text-xs uppercase text-muted-foreground">{t.priority.toLowerCase()}</span>
                     {t.dueAt ? <div className="text-xs text-muted-foreground">due {formatDateTime(t.dueAt, tz)}</div> : null}
                   </div>
                   {!t.done && canEdit ? <CompleteTaskButton leadId={lead.id} taskId={t.id} /> : null}

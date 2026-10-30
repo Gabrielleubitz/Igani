@@ -1,9 +1,10 @@
 import { timingSafeEqual } from 'node:crypto'
-import { Resend } from 'resend'
 import { foldTasks, splitDue } from '@/components/crm/crm-utils'
 import { logActivity } from '@/lib/audit'
-import { appUrl, env } from '@/lib/env'
+import { appUrl } from '@/lib/env'
+import { sendTaskDigestEmail } from '@/lib/email'
 import { prisma } from '@/lib/prisma'
+import { createAutoTask } from '@/lib/tasks'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,15 +16,31 @@ function authorised(req: Request): boolean {
   return got.length === want.length && timingSafeEqual(got, want)
 }
 
-const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
+/** Calls that have ended get one auto follow-up task for the host (marked by `booking.ended`). */
+async function createFollowUps(): Promise<number> {
+  const ended = await prisma.booking.findMany({ where: { status: 'CONFIRMED', endTime: { lt: new Date() }, leadId: { not: null } }, orderBy: { endTime: 'desc' }, take: 200 })
+  const done = new Set(
+    (await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.ended', entityId: { in: ended.map((b) => b.id) } }, select: { entityId: true } })).map((l) => l.entityId),
+  )
+  let n = 0
+  for (const b of ended.filter((x) => !done.has(x.id))) {
+    await prisma.$transaction(async (tx) => {
+      await logActivity({ entityType: 'BOOKING', entityId: b.id, action: 'booking.ended' }, tx)
+      await createAutoTask({ leadId: b.leadId!, title: `Follow up after call: ${b.title}`, dueAt: new Date(Date.now() + 86_400_000), assigneeId: b.hostId, auto: 'follow-up', bookingId: b.id }, tx)
+    })
+    n++
+  }
+  return n
+}
 
 /**
- * Cron endpoint, public path in middleware but gated by the bearer secret (Vercel cron sends `Authorization: Bearer $CRON_SECRET`).
- * Emails each assignee one digest of tasks that are overdue / due today and not reminded yet,
- * then logs `task.reminded` so nobody is emailed twice about the same task.
+ * Cron endpoint (hourly), public path in middleware but gated by the bearer secret (Vercel cron sends `Authorization: Bearer $CRON_SECRET`).
+ * 1) creates follow-up tasks for calls that ended, 2) emails each assignee one branded digest of tasks that are
+ * overdue / due today and not reminded yet, then logs `task.reminded` so nobody is emailed twice about the same task.
  */
 export async function GET(req: Request): Promise<Response> {
   if (!authorised(req)) return new Response('Unauthorized', { status: 401 })
+  const followUps = await createFollowUps()
   const logs = await prisma.activityLog.findMany({
     where: { entityType: 'LEAD', action: { in: ['task.created', 'task.completed', 'task.reminded'] } },
     orderBy: { createdAt: 'desc' },
@@ -36,26 +53,27 @@ export async function GET(req: Request): Promise<Response> {
   const byUser = new Map<string, typeof due>()
   for (const t of due) byUser.set(t.assigneeId!, [...(byUser.get(t.assigneeId!) ?? []), t])
   const users = await prisma.user.findMany({ where: { id: { in: [...byUser.keys()] } }, select: { id: true, email: true, name: true } })
-  const client = new Resend(env().RESEND_API_KEY)
   let sent = 0
   for (const u of users) {
     if (!u.email) continue
     const tasks = byUser.get(u.id) ?? []
-    const when = (t: (typeof tasks)[number]): string => (t.dueAt!.getTime() < Date.now() ? 'OVERDUE' : `due ${t.dueAt!.toISOString().slice(0, 16).replace('T', ' ')} UTC`)
-    const lines = tasks.map((t) => `${t.title} — ${when(t)} — ${appUrl(`/sales/leads/${t.leadId}`)}`)
-    const { error } = await client.emails.send({
-      from: env().EMAIL_FROM,
-      to: u.email,
-      subject: `${tasks.length} CRM task${tasks.length === 1 ? '' : 's'} need attention`,
-      text: `Hi ${u.name ?? ''},\n\n${lines.join('\n')}\n\nAll tasks: ${appUrl('/sales/tasks')}`,
-      html: `<p>Hi ${esc(u.name ?? '')},</p><ul>${tasks.map((t) => `<li><a href="${appUrl(`/sales/leads/${t.leadId}`)}">${esc(t.title)}</a> — ${when(t)}</li>`).join('')}</ul><p><a href="${appUrl('/sales/tasks')}">Open tasks</a></p>`,
-    })
-    if (error) {
-      console.error('[reminders] send failed', u.id, error.message)
+    try {
+      await sendTaskDigestEmail(u.email, {
+        name: u.name ?? u.email,
+        tasksUrl: appUrl('/sales/tasks'),
+        tasks: tasks.map((t) => ({
+          title: t.title,
+          overdue: t.dueAt!.getTime() < Date.now(),
+          due: t.dueAt!.getTime() < Date.now() ? 'Overdue' : `Due ${t.dueAt!.toISOString().slice(0, 16).replace('T', ' ')} UTC`,
+          url: appUrl(`/sales/leads/${t.leadId}`),
+        })),
+      })
+    } catch (err) {
+      console.error('[reminders] send failed', u.id, err)
       continue
     }
     sent++
     for (const t of tasks) await logActivity({ entityType: 'LEAD', entityId: t.leadId, action: 'task.reminded', metadata: { taskId: t.id } })
   }
-  return Response.json({ checked: due.length, emailed: sent })
+  return Response.json({ checked: due.length, emailed: sent, followUps })
 }

@@ -3,6 +3,7 @@ import type { Booking, BookingSource, Prisma } from '@prisma/client'
 import { logActivity } from './audit'
 import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, isSlotStillFree } from './calendar'
 import { getSetting } from './settings'
+import { createAutoTask } from './tasks'
 import { sendApprovalRequestEmail, sendBookingConfirmedEmail, type BookingEmailData } from './email'
 import { env } from './env'
 import { prisma } from './prisma'
@@ -206,6 +207,13 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
           tx,
         )
       }
+    }
+    if (updated.leadId) {
+      // Auto prep task for the rep, due an hour before the call (or now if it is sooner).
+      await createAutoTask(
+        { leadId: updated.leadId, title: `Prep for call: ${updated.title}`, dueAt: new Date(Math.max(Date.now(), updated.startTime.getTime() - 3600_000)), assigneeId: updated.hostId, auto: 'prep', bookingId },
+        tx,
+      )
     }
     await logActivity(
       { entityType: 'BOOKING', entityId: bookingId, action: 'booking.confirmed', actorId, metadata: { meetUrl: event.meetUrl, googleEventId: event.eventId } },

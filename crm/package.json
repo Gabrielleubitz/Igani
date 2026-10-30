@@ -21,6 +21,7 @@
     "@radix-ui/react-slot": "^1.5.0",
     "@react-email/components": "^0.0.36",
     "@react-email/render": "^1.0.6",
+    "@tanstack/react-table": "^8.21.3",
     "@vercel/functions": "^3.10.5",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

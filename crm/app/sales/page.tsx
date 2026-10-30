@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma'
 export const metadata = { title: 'Pipeline' }
 
 export default async function PipelinePage(): Promise<React.ReactElement> {
-  const user = await requireUser(['ADMIN', 'SALES'])
+  const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
   const scope: Prisma.LeadWhereInput = isAdmin ? {} : { OR: [{ assignedToId: user.id }, { assignedToId: null }] }
 

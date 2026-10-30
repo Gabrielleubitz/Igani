@@ -18,7 +18,7 @@ export function isPublicPath(pathname: string): boolean {
 /** Roles allowed for a protected path; null = any whitelisted role. */
 export function requiredRoles(pathname: string): readonly Role[] | null {
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) return ['ADMIN']
-  if (pathname.startsWith('/sales') || pathname.startsWith('/api/sales')) return ['ADMIN', 'SALES']
+  if (pathname.startsWith('/sales') || pathname.startsWith('/api/sales')) return null
   if (pathname.startsWith('/marketing') || pathname.startsWith('/api/marketing')) return ['ADMIN', 'MARKETING']
   return null
 }

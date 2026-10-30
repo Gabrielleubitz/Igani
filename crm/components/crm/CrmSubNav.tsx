@@ -1,7 +1,8 @@
 import Link from 'next/link'
 
 const TABS = [
-  { href: '/sales', label: 'List' },
+  { href: '/sales/leads', label: 'Contacts' },
+  { href: '/sales', label: 'Pipeline' },
   { href: '/sales/board', label: 'Board' },
   { href: '/sales/tasks', label: 'Tasks' },
   { href: '/sales/reports', label: 'Reports' },

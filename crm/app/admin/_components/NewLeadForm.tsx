@@ -19,7 +19,7 @@ export function NewLeadForm(): React.ReactElement {
         const fd = new FormData(form)
         const get = (k: string): string | undefined => String(fd.get(k) ?? '') || undefined
         start(async () => {
-          const res = await createLead({ email: String(fd.get('email') ?? ''), firstName: get('firstName'), lastName: get('lastName'), company: get('company'), phone: get('phone') })
+          const res = await createLead({ email: String(fd.get('email') ?? ''), firstName: get('firstName'), lastName: get('lastName'), company: get('company'), phone: get('phone'), tags: (get('tags') ?? '').split(',').filter((t) => t.trim()) })
           setMsg(res.ok ? 'Lead added.' : res.error)
           if (res.ok) form.reset()
           router.refresh()
@@ -27,6 +27,7 @@ export function NewLeadForm(): React.ReactElement {
       }}
     >
       <Input name="email" type="email" required placeholder="Email" className="w-64" />
+      <Input name="tags" placeholder="Tags (comma separated)" className="w-48" />
       <Input name="firstName" placeholder="First name" className="w-36" />
       <Input name="lastName" placeholder="Last name" className="w-36" />
       <Input name="company" placeholder="Company" className="w-44" />

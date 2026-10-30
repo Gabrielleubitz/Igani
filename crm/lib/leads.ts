@@ -2,6 +2,8 @@ import 'server-only'
 import type { LeadStatus, Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
+import { sendLeadAssignedEmail } from './email'
+import { appUrl } from './env'
 import { prisma } from './prisma'
 
 const optionalText = (max: number) =>
@@ -80,7 +82,9 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
       )
       return { leadId: existing.id, created: false as const, needsAssignment: existing.assignedToId === null }
     }
-    const lead = await tx.lead.create({ data: { ...data, email: payload.email, source: payload.source ?? 'igani.co' } })
+    const source = payload.source ?? 'igani.co'
+    const tags = ['inbound', ...(source === 'igani.co' ? [] : [source.toLowerCase().slice(0, 40)]), ...(payload.utm?.campaign ? [`utm:${payload.utm.campaign.toLowerCase().slice(0, 40)}`] : [])]
+    const lead = await tx.lead.create({ data: { ...data, email: payload.email, source, tags } })
     await logActivity(
       { entityType: 'LEAD', entityId: lead.id, action: 'lead.created', metadata: { source: lead.source, utmSource: lead.utmSource } },
       tx,
@@ -107,6 +111,33 @@ function isUniqueViolation(err: unknown): boolean {
  * Returns the assignee id, or null if there are no reps or the lead was already assigned.
  */
 export async function assignLeadRoundRobin(leadId: string, opts: { force?: boolean } = {}): Promise<string | null> {
+  const repId = await roundRobinTx(leadId, opts)
+  if (repId) await notifyLeadAssigned(leadId, repId)
+  return repId
+}
+
+/** Best-effort email to the rep a lead was just assigned to; a mail outage never blocks assignment. */
+export async function notifyLeadAssigned(leadId: string, repId: string): Promise<void> {
+  try {
+    const [lead, rep] = await Promise.all([
+      prisma.lead.findUnique({ where: { id: leadId } }),
+      prisma.user.findUnique({ where: { id: repId }, select: { email: true, name: true } }),
+    ])
+    if (!lead || !rep?.email) return
+    await sendLeadAssignedEmail(rep.email, {
+      repName: rep.name ?? rep.email,
+      leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email,
+      leadEmail: lead.email,
+      company: lead.company,
+      source: lead.source,
+      leadUrl: appUrl(`/sales/leads/${lead.id}`),
+    })
+  } catch (err) {
+    console.error('[leads] assignment email failed', leadId, err)
+  }
+}
+
+async function roundRobinTx(leadId: string, opts: { force?: boolean }): Promise<string | null> {
   return prisma.$transaction(async (tx) => {
     if (!opts.force) {
       const off = await tx.siteSetting.findUnique({ where: { key: 'roundRobin.enabled' } })
@@ -156,6 +187,7 @@ export async function assignLeadManually(leadId: string, assigneeId: string | nu
       tx,
     )
   })
+  if (assigneeId && assigneeId !== actorId) await notifyLeadAssigned(leadId, assigneeId)
 }
 
 export interface StatusExtras {

@@ -9,6 +9,7 @@ export interface LeadFilters {
   /** user id, or "none" for unassigned */
   assignee?: string
   source?: string
+  tag?: string
   archived?: boolean
   page: number
 }
@@ -25,6 +26,7 @@ export function parseLeadFilters(params: Params): LeadFilters {
     status: status && STATUSES.includes(status) ? (status as LeadStatus) : undefined,
     assignee: one(params.assignee)?.slice(0, 40),
     source: one(params.source)?.slice(0, 100),
+    tag: one(params.tag)?.toLowerCase().slice(0, 40),
     archived: one(params.archived) === '1',
     page: Number.isFinite(page) && page > 0 ? page : 1,
   }
@@ -40,6 +42,7 @@ export function buildLeadWhere(f: LeadFilters): Prisma.LeadWhereInput {
   if (f.assignee === 'none') and.push({ assignedToId: null })
   else if (f.assignee) and.push({ assignedToId: f.assignee })
   if (f.source) and.push({ source: f.source })
+  if (f.tag) and.push({ tags: { has: f.tag } })
   return { AND: and }
 }
 

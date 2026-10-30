@@ -5,7 +5,7 @@ import { requireUser } from '@/lib/auth'
 export const metadata = { title: 'Import leads' }
 
 export default async function ImportPage(): Promise<React.ReactElement> {
-  await requireUser(['ADMIN'])
+  await requireUser()
   return (
     <div className="space-y-4">
       <Link href="/sales" className="text-sm text-muted-foreground underline underline-offset-4">

@@ -32,7 +32,7 @@ function parse(rows: unknown): { ok: z.infer<typeof leadPayloadSchema>[]; invali
 /** Dry run: report how many rows are new vs. already in the CRM. Writes nothing. */
 export async function previewLeadImport(rows: unknown): Promise<ActionResult<ImportPreview>> {
   try {
-    await requireUser(['ADMIN'])
+    await requireUser()
     const { ok, invalid } = parse(rows)
     const existing = await prisma.lead.findMany({ where: { email: { in: ok.map((o) => o.email) } }, select: { email: true } })
     const have = new Set(existing.map((e) => e.email))
@@ -45,7 +45,7 @@ export async function previewLeadImport(rows: unknown): Promise<ActionResult<Imp
 /** Commit. Duplicates (by email) are skipped, or merged (blanks filled, message appended) when mode = 'merge'. */
 export async function commitLeadImport(rows: unknown, mode: 'skip' | 'merge'): Promise<ActionResult<{ created: number; merged: number; skipped: number }>> {
   try {
-    const user = await requireUser(['ADMIN'])
+    const user = await requireUser()
     const { ok } = parse(rows)
     const existing = await prisma.lead.findMany({ where: { email: { in: ok.map((o) => o.email) } }, select: { email: true } })
     const have = new Set(existing.map((e) => e.email))

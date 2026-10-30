@@ -53,7 +53,7 @@ describe('route roles', () => {
     expect(canAccess('ADMIN', '/admin/users')).toBe(true)
     expect(canAccess('SALES', '/admin/users')).toBe(false)
     expect(canAccess('SALES', '/sales')).toBe(true)
-    expect(canAccess('MARKETING', '/sales/invite')).toBe(false)
+    expect(canAccess('MARKETING', '/sales/leads')).toBe(true)
     expect(canAccess('MARKETING', '/api/anything')).toBe(true)
     expect(canAccess(undefined, '/sales')).toBe(false)
   })

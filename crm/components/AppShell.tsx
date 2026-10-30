@@ -6,11 +6,11 @@ import { SignOutButton } from './AuthButtons'
 
 const NAV: { href: string; label: string; roles: SessionUser['role'][] }[] = [
   { href: '/admin/dashboard', label: 'Overview', roles: ['ADMIN'] },
-  { href: '/admin/leads', label: 'Leads', roles: ['ADMIN'] },
+  { href: '/sales/leads', label: 'Contacts', roles: ['ADMIN', 'SALES', 'MARKETING'] },
   { href: '/sales', label: 'Pipeline', roles: ['ADMIN', 'SALES'] },
-  { href: '/sales/board', label: 'Board', roles: ['ADMIN', 'SALES'] },
-  { href: '/sales/tasks', label: 'Tasks', roles: ['ADMIN', 'SALES'] },
-  { href: '/sales/reports', label: 'Reports', roles: ['ADMIN', 'SALES'] },
+  { href: '/sales/board', label: 'Board', roles: ['ADMIN', 'SALES', 'MARKETING'] },
+  { href: '/sales/tasks', label: 'Tasks', roles: ['ADMIN', 'SALES', 'MARKETING'] },
+  { href: '/sales/reports', label: 'Reports', roles: ['ADMIN', 'SALES', 'MARKETING'] },
   { href: '/sales/invite', label: 'New invite', roles: ['ADMIN', 'SALES'] },
   { href: '/sales/availability', label: 'My hours', roles: ['ADMIN', 'SALES'] },
   { href: '/marketing', label: 'Marketing', roles: ['ADMIN', 'MARKETING'] },

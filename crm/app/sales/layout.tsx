@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth'
 export const dynamic = 'force-dynamic'
 
 export default async function Layout({ children }: { children: ReactNode }): Promise<React.ReactElement> {
-  const user = await requireUser(['ADMIN', 'SALES'])
+  const user = await requireUser()
   return (
     <AppShell user={user}>
       <TaskAlert userId={user.id} isAdmin={user.role === 'ADMIN'} />

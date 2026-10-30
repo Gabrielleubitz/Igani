@@ -26,7 +26,7 @@ export async function updateLeadStatus(
   extras: { lostReason?: string; dealValue?: number } = {},
 ): Promise<ActionResult> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
+    const user = await requireUser()
     const id = z.string().cuid().parse(leadId)
     await assertCanTouchLead(id, user)
     const parsed = z.nativeEnum(LeadStatus).parse(status)
@@ -89,12 +89,13 @@ const leadEditSchema = z.object({
   budget: optText(100),
   message: optText(20000),
   dealValue: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
+  tags: z.array(z.string().trim().toLowerCase().min(1).max(40)).max(20).transform((t) => [...new Set(t)]).optional(),
 })
 
-/** ADMIN: edit contact fields of a lead (email is the dedupe key and stays fixed). */
+/** Any role: edit contact fields of a lead (email is the dedupe key and stays fixed). */
 export async function updateLead(leadId: string, input: z.input<typeof leadEditSchema>): Promise<ActionResult> {
   try {
-    const admin = await requireUser(['ADMIN'])
+    const admin = await requireUser()
     const id = z.string().cuid().parse(leadId)
     const data = leadEditSchema.parse(input)
     await prisma.$transaction(async (tx) => {
@@ -108,12 +109,12 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
   }
 }
 
-/** ADMIN: manually create a lead (dedupes by email). */
-export async function createLead(input: { email: string; firstName?: string; lastName?: string; phone?: string; company?: string; source?: string }): Promise<ActionResult<{ id: string }>> {
+/** Any role: manually create a lead (dedupes by email). */
+export async function createLead(input: { email: string; firstName?: string; lastName?: string; phone?: string; company?: string; source?: string; tags?: string[] }): Promise<ActionResult<{ id: string }>> {
   try {
-    const admin = await requireUser(['ADMIN'])
+    const admin = await requireUser()
     const data = z
-      .object({ email: z.string().trim().toLowerCase().email().max(254), firstName: optText(100), lastName: optText(100), phone: optText(40), company: optText(200), source: optText(100) })
+      .object({ email: z.string().trim().toLowerCase().email().max(254), firstName: optText(100), lastName: optText(100), phone: optText(40), company: optText(200), source: optText(100), tags: leadEditSchema.shape.tags })
       .parse(input)
     const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
     if (exists) throw new BookingError('A lead with this email already exists.', 'INVALID_STATE')
@@ -129,10 +130,10 @@ export async function createLead(input: { email: string; firstName?: string; las
   }
 }
 
-/** ADMIN: archive (soft-delete) or restore leads. */
+/** Any role: archive (soft-delete) or restore leads. */
 export async function archiveLeads(leadIds: string[], archived: boolean): Promise<ActionResult<{ count: number }>> {
   try {
-    const admin = await requireUser(['ADMIN'])
+    const admin = await requireUser()
     const ids = z.array(z.string().cuid()).min(1).max(500).parse(leadIds)
     const res = await prisma.$transaction(async (tx) => {
       const r = await tx.lead.updateMany({ where: { id: { in: ids } }, data: { archived } })
@@ -165,10 +166,10 @@ export async function deleteLeads(leadIds: string[]): Promise<ActionResult<{ cou
   }
 }
 
-/** ADMIN: bulk assign (null = unassign) and/or bulk status change. */
+/** Any role: bulk assign (null = unassign) and/or bulk status change. */
 export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: string | null; status?: LeadStatus }): Promise<ActionResult<{ count: number }>> {
   try {
-    const admin = await requireUser(['ADMIN'])
+    const admin = await requireUser()
     const ids = z.array(z.string().cuid()).min(1).max(500).parse(leadIds)
     const ch = z.object({ assigneeId: z.string().cuid().nullable().optional(), status: z.nativeEnum(LeadStatus).optional() }).parse(change)
     if (ch.status === 'LOST') throw new BookingError('Mark leads as lost one by one so a reason is recorded.', 'INVALID_STATE')
@@ -183,7 +184,7 @@ export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: 
 
 export async function addLeadNote(leadId: string, body: string): Promise<ActionResult> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
+    const user = await requireUser()
     const id = z.string().cuid().parse(leadId)
     const text = z.string().trim().min(1).max(5000).parse(body)
     await assertCanTouchLead(id, user)
@@ -198,10 +199,10 @@ export async function addLeadNote(leadId: string, body: string): Promise<ActionR
   }
 }
 
-/** ADMIN: CSV export of leads matching the (URL-style) filters. */
+/** Any role: CSV export of leads matching the (URL-style) filters. */
 export async function exportLeadsCsv(params: Record<string, string | undefined> = {}): Promise<ActionResult<{ csv: string }>> {
   try {
-    await requireUser(['ADMIN'])
+    await requireUser()
     const leads = await prisma.lead.findMany({
       where: buildLeadWhere(parseLeadFilters(params)),
       orderBy: { createdAt: 'desc' },
@@ -209,8 +210,8 @@ export async function exportLeadsCsv(params: Record<string, string | undefined> 
       include: { assignedTo: { select: { email: true } } },
     })
     const csv = toCsv(
-      ['email', 'firstName', 'lastName', 'phone', 'company', 'website', 'status', 'owner', 'source', 'utmSource', 'utmMedium', 'utmCampaign', 'budget', 'dealValue', 'lostReason', 'createdAt'],
-      leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.assignedTo?.email, l.source, l.utmSource, l.utmMedium, l.utmCampaign, l.budget, l.dealValue, l.lostReason, l.createdAt]),
+      ['email', 'firstName', 'lastName', 'phone', 'company', 'website', 'status', 'owner', 'source', 'utmSource', 'utmMedium', 'utmCampaign', 'budget', 'dealValue', 'tags', 'lostReason', 'createdAt'],
+      leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.assignedTo?.email, l.source, l.utmSource, l.utmMedium, l.utmCampaign, l.budget, l.dealValue, l.tags.join(';'), l.lostReason, l.createdAt]),
     )
     return { ok: true, data: { csv } }
   } catch (err) {

@@ -55,6 +55,10 @@ model AllowedUser {
   email     String   @unique
   role      Role
   active    Boolean  @default(true)
+  /// Onboarding token emailed on invite (random, single-use)
+  inviteToken      String?   @unique
+  invitedAt        DateTime?
+  inviteAcceptedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -154,6 +158,7 @@ model Lead {
   dealValue    Int?
   /// Soft-delete: hidden from pipelines, restorable by admin
   archived     Boolean    @default(false)
+  tags         String[]   @default([])
   assignedToId String?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt

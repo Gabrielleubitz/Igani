@@ -13,6 +13,9 @@ describe('lead filters', () => {
     expect(JSON.stringify(w)).toContain('"archived":false')
     expect(JSON.stringify(w)).toContain('"status":"NEW"')
   })
+  it('filters by tag', () => {
+    expect(JSON.stringify(buildLeadWhere(parseLeadFilters({ tag: ' VIP ' })))).toContain('"tags":{"has":"vip"}')
+  })
   it('computes conversion', () => {
     expect(conversionRate(1, 3)).toBe(33.3)
     expect(conversionRate(0, 0)).toBe(0)

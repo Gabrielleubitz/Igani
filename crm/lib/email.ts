@@ -3,6 +3,10 @@ import { render } from '@react-email/render'
 import { Resend } from 'resend'
 import { BookingConfirmed } from '@/emails/BookingConfirmed'
 import { BookingInvite } from '@/emails/BookingInvite'
+import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
+import { PendingBooking } from '@/emails/PendingBooking'
+import { TaskDigest, type TaskDigestProps } from '@/emails/TaskDigest'
+import { TeamInvite } from '@/emails/TeamInvite'
 import { appUrl, env } from './env'
 import { buildIcs } from './ics'
 import { getSetting } from './settings'
@@ -91,19 +95,32 @@ export async function sendBookingConfirmedEmail(b: BookingEmailData & { meetUrl:
   })
 }
 
-/** Plain notice to admins that a public booking awaits approval. */
+/** Branded notice to admins that a public booking awaits approval. */
 export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData): Promise<string | null> {
   if (to.length === 0) return null
-  const link = appUrl('/admin/bookings')
-  const when = b.startTime.toISOString()
+  const element = PendingBooking({ ...b, reviewUrl: appUrl('/admin/bookings'), logoUrl: logoUrl(), ...(await brand()) })
   return send({
     to,
     subject: `Approval needed: ${b.title} with ${b.guestName}`,
-    text: `${b.guestName} <${b.guestEmail}> requested "${b.title}" with ${b.hostName} at ${when}.\n\nReview: ${link}`,
-    html: `<p><strong>${escapeHtml(b.guestName)}</strong> (${escapeHtml(b.guestEmail)}) requested <strong>${escapeHtml(b.title)}</strong> with ${escapeHtml(b.hostName)} at ${when}.</p><p><a href="${link}">Review pending bookings</a></p>`,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
   })
 }
 
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c)
+/** Onboarding invite: links to the login page carrying the one-time invite token. */
+export async function sendTeamInviteEmail(a: { to: string; role: string; inviterName: string; token: string }): Promise<string> {
+  const loginUrl = appUrl(`/login?invite=${encodeURIComponent(a.token)}`)
+  const element = TeamInvite({ role: a.role, inviterName: a.inviterName, loginUrl, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to: a.to, subject: 'You are invited to the Igani CRM', html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+export async function sendLeadAssignedEmail(to: string, a: Omit<LeadAssignedProps, 'logoUrl' | 'brandName' | 'supportEmail'>): Promise<string> {
+  const element = LeadAssigned({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to, subject: `New lead assigned: ${a.leadName}`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+export async function sendTaskDigestEmail(to: string, a: Omit<TaskDigestProps, 'logoUrl' | 'brandName' | 'supportEmail'>): Promise<string> {
+  const element = TaskDigest({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  const n = a.tasks.length
+  return send({ to, subject: `${n} CRM task${n === 1 ? '' : 's'} need attention`, html: await render(element), text: await render(element, { plainText: true }) })
 }

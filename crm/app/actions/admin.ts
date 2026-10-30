@@ -1,10 +1,12 @@
 'use server'
 
+import { randomBytes } from 'node:crypto'
 import { Role } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { normalizeEmail, requireUser } from '@/lib/auth'
+import { sendTeamInviteEmail } from '@/lib/email'
 import { prisma } from '@/lib/prisma'
 import { reassignUserWork } from '@/lib/leads'
 import { SETTING_SCHEMAS, isSettingKey } from '@/lib/settings'
@@ -21,6 +23,7 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
     if (data.email === admin.email && (!data.active || data.role !== 'ADMIN')) {
       throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'You cannot demote or deactivate yourself' }])
     }
+    const isNew = !(await prisma.allowedUser.findUnique({ where: { email: data.email }, select: { id: true } }))
     const row = await prisma.$transaction(async (tx) => {
       const allowed = await tx.allowedUser.upsert({ where: { email: data.email }, create: data, update: { role: data.role, active: data.active } })
       const users = await tx.user.findMany({ where: { email: data.email }, select: { id: true } })
@@ -31,7 +34,30 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
       return allowed
     })
     revalidatePath('/admin/users')
+    if (isNew && data.active) await issueInvite(data.email, data.role, admin.name ?? admin.email).catch((err: unknown) => console.error('[invite] email failed', data.email, err))
     return row ? { ok: true, data: undefined } : { ok: false, error: 'Not saved' }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Mint a fresh single-use onboarding token and email the branded invite. */
+async function issueInvite(email: string, role: Role, inviterName: string): Promise<void> {
+  const token = randomBytes(24).toString('base64url')
+  await prisma.allowedUser.update({ where: { email }, data: { inviteToken: token, invitedAt: new Date(), inviteAcceptedAt: null } })
+  await sendTeamInviteEmail({ to: email, role, inviterName, token })
+}
+
+/** Re-send the onboarding invite to an active whitelisted email. */
+export async function resendInvite(email: string): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const e = emailSchema.parse(email)
+    const row = await prisma.allowedUser.findUnique({ where: { email: e } })
+    if (!row || !row.active) throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'Not an active team member' }])
+    await issueInvite(e, row.role, admin.name ?? admin.email)
+    revalidatePath('/admin/users')
+    return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
   }

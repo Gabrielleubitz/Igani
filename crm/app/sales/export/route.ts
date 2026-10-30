@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 /** CSV export of leads the caller may see, honouring the same filters as the board. */
 export async function GET(req: Request): Promise<Response> {
-  const user = await requireUser(['ADMIN', 'SALES'])
+  const user = await requireUser()
   const p = new URL(req.url).searchParams
   const f = { q: p.get('q') ?? undefined, status: p.get('status') ?? undefined, source: p.get('source') ?? undefined, owner: p.get('owner') ?? undefined }
   const scope: Prisma.LeadWhereInput = user.role === 'ADMIN' ? {} : { OR: [{ assignedToId: user.id }, { assignedToId: null }] }

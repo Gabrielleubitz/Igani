@@ -13,7 +13,7 @@ type SP = Record<string, string | string[] | undefined>
 const one = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v) || undefined
 
 export default async function BoardPage({ searchParams }: { searchParams: SP }): Promise<React.ReactElement> {
-  const user = await requireUser(['ADMIN', 'SALES'])
+  const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
   const scope: Prisma.LeadWhereInput = isAdmin ? {} : { OR: [{ assignedToId: user.id }, { assignedToId: null }] }
   const f = { q: one(searchParams.q), status: one(searchParams.status), source: one(searchParams.source), owner: one(searchParams.owner) }
