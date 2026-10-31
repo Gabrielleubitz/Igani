@@ -152,7 +152,7 @@ export async function createLead(input: { email?: string; firstName?: string; la
       // Phone-only: same matching rule as the website forms (last 9 digits), so hand-added contacts don't duplicate.
       const key = phoneKey(data.phone)
       const dup = key ? await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) LIMIT 1` : []
-      if (dup.length) throw new BookingError('A contact with this phone number already exists. Search for it in Contacts.', 'INVALID_STATE')
+      if (dup.length) throw new BookingError('A contact with this phone number already exists. Search for it in Leads.', 'INVALID_STATE')
     }
     const lead = await prisma.$transaction(async (tx) => {
       // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.

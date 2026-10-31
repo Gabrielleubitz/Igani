@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma'
 import { localDateKey } from '@/lib/time'
 import { PageIntro } from '@/components/PageIntro'
 
-export const metadata = { title: 'Reports' }
+export const metadata = { title: 'Analytics' }
 
 export const dynamic = 'force-dynamic'
 
@@ -78,7 +78,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageIntro title="Reports" hint="How many leads you have, where they come from, and how many you win. Archived contacts are left out." />
+        <PageIntro title="Analytics" hint="How many leads you have, where they come from, and how many you win. Archived contacts are left out." />
         {user.role !== 'MARKETING' ? (
           <div className="flex gap-1">
             <Link href="/sales/reports" className={`rounded-full border px-3 py-1 text-sm ${!mine ? 'border-primary/50 bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}>

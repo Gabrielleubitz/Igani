@@ -17,11 +17,11 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
     title: 'Workspace',
     items: [
       { href: '/sales/today', label: 'Today', icon: 'today', roles: ALL },
-      { href: '/sales/leads', label: 'Contacts', icon: 'contacts', roles: ALL },
+      { href: '/sales/leads', label: 'Leads', icon: 'contacts', roles: ALL },
       { href: '/sales/board', label: 'Board', icon: 'board', roles: ALL },
       { href: '/sales/tasks', label: 'Tasks', icon: 'tasks', roles: ALL },
       { href: '/sales', label: 'Meetings', icon: 'meetings', roles: SELLERS },
-      { href: '/sales/reports', label: 'Reports', icon: 'reports', roles: ALL },
+      { href: '/sales/reports', label: 'Analytics', icon: 'reports', roles: ALL },
     ],
   },
   {

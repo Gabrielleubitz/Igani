@@ -62,7 +62,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro
-          title={f.archived ? 'Archived contacts' : 'Contacts'}
+          title={f.archived ? 'Archived leads' : 'Leads'}
           hint={user.role === 'ADMIN' ? 'Everyone in the CRM. Search, filter, change a stage, or open a name for notes, tasks and meetings.' : 'Your contacts plus unassigned ones you can claim. Open a name for notes, tasks and meetings.'}
         />
         <div className="flex flex-wrap items-center gap-2">

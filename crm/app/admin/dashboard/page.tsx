@@ -39,7 +39,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   ])
   const closed = won + lost
   const tiles: { label: string; value: string | number; href: string; hint?: string; tone?: string }[] = [
-    { label: 'Contacts', value: total, href: '/sales/leads' },
+    { label: 'Leads', value: total, href: '/sales/leads' },
     { label: 'New this week', value: newWeek, href: '/sales/leads' },
     { label: 'Waiting for an owner', value: unassigned, href: '/sales/leads?assignee=none', tone: unassigned ? 'text-amber-300' : undefined },
     { label: `Quiet > ${staleDays} days`, value: staleCount, href: '/sales/today', tone: staleCount ? 'text-amber-300' : undefined },

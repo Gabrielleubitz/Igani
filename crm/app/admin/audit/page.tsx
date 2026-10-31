@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 const PAGE = 100
 const TYPE_LABEL: Record<EntityType, string> = {
-  LEAD: 'Contacts',
+  LEAD: 'Leads',
   BOOKING: 'Bookings',
   USER: 'Sign-ins',
   ALLOWED_USER: 'Team',
