@@ -147,7 +147,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
 
   const facts: [string, React.ReactNode][] = (
     [
-      ['Email', <a key="e" href={`mailto:${lead.email}`} className="break-all underline-offset-4 hover:underline">{lead.email}</a>],
+      ['Email', lead.email ? <a key="e" href={`mailto:${lead.email}`} className="break-all underline-offset-4 hover:underline">{lead.email}</a> : <span key="e" className="text-muted-foreground">No email yet</span>],
       ['Phone', lead.phone ? <a key="p" href={`tel:${lead.phone}`} className="underline-offset-4 hover:underline">{lead.phone}</a> : null],
       ['Company', lead.company],
       ['Website', lead.website ? <a key="w" href={/^https?:\/\//.test(lead.website) ? lead.website : `https://${lead.website}`} target="_blank" rel="noreferrer" className="break-all underline-offset-4 hover:underline">{lead.website.replace(/^https?:\/\//, '')}</a> : null],
@@ -155,7 +155,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       ['Budget', lead.budget],
       ['Deal value', lead.dealValue != null ? formatMoney(lead.dealValue) : null],
       ['Lost reason', lead.status === 'LOST' ? lead.lostReason : null],
-      ['Source', lead.source],
+      ['Came from', lead.source],
+      ['Source detail', lead.sourceDetail],
       ['Campaign', [lead.utmSource, lead.utmMedium, lead.utmCampaign].filter(Boolean).join(' / ') || null],
       ['Created', formatDateTime(lead.createdAt, tz)],
       ['Last touch', timeAgo(lastTouch, now)],
@@ -172,12 +173,12 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
             <div aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/20 text-lg font-semibold text-primary">
-              {(lead.firstName?.[0] ?? lead.email[0] ?? '?').toUpperCase()}
+              {(lead.firstName?.[0] ?? lead.email?.[0] ?? '?').toUpperCase()}
               {lead.lastName?.[0]?.toUpperCase() ?? ''}
             </div>
             <div className="min-w-0">
               <h1 className="truncate text-2xl font-semibold">{leadName(lead)}</h1>
-              <p className="truncate text-sm text-muted-foreground">{[lead.company, lead.email].filter(Boolean).join(' · ')}</p>
+              <p className="truncate text-sm text-muted-foreground">{[lead.company, lead.email ?? lead.phone].filter(Boolean).join(' · ')}</p>
             </div>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
@@ -199,7 +200,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         </div>
         <div className="flex flex-col items-start gap-2 sm:items-end">
           <div className="flex flex-wrap items-center gap-2">
-            <EmailComposer leadId={lead.id} email={lead.email} firstName={lead.firstName} company={lead.company} senderName={me.name ?? user.email} bookingUrl={anyPage ? appUrl(`/book/${anyPage.slug}`) : null} />
+            {lead.email ? <EmailComposer leadId={lead.id} email={lead.email} firstName={lead.firstName} company={lead.company} senderName={me.name ?? user.email} bookingUrl={anyPage ? appUrl(`/book/${anyPage.slug}`) : null} /> : null}
             {lead.phone ? (
               <a href={`tel:${lead.phone}`} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
                 📞 Call
@@ -240,7 +241,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                   <EditContactForm
                     key={lead.updatedAt.toISOString()}
                     leadId={lead.id}
-                    initial={{ firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, dealValue: lead.dealValue, tags: lead.tags }}
+                    initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, dealValue: lead.dealValue, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }}
                   />
                 </div>
               </details>

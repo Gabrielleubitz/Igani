@@ -3,7 +3,7 @@ import { DetailCard, PersonHeader, Quote, Shell } from './Shell'
 
 export interface NewLeadAlertProps {
   leadName: string
-  leadEmail: string
+  leadEmail?: string | null
   phone?: string | null
   company?: string | null
   budget?: string | null
@@ -32,7 +32,7 @@ export function NewLeadAlert({ leadName, leadEmail, phone, company, budget, sour
       cta={{ href: leadUrl, label: owner ? 'Open in CRM' : 'Open & claim' }}
       footerNote={`You get this because your address is in ${brandName} CRM → Settings → Notification emails.`}
     >
-      <PersonHeader name={leadName} sub={company ? `${company} · ${leadEmail}` : leadEmail} />
+      <PersonHeader name={leadName} sub={[company, leadEmail ?? phone].filter(Boolean).join(' · ') || undefined} />
       <DetailCard
         rows={[
           ...(phone ? [{ label: 'Phone', value: phone }] : []),

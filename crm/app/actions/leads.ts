@@ -72,7 +72,19 @@ const optText = (max: number) =>
     // undefined = field not supplied (leave untouched); '' = clear it
     .transform((v) => (v === undefined ? undefined : v || null))
 
+const emailField = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(254)
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v || null))
+  .pipe(z.string().email('Enter a valid email address').nullable().optional())
+
 const leadEditSchema = z.object({
+  email: emailField,
+  source: z.string().trim().min(1, 'Pick where the contact came from').max(100).optional(),
+  sourceDetail: optText(300),
   firstName: optText(100),
   lastName: optText(100),
   phone: optText(40),
@@ -84,7 +96,7 @@ const leadEditSchema = z.object({
   tags: z.array(z.string().trim().toLowerCase().min(1).max(40)).max(20).transform((t) => [...new Set(t)]).optional(),
 })
 
-/** Edit contact fields of a lead the user can see (email is the dedupe key and stays fixed). */
+/** Edit contact fields (including email, where they came from and source detail) of a lead the user can see. */
 export async function updateLead(leadId: string, input: z.input<typeof leadEditSchema>): Promise<ActionResult> {
   try {
     const admin = await requireUser()
@@ -96,6 +108,10 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
       // Only record fields that really changed, so the timeline stays readable.
       const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => data[k] !== undefined && JSON.stringify(data[k]) !== JSON.stringify(before[k]))
       if (changed.length === 0) return
+      if (data.email && data.email !== before.email && (await tx.lead.findUnique({ where: { email: data.email }, select: { id: true } }))) {
+        throw new BookingError('Another contact already uses this email address.', 'INVALID_STATE')
+      }
+      if (data.email === null && !(data.phone ?? before.phone)) throw new BookingError('Keep at least an email or a phone number.', 'INVALID_STATE')
       await tx.lead.update({ where: { id }, data })
       await logActivity({ entityType: 'LEAD', entityId: id, action: 'lead.edited', actorId: admin.id, metadata: { fields: changed } }, tx)
     })
@@ -106,19 +122,31 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
   }
 }
 
-/** Any role: manually create a lead (dedupes by email). */
-export async function createLead(input: { email: string; firstName?: string; lastName?: string; phone?: string; company?: string; source?: string; tags?: string[] }): Promise<ActionResult<{ id: string }>> {
+/** Any role: manually create a contact. Needs an email or a phone; dedupes by email. */
+export async function createLead(input: { email?: string; firstName?: string; lastName?: string; phone?: string; company?: string; source?: string; sourceDetail?: string; tags?: string[] }): Promise<ActionResult<{ id: string }>> {
   try {
     const admin = await requireUser()
     const data = z
-      .object({ email: z.string().trim().toLowerCase().email().max(254), firstName: optText(100), lastName: optText(100), phone: optText(40), company: optText(200), source: optText(100), tags: leadEditSchema.shape.tags })
+      .object({
+        email: emailField,
+        firstName: optText(100),
+        lastName: optText(100),
+        phone: optText(40),
+        company: optText(200),
+        source: z.string().trim().max(100).optional(),
+        sourceDetail: optText(300),
+        tags: leadEditSchema.shape.tags,
+      })
+      .refine((d) => Boolean(d.email || d.phone), { message: 'Add an email or a phone number', path: ['email'] })
       .parse(input)
-    const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
-    if (exists) throw new BookingError('A lead with this email already exists.', 'INVALID_STATE')
+    if (data.email) {
+      const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
+      if (exists) throw new BookingError('A contact with this email already exists.', 'INVALID_STATE')
+    }
     const lead = await prisma.$transaction(async (tx) => {
       // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.
-      const l = await tx.lead.create({ data: { ...data, source: data.source ?? 'manual', assignedToId: admin.role === 'SALES' ? admin.id : null } })
-      await logActivity({ entityType: 'LEAD', entityId: l.id, action: 'lead.created', actorId: admin.id, metadata: { source: l.source } }, tx)
+      const l = await tx.lead.create({ data: { ...data, email: data.email ?? null, source: data.source || 'Other', assignedToId: admin.role === 'SALES' ? admin.id : null } })
+      await logActivity({ entityType: 'LEAD', entityId: l.id, action: 'lead.created', actorId: admin.id, metadata: { source: l.source, sourceDetail: l.sourceDetail } }, tx)
       return l
     })
     revalidatePath('/sales', 'layout')
@@ -193,8 +221,8 @@ export async function exportLeadsCsv(params: Record<string, string | undefined> 
       include: { assignedTo: { select: { email: true } } },
     })
     const csv = toCsv(
-      ['email', 'firstName', 'lastName', 'phone', 'company', 'website', 'status', 'owner', 'source', 'utmSource', 'utmMedium', 'utmCampaign', 'budget', 'dealValue', 'tags', 'lostReason', 'createdAt'],
-      leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.assignedTo?.email, l.source, l.utmSource, l.utmMedium, l.utmCampaign, l.budget, l.dealValue, l.tags.join(';'), l.lostReason, l.createdAt]),
+      ['email', 'firstName', 'lastName', 'phone', 'company', 'website', 'status', 'owner', 'source', 'sourceDetail', 'utmSource', 'utmMedium', 'utmCampaign', 'budget', 'dealValue', 'tags', 'lostReason', 'createdAt'],
+      leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.assignedTo?.email, l.source, l.sourceDetail, l.utmSource, l.utmMedium, l.utmCampaign, l.budget, l.dealValue, l.tags.join(';'), l.lostReason, l.createdAt]),
     )
     return { ok: true, data: { csv } }
   } catch (err) {

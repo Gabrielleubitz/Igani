@@ -11,7 +11,7 @@ export interface BoardLead {
   id: string
   name: string
   company: string | null
-  email: string
+  email: string | null
   owner: string | null
   budget: string | null
   dealValue: number | null

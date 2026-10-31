@@ -10,6 +10,8 @@ import { revalidatePath } from 'next/cache'
 
 const MAX_ROWS = 2000
 const rowsSchema = z.array(z.object({ email: z.string() }).passthrough()).max(MAX_ROWS)
+/** CSV rows must have an email (it is how duplicates are matched). */
+const csvLeadSchema = leadPayloadSchema.and(z.object({ email: z.string().email() }))
 
 export interface ImportPreview {
   total: number
@@ -18,11 +20,11 @@ export interface ImportPreview {
   invalid: { email: string; reason: string }[]
 }
 
-function parse(rows: unknown): { ok: z.infer<typeof leadPayloadSchema>[]; invalid: { email: string; reason: string }[] } {
-  const ok: z.infer<typeof leadPayloadSchema>[] = []
+function parse(rows: unknown): { ok: (z.infer<typeof leadPayloadSchema> & { email: string })[]; invalid: { email: string; reason: string }[] } {
+  const ok: (z.infer<typeof leadPayloadSchema> & { email: string })[] = []
   const invalid: { email: string; reason: string }[] = []
   for (const r of rowsSchema.parse(rows)) {
-    const p = leadPayloadSchema.safeParse({ ...r, source: (r as { source?: string }).source ?? 'csv-import' })
+    const p = csvLeadSchema.safeParse({ ...r, source: (r as { source?: string }).source ?? 'csv-import' })
     if (p.success) ok.push(p.data)
     else invalid.push({ email: r.email, reason: p.error.issues[0]?.message ?? 'Invalid' })
   }
@@ -35,7 +37,7 @@ export async function previewLeadImport(rows: unknown): Promise<ActionResult<Imp
     await requireUser()
     const { ok, invalid } = parse(rows)
     const existing = await prisma.lead.findMany({ where: { email: { in: ok.map((o) => o.email) } }, select: { email: true } })
-    const have = new Set(existing.map((e) => e.email))
+    const have = new Set(existing.flatMap((e) => (e.email ? [e.email] : [])))
     return { ok: true, data: { total: ok.length + invalid.length, fresh: ok.filter((o) => !have.has(o.email)).length, duplicates: [...have], invalid } }
   } catch (err) {
     return toActionError(err)
@@ -48,7 +50,7 @@ export async function commitLeadImport(rows: unknown, mode: 'skip' | 'merge'): P
     const user = await requireUser()
     const { ok } = parse(rows)
     const existing = await prisma.lead.findMany({ where: { email: { in: ok.map((o) => o.email) } }, select: { email: true } })
-    const have = new Set(existing.map((e) => e.email))
+    const have = new Set(existing.flatMap((e) => (e.email ? [e.email] : [])))
     let created = 0
     let merged = 0
     let skipped = 0

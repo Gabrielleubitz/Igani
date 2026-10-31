@@ -169,6 +169,7 @@ export async function emailContact(leadId: string, input: z.input<typeof emailSc
     const data = emailSchema.parse(input)
     await assertCanSeeLead(id, user)
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { email: true, firstName: true } })
+    if (!lead.email) throw new BookingError('This contact has no email address yet. Add one under Edit details first.', 'INVALID_STATE')
     const emailId = await sendContactEmail({
       to: lead.email,
       subject: data.subject,

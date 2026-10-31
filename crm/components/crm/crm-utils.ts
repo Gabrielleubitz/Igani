@@ -92,7 +92,7 @@ export interface LeadFilter {
   owner?: string // user id, 'none' for unassigned
 }
 
-export function filterLeads<T extends { email: string; firstName: string | null; lastName: string | null; company: string | null; phone: string | null; status: string; source: string; assignedToId: string | null }>(
+export function filterLeads<T extends { email: string | null; firstName: string | null; lastName: string | null; company: string | null; phone: string | null; status: string; source: string; assignedToId: string | null }>(
   leads: T[],
   f: LeadFilter,
 ): T[] {
@@ -192,7 +192,8 @@ const HEADER_MAP: Record<string, string> = {
   'first name': 'firstName', firstname: 'firstName', first: 'firstName',
   'last name': 'lastName', lastname: 'lastName', last: 'lastName',
   phone: 'phone', company: 'company', website: 'website', message: 'message',
-  budget: 'budget', source: 'source', 'utm campaign': 'utmCampaign',
+  budget: 'budget', source: 'source', 'lead source': 'source', 'came from': 'source',
+  'source detail': 'sourceDetail', 'source details': 'sourceDetail', 'utm campaign': 'utmCampaign',
 }
 
 export interface ImportRow {
@@ -205,6 +206,7 @@ export interface ImportRow {
   message?: string
   budget?: string
   source?: string
+  sourceDetail?: string
 }
 
 /** Turn parsed CSV (first row = headers) into lead rows; bad/duplicate-in-file rows reported in `errors`. */
@@ -254,7 +256,7 @@ export const STALE_DAYS = 7
 
 export interface ScoreInput {
   status: string
-  email: string
+  email: string | null
   phone: string | null
   company: string | null
   website: string | null
@@ -273,7 +275,7 @@ export function leadScore(l: ScoreInput): number {
   if (l.budget) n += 10
   if (l.message) n += 5
   if (l.dealValue && l.dealValue > 0) n += 10
-  if (!/@(gmail|yahoo|hotmail|outlook|icloud)\./i.test(l.email)) n += 5
+  if (l.email && !/@(gmail|yahoo|hotmail|outlook|icloud)\./i.test(l.email)) n += 5
   return Math.min(100, n)
 }
 

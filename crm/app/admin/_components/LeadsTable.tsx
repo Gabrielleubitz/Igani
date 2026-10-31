@@ -15,10 +15,11 @@ import { LEAD_STATUSES, STATUS_LABEL, formatMoney } from '@/lib/format'
 export interface LeadRow {
   id: string
   name: string
-  email: string
+  email: string | null
   company: string | null
   status: LeadStatus
   source: string
+  sourceDetail?: string | null
   owner: string | null
   assignedToId: string | null
   tags: string[]
@@ -96,12 +97,12 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
   const [sorting, setSorting] = useState<SortingState>([])
-  const [visibility, setVisibility] = useState<VisibilityState>({ source: false, dealValue: false })
+  const [visibility, setVisibility] = useState<VisibilityState>({ dealValue: false })
   const columns = useMemo<ColumnDef<LeadRow>[]>(
     () => [
-      { id: 'select', header: () => <input type="checkbox" aria-label="Select all on this page" checked={rows.length > 0 && sel.size === rows.length} onChange={(e) => setSel(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())} />, enableHiding: false, enableSorting: false, cell: ({ row }) => <input type="checkbox" aria-label={`Select ${row.original.email}`} checked={sel.has(row.original.id)} onChange={() => toggle(row.original.id)} /> },
+      { id: 'select', header: () => <input type="checkbox" aria-label="Select all on this page" checked={rows.length > 0 && sel.size === rows.length} onChange={(e) => setSel(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())} />, enableHiding: false, enableSorting: false, cell: ({ row }) => <input type="checkbox" aria-label={`Select ${row.original.name}`} checked={sel.has(row.original.id)} onChange={() => toggle(row.original.id)} /> },
       { accessorKey: 'name', header: 'Name', enableHiding: false, cell: ({ row }) => <Link href={`/sales/leads/${row.original.id}`} className="font-medium underline-offset-4 hover:underline">{row.original.name}</Link> },
-      { accessorKey: 'email', header: 'Email', cell: ({ row }) => <a href={`mailto:${row.original.email}`} className="text-muted-foreground hover:text-foreground hover:underline">{row.original.email}</a> },
+      { accessorKey: 'email', header: 'Email', cell: ({ row }) => (row.original.email ? <a href={`mailto:${row.original.email}`} className="text-muted-foreground hover:text-foreground hover:underline">{row.original.email}</a> : <span className="text-xs text-muted-foreground/70">no email</span>) },
       { accessorKey: 'company', header: 'Company' },
       { id: 'tags', header: 'Tags', accessorFn: (l) => l.tags.join(' '), cell: ({ row }) => (
         <div className="flex flex-wrap items-center gap-1">
@@ -129,7 +130,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
         )
       } },
       { accessorKey: 'owner', header: 'Owner', cell: ({ row }) => row.original.owner ?? <Badge variant="secondary">unassigned</Badge> },
-      { accessorKey: 'source', header: 'Source' },
+      { accessorKey: 'source', header: 'Came from', cell: ({ row }) => <span title={row.original.sourceDetail ?? undefined} className="text-xs text-muted-foreground">{row.original.source}{row.original.sourceDetail ? <span className="block max-w-[12rem] truncate text-[11px] opacity-70">{row.original.sourceDetail}</span> : null}</span> },
       { accessorKey: 'dealValue', header: 'Value', cell: ({ row }) => (row.original.dealValue != null ? formatMoney(row.original.dealValue) : '') },
       { accessorKey: 'createdAt', header: 'Created', cell: ({ row }) => row.original.createdAt.slice(0, 10) },
     ],

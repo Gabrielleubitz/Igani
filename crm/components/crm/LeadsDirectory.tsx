@@ -47,6 +47,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
     company: l.company,
     status: l.status,
     source: l.source,
+    sourceDetail: l.sourceDetail,
     owner: l.assignedTo ? (l.assignedTo.name ?? l.assignedTo.email) : null,
     assignedToId: l.assignedToId,
     createdAt: l.createdAt.toISOString(),

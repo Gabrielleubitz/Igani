@@ -4,12 +4,14 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { createLead } from '@/app/actions/leads'
+import { SourcePicker } from '@/components/crm/SourcePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
 
 export function NewLeadForm(): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
+  const [formKey, setFormKey] = useState(0)
   const [msg, setMsg] = useState<{ ok: boolean; text: string; id?: string } | null>(null)
   return (
     <form
@@ -21,7 +23,9 @@ export function NewLeadForm(): React.ReactElement {
         const get = (k: string): string | undefined => String(fd.get(k) ?? '').trim() || undefined
         start(async () => {
           const res = await createLead({
-            email: String(fd.get('email') ?? ''),
+            email: get('email'),
+            source: get('source'),
+            sourceDetail: get('sourceDetail'),
             firstName: get('firstName'),
             lastName: get('lastName'),
             company: get('company'),
@@ -29,14 +33,17 @@ export function NewLeadForm(): React.ReactElement {
             tags: (get('tags') ?? '').split(',').map((t) => t.trim()).filter(Boolean),
           })
           setMsg(res.ok ? { ok: true, text: '✓ Contact added.', id: res.data.id } : { ok: false, text: res.error })
-          if (res.ok) form.reset()
+          if (res.ok) {
+            form.reset()
+            setFormKey((k) => k + 1)
+          }
           router.refresh()
         })
       }}
     >
       <div className="col-span-2 space-y-1">
-        <Label htmlFor="nl-email">Email *</Label>
-        <Input id="nl-email" name="email" type="email" required placeholder="name@company.com" autoFocus />
+        <Label htmlFor="nl-email">Email</Label>
+        <Input id="nl-email" name="email" type="email" placeholder="name@company.com" autoFocus />
       </div>
       <div className="space-y-1">
         <Label htmlFor="nl-first">First name</Label>
@@ -54,10 +61,12 @@ export function NewLeadForm(): React.ReactElement {
         <Label htmlFor="nl-phone">Phone</Label>
         <Input id="nl-phone" name="phone" type="tel" />
       </div>
+      <SourcePicker key={formKey} idPrefix="nl" />
       <div className="col-span-2 space-y-1">
         <Label htmlFor="nl-tags">Tags</Label>
         <Input id="nl-tags" name="tags" placeholder="e.g. referral, ecommerce (comma separated)" />
       </div>
+      <p className="col-span-2 text-xs text-muted-foreground">An email or a phone number is required.</p>
       <div className="col-span-2 flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>
           {pending ? 'Adding…' : 'Add contact'}

@@ -137,7 +137,8 @@ model VerificationToken {
 
 model Lead {
   id           String     @id @default(cuid())
-  email        String     @unique
+  /// Null for phone-only leads (e.g. funnel forms that only ask for a phone number)
+  email        String?    @unique
   firstName    String?
   lastName     String?
   phone        String?
@@ -145,6 +146,8 @@ model Lead {
   website      String?
   message      String?    @db.Text
   source       String     @default("igani.co")
+  /// Free text: which page/form/campaign/person the lead came from
+  sourceDetail String?
   utmSource    String?
   utmMedium    String?
   utmCampaign  String?
@@ -169,6 +172,7 @@ model Lead {
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
+  @@index([phone])
 }
 
 // ─── Scheduling ──────────────────────────────────────────────────────────────

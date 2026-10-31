@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { saveContactSubmission } from '@/lib/firestore'
 import { sendAdminNotification } from '@/lib/mailjet'
 import { buildFunnelNotificationEmail } from '@/lib/email-templates'
+import { forwardLeadToCrm } from '@/lib/crm'
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,6 +32,17 @@ export async function POST(request: NextRequest) {
     }
 
     await saveContactSubmission(submissionData)
+
+    // Forward to the Igani CRM (best effort)
+    await forwardLeadToCrm({
+      email,
+      firstName,
+      lastName,
+      phone,
+      message,
+      source: 'Landing page',
+      sourceDetail: [typeof body.page === 'string' ? body.page : 'Funnel form', businessType].filter(Boolean).join(' · '),
+    })
 
     const html = buildFunnelNotificationEmail(submissionData)
     await sendAdminNotification(

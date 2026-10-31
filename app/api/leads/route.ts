@@ -4,6 +4,7 @@ import { db } from '@/lib/firebase'
 import { sendAdminNotification } from '@/lib/mailjet'
 import { buildLeadNotificationEmail } from '@/lib/email-templates'
 import { appendLeadToSheet } from '@/lib/googleSheet'
+import { crmLeadFromSiteLead, forwardLeadToCrm } from '@/lib/crm'
 
 interface Lead {
   id: string
@@ -163,6 +164,8 @@ export async function POST(request: Request) {
         campaign: leadData.sourceDetails?.campaign,
         message: leadData.message,
       }),
+      // Forward to the Igani CRM with the page/form/campaign it came from (best effort)
+      forwardLeadToCrm({ ...crmLeadFromSiteLead(leadData as unknown as Record<string, unknown>), submittedAt: undefined }),
     ])
 
     return NextResponse.json({ success: true, lead: { ...leadData, id: leadId } }, {

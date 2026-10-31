@@ -4,7 +4,7 @@ import { DetailCard, PersonHeader, Quote, Shell } from './Shell'
 export interface LeadAssignedProps {
   repName: string
   leadName: string
-  leadEmail: string
+  leadEmail?: string | null
   company?: string | null
   source: string
   phone?: string | null
@@ -27,13 +27,13 @@ export function LeadAssigned({ repName, leadName, leadEmail, company, source, ph
       brandName={brandName}
       supportEmail={supportEmail}
       cta={{ href: leadUrl, label: 'Open contact' }}
-      links={[{ href: `mailto:${leadEmail}`, label: 'Email them' }, ...(phone ? [{ href: `tel:${phone.replace(/[^\d+]/g, '')}`, label: 'Call them' }] : [])]}
+      links={[...(leadEmail ? [{ href: `mailto:${leadEmail}`, label: 'Email them' }] : []), ...(phone ? [{ href: `tel:${phone.replace(/[^\d+]/g, '')}`, label: 'Call them' }] : [])]}
       footerNote={`You're on the ${brandName ?? 'Igani'} sales team, so new leads are routed to you.`}
     >
-      <PersonHeader name={leadName} sub={company ?? leadEmail} />
+      <PersonHeader name={leadName} sub={company ?? leadEmail ?? phone ?? undefined} />
       <DetailCard
         rows={[
-          { label: 'Email', value: leadEmail },
+          ...(leadEmail ? [{ label: 'Email', value: leadEmail }] : []),
           ...(phone ? [{ label: 'Phone', value: phone }] : []),
           ...(company ? [{ label: 'Company', value: company }] : []),
           { label: 'Source', value: source },

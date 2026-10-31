@@ -16,12 +16,12 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
   const select = { id: true, email: true, firstName: true, lastName: true, company: true } as const
   const [leads, preselected, hosts, myRules, defaultDuration] = await Promise.all([
     prisma.lead.findMany({
-      where: { AND: [leadScope(user), { archived: false, status: { notIn: ['WON', 'LOST'] } }] },
+      where: { AND: [leadScope(user), { archived: false, email: { not: null }, status: { notIn: ['WON', 'LOST'] } }] },
       orderBy: { updatedAt: 'desc' },
       take: 300,
       select,
     }),
-    typeof searchParams.leadId === 'string' ? prisma.lead.findFirst({ where: { AND: [leadScope(user), { id: searchParams.leadId }] }, select }) : null,
+    typeof searchParams.leadId === 'string' ? prisma.lead.findFirst({ where: { AND: [leadScope(user), { id: searchParams.leadId, email: { not: null } }] }, select }) : null,
     user.role === 'ADMIN' ? prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
     prisma.availability.count({ where: { hostId: user.id } }),
     getSetting('booking.defaultDurationMinutes'),
@@ -45,7 +45,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
         <CardContent className="pt-6">
           <InviteForm
             defaultDuration={defaultDuration}
-            leads={all.map((l) => ({ id: l.id, email: l.email, name: leadName(l), company: l.company }))}
+            leads={all.map((l) => ({ id: l.id, email: l.email ?? '', name: leadName(l), company: l.company }))}
             initialLeadId={preselected?.id}
             hosts={hosts.map((h) => ({ id: h.id, label: h.id === user.id ? `${h.name ?? h.email} (me)` : (h.name ?? h.email ?? h.id) }))}
             currentUserId={user.id}

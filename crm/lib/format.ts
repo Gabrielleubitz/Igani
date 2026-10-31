@@ -32,9 +32,29 @@ export function formatMoney(n: number | null | undefined): string {
   return n == null ? '—' : n.toLocaleString('en-US')
 }
 
-export function leadName(l: { firstName: string | null; lastName: string | null; email: string }): string {
-  return [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email
+export function leadName(l: { firstName: string | null; lastName: string | null; email: string | null; phone?: string | null }): string {
+  return [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || l.phone || 'Unnamed contact'
 }
+
+/** Where a lead came from, as presets the team picks from (free text is allowed too). */
+export const LEAD_SOURCES = [
+  'Website contact form',
+  'Landing page',
+  'Booking page',
+  'Referral',
+  'Existing client',
+  'LinkedIn',
+  'Facebook / Instagram',
+  'Google search',
+  'Google Ads',
+  'WhatsApp',
+  'Phone call',
+  'Email',
+  'Event / networking',
+  'Cold outreach',
+  'Partner',
+  'Other',
+] as const
 
 export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON', 'LOST'] as const satisfies readonly LeadStatus[]
 

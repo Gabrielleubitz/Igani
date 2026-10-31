@@ -8,6 +8,7 @@ import { TicketManager } from './TicketManager'
 import TestimonialsManager from './TestimonialsManager'
 import { BannerManager } from './BannerManager'
 import { LeadsManager } from './LeadsManager'
+import { CrmSyncButton } from './CrmSyncButton'
 import { OfferSettingsManager } from './OfferSettingsManager'
 import { SiteSettingsManager } from './SiteSettingsManager'
 import { FinancialReportsManager } from './FinancialReportsManager'
@@ -321,6 +322,7 @@ export default function AdminDashboardClient() {
 
             {activeTab === 'inquiries' && (
               <div className="animate-in fade-in duration-300">
+                <CrmSyncButton collection="contact" label="All inquiries" />
                 <TicketManager
                   contacts={inquiries}
                   onUpdate={loadData}
@@ -369,6 +371,7 @@ export default function AdminDashboardClient() {
 
             {activeTab === 'leads' && (
               <div className="animate-in fade-in duration-300">
+                <CrmSyncButton collection="leads" label="All leads" />
                 <LeadsManager />
               </div>
             )}

@@ -3,19 +3,36 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { updateLead } from '@/app/actions/leads'
+import { SourcePicker } from '@/components/crm/SourcePicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 interface Props {
   leadId: string
-  initial: { firstName: string | null; lastName: string | null; phone: string | null; company: string | null; website: string | null; budget: string | null; dealValue: number | null; tags: string[] }
+  initial: {
+    email: string | null
+    firstName: string | null
+    lastName: string | null
+    phone: string | null
+    company: string | null
+    website: string | null
+    budget: string | null
+    dealValue: number | null
+    tags: string[]
+    source: string
+    sourceDetail: string | null
+  }
 }
 
-/** Editable contact details for the 360 profile; open to every role. */
+function Field({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }): React.ReactElement {
+  return <label className={`space-y-1 text-xs text-muted-foreground ${wide ? 'col-span-2' : ''}`}>{label}{children}</label>
+}
+
+/** Editable contact details for the contact page; open to every role that can see the contact. */
 export function EditContactForm({ leadId, initial }: Props): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
-  const [msg, setMsg] = useState<string | null>(null)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   return (
     <form
       className="grid grid-cols-2 gap-2"
@@ -26,6 +43,7 @@ export function EditContactForm({ leadId, initial }: Props): React.ReactElement 
         const value = s('dealValue').trim()
         start(async () => {
           const res = await updateLead(leadId, {
+            email: s('email'),
             firstName: s('firstName'),
             lastName: s('lastName'),
             phone: s('phone'),
@@ -34,49 +52,47 @@ export function EditContactForm({ leadId, initial }: Props): React.ReactElement 
             budget: s('budget'),
             dealValue: value ? Number(value) : null,
             tags: s('tags').split(',').filter((t) => t.trim()),
+            source: s('source') || undefined,
+            sourceDetail: s('sourceDetail'),
           })
-          setMsg(res.ok ? '✓ Saved.' : res.error)
+          setMsg(res.ok ? { ok: true, text: '✓ Saved.' } : { ok: false, text: res.error })
           router.refresh()
         })
       }}
     >
-      <label className="space-y-1 text-xs text-muted-foreground">
-        First name
-  <Input name="firstName" aria-label="First name" placeholder="First name" defaultValue={initial.firstName ?? ''} />
-      </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
-        Last name
-  <Input name="lastName" aria-label="Last name" placeholder="Last name" defaultValue={initial.lastName ?? ''} />
-      </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
-        Company
-  <Input name="company" aria-label="Company" placeholder="Company" defaultValue={initial.company ?? ''} />
-      </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
-        Phone
-  <Input name="phone" aria-label="Phone" placeholder="Phone" defaultValue={initial.phone ?? ''} />
-      </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
-        Website
-  <Input name="website" aria-label="Website" placeholder="Website" defaultValue={initial.website ?? ''} />
-      </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
-        Budget
-  <Input name="budget" aria-label="Budget" placeholder="Budget" defaultValue={initial.budget ?? ''} />
-      </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
-        Deal value
-  <Input name="dealValue" aria-label="Deal value" type="number" min={0} placeholder="Deal value" defaultValue={initial.dealValue ?? ''} />
-      </label>
-      <label className="space-y-1 text-xs text-muted-foreground">
-        Tags
-  <Input name="tags" aria-label="Tags" placeholder="Tags (comma separated)" defaultValue={initial.tags.join(', ')} />
-      </label>
-      <div className="col-span-2 flex items-center gap-3">
+      <Field label="First name">
+        <Input name="firstName" defaultValue={initial.firstName ?? ''} />
+      </Field>
+      <Field label="Last name">
+        <Input name="lastName" defaultValue={initial.lastName ?? ''} />
+      </Field>
+      <Field label="Email" wide>
+        <Input name="email" type="email" defaultValue={initial.email ?? ''} placeholder="name@company.com" />
+      </Field>
+      <Field label="Phone">
+        <Input name="phone" type="tel" defaultValue={initial.phone ?? ''} />
+      </Field>
+      <Field label="Company">
+        <Input name="company" defaultValue={initial.company ?? ''} />
+      </Field>
+      <Field label="Website">
+        <Input name="website" defaultValue={initial.website ?? ''} />
+      </Field>
+      <Field label="Budget">
+        <Input name="budget" defaultValue={initial.budget ?? ''} />
+      </Field>
+      <SourcePicker defaultSource={initial.source} defaultDetail={initial.sourceDetail} idPrefix={`edit-${leadId}`} compact />
+      <Field label="Deal value">
+        <Input name="dealValue" type="number" min={0} defaultValue={initial.dealValue ?? ''} />
+      </Field>
+      <Field label="Tags (comma separated)">
+        <Input name="tags" defaultValue={initial.tags.join(', ')} />
+      </Field>
+      <div className="col-span-2 flex items-center gap-3 pt-1">
         <Button type="submit" size="sm" disabled={pending}>
-          Save
+          {pending ? 'Saving…' : 'Save'}
         </Button>
-        {msg ? <span className="text-xs text-muted-foreground">{msg}</span> : null}
+        {msg ? <span className={`text-xs ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</span> : null}
       </div>
     </form>
   )

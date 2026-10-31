@@ -31,7 +31,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   try {
     const result = await ingestLead(parsed.data)
-    if (result.created || result.needsAssignment) {
+    // Historical backfills land quietly: no round-robin, no alert emails (the team assigns them in bulk).
+    if (!parsed.data.backfill && (result.created || result.needsAssignment)) {
       // Respond immediately; assignment continues after the response is sent.
       waitUntil(
         assignLeadRoundRobin(result.leadId)

@@ -33,13 +33,29 @@ Pages: `/sales` pipeline (stages, claim / manual / round-robin assignment), `/sa
 
 ## Lead webhook (from igani.co)
 
+Every lead form on the marketing site forwards here through `lib/crm.ts` in the site repo: the contact page
+(`/api/contact`), landing pages and funnels (`/api/leads`: /realestate, /start, /funnels…) and `/api/funnel-submission`.
+Each lead carries **where it came from**: `source` (the channel shown as "Came from") and `sourceDetail` (page · form · campaign).
+
 ```bash
 curl -X POST https://app.igani.co/api/v1/leads \
   -H "x-api-key: $LEAD_WEBHOOK_SECRET" -H "content-type: application/json" \
-  -d '{"email":"dana@acme.com","firstName":"Dana","company":"Acme","budget":"$5k","message":"Hi",
-       "source":"igani.co/contact","utm":{"source":"google","medium":"cpc","campaign":"fall"}}'
+  -d '{"email":"dana@acme.com","firstName":"Dana","phone":"058-000-0000","message":"Hi",
+       "source":"Landing page","sourceDetail":"/realestate · call_back",
+       "utm":{"source":"google","medium":"cpc","campaign":"fall"}}'
 ```
-`201 {id, duplicate:false}` new lead · `200 {id, duplicate:true}` existing email · `401` bad key · `422` invalid.
+- Needs an **email or a phone** (phone-only funnel leads are fine). Matching: email first, else the last 9 digits of the phone.
+- `submittedAt` (ISO) and `backfill: true` are for historical imports: original date kept, tagged `imported`,
+  no alert emails and no round-robin, and re-sending is a no-op.
+- `201 {id, duplicate:false}` new lead · `200 {id, duplicate:true}` existing · `401` bad key · `422` invalid.
+
+**Site setup** (marketing site's Vercel project): `CRM_LEAD_WEBHOOK_URL=https://app.igani.co/api/v1/leads`,
+`CRM_LEAD_WEBHOOK_SECRET` (same value as the CRM's `LEAD_WEBHOOK_SECRET`), optional `NEXT_PUBLIC_CRM_URL`, and
+optionally `ADMIN_PASSWORD` (server-only) for the sync button. To bring in leads that arrived before the connection,
+open the site's **/admin → Inquiries** or **→ Leads** and press **Send … to CRM** (safe to repeat).
+
+In the CRM anyone (admin, sales, marketing) can set **Came from** + details when adding a contact or under
+*Edit details*; the Contacts table shows it, and Reports / Marketing break results down by it.
 
 ## Task reminders (cron)
 
