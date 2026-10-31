@@ -79,7 +79,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
                 <span className="text-xs text-muted-foreground">Admin</span>
               ) : (
                 <div className="flex flex-wrap items-center gap-2">
-                  <AllowedUserToggle email={a.email} role={a.role} active={a.active} commissionBps={a.commissionBps} showResend={!u} />
+                  <AllowedUserToggle email={a.email} role={a.role} active={a.active} showResend={!u} />
                   <DangerButton
                     label="Remove"
                     confirm={`Remove ${a.email}? They lose access and their contacts become unassigned.`}

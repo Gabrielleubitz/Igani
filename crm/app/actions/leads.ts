@@ -9,7 +9,6 @@ import { logActivity } from '@/lib/audit'
 import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, notifyTeamOfNewLead, phoneKey } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
-import { assigneeCommission, type AssigneeCommission } from '@/lib/commission-lookup'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
@@ -28,18 +27,6 @@ export async function updateLeadStatus(
     await changeLeadStatus(id, parsed, user.id, ex)
     revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
-  } catch (err) {
-    return toActionError(err)
-  }
-}
-
-/** The commission rate of the salesman who owns a lead, for the "mark as won" dialog. Only for leads you can see. */
-export async function getLeadCommission(leadId: string): Promise<ActionResult<AssigneeCommission | null>> {
-  try {
-    const user = await requireUser()
-    const id = z.string().cuid().parse(leadId)
-    await assertCanSeeLead(id, user)
-    return { ok: true, data: await assigneeCommission(id) }
   } catch (err) {
     return toActionError(err)
   }

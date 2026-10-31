@@ -5,8 +5,6 @@ import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { EditContactForm } from '@/components/crm/EditContactForm'
 import { EmailComposer } from '@/components/crm/EmailComposer'
 import { EmailsPanel, type EmailView } from '@/components/crm/EmailsPanel'
-import { commissionCut, formatBps, formatIls } from '@/lib/commission'
-import { assigneeCommission } from '@/lib/commission-lookup'
 import { hasGmailAccess } from '@/lib/google'
 import { LeadActions } from '@/components/crm/LeadActions'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
@@ -101,9 +99,6 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   const lastTouch = logs.find((l) => l.actor !== null)?.createdAt ?? lead.createdAt
   const stale = staleDays(lead.status, lastTouch, now, threshold)
   const canArchive = isAdmin || lead.assignedToId === user.id
-  // The owner's cut of a won deal (only shown when an admin has set their commission).
-  const commission = lead.status === 'WON' && lead.dealValue != null ? await assigneeCommission(lead.id) : null
-  const cut = commission ? commissionCut(lead.dealValue, commission.bps) : null
   const upcoming = lead.bookings.filter((b) => b.status !== 'CANCELLED' && b.endTime >= now).reverse()
   const past = lead.bookings.filter((b) => !(b.status !== 'CANCELLED' && b.endTime >= now))
 
@@ -184,7 +179,6 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       ['Owner', lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : 'Unassigned'],
       ['Budget', lead.budget],
       ['Deal value', lead.dealValue != null ? formatMoney(lead.dealValue) : null],
-      ['Commission', cut != null && commission?.bps != null ? `${formatIls(cut)} (${formatBps(commission.bps)} · ${commission.name})` : null],
       ['Lost reason', lead.status === 'LOST' ? lead.lostReason : null],
       ['Came from', lead.source],
       ['Source detail', lead.sourceDetail],
