@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { checkInviteTime, createSalesInvite } from '@/app/actions/bookings'
+import { DateTimeField } from '@/components/DateTimeField'
 import { TeammatePicker } from '@/components/TeammatePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
@@ -22,6 +23,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
   const [notes, setNotes] = useState('')
   // Typed by hand: any date and time (browser's local zone).
   const [when, setWhen] = useState('')
+  const [fieldKey, setFieldKey] = useState(0)
   const [duration, setDuration] = useState(defaultDuration)
   const [note, setNote] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
@@ -78,6 +80,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
       if (res.ok) {
         setMessage({ kind: 'ok', text: `✓ Invite sent to ${guestEmail}. The slot is held until they confirm; you'll see it under Meetings.` })
         setWhen('')
+        setFieldKey((k) => k + 1)
       } else setMessage({ kind: 'error', text: res.error })
     })
   }
@@ -137,9 +140,9 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
           </div>
         ) : null}
         <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 space-y-2 sm:col-span-1">
-            <Label htmlFor="when">Date and time</Label>
-            <Input id="when" type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} />
+          <div className="col-span-2 space-y-2">
+            <Label htmlFor="when-day">Date and time</Label>
+            <DateTimeField key={fieldKey} idPrefix="when" onChange={setWhen} />
           </div>
           <div className="col-span-2 space-y-2 sm:col-span-1">
             <Label htmlFor="duration">Length</Label>

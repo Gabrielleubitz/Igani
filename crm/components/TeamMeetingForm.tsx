@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { checkInviteTime, createTeamMeeting } from '@/app/actions/bookings'
+import { DateTimeField } from '@/components/DateTimeField'
 import { TeammatePicker } from '@/components/TeammatePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
@@ -11,6 +12,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
   const [notes, setNotes] = useState('')
   const [ids, setIds] = useState<string[]>([])
   const [when, setWhen] = useState('')
+  const [fieldKey, setFieldKey] = useState(0)
   const [duration, setDuration] = useState(defaultDuration)
   const [note, setNote] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
@@ -44,6 +46,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
         setMessage(res.data.requested ? { kind: 'ok', text: '✓ Request sent. The time is held and the admins you picked were emailed. You will see it as “Needs approval” on Meetings until one approves it.' } : { kind: 'ok', text: '✓ Booked. Your teammates were emailed the Meet link and can join as soon as it starts.', link: res.data.meetUrl })
         setIds([])
         setWhen('')
+        setFieldKey((k) => k + 1)
       } else setMessage({ kind: 'error', text: res.error })
     })
   }
@@ -67,9 +70,9 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
       </div>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 space-y-2 sm:col-span-1">
-            <Label htmlFor="tm-when">Date and time</Label>
-            <Input id="tm-when" type="datetime-local" required value={when} onChange={(e) => setWhen(e.target.value)} />
+          <div className="col-span-2 space-y-2">
+            <Label htmlFor="tm-when-day">Date and time</Label>
+            <DateTimeField key={fieldKey} idPrefix="tm-when" onChange={setWhen} />
           </div>
           <div className="col-span-2 space-y-2 sm:col-span-1">
             <Label htmlFor="tm-duration">Length</Label>
