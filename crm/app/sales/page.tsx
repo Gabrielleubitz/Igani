@@ -36,7 +36,7 @@ export default async function PipelinePage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Lead pipeline</h1>
+        <h1 className="text-2xl font-semibold">Pipeline &amp; meetings</h1>
         <Link href="/sales/invite" className="text-sm underline underline-offset-4">
           Send a meeting invite →
         </Link>

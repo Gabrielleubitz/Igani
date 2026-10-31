@@ -27,7 +27,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-semibold">Pipeline</h1>
+      <h1 className="mb-4 text-2xl font-semibold">Board</h1>
       <CrmSubNav active="/sales/board" />
       <LeadFilters
         action="/sales/board"

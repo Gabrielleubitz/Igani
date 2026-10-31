@@ -5,5 +5,5 @@ export const dynamic = 'force-dynamic'
 
 export default async function Home(): Promise<never> {
   const user = await requireUser()
-  redirect(user.role === 'MARKETING' ? '/marketing' : '/sales/leads')
+  redirect(user.role === 'MARKETING' ? '/marketing' : '/sales/today')
 }
