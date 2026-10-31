@@ -6,6 +6,8 @@ import { useState, useTransition } from 'react'
 import { resendInvite, upsertAllowedUser, upsertBookingPage } from '@/app/actions/admin'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { DEFAULT_TIME_ZONE } from '@/lib/default-time-zone'
+import { TimeZoneSelect } from './TimeZoneSelect'
 
 type Msg = { ok: boolean; text: string } | null
 
@@ -38,13 +40,14 @@ const ROLE_HELP: Record<Role, string> = {
 export function AllowedUserForm(): React.ReactElement {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('SALES')
+  const [timeZone, setTimeZone] = useState(DEFAULT_TIME_ZONE)
   const [pending, msg, run] = useAction()
   return (
     <form
       className="flex flex-wrap items-end gap-3"
       onSubmit={(e) => {
         e.preventDefault()
-        run(() => upsertAllowedUser({ email, role, active: true }), `✓ ${email} can sign in. New teammates get an invite email.`)
+        run(() => upsertAllowedUser({ email, role, active: true, timeZone }), `✓ ${email} can sign in. New teammates get an invite email.`)
         setEmail('')
       }}
     >
@@ -59,6 +62,10 @@ export function AllowedUserForm(): React.ReactElement {
           <option value="MARKETING">Marketing</option>
           <option value="ADMIN">Admin</option>
         </Select>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="wl-zone">Time zone</Label>
+        <TimeZoneSelect id="wl-zone" className="w-64" value={timeZone} onChange={setTimeZone} />
       </div>
       <Button type="submit" disabled={pending}>
         {pending ? 'Adding…' : 'Add & send invite'}

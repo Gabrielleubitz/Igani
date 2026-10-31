@@ -15,10 +15,11 @@ import { toActionError, type ActionResult } from './result'
 const emailSchema = z.string().trim().email().max(254).transform(normalizeEmail)
 
 /** Add or update a whitelisted email. Role is mirrored to the User row immediately. */
-export async function upsertAllowedUser(input: { email: string; role: Role; active: boolean }): Promise<ActionResult> {
+export async function upsertAllowedUser(input: { email: string; role: Role; active: boolean; timeZone?: string }): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
-    const data = z.object({ email: emailSchema, role: z.nativeEnum(Role), active: z.boolean() }).parse(input)
+    const { timeZone, ...base } = z.object({ email: emailSchema, role: z.nativeEnum(Role), active: z.boolean(), timeZone: z.string().refine(validZone, 'Choose a valid time zone').optional() }).parse(input)
+    const data = base
     if (data.email === admin.email && (!data.active || data.role !== 'ADMIN')) {
       throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'You cannot demote or deactivate yourself' }])
     }
@@ -26,14 +27,14 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
     const row = await prisma.$transaction(async (tx) => {
       const allowed = await tx.allowedUser.upsert({ where: { email: data.email }, create: data, update: { role: data.role, active: data.active } })
       const users = await tx.user.findMany({ where: { email: data.email }, select: { id: true } })
-      await tx.user.updateMany({ where: { email: data.email }, data: { role: data.active ? data.role : null } })
+      await tx.user.updateMany({ where: { email: data.email }, data: { role: data.active ? data.role : null, ...(timeZone ? { timeZone } : {}) } })
       // Deactivated (or moved off SALES/ADMIN) users must not keep owning leads.
       if (users[0] && (!data.active || data.role === 'MARKETING')) {
         await reassignUserWork(users[0].id, null, admin.id, tx)
         // They can't host any more, so their public booking pages go offline too.
         await tx.bookingPage.updateMany({ where: { hostId: users[0].id }, data: { active: false } })
       }
-      await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: data }, tx)
+      await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: { ...data, ...(timeZone ? { timeZone } : {}) } }, tx)
       return allowed
     })
     revalidatePath('/admin/users')

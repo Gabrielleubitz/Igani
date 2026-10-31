@@ -1,11 +1,10 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { updateTeamMember } from '@/app/actions/admin'
 import { Button } from '@/components/ui/button'
-import { Input, Label, Select } from '@/components/ui/input'
-
-const FALLBACK_ZONES = ['UTC', 'Asia/Jerusalem', 'Europe/London', 'Europe/Paris', 'America/New_York', 'America/Los_Angeles']
+import { Input, Label } from '@/components/ui/input'
+import { TimeZoneSelect } from './TimeZoneSelect'
 
 /** Admin edits a salesperson's personal details. The email is their sign-in identity, so it is shown but not editable. */
 export function TeamMemberForm({ userId, name: initialName, email, timeZone: initialZone }: { userId: string; name: string; email: string; timeZone: string }): React.ReactElement {
@@ -13,10 +12,6 @@ export function TeamMemberForm({ userId, name: initialName, email, timeZone: ini
   const [timeZone, setTimeZone] = useState(initialZone)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [pending, start] = useTransition()
-  const zones = useMemo(() => {
-    const list = typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : FALLBACK_ZONES
-    return list.includes(initialZone) ? list : [initialZone, ...list]
-  }, [initialZone])
   const changed = name.trim() !== initialName || timeZone !== initialZone
 
   return (
@@ -41,13 +36,7 @@ export function TeamMemberForm({ userId, name: initialName, email, timeZone: ini
       </div>
       <div className="space-y-2">
         <Label htmlFor="tm-zone">Time zone</Label>
-        <Select id="tm-zone" value={timeZone} onChange={(e) => setTimeZone(e.target.value)}>
-          {zones.map((z) => (
-            <option key={z} value={z}>
-              {z.replaceAll('_', ' ')}
-            </option>
-          ))}
-        </Select>
+        <TimeZoneSelect id="tm-zone" value={timeZone} onChange={setTimeZone} />
       </div>
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending || !changed}>
