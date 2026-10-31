@@ -34,3 +34,7 @@ dist-ssr
 .env.production.local
 .vercel
 .env*
+
+# local-only
+*.tsbuildinfo
+.claude/settings.local.json
