@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { checkInviteTime, createSalesInvite } from '@/app/actions/bookings'
+import { TeammatePicker } from '@/components/TeammatePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 
@@ -118,35 +119,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
             <p className="text-xs text-muted-foreground">
               {teammatesAreAdminsOnly ? 'You can add admins.' : 'Anyone on the team.'} They get the Meet link by email and can join the moment it starts, with nothing to approve.
             </p>
-            <Select
-              aria-label="Add a teammate"
-              value=""
-              onChange={(e) => {
-                const id = e.target.value
-                if (id) setTeammateIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
-              }}
-            >
-              <option value="">{teammateIds.length > 0 ? 'Add another teammate…' : 'Select a teammate…'}</option>
-              {teammates
-                .filter((t) => t.id !== hostId && !teammateIds.includes(t.id))
-                .map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.label}
-                  </option>
-                ))}
-            </Select>
-            {teammateIds.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {teammateIds.map((id) => (
-                  <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-sm">
-                    {teammates.find((t) => t.id === id)?.label ?? id}
-                    <button type="button" aria-label="Remove teammate" className="text-muted-foreground hover:text-foreground" onClick={() => setTeammateIds((ids) => ids.filter((x) => x !== id))}>
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            ) : null}
+            <TeammatePicker teammates={teammates} value={teammateIds} onChange={setTeammateIds} exclude={hostId} />
           </fieldset>
         ) : null}
       </div>

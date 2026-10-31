@@ -90,6 +90,8 @@ export interface NewBookingInput {
   leadId?: string | null
   bookingPageId?: string | null
   createdById?: string | null
+  /** Team meetings have no client, so no lead is created for the "guest". */
+  noLead?: boolean
 }
 
 /**
@@ -108,15 +110,16 @@ export async function createPendingBooking(input: NewBookingInput): Promise<Book
     })
     if (clash) throw new BookingError('That time was just taken.', 'SLOT_TAKEN')
 
-    const leadId =
-      input.leadId ??
+    const leadId = input.noLead
+      ? null
+      : (input.leadId ??
       (await upsertLeadForGuest(
         tx,
         { email: input.guestEmail, name: input.guestName },
         input.source === 'PUBLIC_PAGE' ? 'booking-page' : 'sales-invite',
         input.hostId,
         input.createdById ?? null,
-      ))
+      )))
     const booking = await tx.booking.create({
       data: {
         status: 'PENDING',
@@ -176,6 +179,32 @@ export async function allowedTeammates(actor: { id: string; role: 'ADMIN' | 'SAL
   return users.flatMap((u) => (u.email ? [{ id: u.id, name: u.name, email: u.email }] : []))
 }
 
+/** Which of these bookings are internal team meetings (no client). */
+export async function teamMeetingIds(bookingIds: string[]): Promise<Set<string>> {
+  if (bookingIds.length === 0) return new Set()
+  const rows = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', entityId: { in: bookingIds }, action: 'booking.team_meeting' }, select: { entityId: true } })
+  return new Set(rows.map((r) => r.entityId))
+}
+
+/** Teammates invited to each booking (id → names), for showing who is on a call. */
+export async function teammateNamesByBooking(bookingIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>()
+  if (bookingIds.length === 0) return out
+  const logs = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', entityId: { in: bookingIds }, action: 'booking.teammates' }, orderBy: { createdAt: 'asc' }, select: { entityId: true, metadata: true } })
+  const idsFor = new Map(logs.map((l) => [l.entityId, ((l.metadata as { userIds?: unknown } | null)?.userIds as unknown[] | undefined)?.filter((i): i is string => typeof i === 'string') ?? []]))
+  const people = await prisma.user.findMany({ where: { id: { in: [...new Set([...idsFor.values()].flat())] } }, select: { id: true, name: true, email: true } })
+  const name = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
+  for (const [bookingId, ids] of idsFor) out.set(bookingId, ids.map((i) => name.get(i)).filter((n): n is string => Boolean(n)))
+  return out
+}
+
+/** Bookings a person may see: admins all; everyone else the ones they host or were added to. */
+export async function bookingScope(user: { id: string; role: string }): Promise<Prisma.BookingWhereInput> {
+  if (user.role === 'ADMIN') return {}
+  const added = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.teammates', metadata: { path: ['userIds'], array_contains: user.id } }, select: { entityId: true } })
+  return { OR: [{ hostId: user.id }, { id: { in: added.map((a) => a.entityId) } }] }
+}
+
 /** Teammate ids saved with the invite (kept in the audit log), narrowed to people who still have access. */
 async function teammatesForBooking(bookingId: string, hostId: string): Promise<{ id: string; name: string | null; email: string }[]> {
   const row = await prisma.activityLog.findFirst({ where: { entityType: 'BOOKING', entityId: bookingId, action: 'booking.teammates' }, orderBy: { createdAt: 'desc' }, select: { metadata: true } })
@@ -212,6 +241,7 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
   }
 
   const teammates = await teammatesForBooking(bookingId, booking.hostId)
+  const isTeam = (await teamMeetingIds([bookingId])).has(bookingId)
   let event: Awaited<ReturnType<typeof createMeetEvent>>
   try {
     event = await createMeetEvent({
@@ -273,10 +303,13 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
   })
 
   try {
-    const emailId = await sendBookingConfirmedEmail({ ...(await emailDataFor(bookingId)), meetUrl: event.meetUrl })
-    await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.confirmation_sent', actorId, metadata: { emailId } })
+    // Team meetings have no client to confirm to: only the teammates are emailed.
+    if (!isTeam) {
+      const emailId = await sendBookingConfirmedEmail({ ...(await emailDataFor(bookingId)), meetUrl: event.meetUrl })
+      await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.confirmation_sent', actorId, metadata: { emailId } })
+    }
     if (teammates.length > 0) {
-      const data = await emailDataFor(bookingId)
+      const data = { ...(await emailDataFor(bookingId)), ...(isTeam ? { guestName: 'the team' } : {}) }
       for (const t of teammates) {
         try {
           await sendTeammateMeetingEmail({ ...data, meetUrl: event.meetUrl, teammateEmail: t.email, teammateName: t.name ?? t.email })

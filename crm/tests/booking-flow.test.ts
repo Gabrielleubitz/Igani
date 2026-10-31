@@ -44,7 +44,7 @@ vi.mock('@/lib/email', () => ({
 const d = testDb ? describe : describe.skip
 
 d('booking confirmation flow', async () => {
-  const { createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, BookingError } = await import('@/lib/bookings')
+  const { createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, teamMeetingIds, bookingScope, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
   const prisma = new PrismaClient()
   let hostId = ''
@@ -108,6 +108,26 @@ d('booking confirmation flow', async () => {
     expect(await findTimeConflict(hostId, new Date('2030-01-07T08:10:00Z'), 30)).toMatch(/already booked.*Intro with Dana/)
     busy.push({ start: '2030-01-07T12:00:00Z', end: '2030-01-07T13:00:00Z' })
     expect(await findTimeConflict(hostId, new Date('2030-01-07T12:15:00Z'), 30)).toMatch(/busy on the Google Calendar/)
+  })
+
+  it('team meetings: no lead, no client email, every teammate emailed, visible only to host, attendees and admins', async () => {
+    const ada = await prisma.user.create({ data: { email: 'ada@igani.co', name: 'Ada', role: 'ADMIN' } })
+    const other = await prisma.user.create({ data: { email: 'other@igani.co', name: 'Other', role: 'SALES' } })
+    insert.mockResolvedValue({ data: { id: 'evt_t', hangoutLink: 'https://meet.google.com/aaa-bbbb-ccc', htmlLink: null } })
+    const booking = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Sync', guestName: 'Ada', guestEmail: 'ada@igani.co', noLead: true })
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: booking.id, action: 'booking.team_meeting' } })
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', metadata: { userIds: [ada.id] } } })
+    await confirmBooking(booking.id, hostId)
+    expect(await prisma.lead.count()).toBe(0)
+    expect(booking.leadId).toBeNull()
+    expect(sentConfirmations).toHaveLength(0) // no client confirmation
+    expect(sentTeammate).toHaveLength(1)
+    expect(sentTeammate[0]).toMatchObject({ teammateEmail: 'ada@igani.co', guestName: 'the team' })
+    expect((await teamMeetingIds([booking.id])).has(booking.id)).toBe(true)
+    const ids = async (u: { id: string; role: 'ADMIN' | 'SALES' }) => (await prisma.booking.findMany({ where: await bookingScope(u) })).map((b) => b.id)
+    expect(await ids({ id: hostId, role: 'SALES' })).toEqual([booking.id])
+    expect(await ids({ id: ada.id, role: 'ADMIN' })).toEqual([booking.id])
+    expect(await ids({ id: other.id, role: 'SALES' })).toEqual([])
   })
 
   it('lets admins add anyone, and everyone else only admins', async () => {

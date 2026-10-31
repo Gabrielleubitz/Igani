@@ -12,7 +12,7 @@ type Role = SessionUser['role']
 const ALL: Role[] = ['ADMIN', 'SALES', 'MARKETING']
 const SELLERS: Role[] = ['ADMIN', 'SALES']
 
-const NAV: { title: string; items: { href: string; label: string; icon: string; roles: Role[] }[] }[] = [
+const NAV: { title: string; items: { href: string; label: string; icon: string; roles: Role[]; children?: { href: string; label: string }[] }[] }[] = [
   {
     title: 'Workspace',
     items: [
@@ -20,14 +20,22 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
       { href: '/sales/leads', label: 'Leads', icon: 'contacts', roles: ALL },
       { href: '/sales/board', label: 'Board', icon: 'board', roles: ALL },
       { href: '/sales/tasks', label: 'Tasks', icon: 'tasks', roles: ALL },
-      { href: '/sales', label: 'Meetings', icon: 'meetings', roles: SELLERS },
+      {
+        href: '/sales',
+        label: 'Meetings',
+        icon: 'meetings',
+        roles: SELLERS,
+        children: [
+          { href: '/sales/team-meeting', label: 'Book meeting with team' },
+          { href: '/sales/invite', label: 'Book meeting with client' },
+        ],
+      },
       { href: '/sales/reports', label: 'Analytics', icon: 'reports', roles: ALL },
     ],
   },
   {
     title: 'Tools',
     items: [
-      { href: '/sales/invite', label: 'Send meeting invite', icon: 'invite', roles: SELLERS },
       { href: '/sales/import', label: 'Import leads', icon: 'import', roles: ALL },
       { href: '/marketing', label: 'Marketing', icon: 'marketing', roles: ['ADMIN', 'MARKETING'] },
     ],
@@ -54,7 +62,7 @@ export async function AppShell({ user, children }: { user: SessionUser; children
     title: g.title,
     items: g.items
       .filter((i) => i.roles.includes(user.role))
-      .map(({ href, label, icon }) => ({ href, label, icon, badge: href === '/admin/bookings' ? pendingApprovals : undefined })),
+      .map(({ href, label, icon, children }) => ({ href, label, icon, children, badge: href === '/admin/bookings' ? pendingApprovals : undefined })),
   })).filter((g) => g.items.length > 0)
   const initials = (user.name ?? user.email)
     .split(/[\s@.]+/)

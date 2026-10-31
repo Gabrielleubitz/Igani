@@ -21,7 +21,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   const [allLeads, users, bookings, closeLogs, me] = await Promise.all([
     prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, dealValue: true, lostReason: true } }),
     prisma.user.findMany({ where: user.role === 'SALES' ? { id: user.id } : {}, select: { id: true, name: true, email: true } }),
-    prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),
+    prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, leadId: { not: null }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),
     // When deals were actually won or lost (from the stage-change history, not "last edited").
     prisma.activityLog.findMany({
       where: { entityType: 'LEAD', action: 'lead.status_changed', OR: [{ metadata: { path: ['to'], equals: 'WON' } }, { metadata: { path: ['to'], equals: 'LOST' } }] },

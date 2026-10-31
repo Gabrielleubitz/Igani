@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
+import { bookingScope } from '@/lib/bookings'
 import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
 import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
@@ -36,7 +37,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
     user.role === 'MARKETING'
       ? Promise.resolve([])
       : prisma.booking.findMany({
-          where: { status: 'CONFIRMED', endTime: { gte: now }, startTime: { lt: endOfDay }, ...(isAdmin ? {} : { hostId: user.id }) },
+          where: { status: 'CONFIRMED', endTime: { gte: now }, startTime: { lt: endOfDay }, ...(await bookingScope(user)) },
           orderBy: { startTime: 'asc' },
           take: 20,
           include: { host: { select: { name: true } } },

@@ -11,6 +11,7 @@ import {
   confirmBooking,
   createPendingBooking,
   findTimeConflict,
+  teamMeetingIds,
   notifyAdminsOfPendingBooking,
   notifyGuestOfPendingBooking,
 } from '@/lib/bookings'
@@ -61,6 +62,60 @@ export async function checkInviteTime(input: { startTime: string; durationMinute
     const hostId = user.role === 'ADMIN' && data.hostId ? data.hostId : user.id
     await assertActiveHost(hostId)
     return { ok: true, data: { note: await findTimeConflict(hostId, new Date(data.startTime), data.durationMinutes) } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const teamMeetingSchema = z.object({
+  title: z.string().trim().min(1).max(200).default('Team call'),
+  notes: z.string().trim().max(2000).optional(),
+  startTime: z.string().datetime(),
+  durationMinutes: z.coerce.number().int().min(15).max(240),
+  teammateIds: z.array(z.string().cuid()).min(1, 'Select at least one teammate').max(20),
+})
+
+/**
+ * Internal call with teammates (no client). Same rules as invites: admins can add anyone, everyone else only admins.
+ * Nothing to approve: the Meet is created straight away and the teammates are emailed the link.
+ */
+export async function createTeamMeeting(input: z.input<typeof teamMeetingSchema>): Promise<ActionResult<{ bookingId: string; meetUrl: string | null }>> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const data = teamMeetingSchema.parse(input)
+    await assertActiveHost(user.id)
+    const allowed = await allowedTeammates(user, user.id)
+    const picked = [...new Set(data.teammateIds)].map((id) => allowed.find((t) => t.id === id))
+    if (picked.some((p) => !p)) throw new BookingError(user.role === 'ADMIN' ? 'One of those teammates cannot be added.' : 'You can only add admins to a call.', 'FORBIDDEN')
+    const people = picked.filter((p): p is NonNullable<typeof p> => Boolean(p))
+    const first = people[0]
+    if (!first) throw new BookingError('Select at least one teammate.', 'INVALID_STATE')
+    const start = new Date(data.startTime)
+    const conflict = await findTimeConflict(user.id, start, data.durationMinutes)
+    if (conflict) throw new BookingError(conflict, 'SLOT_TAKEN')
+
+    const booking = await createPendingBooking({
+      hostId: user.id,
+      source: 'SALES_INVITE',
+      start,
+      durationMinutes: data.durationMinutes,
+      title: data.title,
+      guestName: first.name ?? first.email,
+      guestEmail: first.email,
+      notes: data.notes ?? null,
+      createdById: user.id,
+      noLead: true,
+    })
+    await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.team_meeting', actorId: user.id })
+    await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', actorId: user.id, metadata: { userIds: people.map((p) => p.id) } })
+    try {
+      const confirmed = await confirmBooking(booking.id, user.id)
+      revalidatePath('/sales', 'layout')
+      return { ok: true, data: { bookingId: booking.id, meetUrl: confirmed.meetUrl } }
+    } catch (err) {
+      await cancelBookingCore(booking.id, user.id, 'team-meeting-failed').catch(() => undefined) // release the held time
+      throw err
+    }
   } catch (err) {
     return toActionError(err)
   }
@@ -250,6 +305,8 @@ export async function cancelBooking(bookingId: string, reason = 'cancelled-by-st
     if (!booking) throw new BookingError('Booking not found.', 'NOT_FOUND')
     if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can cancel.', 'FORBIDDEN')
     if (booking.startTime.getTime() <= Date.now()) throw new BookingError('This meeting has already started, so it can’t be cancelled.', 'INVALID_STATE')
+    // A team meeting has no client to notify.
+    if ((await teamMeetingIds([id])).has(id)) notifyGuest = false
     const kind = booking.status === 'PENDING' && booking.source === 'PUBLIC_PAGE' ? 'declined' : 'cancelled'
     await cancelBookingCore(id, user.id, z.string().max(200).parse(reason), notifyGuest ? kind : false)
     revalidatePath('/admin/bookings')
