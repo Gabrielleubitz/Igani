@@ -186,6 +186,30 @@ export async function teamMeetingIds(bookingIds: string[]): Promise<Set<string>>
   return new Set(rows.map((r) => r.entityId))
 }
 
+/** Bookings currently marked as done (latest of done / undone wins). Looks back 120 days. */
+export async function doneBookingIds(): Promise<Set<string>> {
+  const rows = await prisma.activityLog.findMany({
+    where: { entityType: 'BOOKING', action: { in: ['booking.done', 'booking.undone'] }, createdAt: { gte: new Date(Date.now() - 120 * 86_400_000) } },
+    orderBy: { createdAt: 'asc' },
+    select: { entityId: true, action: true },
+  })
+  const done = new Set<string>()
+  for (const r of rows) {
+    if (r.action === 'booking.done') done.add(r.entityId)
+    else done.delete(r.entityId)
+  }
+  return done
+}
+
+/** Removes a meeting for good: frees the time, deletes the calendar event and prep task, then the record itself. */
+export async function deleteBooking(bookingId: string, actorId: string): Promise<void> {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { id: true, title: true, guestName: true, startTime: true, status: true } })
+  if (!booking) throw new BookingError('Meeting not found.', 'NOT_FOUND')
+  await cancelBooking(bookingId, actorId, 'deleted', false) // no-op when already cancelled
+  await prisma.booking.delete({ where: { id: bookingId } })
+  await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.deleted', actorId, metadata: { title: booking.title, guest: booking.guestName, start: booking.startTime.toISOString(), wasStatus: booking.status } })
+}
+
 /** Teammates invited to each booking (id → names), for showing who is on a call. */
 export async function teammateNamesByBooking(bookingIds: string[]): Promise<Map<string, string[]>> {
   const out = new Map<string, string[]>()

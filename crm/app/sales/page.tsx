@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { BookingActions } from '@/components/CancelBookingButton'
+import { MeetingRowActions } from '@/components/MeetingRowActions'
 import { PageIntro } from '@/components/PageIntro'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import { requireUser } from '@/lib/auth'
-import { bookingScope, teamMeetingIds, teammateNamesByBooking } from '@/lib/bookings'
+import { bookingScope, doneBookingIds, teamMeetingIds, teammateNamesByBooking } from '@/lib/bookings'
 import { formatDateTime } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 
@@ -19,11 +20,18 @@ export default async function MeetingsPage({ searchParams }: { searchParams: { v
   const now = new Date()
   const past = searchParams.view === 'past'
   const host = await bookingScope(user)
+  const done = await doneBookingIds()
   const [bookings, me] = await Promise.all([
     prisma.booking.findMany({
-      where: past
-        ? { ...host, OR: [{ endTime: { lt: now } }, { status: 'CANCELLED', startTime: { gte: new Date(now.getTime() - 90 * 864e5) } }], startTime: { gte: new Date(now.getTime() - 90 * 864e5) } }
-        : { ...host, status: { in: ['PENDING', 'CONFIRMED'] }, endTime: { gte: now } },
+      // AND keeps the visibility rule (host or attendee) separate from the view's own OR.
+      where: {
+        AND: [
+          host,
+          past
+            ? { OR: [{ endTime: { lt: now } }, { status: 'CANCELLED' as const }, { id: { in: [...done] } }], startTime: { gte: new Date(now.getTime() - 90 * 864e5) } }
+            : { status: { in: ['PENDING' as const, 'CONFIRMED' as const] }, endTime: { gte: now }, id: { notIn: [...done] } },
+        ],
+      },
       orderBy: { startTime: past ? 'desc' : 'asc' },
       take: 100,
       include: { host: { select: { name: true, email: true } }, lead: { select: { id: true } } },
@@ -118,7 +126,9 @@ export default async function MeetingsPage({ searchParams }: { searchParams: { v
                         Join Meet
                       </a>
                     ) : null}
-                    {b.status !== 'CANCELLED' && b.startTime > now && (isAdmin || b.hostId === user.id) ? <BookingActions bookingId={b.id} canApprove={isAdmin && b.status === 'PENDING' && (b.source === 'PUBLIC_PAGE' || isTeam)} guestName={b.guestName} /> : null}
+                    {done.has(b.id) ? <Badge variant="success">Done</Badge> : null}
+                    {isAdmin || b.hostId === user.id ? <MeetingRowActions bookingId={b.id} done={done.has(b.id)} cancelled={b.status === 'CANCELLED'} title={b.title} /> : null}
+                    {b.status !== 'CANCELLED' && b.startTime > now && !done.has(b.id) && (isAdmin || b.hostId === user.id) ? <BookingActions bookingId={b.id} canApprove={isAdmin && b.status === 'PENDING' && (b.source === 'PUBLIC_PAGE' || isTeam)} guestName={b.guestName} /> : null}
                   </div>
                 </div>
               )

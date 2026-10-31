@@ -10,6 +10,7 @@ import {
   cancelBooking as cancelBookingCore,
   confirmBooking,
   createPendingBooking,
+  deleteBooking as deleteBookingCore,
   emailDataFor,
   findTimeConflict,
   teamMeetingIds,
@@ -311,6 +312,40 @@ export async function approveBooking(bookingId: string): Promise<ActionResult> {
 }
 
 /** Staff cancel (or, for a pending approval request, decline). The guest is emailed unless `notifyGuest` is false. */
+/** Host or admin: mark a meeting as done (or undo it). Done meetings move to "Past & cancelled". */
+export async function markBookingDone(bookingId: string, done: boolean): Promise<ActionResult> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const id = z.string().cuid().parse(bookingId)
+    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, status: true } })
+    if (!booking) throw new BookingError('Meeting not found.', 'NOT_FOUND')
+    if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can do that.', 'FORBIDDEN')
+    if (booking.status === 'CANCELLED') throw new BookingError('This meeting was cancelled.', 'INVALID_STATE')
+    await logActivity({ entityType: 'BOOKING', entityId: id, action: done ? 'booking.done' : 'booking.undone', actorId: user.id })
+    revalidatePath('/sales', 'layout')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Host or admin: delete a meeting for good (the guest is not emailed; use Cancel to send a notice). */
+export async function deleteBooking(bookingId: string): Promise<ActionResult> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const id = z.string().cuid().parse(bookingId)
+    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true } })
+    if (!booking) throw new BookingError('Meeting not found.', 'NOT_FOUND')
+    if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can delete a meeting.', 'FORBIDDEN')
+    await deleteBookingCore(id, user.id)
+    revalidatePath('/admin/bookings')
+    revalidatePath('/sales', 'layout')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
 export async function cancelBooking(bookingId: string, reason = 'cancelled-by-staff', notifyGuest = true): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN', 'SALES'])

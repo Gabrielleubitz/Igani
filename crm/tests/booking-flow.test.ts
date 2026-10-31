@@ -44,7 +44,7 @@ vi.mock('@/lib/email', () => ({
 const d = testDb ? describe : describe.skip
 
 d('booking confirmation flow', async () => {
-  const { createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, teamMeetingIds, bookingScope, BookingError } = await import('@/lib/bookings')
+  const { createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
   const prisma = new PrismaClient()
   let hostId = ''
@@ -128,6 +128,21 @@ d('booking confirmation flow', async () => {
     expect(await ids({ id: hostId, role: 'SALES' })).toEqual([booking.id])
     expect(await ids({ id: ada.id, role: 'ADMIN' })).toEqual([booking.id])
     expect(await ids({ id: other.id, role: 'SALES' })).toEqual([])
+  })
+
+  it('marks a meeting done (and undone), and deletes one for good', async () => {
+    insert.mockResolvedValue({ data: { id: 'evt_d', hangoutLink: 'https://meet.google.com/ddd-eeee-fff', htmlLink: null } })
+    const b = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    await confirmBooking(b.id, hostId)
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: b.id, action: 'booking.done' } })
+    expect((await doneBookingIds()).has(b.id)).toBe(true)
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: b.id, action: 'booking.undone' } })
+    expect((await doneBookingIds()).has(b.id)).toBe(false)
+    await deleteBooking(b.id, hostId)
+    expect(await prisma.booking.findUnique({ where: { id: b.id } })).toBeNull()
+    expect(await prisma.activityLog.count({ where: { entityId: b.id, action: 'booking.deleted' } })).toBe(1)
+    // the time is free again
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T07:00:00Z'), 30)).toBeNull()
   })
 
   it('lets admins add anyone, and everyone else only admins', async () => {
