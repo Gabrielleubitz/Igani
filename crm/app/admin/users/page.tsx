@@ -9,7 +9,7 @@ import { requireUser } from '@/lib/auth'
 import { timeAgo } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 
-export const metadata = { title: 'Team' }
+export const metadata = { title: 'Team access' }
 export const dynamic = 'force-dynamic'
 
 export default async function UsersPage(): Promise<React.ReactElement> {
@@ -35,7 +35,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageIntro title="Team" hint={`Only people listed here can sign in (${active} active). Add a teammate, pick their role, and they get a branded invite email.`} />
+        <PageIntro title="Team access" hint={`Only people listed here can sign in (${active} active). Add a teammate, pick their role, and they get a branded invite email.`} />
         <Popover label="+ Add teammate" panelClassName="w-[min(92vw,36rem)]">
             <AllowedUserForm />
           </Popover>

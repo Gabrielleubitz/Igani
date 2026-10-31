@@ -67,6 +67,35 @@ export async function resendInvite(email: string): Promise<ActionResult> {
   }
 }
 
+const validZone = (tz: string): boolean => {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz })
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** ADMIN: change a teammate's display name and time zone (the email is their sign-in identity and stays put). */
+export async function updateTeamMember(input: { userId: string; name: string; timeZone: string }): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const data = z.object({ userId: z.string().cuid(), name: z.string().trim().min(1, 'Enter a name').max(120), timeZone: z.string().refine(validZone, 'Unknown time zone') }).parse(input)
+    const before = await prisma.user.findUnique({ where: { id: data.userId }, select: { name: true, timeZone: true } })
+    if (!before) throw new z.ZodError([{ code: 'custom', path: ['userId'], message: 'Teammate not found' }])
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: data.userId }, data: { name: data.name, timeZone: data.timeZone } })
+      await logActivity({ entityType: 'USER', entityId: data.userId, action: 'user.profile_updated', actorId: admin.id, metadata: { from: before, to: { name: data.name, timeZone: data.timeZone } } }, tx)
+    })
+    revalidatePath('/admin/team')
+    revalidatePath(`/admin/team/${data.userId}`)
+    revalidatePath('/admin/users')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
 const hhmm = z.string().refine((v) => {
   try {
     parseHHmm(v)
