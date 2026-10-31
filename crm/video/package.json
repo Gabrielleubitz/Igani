@@ -1,0 +1,3 @@
+{ "name": "igani-crm-video", "private": true, "scripts": { "studio": "remotion studio", "render": "remotion render src/index.ts Explainer out/igani-crm-explainer.mp4" },
+  "dependencies": { "@remotion/cli": "4.0.290", "remotion": "4.0.290", "react": "18.3.1", "react-dom": "18.3.1" },
+  "devDependencies": { "@types/react": "18.3.12", "typescript": "5.6.3" } }
