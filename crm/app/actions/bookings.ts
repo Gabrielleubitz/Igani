@@ -66,12 +66,9 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
       ? await prisma.lead.findUnique({ where: { id: data.leadId }, select: { id: true, assignedToId: true } })
       : await prisma.lead.findUnique({ where: { email: data.guestEmail }, select: { id: true, assignedToId: true } })
     if (data.leadId && !lead) throw new BookingError('Contact not found.', 'NOT_FOUND')
-    if (lead && user.role === 'SALES' && lead.assignedToId && lead.assignedToId !== user.id) {
-      throw new BookingError('This contact belongs to another teammate. Ask them or an admin to send the invite.', 'FORBIDDEN')
-    }
-    // A rep inviting an unassigned contact takes ownership of it.
-    if (lead && user.role === 'SALES' && !lead.assignedToId) {
-      await prisma.lead.updateMany({ where: { id: lead.id, assignedToId: null }, data: { assignedToId: user.id } })
+    // Salespeople can only invite their own leads; an admin has to assign the lead first.
+    if (lead && user.role === 'SALES' && lead.assignedToId !== user.id) {
+      throw new BookingError('This contact is not assigned to you. Ask an admin to assign it, then send the invite.', 'FORBIDDEN')
     }
     const teammateIds = [...new Set(data.teammateIds ?? [])]
     if (teammateIds.length > 0) {

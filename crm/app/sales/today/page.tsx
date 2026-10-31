@@ -42,7 +42,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           include: { host: { select: { name: true } } },
         }),
     prisma.lead.findMany({ where: { archived: false, status: { in: [...OPEN] }, ...mineWhere }, take: 1000 }),
-    user.role === 'MARKETING' ? Promise.resolve([]) : prisma.lead.findMany({ where: { archived: false, assignedToId: null, status: { in: [...OPEN] } }, orderBy: { createdAt: 'desc' }, take: 6 }),
+    user.role !== 'ADMIN' ? Promise.resolve([]) : prisma.lead.findMany({ where: { archived: false, assignedToId: null, status: { in: [...OPEN] } }, orderBy: { createdAt: 'desc' }, take: 6 }),
     prisma.lead.count({ where: { AND: [leadScope(user), { archived: false, createdAt: { gte: new Date(now.getTime() - 7 * 864e5) } }] } }),
   ])
   const tz = me.timeZone
@@ -67,9 +67,9 @@ export default async function TodayPage(): Promise<React.ReactElement> {
     .filter((x) => x.score >= 65)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8)
-  // Client emails nobody has looked at yet, on my contacts (and unassigned ones I could pick up).
+  // Client emails nobody has looked at yet, on my contacts (admins also see unassigned ones).
   const newEmails = await prisma.emailMessage.findMany({
-    where: { direction: 'INBOUND', readAt: null, sentAt: { gte: new Date(now.getTime() - 30 * 864e5) }, lead: { archived: false, OR: [{ assignedToId: user.id }, { assignedToId: null }] } },
+    where: { direction: 'INBOUND', readAt: null, sentAt: { gte: new Date(now.getTime() - 30 * 864e5) }, lead: { archived: false, ...(isAdmin ? { OR: [{ assignedToId: user.id }, { assignedToId: null }] } : { assignedToId: user.id }) } },
     orderBy: { sentAt: 'desc' },
     take: 8,
     include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } } },

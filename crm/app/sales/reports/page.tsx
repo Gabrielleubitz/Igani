@@ -13,13 +13,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function ReportsPage({ searchParams }: { searchParams: { scope?: string } }): Promise<React.ReactElement> {
   const user = await requireUser()
-  const mine = searchParams.scope === 'mine' && user.role !== 'MARKETING'
+  // Salespeople only ever see their own numbers; admins can switch between the whole team and just themselves.
+  const mine = user.role === 'SALES' || (searchParams.scope === 'mine' && user.role === 'ADMIN')
   const now = Date.now()
   const d30 = new Date(now - 30 * 864e5)
   const d60 = new Date(now - 60 * 864e5)
   const [allLeads, users, bookings, closeLogs, me] = await Promise.all([
     prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, dealValue: true, lostReason: true } }),
-    prisma.user.findMany({ select: { id: true, name: true, email: true } }),
+    prisma.user.findMany({ where: user.role === 'SALES' ? { id: user.id } : {}, select: { id: true, name: true, email: true } }),
     prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),
     // When deals were actually won or lost (from the stage-change history, not "last edited").
     prisma.activityLog.findMany({
@@ -78,8 +79,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageIntro title="Analytics" hint="How many leads you have, where they come from, and how many you win. Archived contacts are left out." />
-        {user.role !== 'MARKETING' ? (
+        <PageIntro title="Analytics" hint={mine && user.role === 'SALES' ? 'How many of your leads you have, where they come from, and how many you win. Archived contacts are left out.' : 'How many leads there are, where they come from, and how many are won. Archived contacts are left out.'} />
+        {user.role === 'ADMIN' ? (
           <div className="flex gap-1">
             <Link href="/sales/reports" className={`rounded-full border px-3 py-1 text-sm ${!mine ? 'border-primary/50 bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}>
               Whole team
@@ -161,7 +162,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
         {(
           [
             ['By source', r.bySource.map((x) => [x.source, x.total, x.won] as const)],
-            ['By owner', r.byOwner.map((x) => [x.owner, x.total, x.won] as const)],
+            ...(mine ? [] : ([['By owner', r.byOwner.map((x) => [x.owner, x.total, x.won] as const)]] as const)),
           ] as const
         ).map(([title, rows]) => (
           <Card key={title}>

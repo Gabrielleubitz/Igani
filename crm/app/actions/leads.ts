@@ -32,21 +32,14 @@ export async function updateLeadStatus(
   }
 }
 
-/** ADMIN: assign to a specific rep (or null to unassign). SALES: may only claim unassigned leads for themselves. */
+/** ADMIN only: assign to a specific rep (or null to unassign). */
 export async function assignLead(leadId: string, assigneeId: string | null): Promise<ActionResult> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
+    // Only admins assign leads; salespeople see just the leads they were given.
+    const user = await requireUser(['ADMIN'])
     const id = z.string().cuid().parse(leadId)
     const to = assigneeId ? z.string().cuid().parse(assigneeId) : null
-    if (user.role === 'SALES') {
-      const lead = await prisma.lead.findUnique({ where: { id }, select: { assignedToId: true } })
-      if (!lead) throw new BookingError('Lead not found.', 'NOT_FOUND')
-      if (to !== user.id || lead.assignedToId) throw new BookingError('Reps can only claim unassigned leads.', 'FORBIDDEN')
-    }
-    await assignLeadManually(id, to, user.id, { onlyIfUnassigned: user.role === 'SALES' }).catch((err: unknown) => {
-      if (err instanceof Error && err.message === 'ALREADY_CLAIMED') throw new BookingError('A teammate just claimed this contact.', 'INVALID_STATE')
-      throw err
-    })
+    await assignLeadManually(id, to, user.id)
     revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {

@@ -91,9 +91,9 @@ describe('leadScore / staleDays', () => {
 })
 
 describe('visibleLeadsWhere', () => {
-  it('admins see all; others only own or unassigned leads', () => {
+  it('admins see all; everyone else only their own leads', () => {
     expect(visibleLeadsWhere('ADMIN', 'u1')).toEqual({})
-    expect(visibleLeadsWhere('SALES', 'u1')).toEqual({ OR: [{ assignedToId: 'u1' }, { assignedToId: null }] })
+    expect(visibleLeadsWhere('SALES', 'u1')).toEqual({ assignedToId: 'u1' })
   })
 })
 

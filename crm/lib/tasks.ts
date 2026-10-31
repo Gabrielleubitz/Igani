@@ -52,7 +52,7 @@ export interface TaskLead {
  */
 export async function tasksForUser(user: { id: string; role: string }): Promise<{ all: CrmTask[]; mine: CrmTask[]; leads: Map<string, TaskLead> }> {
   const leadRows = await prisma.lead.findMany({
-    where: { archived: false, ...(user.role === 'ADMIN' ? {} : { OR: [{ assignedToId: user.id }, { assignedToId: null }] }) },
+    where: { archived: false, ...(user.role === 'ADMIN' ? {} : { assignedToId: user.id }) },
     select: { id: true, assignedToId: true, email: true, phone: true, firstName: true, lastName: true, company: true },
   })
   const leads = new Map(leadRows.map((l) => [l.id, l]))
