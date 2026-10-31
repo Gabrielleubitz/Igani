@@ -113,20 +113,35 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
             <p className="text-xs text-muted-foreground">
               {teammatesAreAdminsOnly ? 'You can add admins.' : 'Anyone on the team.'} They get the Meet link by email and can join the moment it starts, with nothing to approve.
             </p>
-            <div className="flex flex-wrap gap-2">
+            <Select
+              aria-label="Add a teammate"
+              value=""
+              onChange={(e) => {
+                const id = e.target.value
+                if (id) setTeammateIds((ids) => (ids.includes(id) ? ids : [...ids, id]))
+              }}
+            >
+              <option value="">{teammateIds.length > 0 ? 'Add another teammate…' : 'Select a teammate…'}</option>
               {teammates
-                .filter((t) => t.id !== hostId)
+                .filter((t) => t.id !== hostId && !teammateIds.includes(t.id))
                 .map((t) => (
-                  <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={teammateIds.includes(t.id)}
-                      onChange={(e) => setTeammateIds((ids) => (e.target.checked ? [...ids, t.id] : ids.filter((x) => x !== t.id)))}
-                    />
+                  <option key={t.id} value={t.id}>
                     {t.label}
-                  </label>
+                  </option>
                 ))}
-            </div>
+            </Select>
+            {teammateIds.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {teammateIds.map((id) => (
+                  <span key={id} className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-sm">
+                    {teammates.find((t) => t.id === id)?.label ?? id}
+                    <button type="button" aria-label="Remove teammate" className="text-muted-foreground hover:text-foreground" onClick={() => setTeammateIds((ids) => ids.filter((x) => x !== id))}>
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            ) : null}
           </fieldset>
         ) : null}
       </div>
