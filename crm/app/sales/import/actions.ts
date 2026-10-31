@@ -1,10 +1,11 @@
 'use server'
 
+import { waitUntil } from '@vercel/functions'
 import { z } from 'zod'
 import { toActionError, type ActionResult } from '@/app/actions/result'
 import { logActivity } from '@/lib/audit'
 import { requireUser, type SessionUser } from '@/lib/auth'
-import { findExistingLead, ingestLead, leadPayloadSchema } from '@/lib/leads'
+import { findExistingLead, ingestLead, leadPayloadSchema, notifyTeamOfImportedLeads } from '@/lib/leads'
 import { canSeeLead } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
@@ -77,6 +78,7 @@ export async function commitLeadImport(rows: unknown, mode: 'skip' | 'merge'): P
     let created = 0
     let merged = 0
     let skipped = 0
+    const createdIds: string[] = []
     for (const { row, match, visible } of c) {
       if (match && (mode === 'skip' || !visible)) {
         skipped++
@@ -85,11 +87,15 @@ export async function commitLeadImport(rows: unknown, mode: 'skip' | 'merge'): P
       const res = await ingestLead(row)
       // A rep's own import belongs to them; admin/marketing imports stay unassigned for routing.
       if (res.created && user.role === 'SALES') await prisma.lead.update({ where: { id: res.leadId }, data: { assignedToId: user.id } })
-      if (res.created) created++
-      else merged++
+      if (res.created) {
+        created++
+        createdIds.push(res.leadId)
+      } else merged++
     }
     await logActivity({ entityType: 'LEAD', entityId: 'import', actorId: user.id, action: 'leads.imported', metadata: { created, merged, skipped, mode } })
     revalidatePath('/sales', 'layout')
+    // One summary email to the admins for the whole import (not one per row).
+    waitUntil(notifyTeamOfImportedLeads(createdIds, { name: user.name ?? user.email, email: user.email }))
     return { ok: true, data: { created, merged, skipped } }
   } catch (err) {
     return toActionError(err)

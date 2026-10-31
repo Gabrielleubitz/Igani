@@ -124,12 +124,12 @@ export function GlobalSearch(): React.ReactElement {
   return (
     <form action="/sales/leads" role="search" className="relative">
       <label htmlFor="global-search" className="sr-only">
-        Search contacts
+        Search leads
       </label>
       <input
         id="global-search"
         name="q"
-        placeholder="Search contacts…"
+        placeholder="Search leads…"
         className="h-9 w-full rounded-md border border-input bg-background/60 pl-3 pr-8 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border px-1 text-[10px] text-muted-foreground">/</kbd>

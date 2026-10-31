@@ -1,12 +1,13 @@
 'use server'
 
 import { LeadStatus } from '@prisma/client'
+import { waitUntil } from '@vercel/functions'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { logActivity } from '@/lib/audit'
-import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, phoneKey } from '@/lib/leads'
+import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, notifyTeamOfNewLead, phoneKey } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
@@ -161,6 +162,8 @@ export async function createLead(input: { email?: string; firstName?: string; la
       return l
     })
     revalidatePath('/sales', 'layout')
+    // Alert the admins right away, without making the person who added it wait for the email.
+    waitUntil(notifyTeamOfNewLead(lead.id, { addedBy: { name: admin.name ?? admin.email, email: admin.email } }))
     return { ok: true, data: { id: lead.id } }
   } catch (err) {
     return toActionError(err)

@@ -2,7 +2,8 @@ import 'server-only'
 import type { LeadStatus, Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
-import { sendLeadAssignedEmail, sendNewLeadAlertEmail } from './email'
+import { sendLeadAssignedEmail, sendLeadsImportedEmail, sendNewLeadAlertEmail } from './email'
+import { newLeadRecipients } from './lead-alerts'
 import { getSetting } from './settings'
 import { appUrl } from './env'
 import { prisma } from './prisma'
@@ -318,11 +319,31 @@ export async function reassignUserWork(fromId: string, toId: string | null, acto
   return leads.length
 }
 
-/** Best-effort team alert for a brand-new inbound lead (Settings → Notifications). Never throws. */
-export async function notifyTeamOfNewLead(leadId: string): Promise<void> {
+/** A teammate who added leads by hand or by import (as opposed to a website form). */
+export interface LeadAdder {
+  name: string
+  email: string
+}
+
+/** Admins to alert: every active admin plus the extra addresses in Settings → Notifications, except whoever added the lead. */
+async function alertRecipients(except?: string): Promise<string[]> {
+  const [extraEmails, admins] = await Promise.all([
+    getSetting('notifications.emails'),
+    prisma.allowedUser.findMany({ where: { role: 'ADMIN', active: true }, select: { email: true } }),
+  ])
+  return newLeadRecipients({ adminEmails: admins.map((a) => a.email), extraEmails, exceptEmail: except })
+}
+
+/**
+ * Best-effort alert the moment a lead is added: emails every admin (and the Settings → Notifications list).
+ * Pass `addedBy` for leads a teammate added by hand, so the email reads "New lead from <teammate>".
+ * Honors the "new lead alerts" switch in Settings. Never throws.
+ */
+export async function notifyTeamOfNewLead(leadId: string, opts: { addedBy?: LeadAdder } = {}): Promise<void> {
   try {
-    const [enabled, to] = await Promise.all([getSetting('notifications.newLead'), getSetting('notifications.emails')])
-    if (!enabled || to.length === 0) return
+    if (!(await getSetting('notifications.newLead'))) return
+    const to = await alertRecipients(opts.addedBy?.email)
+    if (to.length === 0) return
     const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { assignedTo: { select: { name: true, email: true } } } })
     if (!lead) return
     await sendNewLeadAlertEmail(to, {
@@ -335,9 +356,31 @@ export async function notifyTeamOfNewLead(leadId: string): Promise<void> {
       campaign: lead.utmCampaign,
       message: lead.message,
       owner: lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : null,
+      addedBy: opts.addedBy?.name ?? null,
       leadUrl: appUrl(`/sales/leads/${lead.id}`),
     })
   } catch (err) {
     console.error('[leads] new-lead alert failed', leadId, err)
+  }
+}
+
+/** One summary alert for leads a teammate imported in bulk (a single lead gets the normal alert). Never throws. */
+export async function notifyTeamOfImportedLeads(leadIds: string[], addedBy: LeadAdder): Promise<void> {
+  try {
+    if (leadIds.length === 0) return
+    const [only] = leadIds
+    if (leadIds.length === 1 && only) return await notifyTeamOfNewLead(only, { addedBy })
+    if (!(await getSetting('notifications.newLead'))) return
+    const to = await alertRecipients(addedBy.email)
+    if (to.length === 0) return
+    const sample = await prisma.lead.findMany({ where: { id: { in: leadIds.slice(0, 6) } }, select: { firstName: true, lastName: true, email: true, phone: true, company: true } })
+    await sendLeadsImportedEmail(to, {
+      addedBy: addedBy.name,
+      count: leadIds.length,
+      sample: sample.map((l) => ({ name: [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || l.phone || 'New lead', detail: l.company ?? l.email })),
+      leadsUrl: appUrl('/sales/leads'),
+    })
+  } catch (err) {
+    console.error('[leads] imported-leads alert failed', err)
   }
 }
