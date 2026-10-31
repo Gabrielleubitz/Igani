@@ -33,7 +33,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
     <div className="space-y-5">
       <PageIntro
         title="Send meeting invite"
-        hint="Pick a free slot from the calendar. The guest gets a branded email with one button to confirm; the Google Meet link is created the moment they accept."
+        hint="Choose any date and time. The guest gets a branded email with one button to confirm; the Google Meet link is created the moment they accept."
       />
       {!googleConnected ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">

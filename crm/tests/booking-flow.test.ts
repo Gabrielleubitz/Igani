@@ -44,7 +44,7 @@ vi.mock('@/lib/email', () => ({
 const d = testDb ? describe : describe.skip
 
 d('booking confirmation flow', async () => {
-  const { createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, BookingError } = await import('@/lib/bookings')
+  const { createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
   const prisma = new PrismaClient()
   let hostId = ''
@@ -99,6 +99,15 @@ d('booking confirmation flow', async () => {
     expect(stored.lead).toMatchObject({ status: 'DEMO_SCHEDULED', firstName: 'Dana', lastName: 'Cohen' })
     expect([a.status, b.status]).toEqual(['CONFIRMED', 'CONFIRMED'])
     expect(sentConfirmations).toHaveLength(1)
+  })
+
+  it('lets any future time be chosen by hand, and notes a clash with another call', async () => {
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T03:17:00Z'), 30)).toBeNull() // odd minute, middle of the night
+    expect(await findTimeConflict(hostId, new Date('2020-01-01T10:00:00Z'), 30)).toMatch(/passed/)
+    await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T08:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T08:10:00Z'), 30)).toMatch(/already booked.*Intro with Dana/)
+    busy.push({ start: '2030-01-07T12:00:00Z', end: '2030-01-07T13:00:00Z' })
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T12:15:00Z'), 30)).toMatch(/busy on the Google Calendar/)
   })
 
   it('lets admins add anyone, and everyone else only admins', async () => {

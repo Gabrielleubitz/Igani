@@ -34,6 +34,29 @@ export async function assertSlotOffered(hostId: string, start: Date, durationMin
   if (!slots.includes(start.toISOString())) throw new BookingError('That time is no longer available.', 'INVALID_SLOT')
 }
 
+/**
+ * Manual scheduling: any time is allowed unless it is in the past or clashes with something the host already has.
+ * Returns a short note describing the clash, or null when the time is free.
+ */
+export async function findTimeConflict(hostId: string, start: Date, durationMinutes: number, excludeBookingId?: string): Promise<string | null> {
+  if (start.getTime() <= Date.now()) return 'That time has already passed.'
+  const end = new Date(start.getTime() + durationMinutes * 60_000)
+  const pad = (await getSetting('booking.bufferMinutes')) * 60_000
+  const clash = await prisma.booking.findFirst({
+    where: {
+      hostId,
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      startTime: { lt: new Date(end.getTime() + pad) },
+      endTime: { gt: new Date(start.getTime() - pad) },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    select: { title: true, guestName: true, status: true },
+  })
+  if (clash) return `A call is already booked at this time (${clash.title} with ${clash.guestName}${clash.status === 'PENDING' ? ', awaiting confirmation' : ''}).`
+  if (!(await isSlotStillFree(hostId, start, end, excludeBookingId))) return 'This time is busy on the Google Calendar.'
+  return null
+}
+
 /** Finds or creates the lead for a guest email (bookings always attach to the pipeline). */
 async function upsertLeadForGuest(
   tx: Prisma.TransactionClient,

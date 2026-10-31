@@ -10,6 +10,7 @@ import {
   cancelBooking as cancelBookingCore,
   confirmBooking,
   createPendingBooking,
+  findTimeConflict,
   notifyAdminsOfPendingBooking,
   notifyGuestOfPendingBooking,
 } from '@/lib/bookings'
@@ -52,6 +53,19 @@ export async function getHostSlots(input: { date: string; durationMinutes: numbe
   }
 }
 
+/** Live note under the time field: is the chosen time free? (`note` is null when it is.) */
+export async function checkInviteTime(input: { startTime: string; durationMinutes: number; hostId?: string }): Promise<ActionResult<{ note: string | null }>> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const data = z.object({ startTime: z.string().datetime(), durationMinutes: z.coerce.number().int().min(15).max(240), hostId: z.string().cuid().optional() }).parse(input)
+    const hostId = user.role === 'ADMIN' && data.hostId ? data.hostId : user.id
+    await assertActiveHost(hostId)
+    return { ok: true, data: { note: await findTimeConflict(hostId, new Date(data.startTime), data.durationMinutes) } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
 /** Rep picks a slot → PENDING booking + Resend invite with a signed /invites/[token] link. */
 export async function createSalesInvite(input: SalesInviteInput): Promise<ActionResult<{ bookingId: string }>> {
   try {
@@ -75,7 +89,9 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
       const allowed = new Set((await allowedTeammates(user, hostId)).map((t) => t.id))
       if (teammateIds.some((id) => !allowed.has(id))) throw new BookingError(user.role === 'ADMIN' ? 'One of those teammates cannot be added.' : 'You can only add admins to a call.', 'FORBIDDEN')
     }
-    await assertSlotOffered(hostId, start, data.durationMinutes)
+    // Any time is fine as long as it is in the future and the host has nothing else then.
+    const conflict = await findTimeConflict(hostId, start, data.durationMinutes)
+    if (conflict) throw new BookingError(conflict, 'SLOT_TAKEN')
 
     const booking = await createPendingBooking({
       hostId,
