@@ -128,12 +128,12 @@ Total about 5-6 working days. Optional phase 2: Workspace Events push for real-t
 4. Who takes the notes in practice: always the teammate host? (If guests often host, scope shrinks to times only.)
 5. Go ahead with the 0.5-day spike first?
 
-## 9. Decisions (answered by FORGE on the owner's behalf, mission m-mvx2245g)
-Owner can override any of these before the build starts.
-1. **Scopes: approved.** `meetings.space.readonly` and `documents.readonly` are read-only and sensitive (not restricted). Each teammate reconnects Google once. Calendar and Gmail scopes are already granted.
-2. **Vercel plan: no upgrade needed.** The existing cron `0 * * * *` (hourly) in `crm/vercel.json` only deploys on Vercel Pro; Hobby rejects anything more often than daily. So the account can run crons every minute. Use a 5-minute schedule for the Meet job (`*/5 * * * *`). Please still glance at Vercel > Billing to confirm Pro.
-3. **Notes: store text plus the link.** Summary and full text (capped ~100k chars) are saved in the CRM so they are searchable on the contact, with the Google Doc link as the source of truth. Deleted with the contact. If privacy worries come up later, the switch to link-only is one setting.
-4. **Who takes the notes: assume the teammate is the host.** Meetings are created from the teammate's calendar, so the teammate is the organizer and Gemini's Doc lands in their Drive. Guest-hosted calls get times only, with the "notes taken outside your team" message. The spike will show how often this happens.
-5. **Spike first: yes.** Half a day on one real meeting (turn on Gemini notes during the call) to confirm the conference record, Calendar attachment, smart-notes endpoint and Doc fetch, before the full build.
+## 9. Recommended answers to the 5 decisions
+These are FORGE's recommendations only. Nothing is approved and nothing has been built or started. The owner decides each one.
+1. **Scopes: recommend approving.** `meetings.space.readonly` and `documents.readonly` are read-only and sensitive (not restricted). Each teammate reconnects Google once. Calendar and Gmail scopes are already granted.
+2. **Vercel plan: recommend no upgrade.** The existing hourly cron `0 * * * *` in `crm/vercel.json` only deploys on Vercel Pro (Hobby allows daily only), so the account is probably on Pro. Please confirm in Vercel > Billing. If so, use `*/5 * * * *` for the Meet job.
+3. **Notes: recommend text plus link.** Summary and full text (capped ~100k chars) saved in the CRM so they are searchable, with the Doc link as source of truth. Deleted with the contact. Link-only is a simple switch if privacy is a concern.
+4. **Who takes notes: the owner must confirm.** Likely the teammate, since meetings are created from their calendar, so the Doc lands in their Drive. Guest-hosted calls would get times only.
+5. **Spike first: recommend yes.** Half a day on one real meeting to confirm the conference record, Calendar attachment, smart-notes endpoint and Doc fetch before the full build.
 
-**Status: plan approved for the spike only. Full build (about 5-6 days) starts after the spike result.**
+**Status: awaiting owner approval.** No scopes are added, no spike is started and no code is written until the owner says yes.
