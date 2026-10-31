@@ -76,6 +76,24 @@ const validZone = (tz: string): boolean => {
   }
 }
 
+/** ADMIN: put every teammate (and the default for future sign-ins) on one time zone. */
+export async function setAllTimeZones(timeZone: string): Promise<ActionResult<{ count: number }>> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const zone = z.string().refine(validZone, 'Unknown time zone').parse(timeZone)
+    const count = await prisma.$transaction(async (tx) => {
+      const res = await tx.user.updateMany({ where: { timeZone: { not: zone } }, data: { timeZone: zone } })
+      await logActivity({ entityType: 'USER', entityId: admin.id, action: 'user.time_zone_bulk_set', actorId: admin.id, metadata: { timeZone: zone, changed: res.count } }, tx)
+      return res.count
+    })
+    revalidatePath('/admin/team')
+    revalidatePath('/admin/users')
+    return { ok: true, data: { count } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
 /** ADMIN: change a teammate's display name and time zone (the email is their sign-in identity and stays put). */
 export async function updateTeamMember(input: { userId: string; name: string; timeZone: string }): Promise<ActionResult> {
   try {

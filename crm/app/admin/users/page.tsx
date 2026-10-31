@@ -1,10 +1,11 @@
 import { DangerButton } from '../_components/DangerButton'
-import { removeAllowedUser } from '@/app/actions/admin'
+import { removeAllowedUser, setAllTimeZones } from '@/app/actions/admin'
 import { AllowedUserForm, AllowedUserToggle } from '@/components/admin/forms'
 import { PageIntro } from '@/components/PageIntro'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Popover } from '@/components/ui/popover'
+import { DEFAULT_TIME_ZONE } from '@/lib/default-time-zone'
 import { requireUser } from '@/lib/auth'
 import { timeAgo } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
@@ -39,6 +40,10 @@ export default async function UsersPage(): Promise<React.ReactElement> {
         <Popover label="+ Add teammate" panelClassName="w-[min(92vw,36rem)]">
             <AllowedUserForm />
           </Popover>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm">
+        <span className="text-muted-foreground">Times on Today and Meetings use each person&apos;s time zone. Put the whole team on {DEFAULT_TIME_ZONE.replaceAll('_', ' ')} in one click.</span>
+        <DangerButton label={`Set everyone to ${DEFAULT_TIME_ZONE.replaceAll('_', ' ')}`} confirm={`Change every teammate's time zone to ${DEFAULT_TIME_ZONE}?`} action={async () => { 'use server'; const r = await setAllTimeZones(DEFAULT_TIME_ZONE); return r.ok ? { ok: true } : { ok: false, error: r.error } }} />
       </div>
       <div className="divide-y rounded-lg border">
         {allowed.map((a) => {
