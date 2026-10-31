@@ -43,7 +43,7 @@ export function TaskDigest({ name, tasks, tasksUrl, logoUrl, brandName, supportE
               </Text>
             </Column>
             <Column align="right" style={{ padding: '14px 18px', verticalAlign: 'middle', width: 70 }}>
-              <Link href={t.url} style={{ color: colors.accent, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+              <Link href={t.url} style={{ color: colors.link, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
                 Open →
               </Link>
             </Column>

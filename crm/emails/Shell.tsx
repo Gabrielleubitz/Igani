@@ -47,7 +47,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
       <Body style={{ backgroundColor: colors.bg, fontFamily: font, margin: 0, padding: '40px 0', WebkitFontSmoothing: 'antialiased' }}>
         <Container style={{ maxWidth: 600, width: '100%', margin: '0 auto', padding: '0 12px' }}>
           <Section style={{ backgroundColor: colors.card, border: `1px solid ${colors.border}`, borderRadius: 18, overflow: 'hidden' }}>
-            <div style={{ backgroundColor: colors.accent, backgroundImage: `linear-gradient(90deg, ${colors.brand} 0%, ${colors.accent} 60%, #6ea2f0 100%)`, height: 5, lineHeight: '5px', fontSize: 0 }}>&nbsp;</div>
+            <div style={{ backgroundColor: colors.accent, backgroundImage: `linear-gradient(90deg, ${colors.brand} 0%, ${colors.surface} 35%, ${colors.accent} 75%, ${colors.accentLight} 100%)`, height: 5, lineHeight: '5px', fontSize: 0 }}>&nbsp;</div>
 
             <Section style={{ padding: '28px 40px 0' }}>
               <Row>
@@ -82,7 +82,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
                 <Section style={{ textAlign: center ? 'center' : 'left', margin: '4px 0 0' }}>
                   <Button
                     href={cta.href}
-                    style={{ backgroundColor: colors.accent, color: colors.accentText, borderRadius: 10, fontSize: 15, fontWeight: 600, lineHeight: '20px', padding: '15px 30px', textDecoration: 'none', display: 'inline-block', boxShadow: '0 1px 2px rgba(11,31,58,0.12)' }}
+                    style={{ backgroundColor: colors.brand, color: colors.accentText, borderRadius: 10, fontSize: 15, fontWeight: 600, lineHeight: '20px', padding: '15px 30px', textDecoration: 'none', display: 'inline-block', boxShadow: '0 1px 2px rgba(11,31,58,0.12)' }}
                   >
                     {cta.label} &rarr;
                   </Button>
@@ -93,7 +93,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
                   {links.map((l, i) => (
                     <React.Fragment key={l.href + l.label}>
                       {i > 0 ? <span style={{ color: colors.faint }}>&nbsp;&nbsp;·&nbsp;&nbsp;</span> : null}
-                      <Link href={l.href} style={{ color: colors.accent, textDecoration: 'none', fontWeight: 500 }}>
+                      <Link href={l.href} style={{ color: colors.link, textDecoration: 'none', fontWeight: 500 }}>
                         {l.label}
                       </Link>
                     </React.Fragment>
@@ -106,7 +106,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
           </Section>
 
           <Section style={{ padding: '24px 20px 0', textAlign: 'center' }}>
-            <Img src={logoUrl} alt={brandName} width={64} height={32} style={{ display: 'block', margin: '0 auto 10px', opacity: 0.55, border: 0 }} />
+            <Img src={logoUrl} alt={brandName} width={64} height={32} style={{ display: 'block', margin: '0 auto 10px', opacity: 0.7, border: 0 }} />
             <Text style={{ color: colors.muted, fontSize: 12, lineHeight: '18px', margin: 0 }}>
               <Link href="https://igani.co" style={{ color: colors.muted, textDecoration: 'none', fontWeight: 600 }}>
                 igani.co
@@ -136,7 +136,7 @@ function Signature({ name, detail }: { name: string; detail?: string }): React.R
           <table role="presentation" cellPadding={0} cellSpacing={0}>
             <tbody>
               <tr>
-                <td align="center" valign="middle" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, color: colors.accent, fontSize: 16, fontWeight: 700, lineHeight: '40px', textAlign: 'center' }}>
+                <td align="center" valign="middle" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, color: colors.link, fontSize: 16, fontWeight: 700, lineHeight: '40px', textAlign: 'center' }}>
                   {name.trim()[0]?.toUpperCase() ?? 'I'}
                 </td>
               </tr>
@@ -230,7 +230,7 @@ export function Steps({ title, steps }: { title?: string; steps: { title: string
             <table role="presentation" cellPadding={0} cellSpacing={0}>
               <tbody>
                 <tr>
-                  <td align="center" valign="middle" style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.accentSoft, color: colors.accent, fontSize: 12, fontWeight: 700, lineHeight: '26px', textAlign: 'center' }}>
+                  <td align="center" valign="middle" style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: colors.accentSoft, color: colors.link, fontSize: 12, fontWeight: 700, lineHeight: '26px', textAlign: 'center' }}>
                     {i + 1}
                   </td>
                 </tr>
@@ -268,7 +268,7 @@ export function PersonHeader({ name, sub }: { name: string; sub?: string }): Rea
           <table role="presentation" cellPadding={0} cellSpacing={0}>
             <tbody>
               <tr>
-                <td align="center" valign="middle" style={{ width: 52, height: 52, borderRadius: 26, background: `linear-gradient(135deg, ${colors.accent}, #6ea2f0)`, backgroundColor: colors.accent, color: '#ffffff', fontSize: 20, fontWeight: 700, lineHeight: '52px', textAlign: 'center' }}>
+                <td align="center" valign="middle" style={{ width: 52, height: 52, borderRadius: 26, background: `linear-gradient(135deg, ${colors.brand}, ${colors.accent})`, backgroundColor: colors.brand, color: '#ffffff', fontSize: 20, fontWeight: 700, lineHeight: '52px', textAlign: 'center' }}>
                   {name
                     .split(/\s+/)
                     .slice(0, 2)
