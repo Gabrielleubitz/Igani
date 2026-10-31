@@ -37,6 +37,7 @@ async function send(args: {
   text: string
   replyTo?: string
   attachments?: { filename: string; content: Buffer; contentType?: string }[]
+  headers?: Record<string, string>
 }): Promise<string> {
   if (dryRun()) {
     const id = `dry_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -55,6 +56,7 @@ async function send(args: {
     text: args.text,
     replyTo: args.replyTo,
     attachments: args.attachments,
+    headers: args.headers,
   })
   if (error || !data) throw new Error(`Resend failed: ${error?.message ?? 'no response'}`)
   return data.id
@@ -189,7 +191,25 @@ export async function sendNewLeadAlertEmail(to: string[], a: Omit<NewLeadAlertPr
 }
 
 /** A personal, branded email from a teammate to a contact. Replies go straight to the teammate. */
-export async function sendContactEmail(a: { to: string; subject: string; body: string; firstName: string | null; senderName: string; senderEmail: string; cta?: { label: string; href: string } }): Promise<string> {
-  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, cta: a.cta, logoUrl: logoUrl(), ...(await brand()) })
-  return send({ to: a.to, replyTo: a.senderEmail, subject: a.subject, html: await render(element), text: await render(element, { plainText: true }) })
+export async function sendContactEmail(a: {
+  to: string
+  subject: string
+  body: string
+  firstName: string | null
+  senderName: string
+  senderEmail: string
+  cta?: { label: string; href: string }
+  /** When replying: the original email, quoted under the message and threaded via In-Reply-To/References */
+  inReplyTo?: { messageIdHeader: string | null; quote: { from: string; sentAt: string; text: string } }
+}): Promise<string> {
+  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, cta: a.cta, quote: a.inReplyTo?.quote, logoUrl: logoUrl(), ...(await brand()) })
+  const mid = a.inReplyTo?.messageIdHeader
+  return send({
+    to: a.to,
+    replyTo: a.senderEmail,
+    subject: a.subject,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+    headers: mid ? { 'In-Reply-To': mid, References: mid } : undefined,
+  })
 }

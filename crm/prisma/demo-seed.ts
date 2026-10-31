@@ -102,6 +102,29 @@ async function main(): Promise<void> {
   await booking(0, users.ADMIN!, at(2, 11), 'PENDING', 'SALES_INVITE', 'Igani intro call')
   await booking(5, users.ADMIN!, at(-5, 9), 'CONFIRMED', 'PUBLIC_PAGE', 'Intro call with Igani')
   await booking(6, users.SALES2!, at(-3, 12), 'CANCELLED', 'SALES_INVITE', 'Igani intro call')
+  // A short email conversation with Omer (as if synced from Noa's Gmail), with his latest reply unread.
+  const email = (i: number, dir: 'INBOUND' | 'OUTBOUND', subject: string, body: string, hoursAgo: number, read = true) =>
+    prisma.emailMessage.create({
+      data: {
+        leadId: ids[3]!,
+        mailboxUserId: users.SALES!,
+        externalId: `gmail:demo${i}`,
+        dedupeKey: `<demo${i}@mail.test>`,
+        messageIdHeader: `<demo${i}@mail.test>`,
+        direction: dir,
+        fromEmail: dir === 'INBOUND' ? 'omer@fintechly.com' : 'sales@igani.test',
+        fromName: dir === 'INBOUND' ? 'Omer Katz' : 'Noa Sales',
+        toEmails: [dir === 'INBOUND' ? 'sales@igani.test' : 'omer@fintechly.com'],
+        subject,
+        snippet: body.replace(/\s+/g, ' ').slice(0, 200),
+        bodyText: body,
+        sentAt: new Date(Date.now() - hoursAgo * 3600_000),
+        readAt: read ? new Date() : null,
+      },
+    })
+  await email(1, 'OUTBOUND', 'Your Igani proposal', 'Hi Omer,\n\nAs promised, here is the proposal for Fintechly. Let me know what you think!\n\nNoa', 50)
+  await email(2, 'INBOUND', 'Re: Your Igani proposal', "Thanks Noa! Looks good overall. Could we move the launch to early January? Our CFO will sign this week.\n\nOmer", 3, false)
+  await prisma.activityLog.create({ data: { entityType: 'LEAD', entityId: ids[3]!, action: 'email.received', metadata: { subject: 'Re: Your Igani proposal', from: 'omer@fintechly.com', body: 'Thanks Noa! Looks good overall. Could we move the launch to early January?', via: 'gmail' }, createdAt: new Date(Date.now() - 3 * 3600_000) } })
   console.log(`✓ Demo data ready: ${people.length} contacts, 4 teammates, 2 booking pages, 5 meetings.`)
 }
 

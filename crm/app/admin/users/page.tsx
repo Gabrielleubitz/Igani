@@ -22,7 +22,8 @@ export default async function UsersPage(): Promise<React.ReactElement> {
         email: true,
         name: true,
         _count: { select: { assignedLeads: { where: { archived: false, status: { notIn: ['WON', 'LOST'] } } }, availability: true } },
-        accounts: { select: { refresh_token: true } },
+        accounts: { select: { refresh_token: true, scope: true } },
+        mailboxSync: { select: { lastSyncedAt: true, lastError: true } },
       },
     }),
   ])
@@ -43,6 +44,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
         {allowed.map((a) => {
           const u = byEmail.get(a.email)
           const calendar = u?.accounts.some((acc) => Boolean(acc.refresh_token))
+          const gmail = u?.accounts.some((acc) => Boolean(acc.refresh_token) && acc.scope?.includes('gmail.readonly'))
           const last = u ? seen.get(u.id) : null
           const isMe = a.email === me.email
           const status = !a.active
@@ -67,6 +69,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
                     {a.email}
                     {u ? ` · ${u._count.assignedLeads} open contact${u._count.assignedLeads === 1 ? '' : 's'}` : ''}
                     {u && a.role !== 'MARKETING' ? (calendar ? ' · 📅 calendar connected' : ' · ⚠ calendar not connected') : ''}
+                    {u ? (gmail ? (u.mailboxSync?.lastError ? ` · ⚠ Gmail sync error: ${u.mailboxSync.lastError.slice(0, 60)}` : ' · 📨 Gmail synced') : ' · Gmail not connected') : ''}
                     {u && a.role !== 'MARKETING' && u._count.availability === 0 ? ' · no working hours set' : ''}
                     {last ? ` · last active ${timeAgo(last, now)}` : ''}
                   </div>

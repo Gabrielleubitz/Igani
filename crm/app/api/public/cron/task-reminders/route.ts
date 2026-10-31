@@ -9,8 +9,10 @@ import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { createAutoTask, loadTasks, taskOwner } from '@/lib/tasks'
 import { localHour } from '@/lib/time'
+import { syncAllMailboxes } from '@/lib/mail-sync'
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 300
 
 function authorised(req: Request): boolean {
   const secret = process.env.CRON_SECRET
@@ -109,6 +111,11 @@ export async function GET(req: Request): Promise<Response> {
 const DIGEST_HOURS = { from: 7, to: 20 }
 
 async function run(): Promise<Record<string, number>> {
+  // Pull new client emails from every connected Gmail (failures are recorded per mailbox, never block the rest).
+  const mail = await syncAllMailboxes().catch((err: unknown) => {
+    console.error('[cron] mail sync failed', err)
+    return { mailboxes: 0, stored: 0, failed: 1 }
+  })
   const followUps = await createFollowUps()
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()
@@ -162,5 +169,5 @@ async function run(): Promise<Record<string, number>> {
     sent++
     for (const t of list) await logActivity({ entityType: 'LEAD', entityId: t.leadId, action: 'task.reminded', metadata: { taskId: t.id, dueAt: t.dueAt!.toISOString() } })
   }
-  return { checked, emailed: sent, followUps, meetingReminders, expired }
+  return { checked, emailed: sent, followUps, meetingReminders, expired, emailsSynced: mail.stored, mailboxErrors: mail.failed }
 }

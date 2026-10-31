@@ -9,6 +9,8 @@ export interface ContactEmailProps {
   senderName: string
   senderEmail: string
   cta?: { label: string; href: string }
+  /** The email being replied to, shown quoted under the message */
+  quote?: { from: string; sentAt: string; text: string }
   logoUrl: string
   brandName?: string
   supportEmail?: string
@@ -18,7 +20,7 @@ export interface ContactEmailProps {
  * A personal email a teammate writes from the CRM. Deliberately letter-like (no status chip noise, no icon):
  * personal emails read best when they look written by a person, framed lightly by the brand.
  */
-export function ContactEmail({ subject, body, senderName, senderEmail, cta, logoUrl, brandName = 'Igani', supportEmail }: ContactEmailProps): React.ReactElement {
+export function ContactEmail({ subject, body, senderName, senderEmail, cta, quote, logoUrl, brandName = 'Igani', supportEmail }: ContactEmailProps): React.ReactElement {
   const paragraphs = body.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
   return (
     <Shell
@@ -38,6 +40,12 @@ export function ContactEmail({ subject, body, senderName, senderEmail, cta, logo
         </Text>
       ))}
       {cta ? <div style={{ height: 8 }} /> : null}
+      {quote ? (
+        <Text style={{ color: colors.muted, fontSize: 13, lineHeight: '20px', whiteSpace: 'pre-wrap', borderLeft: `3px solid ${colors.border}`, padding: '4px 0 4px 14px', margin: '8px 0 0' }}>
+          On {quote.sentAt}, {quote.from} wrote:{'\n'}
+          {quote.text.length > 1500 ? `${quote.text.slice(0, 1500)}…` : quote.text}
+        </Text>
+      ) : null}
     </Shell>
   )
 }

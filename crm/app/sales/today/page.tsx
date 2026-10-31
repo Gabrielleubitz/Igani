@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
+import { MailSyncTrigger } from '@/components/crm/MailSyncTrigger'
 import { StagePill } from '@/components/crm/StagePill'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -66,6 +67,13 @@ export default async function TodayPage(): Promise<React.ReactElement> {
     .filter((x) => x.score >= 65)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8)
+  // Client emails nobody has looked at yet, on my contacts (and unassigned ones I could pick up).
+  const newEmails = await prisma.emailMessage.findMany({
+    where: { direction: 'INBOUND', readAt: null, sentAt: { gte: new Date(now.getTime() - 30 * 864e5) }, lead: { archived: false, OR: [{ assignedToId: user.id }, { assignedToId: null }] } },
+    orderBy: { sentAt: 'desc' },
+    take: 8,
+    include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } } },
+  })
   const pipelineValue = openLeads.reduce((n, l) => n + (l.dealValue ?? 0), 0)
   const overdueCount = due.filter((t) => t.dueAt! < now).length
 
@@ -98,6 +106,31 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           </div>
         ) : null}
       </div>
+
+      <MailSyncTrigger />
+      {newEmails.length ? (
+        <Card className="border-emerald-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>📨 New emails from contacts</span>
+              <span className="text-sm font-normal text-muted-foreground">{newEmails.length}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y">
+            {newEmails.map((e) => (
+              <Link key={e.id} href={`/sales/leads/${e.lead.id}#emails`} className="flex items-start justify-between gap-3 py-2.5 text-sm hover:bg-muted/20">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">
+                    {leadName(e.lead)} · <span className="font-normal">{e.subject}</span>
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">{e.snippet}</span>
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(e.sentAt, now)}</span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s) => (

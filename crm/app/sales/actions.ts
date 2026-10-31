@@ -12,6 +12,9 @@ import { sendContactEmail } from '@/lib/email'
 import { assertCanSeeLead } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { loadTasks } from '@/lib/tasks'
+import { formatDateTime } from '@/lib/format'
+import { GmailNotConnectedError, hasGmailAccess } from '@/lib/google'
+import { syncMailbox } from '@/lib/mail-sync'
 
 const refresh = (leadId?: string): void => {
   if (leadId) revalidatePath(`/sales/leads/${leadId}`)
@@ -159,9 +162,14 @@ const emailSchema = z.object({
   cta: z
     .object({ label: z.string().trim().min(1).max(60), href: z.string().trim().url().max(1000) })
     .optional(),
+  /** EmailMessage id being replied to */
+  replyToId: z.string().cuid().optional(),
 })
 
-/** Send a branded Igani email to the contact from inside the CRM. Replies go to the sender; it is logged on the timeline. */
+/**
+ * Send a branded Igani email to the contact from inside the CRM. Replies go to the sender's own inbox (and, with Gmail
+ * connected, come back into the CRM). Logged on the timeline and stored in the contact's email conversation.
+ */
 export async function emailContact(leadId: string, input: z.input<typeof emailSchema>): Promise<ActionResult> {
   try {
     const user = await requireUser()
@@ -170,6 +178,9 @@ export async function emailContact(leadId: string, input: z.input<typeof emailSc
     await assertCanSeeLead(id, user)
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { email: true, firstName: true } })
     if (!lead.email) throw new BookingError('This contact has no email address yet. Add one under Edit details first.', 'INVALID_STATE')
+    const original = data.replyToId ? await prisma.emailMessage.findFirst({ where: { id: data.replyToId, leadId: id } }) : null
+    if (data.replyToId && !original) throw new BookingError('The email you are replying to was not found.', 'NOT_FOUND')
+    const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } })
     const emailId = await sendContactEmail({
       to: lead.email,
       subject: data.subject,
@@ -178,18 +189,67 @@ export async function emailContact(leadId: string, input: z.input<typeof emailSc
       senderName: user.name ?? user.email,
       senderEmail: user.email,
       cta: data.cta,
+      inReplyTo: original
+        ? { messageIdHeader: original.messageIdHeader, quote: { from: original.fromName ?? original.fromEmail, sentAt: formatDateTime(original.sentAt, me.timeZone), text: original.bodyText } }
+        : undefined,
     })
-    await logActivity({
-      entityType: 'LEAD',
-      entityId: id,
-      actorId: user.id,
-      action: 'email.sent',
-      metadata: { subject: data.subject, body: data.body.slice(0, 2000), emailId },
+    await prisma.$transaction(async (tx) => {
+      const row = await tx.emailMessage.create({
+        data: {
+          leadId: id,
+          mailboxUserId: user.id,
+          externalId: `resend:${emailId}`,
+          dedupeKey: `resend:${emailId}`,
+          threadId: original?.threadId ?? null,
+          direction: 'OUTBOUND',
+          fromEmail: user.email.toLowerCase(),
+          fromName: user.name,
+          toEmails: [lead.email!.toLowerCase()],
+          subject: data.subject,
+          snippet: data.body.replace(/\s+/g, ' ').slice(0, 200),
+          bodyText: data.body.slice(0, 20000),
+          sentAt: new Date(),
+        },
+      })
+      await logActivity({ entityType: 'LEAD', entityId: id, actorId: user.id, action: 'email.sent', metadata: { subject: data.subject, body: data.body.slice(0, 2000), emailId: row.id, via: 'crm' } }, tx)
+      // Replying counts as dealing with their email.
+      if (original?.direction === 'INBOUND') await tx.emailMessage.updateMany({ where: { leadId: id, direction: 'INBOUND', readAt: null }, data: { readAt: new Date() } })
     })
     refresh(id)
     return { ok: true, data: undefined }
   } catch (err) {
     if (err instanceof Error && err.message.startsWith('Resend failed')) return { ok: false, error: `Email not sent: ${err.message.replace('Resend failed: ', '')}` }
+    return toActionError(err)
+  }
+}
+
+/** Pull new emails from the signed-in user's Gmail now (throttled to once every 2 minutes). */
+export async function syncMyEmail(force = false): Promise<ActionResult<{ stored: number; inbound: number; connected: boolean }>> {
+  try {
+    const user = await requireUser()
+    if (!(await hasGmailAccess(user.id))) return { ok: true, data: { stored: 0, inbound: 0, connected: false } }
+    const state = await prisma.mailboxSync.findUnique({ where: { userId: user.id } })
+    if (!force && state?.lastSyncedAt && Date.now() - state.lastSyncedAt.getTime() < 2 * 60_000) return { ok: true, data: { stored: 0, inbound: 0, connected: true } }
+    const r = await syncMailbox(user.id)
+    if (r.stored) revalidatePath('/sales', 'layout')
+    return { ok: true, data: { stored: r.stored, inbound: r.inbound, connected: true } }
+  } catch (err) {
+    if (err instanceof GmailNotConnectedError) return { ok: true, data: { stored: 0, inbound: 0, connected: false } }
+    console.error('[mail-sync] manual sync failed', err)
+    return { ok: false, error: 'Could not reach Gmail right now. Try again in a minute.' }
+  }
+}
+
+/** Mark a contact's unread client emails as read (called when the contact's owner opens the contact). */
+export async function markEmailsRead(leadId: string): Promise<ActionResult> {
+  try {
+    const user = await requireUser()
+    const id = z.string().cuid().parse(leadId)
+    const lead = await assertCanSeeLead(id, user)
+    if (lead.assignedToId && lead.assignedToId !== user.id) return { ok: true, data: undefined }
+    await prisma.emailMessage.updateMany({ where: { leadId: id, direction: 'INBOUND', readAt: null }, data: { readAt: new Date() } })
+    return { ok: true, data: undefined }
+  } catch (err) {
     return toActionError(err)
   }
 }

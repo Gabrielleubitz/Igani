@@ -50,7 +50,24 @@ const TEMPLATES: Template[] = [
   },
 ]
 
-export function EmailComposer({ leadId, email, firstName, company, senderName, bookingUrl }: { leadId: string; email: string; firstName: string | null; company: string | null; senderName: string; bookingUrl?: string | null }): React.ReactElement {
+export function EmailComposer({
+  leadId,
+  email,
+  firstName,
+  company,
+  senderName,
+  bookingUrl,
+  reply,
+}: {
+  leadId: string
+  email: string
+  firstName: string | null
+  company: string | null
+  senderName: string
+  bookingUrl?: string | null
+  /** Reply to an email in the conversation: subject gets "Re:", the original is quoted and threaded */
+  reply?: { id: string; subject: string }
+}): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [pending, start] = useTransition()
@@ -63,6 +80,12 @@ export function EmailComposer({ leadId, email, firstName, company, senderName, b
   const fill = (s: string): string => s.replaceAll('{first}', firstName || 'there').replaceAll('{company}', company || 'your team').replaceAll('{me}', senderName.split(' ')[0] ?? senderName)
   const apply = (id: string): void => {
     const t = TEMPLATES.find((x) => x.id === id) ?? TEMPLATES[0]!
+    if (reply && id === 'blank') {
+      setSubject(/^re:/i.test(reply.subject) ? reply.subject : `Re: ${reply.subject}`)
+      setBody(fill(t.body))
+      setWithBooking(false)
+      return
+    }
     setSubject(fill(t.subject))
     setBody(fill(t.body))
     setWithBooking(Boolean(bookingUrl) && (id === 'intro' || id === 'follow-up'))
@@ -72,6 +95,8 @@ export function EmailComposer({ leadId, email, firstName, company, senderName, b
     <>
       <Button
         size="sm"
+        variant={reply ? 'outline' : 'default'}
+        className={reply ? 'h-7 px-2 text-xs' : undefined}
         onClick={() => {
           apply('blank')
           setError(null)
@@ -79,16 +104,16 @@ export function EmailComposer({ leadId, email, firstName, company, senderName, b
           setOpen(true)
         }}
       >
-        ✉️ Email
+        {reply ? '↩ Reply' : '✉️ Email'}
       </Button>
       {sent ? <span className="text-xs text-emerald-400">{sent}</span> : null}
-      <Dialog open={open} onClose={() => setOpen(false)} title={`Email ${firstName || email}`} description={`Sent from Igani in our branded template. Replies go to you. To: ${email}`} className="w-[min(94vw,40rem)]">
+      <Dialog open={open} onClose={() => setOpen(false)} title={reply ? `Reply to ${firstName || email}` : `Email ${firstName || email}`} description={`Sent in the Igani branded template${reply ? ', with their message quoted and threaded' : ''}. Replies go to your inbox and appear here. To: ${email}`} className="w-[min(94vw,40rem)]">
         <form
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault()
             start(async () => {
-              const res = await emailContact(leadId, { subject, body, cta: withBooking && bookingUrl ? { label: 'Pick a time to talk', href: bookingUrl } : undefined })
+              const res = await emailContact(leadId, { subject, body, cta: withBooking && bookingUrl ? { label: 'Pick a time to talk', href: bookingUrl } : undefined, replyToId: reply?.id })
               if (res.ok) {
                 setOpen(false)
                 setSent(`Email sent to ${email}.`)

@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { EditContactForm } from '@/components/crm/EditContactForm'
 import { EmailComposer } from '@/components/crm/EmailComposer'
+import { EmailsPanel, type EmailView } from '@/components/crm/EmailsPanel'
+import { hasGmailAccess } from '@/lib/google'
 import { LeadActions } from '@/components/crm/LeadActions'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
@@ -31,6 +33,7 @@ const ICON: Record<string, string> = {
   'note.added': '📝',
   'touch.logged': '📞',
   'email.sent': '✉️',
+  'email.received': '📨',
   'lead.status_changed': '🏷️',
   'lead.assigned': '👤',
   'lead.created': '✨',
@@ -52,7 +55,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   })
   if (!lead || !canSeeLead(user, lead)) notFound()
 
-  const [logs, people, me, threshold, myPage] = await Promise.all([
+  const [logs, people, me, threshold, myPage, emailRows, gmailConnected] = await Promise.all([
     prisma.activityLog.findMany({
       where: { entityType: 'LEAD', entityId: lead.id },
       orderBy: { createdAt: 'desc' },
@@ -63,6 +66,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
     prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true, name: true } }),
     getSetting('leads.staleDays'),
     prisma.bookingPage.findFirst({ where: { active: true, hostId: user.id }, select: { slug: true } }),
+    prisma.emailMessage.findMany({ where: { leadId: lead.id }, orderBy: { sentAt: 'desc' }, take: 100 }),
+    hasGmailAccess(user.id),
   ])
   const anyPage = myPage ?? (await prisma.bookingPage.findFirst({ where: { active: true }, select: { slug: true }, orderBy: { createdAt: 'asc' } }))
   const tz = me.timeZone
@@ -106,7 +111,9 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       case 'touch.logged':
         return { title: `${TOUCH[s(m.kind)] ?? 'Touch'} logged`, body: s(m.summary) || undefined }
       case 'email.sent':
-        return { title: `Email sent: ${s(m.subject)}`, body: s(m.body) || undefined }
+        return { title: `${m.via === 'gmail' ? 'Emailed from Gmail' : 'Email sent'}: ${s(m.subject)}`, body: s(m.body) ? s(m.body).slice(0, 280) + (s(m.body).length > 280 ? '…' : '') : undefined }
+      case 'email.received':
+        return { title: `Email from ${s(m.from)}: ${s(m.subject)}`, body: s(m.body) ? s(m.body).slice(0, 280) + (s(m.body).length > 280 ? '…' : '') : undefined }
       case 'lead.status_changed':
         return {
           title: `Stage: ${statusLabel(s(m.from))} → ${statusLabel(s(m.to))}`,
@@ -146,7 +153,22 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         return { title: l.action.replace(/[._]/g, ' ') }
     }
   }
+  // Email bodies live in the Emails card; the timeline shows a one-line entry for each.
   const timeline = logs.filter((l) => !HIDDEN.has(l.action))
+  const unreadEmails = emailRows.filter((e) => e.direction === 'INBOUND' && !e.readAt).length
+  const emails: EmailView[] = emailRows.map((e) => ({
+    id: e.id,
+    direction: e.direction,
+    fromLabel: e.fromName ? `${e.fromName}` : e.fromEmail,
+    toLabel: e.toEmails[0] === lead.email ? leadName(lead) : (e.toEmails.join(', ') || '—'),
+    subject: e.subject,
+    snippet: e.snippet,
+    body: e.bodyText,
+    when: formatDateTime(e.sentAt, tz),
+    ago: timeAgo(e.sentAt, now),
+    unread: e.direction === 'INBOUND' && !e.readAt,
+    via: e.externalId.startsWith('resend:') ? 'crm' : 'gmail',
+  }))
 
   const facts: [string, React.ReactNode][] = (
     [
@@ -193,6 +215,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
             ) : null}
             {stale !== null ? <Badge variant="warning">No contact for {stale} days</Badge> : null}
             {lead.archived ? <Badge variant="outline">Archived</Badge> : null}
+            {unreadEmails ? <Badge variant="success">📨 {unreadEmails} new email{unreadEmails === 1 ? '' : 's'}</Badge> : null}
             {openTasks ? <Badge variant="outline">{openTasks} open task{openTasks === 1 ? '' : 's'}</Badge> : null}
             {lead.tags.map((t) => (
               <Link key={t} href={`/sales/leads?tag=${encodeURIComponent(t)}`} className="rounded-full bg-secondary px-2 py-0.5 text-xs hover:bg-secondary/70">
@@ -307,6 +330,22 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
             <CardContent className="space-y-4 pt-6">
               <LogTouchButtons leadId={lead.id} />
               <AddNoteForm leadId={lead.id} />
+            </CardContent>
+          </Card>
+          <Card id="emails">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                Emails <span className="text-sm font-normal text-muted-foreground">({emailRows.length})</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <EmailsPanel
+                leadId={lead.id}
+                emails={emails}
+                gmailConnected={gmailConnected}
+                canMarkRead={!lead.assignedToId || lead.assignedToId === user.id}
+                composer={lead.email ? { email: lead.email, firstName: lead.firstName, company: lead.company, senderName: me.name ?? user.email } : null}
+              />
             </CardContent>
           </Card>
           <Card>

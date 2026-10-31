@@ -51,16 +51,16 @@ enum EntityType {
 
 /// Whitelist: only these emails may sign in. Role here is the source of truth.
 model AllowedUser {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  role      Role
-  active    Boolean  @default(true)
+  id               String    @id @default(cuid())
+  email            String    @unique
+  role             Role
+  active           Boolean   @default(true)
   /// Onboarding token emailed on invite (random, single-use)
   inviteToken      String?   @unique
   invitedAt        DateTime?
   inviteAcceptedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([role, active])
 }
@@ -90,6 +90,8 @@ model User {
   bookingPages    BookingPage[]
   activityLogs    ActivityLog[]
   leadNotes       LeadNote[]
+  mailboxEmails   EmailMessage[]
+  mailboxSync     MailboxSync?
 
   @@index([role])
 }
@@ -166,9 +168,10 @@ model Lead {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  assignedTo User?     @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo User?          @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   bookings   Booking[]
   notes      LeadNote[]
+  emails     EmailMessage[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -281,4 +284,56 @@ model SiteSetting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// ─── Email (Gmail sync + emails sent from the CRM) ───────────────────────────
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+/// One email exchanged with a contact. Only messages involving a known contact address are ever stored.
+model EmailMessage {
+  id              String         @id @default(cuid())
+  leadId          String
+  /// Whose mailbox it was found in / who sent it from the CRM
+  mailboxUserId   String?
+  /// "gmail:<id>" or "resend:<id>"
+  externalId      String
+  /// RFC 5322 Message-ID (used to thread replies sent from the CRM, and to de-duplicate across teammates' mailboxes)
+  messageIdHeader String?
+  /// Message-ID if present, else externalId: the same email seen in two mailboxes is stored once per contact
+  dedupeKey       String
+  threadId        String?
+  direction       EmailDirection
+  fromEmail       String
+  fromName        String?
+  toEmails        String[]       @default([])
+  ccEmails        String[]       @default([])
+  subject         String
+  snippet         String
+  /// Plain text, quoted history removed, capped at 20k chars
+  bodyText        String         @db.Text
+  sentAt          DateTime
+  /// When the contact's owner first saw an inbound email in the CRM
+  readAt          DateTime?
+  createdAt       DateTime       @default(now())
+
+  lead        Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  mailboxUser User? @relation(fields: [mailboxUserId], references: [id], onDelete: SetNull)
+
+  @@unique([leadId, dedupeKey])
+  @@index([leadId, sentAt])
+  @@index([direction, readAt])
+}
+
+/// Gmail sync bookmark per teammate.
+model MailboxSync {
+  userId       String    @id
+  lastSyncedAt DateTime?
+  lastError    String?
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

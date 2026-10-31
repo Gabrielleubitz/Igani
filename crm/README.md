@@ -57,6 +57,20 @@ open the site's **/admin → Inquiries** or **→ Leads** and press **Send … t
 In the CRM anyone (admin, sales, marketing) can set **Came from** + details when adding a contact or under
 *Edit details*; the Contacts table shows it, and Reports / Marketing break results down by it.
 
+## Email conversations (Gmail sync)
+
+Each contact page has an **Emails** card: every email exchanged with that contact, both directions. It includes emails
+sent from the CRM, the client's replies, emails they send you directly, and emails you send them from Gmail. Unread
+client emails show on **Today** and as a badge on the contact; replying from the CRM quotes and threads the original.
+
+- How: each teammate clicks **Connect Gmail** once (Google asks for read-only Gmail access). The hourly cron and
+  opening a contact pull new mail. Only messages where a known contact's email is in From/To/Cc are stored; the
+  rest of the mailbox is never saved. An email in two teammates' inboxes is stored once (matched by Message-ID).
+- Google Cloud setup: enable the **Gmail API** in the same project as Calendar, and add the
+  `https://www.googleapis.com/auth/gmail.readonly` scope to the OAuth consent screen. Keep the app type **Internal**
+  (Workspace): read-only Gmail is a "restricted" scope that otherwise needs Google's security review.
+- Status per teammate (connected / last error) is on **Team**.
+
 ## Task reminders (cron)
 
 `vercel.json` runs `GET /api/public/cron/task-reminders` hourly. Each run (one at a time, via a lease row): creates

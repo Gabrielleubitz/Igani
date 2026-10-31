@@ -1,7 +1,10 @@
 import 'server-only'
 import { auth, calendar, type calendar_v3 } from '@googleapis/calendar'
+import { gmail, type gmail_v1 } from '@googleapis/gmail'
 import { env } from './env'
 import { prisma } from './prisma'
+
+export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
 
 export class GoogleNotConnectedError extends Error {
   constructor(hostId: string) {
@@ -10,14 +13,28 @@ export class GoogleNotConnectedError extends Error {
   }
 }
 
-/** Calendar client authenticated as the host. Refreshed tokens are written back to the Account row. */
-export async function calendarForHost(hostId: string): Promise<calendar_v3.Calendar> {
-  const account = await prisma.account.findFirst({
-    where: { userId: hostId, provider: 'google' },
-    orderBy: { expires_at: 'desc' },
-  })
-  if (!account?.refresh_token) throw new GoogleNotConnectedError(hostId)
+export class GmailNotConnectedError extends Error {
+  constructor(userId: string) {
+    super(`User ${userId} has not granted Gmail read access — they must reconnect Google from the CRM.`)
+    this.name = 'GmailNotConnectedError'
+  }
+}
 
+async function googleAccount(userId: string) {
+  return prisma.account.findFirst({ where: { userId, provider: 'google' }, orderBy: { expires_at: 'desc' } })
+}
+
+/** True when the user's stored Google grant includes Gmail read access. */
+export async function hasGmailAccess(userId: string): Promise<boolean> {
+  const a = await googleAccount(userId)
+  return Boolean(a?.refresh_token && a.scope?.split(/\s+/).includes(GMAIL_READ_SCOPE))
+}
+
+/** OAuth client authenticated as the user. Refreshed tokens are written back to the Account row. */
+async function oauthFor(userId: string, needGmail: boolean): Promise<InstanceType<typeof auth.OAuth2>> {
+  const account = await googleAccount(userId)
+  if (!account?.refresh_token) throw needGmail ? new GmailNotConnectedError(userId) : new GoogleNotConnectedError(userId)
+  if (needGmail && !account.scope?.split(/\s+/).includes(GMAIL_READ_SCOPE)) throw new GmailNotConnectedError(userId)
   const e = env()
   const client = new auth.OAuth2(e.GOOGLE_CLIENT_ID, e.GOOGLE_CLIENT_SECRET)
   client.setCredentials({
@@ -39,5 +56,15 @@ export async function calendarForHost(hostId: string): Promise<calendar_v3.Calen
       })
       .catch((err: unknown) => console.error('[google] failed to persist refreshed tokens', err))
   })
-  return calendar({ version: 'v3', auth: client })
+  return client
+}
+
+/** Calendar client authenticated as the host. */
+export async function calendarForHost(hostId: string): Promise<calendar_v3.Calendar> {
+  return calendar({ version: 'v3', auth: await oauthFor(hostId, false) })
+}
+
+/** Read-only Gmail client for the user (throws GmailNotConnectedError if they haven't granted it). */
+export async function gmailForUser(userId: string): Promise<gmail_v1.Gmail> {
+  return gmail({ version: 'v1', auth: await oauthFor(userId, true) })
 }
