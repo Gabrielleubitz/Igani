@@ -1,13 +1,14 @@
 import { timingSafeEqual } from 'node:crypto'
 import { splitDue } from '@/components/crm/crm-utils'
 import { logActivity } from '@/lib/audit'
-import { emailDataFor } from '@/lib/bookings'
+import { cancelBooking, emailDataFor } from '@/lib/bookings'
 import { appUrl } from '@/lib/env'
 import { sendMeetingReminderEmail, sendTaskDigestEmail } from '@/lib/email'
 import { formatDateTime, leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
-import { createAutoTask, loadTasks } from '@/lib/tasks'
+import { createAutoTask, loadTasks, taskOwner } from '@/lib/tasks'
+import { localHour } from '@/lib/time'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,9 +20,14 @@ function authorised(req: Request): boolean {
   return got.length === want.length && timingSafeEqual(got, want)
 }
 
-/** Calls that have ended get one auto follow-up task for the host (marked by `booking.ended`). */
+/** Calls that ended in the last 3 days get one auto follow-up task for the host (marked by `booking.ended`). */
 async function createFollowUps(): Promise<number> {
-  const ended = await prisma.booking.findMany({ where: { status: 'CONFIRMED', endTime: { lt: new Date() }, leadId: { not: null } }, orderBy: { endTime: 'desc' }, take: 200 })
+  const now = Date.now()
+  const ended = await prisma.booking.findMany({
+    where: { status: 'CONFIRMED', endTime: { lt: new Date(now), gte: new Date(now - 3 * 86_400_000) }, leadId: { not: null } },
+    orderBy: { endTime: 'desc' },
+    take: 200,
+  })
   const done = new Set(
     (await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.ended', entityId: { in: ended.map((b) => b.id) } }, select: { entityId: true } })).map((l) => l.entityId),
   )
@@ -29,11 +35,23 @@ async function createFollowUps(): Promise<number> {
   for (const b of ended.filter((x) => !done.has(x.id))) {
     await prisma.$transaction(async (tx) => {
       await logActivity({ entityType: 'BOOKING', entityId: b.id, action: 'booking.ended' }, tx)
-      await createAutoTask({ leadId: b.leadId!, title: `Follow up after call: ${b.title}`, dueAt: new Date(Date.now() + 86_400_000), assigneeId: b.hostId, auto: 'follow-up', bookingId: b.id }, tx)
+      await createAutoTask({ leadId: b.leadId!, title: `Follow up after call: ${b.title}`, dueAt: new Date(now + 86_400_000), assigneeId: b.hostId, auto: 'follow-up', bookingId: b.id }, tx)
     })
     n++
   }
   return n
+}
+
+/**
+ * Requests nobody approved before their start time are closed: public-page requests are declined (the guest is
+ * emailed with a link to pick a new time); sales invites the guest never confirmed are withdrawn quietly.
+ */
+async function expireStalePending(): Promise<number> {
+  const stale = await prisma.booking.findMany({ where: { status: 'PENDING', startTime: { lte: new Date() } }, select: { id: true, source: true }, take: 200 })
+  for (const b of stale) {
+    await cancelBooking(b.id, null, b.source === 'PUBLIC_PAGE' ? 'expired-unapproved' : 'invite-not-confirmed', false).catch((err: unknown) => console.error('[cron] expire failed', b.id, err))
+  }
+  return stale.length
 }
 
 /** Guests of confirmed meetings starting in the next ~24h get one reminder (marked by `booking.reminder_sent`). */
@@ -66,38 +84,67 @@ async function sendMeetingReminders(): Promise<number> {
 /**
  * Cron endpoint (hourly), public path in middleware but gated by the bearer secret (Vercel cron sends `Authorization: Bearer $CRON_SECRET`).
  * 1) creates follow-up tasks for calls that ended, 2) emails guests a reminder ~24h before confirmed meetings,
- * 3) emails each assignee one branded digest of tasks that are overdue / due today and not reminded yet,
- *    then logs `task.reminded` so nobody is emailed twice about the same task.
+ * 3) closes requests whose time passed without approval, 4) emails each person (assignee, or the contact owner
+ *    for unassigned tasks) one digest of tasks overdue / due today in THEIR time zone, during their daytime,
+ *    logging `task.reminded` per (task, due date) so nobody is emailed twice about the same thing.
  */
 export async function GET(req: Request): Promise<Response> {
   if (!authorised(req)) return new Response('Unauthorized', { status: 401 })
-  const followUps = await createFollowUps()
-  const meetingReminders = await sendMeetingReminders()
-  const [tasks, remindedLogs] = await Promise.all([
-    loadTasks(),
-    prisma.activityLog.findMany({ where: { entityType: 'LEAD', action: 'task.reminded' }, select: { metadata: true } }),
-  ])
-  const reminded = new Set(remindedLogs.map((l) => (l.metadata as { taskId?: string } | null)?.taskId))
-  const { overdue, today } = splitDue(tasks)
-  const due = [...overdue, ...today].filter((t) => t.assigneeId && !reminded.has(t.id))
+  // One run at a time: overlapping runs (retries, manual triggers) must not double-create tasks or emails.
+  // A lease row (not a session advisory lock, which breaks with pooled connections); it expires after 10 minutes.
+  const got = await prisma.$queryRaw<{ key: string }[]>`
+    INSERT INTO "SiteSetting" (key, value, "updatedAt") VALUES ('cron.lock', '"reminders"'::jsonb, now())
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = now()
+    WHERE "SiteSetting"."updatedAt" < now() - interval '10 minutes'
+    RETURNING key`
+  if (got.length === 0) return Response.json({ skipped: 'another run is in progress' })
+  try {
+    return Response.json(await run())
+  } finally {
+    await prisma.siteSetting.deleteMany({ where: { key: 'cron.lock' } })
+  }
+}
 
-  const byUser = new Map<string, typeof due>()
-  for (const t of due) byUser.set(t.assigneeId!, [...(byUser.get(t.assigneeId!) ?? []), t])
-  const [users, leads] = await Promise.all([
-    prisma.user.findMany({ where: { id: { in: [...byUser.keys()] }, role: { not: null } }, select: { id: true, email: true, name: true, timeZone: true } }),
-    prisma.lead.findMany({ where: { id: { in: [...new Set(due.map((t) => t.leadId))] } }, select: { id: true, email: true, firstName: true, lastName: true } }),
-  ])
+/** Task digests go out between 7:00 and 20:00 in each person's own time zone (never in the middle of the night). */
+const DIGEST_HOURS = { from: 7, to: 20 }
+
+async function run(): Promise<Record<string, number>> {
+  const followUps = await createFollowUps()
+  const expired = await expireStalePending()
+  const meetingReminders = await sendMeetingReminders()
+
+  // Only tasks on contacts that still exist and aren't archived.
+  const leads = await prisma.lead.findMany({ where: { archived: false }, select: { id: true, assignedToId: true, email: true, phone: true, firstName: true, lastName: true, company: true } })
   const leadById = new Map(leads.map((l) => [l.id, l]))
+  const tasks = (await loadTasks()).filter((t) => !t.done && t.dueAt && leadById.has(t.leadId))
+  // A reminder covers one (task, due date) pair: rescheduling or reopening a task makes it eligible again.
+  const remindedLogs = await prisma.activityLog.findMany({ where: { entityType: 'LEAD', action: 'task.reminded', createdAt: { gte: new Date(Date.now() - 120 * 86_400_000) } }, select: { metadata: true } })
+  const reminded = new Set(remindedLogs.map((l) => { const m = (l.metadata ?? {}) as { taskId?: string; dueAt?: string }; return `${m.taskId}|${m.dueAt ?? ''}` }))
+
+  const byUser = new Map<string, typeof tasks>()
+  for (const t of tasks) {
+    const owner = taskOwner(t, leadById.get(t.leadId)?.assignedToId)
+    if (!owner || reminded.has(`${t.id}|${t.dueAt!.toISOString()}`)) continue
+    byUser.set(owner, [...(byUser.get(owner) ?? []), t])
+  }
+  const users = await prisma.user.findMany({ where: { id: { in: [...byUser.keys()] }, role: { not: null } }, select: { id: true, email: true, name: true, timeZone: true } })
+  const now = new Date()
   let sent = 0
+  let checked = 0
   for (const u of users) {
     if (!u.email) continue
-    const list = byUser.get(u.id) ?? []
+    const hour = localHour(now, u.timeZone)
+    if (hour < DIGEST_HOURS.from || hour >= DIGEST_HOURS.to) continue
+    const { overdue, today } = splitDue(byUser.get(u.id) ?? [], now, u.timeZone)
+    const list = [...overdue, ...today]
+    checked += list.length
+    if (list.length === 0) continue
     try {
       await sendTaskDigestEmail(u.email, {
         name: u.name?.split(' ')[0] ?? u.email,
         tasksUrl: appUrl('/sales/tasks'),
         tasks: list.map((t) => {
-          const overdueNow = t.dueAt!.getTime() < Date.now()
+          const overdueNow = t.dueAt!.getTime() < now.getTime()
           const lead = leadById.get(t.leadId)
           return {
             title: t.title,
@@ -113,7 +160,7 @@ export async function GET(req: Request): Promise<Response> {
       continue
     }
     sent++
-    for (const t of list) await logActivity({ entityType: 'LEAD', entityId: t.leadId, action: 'task.reminded', metadata: { taskId: t.id } })
+    for (const t of list) await logActivity({ entityType: 'LEAD', entityId: t.leadId, action: 'task.reminded', metadata: { taskId: t.id, dueAt: t.dueAt!.toISOString() } })
   }
-  return Response.json({ checked: due.length, emailed: sent, followUps, meetingReminders })
+  return { checked, emailed: sent, followUps, meetingReminders, expired }
 }

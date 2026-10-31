@@ -42,7 +42,7 @@ describe('ics', () => {
       new Date('2026-11-01T00:00:00Z'),
     )
     expect(ics).toContain('DTSTART:20261102T090000Z\r\n')
-    expect(ics).toContain('SUMMARY:Intro\\, call\; Igani\r\n')
+    expect(ics).toContain('SUMMARY:Intro\\, call\\; Igani\r\n')
     expect(ics.split('\r\n').every((l) => Buffer.byteLength(l) <= 75)).toBe(true)
     expect(ics.startsWith('BEGIN:VCALENDAR\r\n')).toBe(true)
   })

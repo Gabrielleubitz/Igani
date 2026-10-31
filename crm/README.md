@@ -51,7 +51,7 @@ curl -X POST https://app.igani.co/api/v1/leads \
 
 **Site setup** (marketing site's Vercel project): `CRM_LEAD_WEBHOOK_URL=https://app.igani.co/api/v1/leads`,
 `CRM_LEAD_WEBHOOK_SECRET` (same value as the CRM's `LEAD_WEBHOOK_SECRET`), optional `NEXT_PUBLIC_CRM_URL`, and
-optionally `ADMIN_PASSWORD` (server-only) for the sync button. To bring in leads that arrived before the connection,
+`ADMIN_PASSWORD` (server-only, never `NEXT_PUBLIC_`) which the sync button asks for. To bring in leads that arrived before the connection,
 open the site's **/admin → Inquiries** or **→ Leads** and press **Send … to CRM** (safe to repeat).
 
 In the CRM anyone (admin, sales, marketing) can set **Came from** + details when adding a contact or under
@@ -59,8 +59,10 @@ In the CRM anyone (admin, sales, marketing) can set **Came from** + details when
 
 ## Task reminders (cron)
 
-`vercel.json` runs `GET /api/public/cron/task-reminders` hourly. It emails each assignee a digest of overdue / due-today
-tasks (once per task). Set `CRON_SECRET` in the Vercel project env; Vercel then sends `Authorization: Bearer $CRON_SECRET`.
+`vercel.json` runs `GET /api/public/cron/task-reminders` hourly. Each run (one at a time, via a lease row): creates
+follow-up tasks for calls that ended, emails guests a reminder ~24h before meetings, closes booking requests whose time
+passed without approval, and emails each person a digest of their overdue / due-today tasks (in their own time zone,
+between 07:00 and 20:00 local), once per task and due date. Set `CRON_SECRET` in the Vercel project env; Vercel then sends `Authorization: Bearer $CRON_SECRET`.
 The path is public in the middleware but returns `401` without the exact secret (and always when `CRON_SECRET` is unset).
 
 ```bash

@@ -14,7 +14,19 @@ export default async function MarketingPage({ searchParams }: { searchParams: { 
   await requireUser(['ADMIN', 'MARKETING'])
   const days = RANGES.find((d) => String(d) === searchParams.days) ?? 30
   const since = new Date(Date.now() - days * 864e5)
-  const leads = await prisma.lead.findMany({ where: { createdAt: { gte: since } }, select: { utmSource: true, utmMedium: true, utmCampaign: true, source: true, status: true } })
+  const rows = await prisma.lead.findMany({ where: { archived: false, createdAt: { gte: since } }, select: { id: true, utmSource: true, utmMedium: true, utmCampaign: true, source: true, status: true } })
+  // "Reached a meeting" counts leads that EVER got to demo/proposal/won (a demo that ended in Lost still counts), or had a booking.
+  const ids = rows.map((r) => r.id)
+  const [progressed, booked] = await Promise.all([
+    prisma.activityLog.findMany({
+      where: { entityType: 'LEAD', entityId: { in: ids }, action: 'lead.status_changed', OR: ['DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON'].map((to) => ({ metadata: { path: ['to'], equals: to } })) },
+      select: { entityId: true },
+      distinct: ['entityId'],
+    }),
+    prisma.booking.findMany({ where: { leadId: { in: ids }, status: { not: 'CANCELLED' } }, select: { leadId: true }, distinct: ['leadId'] }),
+  ])
+  const reached = new Set([...progressed.map((p) => p.entityId), ...booked.map((b) => b.leadId!), ...rows.filter((r) => ['DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON'].includes(r.status)).map((r) => r.id)])
+  const leads = rows.map((r) => ({ ...r, reached: reached.has(r.id) }))
   const group = (key: (l: (typeof leads)[number]) => string): { label: string; total: number; won: number; qualified: number }[] => {
     const m = new Map<string, { total: number; won: number; qualified: number }>()
     for (const l of leads) {
@@ -22,7 +34,7 @@ export default async function MarketingPage({ searchParams }: { searchParams: { 
       const e = m.get(k) ?? { total: 0, won: 0, qualified: 0 }
       e.total++
       if (l.status === 'WON') e.won++
-      if (l.status === 'DEMO_SCHEDULED' || l.status === 'PROPOSAL_SENT' || l.status === 'WON') e.qualified++
+      if (l.reached) e.qualified++
       m.set(k, e)
     }
     return [...m].map(([label, v]) => ({ label, ...v })).sort((a, b) => b.total - a.total).slice(0, 20)
@@ -34,7 +46,7 @@ export default async function MarketingPage({ searchParams }: { searchParams: { 
   ]
   const byStatus = new Map<string, number>()
   for (const l of leads) byStatus.set(l.status, (byStatus.get(l.status) ?? 0) + 1)
-  const qualified = leads.filter((l) => ['DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON'].includes(l.status)).length
+  const qualified = leads.filter((l) => l.reached).length
 
   return (
     <div className="space-y-6">
@@ -76,7 +88,7 @@ export default async function MarketingPage({ searchParams }: { searchParams: { 
                     <tr>
                       <th className="pb-1 font-normal">Name</th>
                       <th className="pb-1 text-right font-normal">Leads</th>
-                      <th className="pb-1 text-right font-normal" title="Reached demo, proposal or won">Mtg+</th>
+                      <th className="pb-1 text-right font-normal" title="Ever reached a meeting, proposal or win">Mtg+</th>
                       <th className="pb-1 text-right font-normal">Won</th>
                     </tr>
                   </thead>

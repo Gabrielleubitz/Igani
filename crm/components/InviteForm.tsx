@@ -127,7 +127,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
           <div className="space-y-2">
             <Label htmlFor="duration">Length</Label>
             <Select id="duration" value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
-              {[15, 30, 45, 60, 90].map((m) => (
+              {[...new Set([15, 30, 45, 60, 90, defaultDuration])].sort((a, b) => a - b).map((m) => (
                 <option key={m} value={m}>
                   {m} min
                 </option>
@@ -137,7 +137,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
         </div>
         <div className="space-y-2">
           <Label>Available times</Label>
-          {loadingSlots ? <p className="text-sm text-muted-foreground">Checking the calendar…</p> : <SlotPicker slots={slots} selected={slot} onSelect={setSlot} />}
+          {loadingSlots ? <p className="text-sm text-muted-foreground">Checking the calendar…</p> : <SlotPicker slots={slots} selected={slot} onSelect={setSlot} date={date} />}
         </div>
         <Button type="submit" className="w-full" disabled={sending || !slot}>
           {sending ? 'Sending…' : slot ? 'Send invite' : 'Pick a time to continue'}

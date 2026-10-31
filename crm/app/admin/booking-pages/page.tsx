@@ -1,3 +1,4 @@
+import { requireUser } from '@/lib/auth'
 import { DangerButton } from '../_components/DangerButton'
 import { deleteBookingPage } from '@/app/actions/admin'
 import { BookingPageForm } from '@/components/admin/forms'
@@ -16,6 +17,7 @@ export const metadata = { title: 'Booking pages' }
 export const dynamic = 'force-dynamic'
 
 export default async function BookingPagesPage(): Promise<React.ReactElement> {
+  await requireUser(['ADMIN'])
   const [pages, hosts, defaultDuration] = await Promise.all([
     prisma.bookingPage.findMany({ orderBy: { createdAt: 'asc' }, include: { host: { select: { name: true, email: true, availability: { select: { id: true } } } }, _count: { select: { bookings: true } } } }),
     prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true } }),

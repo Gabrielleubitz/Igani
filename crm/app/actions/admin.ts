@@ -29,7 +29,11 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
       const users = await tx.user.findMany({ where: { email: data.email }, select: { id: true } })
       await tx.user.updateMany({ where: { email: data.email }, data: { role: data.active ? data.role : null } })
       // Deactivated (or moved off SALES/ADMIN) users must not keep owning leads.
-      if (users[0] && (!data.active || data.role === 'MARKETING')) await reassignUserWork(users[0].id, null, admin.id, tx)
+      if (users[0] && (!data.active || data.role === 'MARKETING')) {
+        await reassignUserWork(users[0].id, null, admin.id, tx)
+        // They can't host any more, so their public booking pages go offline too.
+        await tx.bookingPage.updateMany({ where: { hostId: users[0].id }, data: { active: false } })
+      }
       await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: data }, tx)
       return allowed
     })

@@ -3,7 +3,7 @@ import type { Booking, BookingSource, Prisma } from '@prisma/client'
 import { logActivity } from './audit'
 import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, isSlotStillFree } from './calendar'
 import { getSetting } from './settings'
-import { createAutoTask } from './tasks'
+import { createAutoTask, deleteAutoTasksForBooking } from './tasks'
 import { sendApprovalRequestEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail, sendBookingRequestedEmail, type BookingEmailData } from './email'
 import { appUrl, env } from './env'
 import { prisma } from './prisma'
@@ -75,10 +75,12 @@ export interface NewBookingInput {
  */
 export async function createPendingBooking(input: NewBookingInput): Promise<Booking> {
   const end = new Date(input.start.getTime() + input.durationMinutes * 60_000)
+  // Same buffer the slot list uses, so two adjacent bookings made at the same moment still keep it.
+  const pad = (await getSetting('booking.bufferMinutes')) * 60_000
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.hostId}))`
     const clash = await tx.booking.findFirst({
-      where: { hostId: input.hostId, status: { in: ['PENDING', 'CONFIRMED'] }, startTime: { lt: end }, endTime: { gt: input.start } },
+      where: { hostId: input.hostId, status: { in: ['PENDING', 'CONFIRMED'] }, startTime: { lt: new Date(end.getTime() + pad) }, endTime: { gt: new Date(input.start.getTime() - pad) } },
       select: { id: true },
     })
     if (clash) throw new BookingError('That time was just taken.', 'SLOT_TAKEN')
@@ -182,7 +184,8 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
       guestName: booking.guestName,
     })
   } catch (err) {
-    await prisma.booking.update({ where: { id: bookingId }, data: { status: 'PENDING', confirmedAt: null } })
+    // Only roll back if nobody cancelled it meanwhile.
+    await prisma.booking.updateMany({ where: { id: bookingId, status: 'CONFIRMED' }, data: { status: 'PENDING', confirmedAt: null } })
     await logActivity({
       entityType: 'BOOKING',
       entityId: bookingId,
@@ -193,11 +196,14 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
     throw new BookingError('Could not create the calendar event. Please try again.', 'CALENDAR')
   }
 
+  // If the booking was cancelled while the calendar event was being created, remove the event and stop here.
+  const stillConfirmed = await prisma.booking.updateMany({ where: { id: bookingId, status: 'CONFIRMED' }, data: { meetUrl: event.meetUrl, googleEventId: event.eventId } })
+  if (stillConfirmed.count === 0) {
+    await deleteCalendarEvent(booking.hostId, event.eventId).catch((err: unknown) => console.error('[bookings] cleanup of event for cancelled booking failed', bookingId, err))
+    throw new BookingError('This booking was cancelled.', 'INVALID_STATE')
+  }
   const confirmed = await prisma.$transaction(async (tx) => {
-    const updated = await tx.booking.update({
-      where: { id: bookingId },
-      data: { meetUrl: event.meetUrl, googleEventId: event.eventId },
-    })
+    const updated = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } })
     if (updated.leadId) {
       const lead = await tx.lead.findUnique({ where: { id: updated.leadId }, select: { status: true } })
       if (lead && (lead.status === 'NEW' || lead.status === 'CONTACTED')) {
@@ -247,13 +253,22 @@ export async function cancelBooking(bookingId: string, actorId: string | null, r
   const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { bookingPage: { select: { slug: true, active: true } } } })
   if (!booking) throw new BookingError('Booking not found.', 'NOT_FOUND')
   if (booking.status === 'CANCELLED') return
-  await prisma.$transaction(async (tx) => {
-    await tx.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', cancelledAt: new Date() } })
+  const won = await prisma.$transaction(async (tx) => {
+    // Atomic: two clicks (or a click + the cron) can't both cancel and both email the guest.
+    const res = await tx.booking.updateMany({ where: { id: bookingId, status: { not: 'CANCELLED' } }, data: { status: 'CANCELLED', cancelledAt: new Date() } })
+    if (res.count === 0) return false
     await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.cancelled', actorId, metadata: { reason } }, tx)
     if (booking.leadId) {
       await logActivity({ entityType: 'LEAD', entityId: booking.leadId, action: 'meeting.cancelled', actorId, metadata: { bookingId, title: booking.title, start: booking.startTime.toISOString(), reason } }, tx)
+      // The "Prep for call" task makes no sense any more.
+      await deleteAutoTasksForBooking(bookingId, booking.leadId, actorId, tx)
     }
+    return true
   })
+  if (!won) return
+  // Re-read: a confirmation finishing at the same moment may have just stored the Google event id.
+  const fresh = await prisma.booking.findUnique({ where: { id: bookingId }, select: { googleEventId: true } })
+  if (fresh?.googleEventId) booking.googleEventId = fresh.googleEventId
   if (booking.googleEventId) {
     await deleteCalendarEvent(booking.hostId, booking.googleEventId).catch(async (err: unknown) => {
       await logActivity({
@@ -268,7 +283,7 @@ export async function cancelBooking(bookingId: string, actorId: string | null, r
   if (notifyGuest && booking.startTime.getTime() > Date.now()) {
     try {
       const rebookUrl = booking.bookingPage?.active ? appUrl(`/book/${booking.bookingPage.slug}`) : null
-      const emailId = await sendBookingCancelledEmail({ ...(await emailDataFor(bookingId)), kind: notifyGuest, rebookUrl })
+      const emailId = await sendBookingCancelledEmail({ ...(await emailDataFor(bookingId)), kind: notifyGuest, rebookUrl, removeFromCalendar: booking.status === 'CONFIRMED' })
       await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.cancellation_sent', actorId, metadata: { emailId, kind: notifyGuest } })
     } catch (err) {
       console.error('[bookings] cancellation email failed', bookingId, err)

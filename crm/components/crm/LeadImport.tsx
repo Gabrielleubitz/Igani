@@ -72,25 +72,31 @@ export function LeadImport(): React.ReactElement {
       {preview ? (
         <div className="space-y-3 rounded-md border p-3 text-sm">
           <div>
-            <strong>{preview.fresh}</strong> new · <strong>{preview.duplicates.length}</strong> already in the CRM (matched by email) ·{' '}
-            <strong>{preview.invalid.length}</strong> invalid
+            <strong>{preview.fresh}</strong> new · <strong>{preview.duplicates.length}</strong> already in the CRM (matched by email or phone)
+            {preview.hidden ? (
+              <>
+                {' '}
+                · <strong>{preview.hidden}</strong> belong to a teammate (skipped)
+              </>
+            ) : null}{' '}
+            · <strong>{preview.invalid.length}</strong> invalid
           </div>
           <table className="w-full text-xs">
             <thead className="text-left text-muted-foreground">
               <tr>
-                <th>Email</th>
+                <th>Email / phone</th>
                 <th>Name</th>
                 <th>Company</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {rows.slice(0, 10).map((r) => (
-                <tr key={r.email} className="border-t">
-                  <td className="py-1">{r.email}</td>
+              {rows.slice(0, 10).map((r, i) => (
+                <tr key={i} className="border-t">
+                  <td className="py-1">{r.email ?? r.phone}</td>
                   <td>{[r.firstName, r.lastName].filter(Boolean).join(' ')}</td>
                   <td>{r.company}</td>
-                  <td>{preview.duplicates.includes(r.email) ? 'duplicate' : 'new'}</td>
+                  <td>{preview.duplicates.includes(r.email ?? r.phone ?? '') ? 'already in CRM' : 'new'}</td>
                 </tr>
               ))}
             </tbody>

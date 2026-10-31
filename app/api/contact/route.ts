@@ -33,19 +33,20 @@ export async function POST(request: NextRequest) {
 
     await saveContactSubmission(submissionData)
 
-    // Forward to the Igani CRM (best effort: never blocks the visitor's form)
-    await forwardLeadToCrm({
-      ...crmLeadFromContactSubmission(submissionData),
+    // Forward to the Igani CRM in parallel with the admin email; neither can fail the visitor's form.
+    const crm = forwardLeadToCrm({
+      ...crmLeadFromContactSubmission({ ...submissionData, page: typeof body.page === 'string' ? body.page.slice(0, 100) : undefined }),
       utm: utmFrom(body),
-      sourceDetail: [typeof body.page === 'string' ? body.page : '/contact', submissionData.projectType].filter(Boolean).join(' · '),
     })
 
     const html = buildContactNotificationEmail(submissionData)
-    await sendAdminNotification(
+    const mail = sendAdminNotification(
       `[IGANI] New contact: ${submissionData.firstName} ${submissionData.lastName}`,
       html,
       `New contact from ${submissionData.email}: ${submissionData.message}`
     )
+
+    await Promise.allSettled([crm, mail])
 
     return NextResponse.json(
       { success: true, message: 'Thank you. We will get back to you soon.' },

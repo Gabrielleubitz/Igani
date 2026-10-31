@@ -5,6 +5,7 @@ import { Logo } from '@/components/brand/Logo'
 import { TaskAlert } from '@/components/crm/TaskAlert'
 import { prisma } from '@/lib/prisma'
 import { SignOutButton } from './AuthButtons'
+import { SessionKeepAlive } from './SessionKeepAlive'
 import { AppNav, GlobalSearch, MobileMenu, type NavGroup } from './AppNav'
 
 type Role = SessionUser['role']
@@ -64,6 +65,7 @@ export async function AppShell({ user, children }: { user: SessionUser; children
 
   return (
     <div className="min-h-screen lg:flex">
+      <SessionKeepAlive />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">
         Skip to content
       </a>
@@ -100,7 +102,7 @@ export async function AppShell({ user, children }: { user: SessionUser; children
           <div className="mb-4 lg:hidden">
             <GlobalSearch />
           </div>
-          <TaskAlert userId={user.id} />
+          <TaskAlert userId={user.id} role={user.role} />
           {children}
         </div>
       </main>

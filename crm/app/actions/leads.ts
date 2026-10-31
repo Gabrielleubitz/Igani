@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { logActivity } from '@/lib/audit'
-import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus } from '@/lib/leads'
+import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, phoneKey } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
@@ -43,7 +43,10 @@ export async function assignLead(leadId: string, assigneeId: string | null): Pro
       if (!lead) throw new BookingError('Lead not found.', 'NOT_FOUND')
       if (to !== user.id || lead.assignedToId) throw new BookingError('Reps can only claim unassigned leads.', 'FORBIDDEN')
     }
-    await assignLeadManually(id, to, user.id)
+    await assignLeadManually(id, to, user.id, { onlyIfUnassigned: user.role === 'SALES' }).catch((err: unknown) => {
+      if (err instanceof Error && err.message === 'ALREADY_CLAIMED') throw new BookingError('A teammate just claimed this contact.', 'INVALID_STATE')
+      throw err
+    })
     revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
@@ -111,7 +114,10 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
       if (data.email && data.email !== before.email && (await tx.lead.findUnique({ where: { email: data.email }, select: { id: true } }))) {
         throw new BookingError('Another contact already uses this email address.', 'INVALID_STATE')
       }
-      if (data.email === null && !(data.phone ?? before.phone)) throw new BookingError('Keep at least an email or a phone number.', 'INVALID_STATE')
+      // Check the values the contact will END UP with (a blank field arrives as null = cleared).
+      const nextEmail = data.email !== undefined ? data.email : before.email
+      const nextPhone = data.phone !== undefined ? data.phone : before.phone
+      if (!nextEmail && !phoneKey(nextPhone)) throw new BookingError('Keep at least an email or a phone number.', 'INVALID_STATE')
       await tx.lead.update({ where: { id }, data })
       await logActivity({ entityType: 'LEAD', entityId: id, action: 'lead.edited', actorId: admin.id, metadata: { fields: changed } }, tx)
     })
@@ -142,6 +148,11 @@ export async function createLead(input: { email?: string; firstName?: string; la
     if (data.email) {
       const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
       if (exists) throw new BookingError('A contact with this email already exists.', 'INVALID_STATE')
+    } else if (data.phone) {
+      // Phone-only: same matching rule as the website forms (last 9 digits), so hand-added contacts don't duplicate.
+      const key = phoneKey(data.phone)
+      const dup = key ? await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) LIMIT 1` : []
+      if (dup.length) throw new BookingError('A contact with this phone number already exists. Search for it in Contacts.', 'INVALID_STATE')
     }
     const lead = await prisma.$transaction(async (tx) => {
       // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.
@@ -217,7 +228,7 @@ export async function exportLeadsCsv(params: Record<string, string | undefined> 
     const leads = await prisma.lead.findMany({
       where: { AND: [buildLeadWhere(parseLeadFilters(params)), leadScope(user)] },
       orderBy: { createdAt: 'desc' },
-      take: 10000,
+      take: 50_000,
       include: { assignedTo: { select: { email: true } } },
     })
     const csv = toCsv(

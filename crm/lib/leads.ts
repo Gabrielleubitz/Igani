@@ -29,8 +29,8 @@ export const leadPayloadSchema = z.object({
     .toLowerCase()
     .max(254)
     .optional()
-    .transform((v) => (v ? v : undefined))
-    .pipe(z.string().email().optional()),
+    // A typo'd email (e.g. "a@b.com.") is dropped rather than rejecting the whole lead; the phone may still be valid.
+    .transform((v) => (v && z.string().email().safeParse(v.replace(/\.+$/, '')).success ? v.replace(/\.+$/, '') : undefined)),
   firstName: optionalText(100),
   lastName: optionalText(100),
   phone: optionalText(40),
@@ -93,10 +93,13 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
       // Never overwrite another contact's email via a phone match.
       if (fill.email && (await tx.lead.findUnique({ where: { email: String(fill.email) }, select: { id: true } }))) delete fill.email
       // A returning lead's new message must reach reps: append it (dated) to the stored message.
-      if (!payload.backfill && payload.message && existing.message && payload.message !== existing.message) {
-        const stamp = new Date().toISOString().slice(0, 10)
-        fill.message = `${existing.message}\n\n--- resubmitted ${stamp} ---\n${payload.message}`.slice(0, 20000)
+      // Backfills only append when that exact text isn't stored yet, so re-running stays a no-op.
+      if (payload.message && existing.message && payload.message !== existing.message && !existing.message.includes(payload.message)) {
+        const stamp = (payload.submittedAt ?? new Date().toISOString()).slice(0, 10)
+        fill.message = `${existing.message}\n\n--- ${payload.backfill ? 'also submitted' : 'resubmitted'} ${stamp}${payload.sourceDetail ? ` via ${payload.sourceDetail}` : ''} ---\n${payload.message}`.slice(0, 20000)
       }
+      // Someone archived this contact, but they just reached out again: bring them back so the team sees it.
+      if (!payload.backfill && existing.archived) fill.archived = false
       if (Object.keys(fill).length > 0) await tx.lead.update({ where: { id: existing.id }, data: fill })
       // Re-running a backfill must be a no-op: don't re-log or re-append the same historical submission.
       if (payload.backfill) {
@@ -107,7 +110,7 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
           entityType: 'LEAD',
           entityId: existing.id,
           action: 'lead.resubmitted',
-          metadata: { source: payload.source ?? 'igani.co', sourceDetail: payload.sourceDetail ?? null, filled: Object.keys(fill), message: payload.message ?? null },
+          metadata: { source: payload.source ?? 'igani.co', sourceDetail: payload.sourceDetail ?? null, filled: Object.keys(fill), message: payload.message ?? null, ...(existing.archived ? { unarchived: true } : {}) },
         },
         tx,
       )
@@ -135,7 +138,7 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
 }
 
 /** Match by email first; otherwise by the last 9 digits of the phone (so 058-447… and +97258447… match). */
-async function findExistingLead(db: Prisma.TransactionClient | typeof prisma, email: string | undefined, phone: string | undefined) {
+export async function findExistingLead(db: Prisma.TransactionClient | typeof prisma, email: string | undefined, phone: string | undefined) {
   if (email) {
     const byEmail = await db.lead.findUnique({ where: { email } })
     if (byEmail) return byEmail
@@ -223,15 +226,16 @@ async function roundRobinTx(leadId: string, opts: { force?: boolean }): Promise<
   })
 }
 
-/** Manual (re)assignment by an ADMIN or SALES user. */
-export async function assignLeadManually(leadId: string, assigneeId: string | null, actorId: string): Promise<void> {
+/** Manual (re)assignment. `onlyIfUnassigned` makes it an atomic claim: two reps clicking Claim at once can't both win. */
+export async function assignLeadManually(leadId: string, assigneeId: string | null, actorId: string, opts: { onlyIfUnassigned?: boolean } = {}): Promise<void> {
   await prisma.$transaction(async (tx) => {
     if (assigneeId) {
       const user = await tx.user.findUnique({ where: { id: assigneeId }, select: { role: true } })
       if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) throw new Error('Assignee must be a SALES or ADMIN user')
     }
     const before = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { assignedToId: true } })
-    await tx.lead.update({ where: { id: leadId }, data: { assignedToId: assigneeId } })
+    const res = await tx.lead.updateMany({ where: { id: leadId, ...(opts.onlyIfUnassigned ? { assignedToId: null } : {}) }, data: { assignedToId: assigneeId } })
+    if (res.count === 0) throw new Error('ALREADY_CLAIMED')
     await logActivity(
       { entityType: 'LEAD', entityId: leadId, action: 'lead.assigned', actorId, metadata: { from: before.assignedToId, to: assigneeId, strategy: 'manual' } },
       tx,

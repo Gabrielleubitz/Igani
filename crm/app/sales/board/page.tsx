@@ -5,7 +5,8 @@ import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
 import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
-import { filterLeads, leadScore } from '@/components/crm/crm-utils'
+import { leadScore } from '@/components/crm/crm-utils'
+import { buildLeadWhere, parseLeadFilters } from '@/lib/lead-query'
 import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Board' }
@@ -19,12 +20,14 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
   const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), { archived: false }] }
   const f = { q: one(searchParams.q), status: one(searchParams.status), source: one(searchParams.source), owner: one(searchParams.owner) }
 
-  const [all, reps] = await Promise.all([
-    prisma.lead.findMany({ where: scope, orderBy: { createdAt: 'desc' }, take: 2000, include: { assignedTo: { select: { name: true, email: true } } } }),
+  // Filters run in the database, so older contacts are found no matter how many there are.
+  const where: Prisma.LeadWhereInput = { AND: [scope, buildLeadWhere(parseLeadFilters({ q: f.q, status: f.status, source: f.source, assignee: f.owner }))] }
+  const [leads, reps, sourceRows] = await Promise.all([
+    prisma.lead.findMany({ where, orderBy: { createdAt: 'desc' }, take: 3000, include: { assignedTo: { select: { name: true, email: true } } } }),
     prisma.user.findMany({ where: { role: { in: ['SALES', 'ADMIN'] } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
+    prisma.lead.findMany({ where: scope, distinct: ['source'], select: { source: true }, orderBy: { source: 'asc' } }),
   ])
-  const leads = filterLeads(all, f)
-  const sources = [...new Set(all.map((l) => l.source))].sort()
+  const sources = sourceRows.map((r) => r.source)
 
   return (
     <div>

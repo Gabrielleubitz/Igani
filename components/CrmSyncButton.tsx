@@ -3,29 +3,53 @@
 import { useState } from 'react'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 
-type Result = { total: number; created: number; alreadyInCrm: number; skipped: number; failed: number; errors: string[] }
+type Totals = { created: number; alreadyInCrm: number; skipped: number; failed: number }
 
 /**
  * "Send to CRM" panel for the site admin. Copies existing site leads / contact submissions into the Igani CRM
- * (safe to repeat: the CRM de-duplicates). New submissions are forwarded automatically.
+ * in batches (safe to repeat: the CRM de-duplicates). New submissions are forwarded automatically.
+ * Asks for the server-side admin password once per browser session (it is never built into the page).
  */
 export function CrmSyncButton({ collection, label }: { collection: 'all' | 'leads' | 'contact'; label: string }) {
   const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<Result | null>(null)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [result, setResult] = useState<Totals | null>(null)
   const [error, setError] = useState<string | null>(null)
   const crmUrl = process.env.NEXT_PUBLIC_CRM_URL || 'https://app.igani.co'
 
   const run = async () => {
     if (!window.confirm(`Copy ${label.toLowerCase()} into the Igani CRM? People already in the CRM are matched, not duplicated.`)) return
+    let password = ''
+    try {
+      password = sessionStorage.getItem('crmSyncPassword') ?? ''
+    } catch {}
+    if (!password) password = window.prompt('Admin password for CRM sync (the server-side ADMIN_PASSWORD):') ?? ''
+    if (!password) return
     setBusy(true)
     setError(null)
     setResult(null)
+    const totals: Totals = { created: 0, alreadyInCrm: 0, skipped: 0, failed: 0 }
     try {
-      const password = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ''
-      const res = await fetch(`/api/admin/crm-sync?collection=${collection}`, { method: 'POST', headers: { 'x-admin-password': password } })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || `Failed (${res.status})`)
-      setResult(data)
+      let cursor: number | null = 0
+      while (cursor !== null) {
+        const res: Response = await fetch(`/api/admin/crm-sync?collection=${collection}&cursor=${cursor}`, { method: 'POST', headers: { 'x-admin-password': password } })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) {
+          if (res.status === 401) {
+            try {
+              sessionStorage.removeItem('crmSyncPassword')
+            } catch {}
+          }
+          throw new Error(data.error || `Failed (${res.status})`)
+        }
+        try {
+          sessionStorage.setItem('crmSyncPassword', password)
+        } catch {}
+        for (const k of Object.keys(totals) as (keyof Totals)[]) totals[k] += data[k] ?? 0
+        setProgress({ done: data.processed, total: data.total })
+        setResult({ ...totals })
+        cursor = data.next
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sync failed')
     } finally {
@@ -37,13 +61,13 @@ export function CrmSyncButton({ collection, label }: { collection: 'all' | 'lead
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-3">
       <div className="text-sm text-slate-300">
         <span className="font-semibold text-white">Igani CRM</span> · new submissions are sent automatically, with where they came from.
-        {result ? (
+        {busy && progress ? <span className="mt-1 block text-slate-200">Sending… {progress.done} of {progress.total}</span> : null}
+        {result && !busy ? (
           <span className="mt-1 block text-emerald-300">
-            Done: {result.created} added, {result.alreadyInCrm} already in the CRM{result.skipped ? `, ${result.skipped} skipped (no email or phone)` : ''}
-            {result.failed ? `, ${result.failed} failed` : ''}.
+            Done: {result.created} added, {result.alreadyInCrm} already in the CRM{result.skipped ? `, ${result.skipped} skipped (no valid email or phone)` : ''}
+            {result.failed ? `, ${result.failed} failed (run it again to retry)` : ''}.
           </span>
         ) : null}
-        {result?.errors?.length ? <span className="block text-xs text-red-300">{result.errors.join(' · ')}</span> : null}
         {error ? <span className="mt-1 block text-red-300">{error}</span> : null}
       </div>
       <div className="flex items-center gap-2">

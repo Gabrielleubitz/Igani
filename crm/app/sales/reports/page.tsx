@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth'
 import { LEAD_STATUSES, STATUS_LABEL, formatMoney } from '@/lib/format'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
+import { localDateKey } from '@/lib/time'
 import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Reports' }
@@ -16,33 +17,48 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   const now = Date.now()
   const d30 = new Date(now - 30 * 864e5)
   const d60 = new Date(now - 60 * 864e5)
-  const [allLeads, users, bookings, wonLogs] = await Promise.all([
-    prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, updatedAt: true, dealValue: true, lostReason: true } }),
+  const [allLeads, users, bookings, closeLogs, me] = await Promise.all([
+    prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, dealValue: true, lostReason: true } }),
     prisma.user.findMany({ select: { id: true, name: true, email: true } }),
     prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),
-    // When a deal was actually won (not just last edited), from the stage-change history.
-    prisma.activityLog.findMany({ where: { entityType: 'LEAD', action: 'lead.status_changed', metadata: { path: ['to'], equals: 'WON' } }, select: { entityId: true, createdAt: true }, orderBy: { createdAt: 'asc' } }),
+    // When deals were actually won or lost (from the stage-change history, not "last edited").
+    prisma.activityLog.findMany({
+      where: { entityType: 'LEAD', action: 'lead.status_changed', OR: [{ metadata: { path: ['to'], equals: 'WON' } }, { metadata: { path: ['to'], equals: 'LOST' } }] },
+      select: { entityId: true, createdAt: true, metadata: true },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
   ])
-  const wonAt = new Map(wonLogs.map((l) => [l.entityId, l.createdAt]))
-  const leads = allLeads.map((l) => ({ ...l, wonAt: l.status === 'WON' ? (wonAt.get(l.id) ?? l.updatedAt) : null }))
-  // Metrics for [from, to): open pipeline value, won revenue, conversion, and held-meeting rate (past meetings not cancelled).
-  const window = (from: Date, to: Date): { pipeline: number; won: number; conversion: number; held: number } => {
-    const created = leads.filter((l) => l.createdAt >= from && l.createdAt < to)
-    const wonLeads = leads.filter((l) => l.wonAt && l.wonAt >= from && l.wonAt < to)
+  // Latest close event per lead (a deal reopened and won again counts at its latest win).
+  const closedAt = new Map<string, { to: string; at: Date }>()
+  for (const l of closeLogs) closedAt.set(l.entityId, { to: String((l.metadata as { to?: string } | null)?.to), at: l.createdAt })
+  const leads = allLeads.map((l) => {
+    const c = closedAt.get(l.id)
+    const at = c && c.to === l.status ? c.at : null
+    return { ...l, wonAt: l.status === 'WON' ? at : null, lostAt: l.status === 'LOST' ? at : null }
+  })
+  // Each metric for the window [from, to). Comparing two windows is fair: both measure what happened inside them.
+  const window = (from: Date, to: Date): { added: number; won: number; winRate: number | null; kept: number | null } => {
+    const inW = (d: Date | null): boolean => Boolean(d && d >= from && d < to)
+    const wonL = leads.filter((l) => inW(l.wonAt))
+    const lostL = leads.filter((l) => inW(l.lostAt))
     const bk = bookings.filter((b) => b.endTime >= from && b.endTime < to && b.status !== 'PENDING')
     return {
-      pipeline: created.filter((l) => l.status !== 'WON' && l.status !== 'LOST').reduce((n, l) => n + (l.dealValue ?? 0), 0),
-      won: wonLeads.reduce((n, l) => n + (l.dealValue ?? 0), 0),
-      conversion: created.length ? Math.round((created.filter((l) => l.status === 'WON').length / created.length) * 1000) / 10 : 0,
-      held: bk.length ? Math.round((bk.filter((b) => b.status === 'CONFIRMED').length / bk.length) * 100) : 0,
+      added: leads.filter((l) => inW(l.createdAt)).reduce((n, l) => n + (l.dealValue ?? 0), 0),
+      won: wonL.reduce((n, l) => n + (l.dealValue ?? 0), 0),
+      winRate: wonL.length + lostL.length ? Math.round((wonL.length / (wonL.length + lostL.length)) * 100) : null,
+      kept: bk.length ? Math.round((bk.filter((b) => b.status === 'CONFIRMED').length / bk.length) * 100) : null,
     }
   }
   const cur = window(d30, new Date(now + 1))
   const prev = window(d60, d30)
   const totalPipeline = leads.filter((l) => l.status !== 'WON' && l.status !== 'LOST').reduce((n, l) => n + (l.dealValue ?? 0), 0)
-  const delta = (a: number, b: number): string => (b === 0 ? (a === 0 ? '—' : 'new') : `${a >= b ? '▲' : '▼'} ${Math.abs(Math.round(((a - b) / b) * 100))}% vs prev 30d`)
+  /** Change in an amount, as a percentage of the previous period. */
+  const delta = (a: number, b: number): string => (b === 0 ? (a === 0 ? 'same as prev 30d' : 'new vs prev 30d') : `${a >= b ? '▲' : '▼'} ${Math.abs(Math.round(((a - b) / b) * 100))}% vs prev 30d`)
+  /** Change in a rate, in percentage points (2% → 3% is +1 pt, not +50%). */
+  const deltaPts = (a: number | null, b: number | null): string => (a === null || b === null ? 'no data for prev 30d' : `${a >= b ? '▲' : '▼'} ${Math.abs(a - b)} pts vs prev 30d`)
   const names = new Map(users.map((u) => [u.id, u.name ?? u.email ?? u.id]))
-  const r = buildReport(leads, (id) => (id ? (names.get(id) ?? 'Unknown') : 'Unassigned'))
+  const r = buildReport(leads, (id) => (id ? (names.get(id) ?? 'Unknown') : 'Unassigned'), new Date(now), 30, (d) => localDateKey(d, me.timeZone))
   const maxDay = Math.max(1, ...r.perDay.map((d) => d.count))
   const maxStage = Math.max(1, ...Object.values(r.byStatus))
   const last30 = r.perDay.reduce((n, d) => n + d.count, 0)
@@ -76,16 +92,16 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
       </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile label="Total leads" value={r.total} />
-        <Tile label="New (30 days)" value={last30} />
+        <Tile label="New (last 30 days)" value={last30} />
         <Tile label="Won" value={r.byStatus.WON ?? 0} />
-        <Tile label="Win rate" value={r.winRate === null ? '—' : `${Math.round(r.winRate * 100)}%`} />
+        <Tile label="Win rate (all time)" value={r.winRate === null ? '—' : `${Math.round(r.winRate * 100)}%`} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label="Pipeline value (open)" value={formatMoney(totalPipeline)} sub={`New 30d: ${formatMoney(cur.pipeline)} · ${delta(cur.pipeline, prev.pipeline)}`} />
+        <Tile label="Open pipeline value" value={formatMoney(totalPipeline)} sub={`Deal value added (30d): ${formatMoney(cur.added)} · ${delta(cur.added, prev.added)}`} />
         <Tile label="Won revenue (30d)" value={formatMoney(cur.won)} sub={delta(cur.won, prev.won)} />
-        <Tile label="Conversion (30d cohort)" value={`${cur.conversion}%`} sub={delta(cur.conversion, prev.conversion)} />
-        <Tile label="Meetings held (30d)" value={`${cur.held}%`} sub={`${delta(cur.held, prev.held)} · of past meetings, not cancelled`} />
+        <Tile label="Win rate (closed in 30d)" value={cur.winRate === null ? '—' : `${cur.winRate}%`} sub={`${deltaPts(cur.winRate, prev.winRate)} · won ÷ (won + lost)`} />
+        <Tile label="Meetings kept (30d)" value={cur.kept === null ? '—' : `${cur.kept}%`} sub={`${deltaPts(cur.kept, prev.kept)} · past meetings not cancelled`} />
       </div>
 
       <Card>

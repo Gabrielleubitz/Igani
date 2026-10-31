@@ -98,7 +98,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: { v
                         Join Meet
                       </a>
                     ) : null}
-                    {b.status !== 'CANCELLED' && b.endTime >= now ? <BookingActions bookingId={b.id} canApprove={isAdmin && b.status === 'PENDING' && b.source === 'PUBLIC_PAGE'} guestName={b.guestName} /> : null}
+                    {b.status !== 'CANCELLED' && b.startTime > now ? <BookingActions bookingId={b.id} canApprove={isAdmin && b.status === 'PENDING' && b.source === 'PUBLIC_PAGE'} guestName={b.guestName} /> : null}
                   </div>
                 </div>
               )

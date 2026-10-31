@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth'
 
 export const metadata = { title: 'Import contacts' }
 
-const TEMPLATE = 'data:text/csv;charset=utf-8,' + encodeURIComponent('email,first name,last name,phone,company,website,budget,source,message\r\ndana@acme.com,Dana,Levi,+972 50 000 0000,Acme,acme.com,$5k,referral,Wants a new website\r\n')
+const TEMPLATE = 'data:text/csv;charset=utf-8,' + encodeURIComponent('email,first name,last name,phone,company,website,budget,lead source,source detail,message\r\ndana@acme.com,Dana,Levi,+972 50 000 0000,Acme,acme.com,$5k,Referral,Referred by Noa,Wants a new website\r\n')
 
 export default async function ImportPage(): Promise<React.ReactElement> {
   await requireUser()
@@ -26,7 +26,7 @@ export default async function ImportPage(): Promise<React.ReactElement> {
               </a>{' '}
               or export from Excel / Google Sheets as <em>CSV</em>.
             </li>
-            <li>Only <strong className="text-foreground">email</strong> is required. Other recognised columns: first name, last name, phone, company, website, message, budget, source.</li>
+            <li>Each row needs an <strong className="text-foreground">email or a phone</strong>. Other recognised columns: first name, last name, company, website, message, budget, lead source, source detail.</li>
             <li>Choose the file, check the preview, then press Import. Up to 2,000 rows at a time.</li>
           </ol>
           <LeadImport />

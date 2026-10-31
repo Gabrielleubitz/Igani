@@ -67,7 +67,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
       a.href = url
       a.download = `igani-leads-${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     })
 
   const [tagFor, setTagFor] = useState<string | null>(null)
@@ -81,6 +81,14 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
   const pathname = usePathname()
   const params = useSearchParams()
   const [search, setSearch] = useState(query.q ?? '')
+  // New page / filter / search results: drop the selection so bulk actions never hit rows you can't see.
+  const rowIds = rows.map((r) => r.id).join(',')
+  useEffect(() => setSel(new Set()), [rowIds])
+  // "Clear all", back/forward: keep the box in step with the URL (unless the user is typing).
+  const urlQ = params.get('q') ?? ''
+  useEffect(() => {
+    if (document.activeElement?.getAttribute('aria-label') !== 'Instant search') setSearch(urlQ)
+  }, [urlQ])
   // Debounced server-side search so every page of the directory is searched.
   // Only navigates when the box differs from the URL (safe under React strict-mode double effects).
   useEffect(() => {

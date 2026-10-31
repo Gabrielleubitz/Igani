@@ -153,9 +153,14 @@ export async function sendTaskDigestEmail(to: string, a: Omit<TaskDigestProps, '
 }
 
 /** Guest notice that a meeting was cancelled, or that an approval request was declined. */
-export async function sendBookingCancelledEmail(b: BookingEmailData & { kind: 'cancelled' | 'declined'; rebookUrl?: string | null }): Promise<string> {
+export async function sendBookingCancelledEmail(b: BookingEmailData & { kind: 'cancelled' | 'declined'; rebookUrl?: string | null; removeFromCalendar?: boolean }): Promise<string> {
   const element = BookingCancelled({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  // A confirmed meeting was sent with an .ics invite: a METHOD:CANCEL file with the same UID removes it from their calendar.
+  const ics = b.removeFromCalendar
+    ? buildIcs({ uid: `${b.bookingId}@app.igani.co`, start: b.startTime, end: b.endTime, title: b.title, organizerName: b.hostName, organizerEmail: b.hostEmail, attendeeName: b.guestName, attendeeEmail: b.guestEmail, method: 'CANCEL' })
+    : null
   return send({
+    attachments: ics ? [{ filename: 'igani-meeting-cancelled.ics', content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; method=CANCEL' }] : undefined,
     to: b.guestEmail,
     replyTo: b.hostEmail,
     subject: b.kind === 'declined' ? `Update on your request: ${b.title}` : `Cancelled: ${b.title}`,

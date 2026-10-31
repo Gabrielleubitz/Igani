@@ -1,12 +1,11 @@
 /**
- * POST /api/admin/crm-sync
- * Copies every existing site lead (`leads`) and contact-form submission (`contactSubmissions`) into the Igani CRM,
- * tagged with where each one came from. Safe to run any number of times: the CRM matches by email/phone,
- * keeps the original submission date, and imports quietly (no alert emails, no auto-assignment).
+ * POST /api/admin/crm-sync?collection=all|leads|contact&cursor=N
+ * Copies existing site leads (`leads`) and contact-form submissions (`contactSubmissions`) into the Igani CRM,
+ * tagged with where each one came from. Safe to repeat: the CRM matches by email/phone, keeps the original
+ * submission date, and imports quietly (no alert emails, no auto-assignment).
  *
- * Auth: header `x-admin-password` must equal ADMIN_PASSWORD (server-only) or, if unset, NEXT_PUBLIC_ADMIN_PASSWORD
- * — the same password the /admin screen asks for.
- * GET returns whether the CRM connection is configured.
+ * Works in batches (BATCH per call) so it never hits serverless time limits; the admin button loops on `next`.
+ * Auth: header `x-admin-password` must equal the server-only ADMIN_PASSWORD env var (never bundled to the browser).
  */
 import { timingSafeEqual } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
@@ -16,50 +15,63 @@ import { crmConfigured, crmLeadFromContactSubmission, crmLeadFromSiteLead, forwa
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
+export const maxDuration = 60
 
-function authorised(req: NextRequest): boolean {
-  const want = process.env.ADMIN_PASSWORD || process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ''
+const BATCH = 40
+
+function authorised(req: NextRequest): 'ok' | 'unset' | 'denied' {
+  const want = process.env.ADMIN_PASSWORD || ''
+  if (!want) return 'unset'
   const got = req.headers.get('x-admin-password') ?? ''
-  if (!want || got.length !== want.length) return false
-  return timingSafeEqual(Buffer.from(got), Buffer.from(want))
+  return got.length === want.length && timingSafeEqual(Buffer.from(got), Buffer.from(want)) ? 'ok' : 'denied'
+}
+
+function deny(state: 'unset' | 'denied'): NextResponse {
+  return state === 'unset'
+    ? NextResponse.json({ error: 'Set a server-only ADMIN_PASSWORD environment variable on the site to enable CRM sync.' }, { status: 503 })
+    : NextResponse.json({ error: 'Wrong admin password.' }, { status: 401 })
+}
+
+async function loadAll(which: string): Promise<CrmLead[]> {
+  const items: CrmLead[] = []
+  if (which === 'all' || which === 'leads') {
+    const snap = await getDocs(collection(db, 'leads'))
+    snap.forEach((d) => items.push(crmLeadFromSiteLead(d.data())))
+  }
+  if (which === 'all' || which === 'contact') {
+    const snap = await getDocs(collection(db, 'contactSubmissions'))
+    snap.forEach((d) => items.push(crmLeadFromContactSubmission(d.data())))
+  }
+  // Oldest first (undated last), so when someone submitted several times the CRM keeps their first source.
+  return items.sort((a, b) => (a.submittedAt ?? '9999').localeCompare(b.submittedAt ?? '9999'))
 }
 
 export async function GET(req: NextRequest) {
-  if (!authorised(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = authorised(req)
+  if (auth !== 'ok') return deny(auth)
   return NextResponse.json({ configured: crmConfigured() })
 }
 
 export async function POST(req: NextRequest) {
-  if (!authorised(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const auth = authorised(req)
+  if (auth !== 'ok') return deny(auth)
   if (!crmConfigured()) {
     return NextResponse.json({ error: 'CRM is not connected. Set CRM_LEAD_WEBHOOK_URL and CRM_LEAD_WEBHOOK_SECRET in the site’s environment variables.' }, { status: 400 })
   }
-  const which = new URL(req.url).searchParams.get('collection') ?? 'all'
+  const params = new URL(req.url).searchParams
+  const which = ['all', 'leads', 'contact'].includes(params.get('collection') ?? '') ? params.get('collection')! : 'all'
+  const cursor = Math.max(0, Number.parseInt(params.get('cursor') ?? '0', 10) || 0)
 
-  const items: { from: string; lead: CrmLead }[] = []
-  if (which === 'all' || which === 'leads') {
-    const snap = await getDocs(collection(db, 'leads'))
-    snap.forEach((d) => items.push({ from: 'leads', lead: crmLeadFromSiteLead(d.data()) }))
-  }
-  if (which === 'all' || which === 'contact') {
-    const snap = await getDocs(collection(db, 'contactSubmissions'))
-    snap.forEach((d) => items.push({ from: 'contact', lead: crmLeadFromContactSubmission(d.data()) }))
-  }
-  // Oldest first, so when the same person submitted several times the CRM keeps their first source.
-  items.sort((a, b) => (a.lead.submittedAt ?? '').localeCompare(b.lead.submittedAt ?? ''))
-
-  const totals = { total: items.length, created: 0, alreadyInCrm: 0, skipped: 0, failed: 0 }
-  const errors: string[] = []
+  const all = await loadAll(which)
+  const batch = all.slice(cursor, cursor + BATCH)
+  const totals = { created: 0, alreadyInCrm: 0, skipped: 0, failed: 0 }
   // Sequential on purpose: keeps duplicate matching deterministic and is gentle on the CRM.
-  for (const { lead } of items) {
+  for (const lead of batch) {
     const res = await forwardLeadToCrm({ ...lead, backfill: true })
     if (res.ok) res.duplicate ? totals.alreadyInCrm++ : totals.created++
     else if ('skipped' in res) totals.skipped++
-    else {
-      totals.failed++
-      if (errors.length < 5) errors.push(`${lead.email ?? lead.phone ?? 'unknown'}: ${res.error}`)
-    }
+    else totals.failed++
   }
-  return NextResponse.json({ ...totals, errors })
+  const next = cursor + batch.length
+  return NextResponse.json({ ...totals, total: all.length, processed: next, next: next < all.length ? next : null })
 }

@@ -1,14 +1,12 @@
 import Link from 'next/link'
 import { splitDue } from './crm-utils'
 import { prisma } from '@/lib/prisma'
-import { isMyTask, loadTasks } from '@/lib/tasks'
+import { tasksForUser } from '@/lib/tasks'
 
-/** Banner on every CRM page: the signed-in user's own overdue and due-today tasks. */
-export async function TaskAlert({ userId }: { userId: string }): Promise<React.ReactElement | null> {
-  const owned = await prisma.lead.findMany({ where: { OR: [{ assignedToId: userId }] }, select: { id: true } })
-  const ownedIds = new Set(owned.map((l) => l.id))
-  const mine = (await loadTasks()).filter((t) => isMyTask(t, userId, ownedIds.has(t.leadId) ? userId : null))
-  const { overdue, today } = splitDue(mine)
+/** Banner on every CRM page: the signed-in user's own overdue and due-today tasks (today = in their time zone). */
+export async function TaskAlert({ userId, role }: { userId: string; role: string }): Promise<React.ReactElement | null> {
+  const [{ mine }, me] = await Promise.all([tasksForUser({ id: userId, role }), prisma.user.findUnique({ where: { id: userId }, select: { timeZone: true } })])
+  const { overdue, today } = splitDue(mine, new Date(), me?.timeZone ?? 'UTC')
   if (overdue.length === 0 && today.length === 0) return null
   return (
     <Link

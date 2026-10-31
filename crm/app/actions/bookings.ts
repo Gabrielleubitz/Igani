@@ -41,7 +41,8 @@ export async function getHostSlots(input: { date: string; durationMinutes: numbe
   try {
     const user = await requireUser(['ADMIN', 'SALES'])
     const { date, durationMinutes } = z.object({ date: isoDate, durationMinutes: z.number().int().min(15).max(240) }).parse(input)
-    const hostId = user.role === 'ADMIN' && input.hostId ? input.hostId : user.id
+    const hostId = user.role === 'ADMIN' && input.hostId ? z.string().cuid().parse(input.hostId) : user.id
+    if (hostId !== user.id) await assertActiveHost(hostId)
     return { ok: true, data: await getAvailableSlots(hostId, new Date(`${date}T00:00:00Z`), durationMinutes) }
   } catch (err) {
     return toActionError(err)
@@ -54,14 +55,20 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
     const user = await requireUser(['ADMIN', 'SALES'])
     const data = salesInviteSchema.parse(input)
     const hostId = user.role === 'ADMIN' && data.hostId ? data.hostId : user.id
+    await assertActiveHost(hostId)
     const start = new Date(data.startTime)
 
-    if (data.leadId) {
-      const lead = await prisma.lead.findUnique({ where: { id: data.leadId }, select: { assignedToId: true } })
-      if (!lead) throw new BookingError('Lead not found.', 'NOT_FOUND')
-      if (user.role === 'SALES' && lead.assignedToId && lead.assignedToId !== user.id) {
-        throw new BookingError('This lead is assigned to another rep.', 'FORBIDDEN')
-      }
+    // The guest may already be someone's contact even when "New person" was picked: check by email too.
+    const lead = data.leadId
+      ? await prisma.lead.findUnique({ where: { id: data.leadId }, select: { id: true, assignedToId: true } })
+      : await prisma.lead.findUnique({ where: { email: data.guestEmail }, select: { id: true, assignedToId: true } })
+    if (data.leadId && !lead) throw new BookingError('Contact not found.', 'NOT_FOUND')
+    if (lead && user.role === 'SALES' && lead.assignedToId && lead.assignedToId !== user.id) {
+      throw new BookingError('This contact belongs to another teammate. Ask them or an admin to send the invite.', 'FORBIDDEN')
+    }
+    // A rep inviting an unassigned contact takes ownership of it.
+    if (lead && user.role === 'SALES' && !lead.assignedToId) {
+      await prisma.lead.updateMany({ where: { id: lead.id, assignedToId: null }, data: { assignedToId: user.id } })
     }
     await assertSlotOffered(hostId, start, data.durationMinutes)
 
@@ -74,7 +81,7 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
       guestName: data.guestName,
       guestEmail: data.guestEmail,
       notes: data.notes ?? null,
-      leadId: data.leadId ?? null,
+      leadId: lead?.id ?? null,
       createdById: user.id,
     })
 
@@ -134,8 +141,8 @@ export async function confirmInvite(token: string): Promise<ActionResult<{ meetU
 export async function getPublicSlots(slug: string, date: string): Promise<ActionResult<string[]>> {
   try {
     isoDate.parse(date)
-    const page = await prisma.bookingPage.findUnique({ where: { slug }, select: { active: true, hostId: true, durationMinutes: true } })
-    if (!page?.active) throw new BookingError('Booking page not found.', 'NOT_FOUND')
+    const page = await prisma.bookingPage.findUnique({ where: { slug }, select: { active: true, hostId: true, durationMinutes: true, host: { select: { role: true } } } })
+    if (!page?.active || !page.host.role) throw new BookingError('Booking page not found.', 'NOT_FOUND')
     return { ok: true, data: await getAvailableSlots(page.hostId, new Date(`${date}T00:00:00Z`), page.durationMinutes) }
   } catch (err) {
     return publicActionError(err)
@@ -160,8 +167,8 @@ export async function createPublicBooking(
 ): Promise<ActionResult<{ status: 'CONFIRMED' | 'PENDING'; meetUrl: string | null }>> {
   try {
     const data = publicBookingSchema.parse(input)
-    const page = await prisma.bookingPage.findUnique({ where: { slug: data.slug } })
-    if (!page?.active) throw new BookingError('Booking page not found.', 'NOT_FOUND')
+    const page = await prisma.bookingPage.findUnique({ where: { slug: data.slug }, include: { host: { select: { role: true } } } })
+    if (!page?.active || !page.host.role) throw new BookingError('Booking page not found.', 'NOT_FOUND')
     const start = new Date(data.startTime)
     await assertSlotOffered(page.hostId, start, page.durationMinutes)
 
@@ -194,6 +201,13 @@ export async function createPublicBooking(
   }
 }
 
+/** The host must still be on the team as ADMIN or SALES (deactivated / marketing users can't host). */
+async function assertActiveHost(hostId: string): Promise<void> {
+  const host = await prisma.user.findUnique({ where: { id: hostId }, select: { role: true, email: true } })
+  const allowed = host?.email ? await prisma.allowedUser.findUnique({ where: { email: host.email }, select: { active: true, role: true } }) : null
+  if (!host || !allowed?.active || (allowed.role !== 'ADMIN' && allowed.role !== 'SALES')) throw new BookingError('That host is no longer an active sales or admin teammate.', 'INVALID_STATE')
+}
+
 export async function approveBooking(bookingId: string): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN'])
@@ -210,9 +224,10 @@ export async function cancelBooking(bookingId: string, reason = 'cancelled-by-st
   try {
     const user = await requireUser(['ADMIN', 'SALES'])
     const id = z.string().cuid().parse(bookingId)
-    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, status: true, source: true } })
+    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, status: true, source: true, startTime: true } })
     if (!booking) throw new BookingError('Booking not found.', 'NOT_FOUND')
     if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can cancel.', 'FORBIDDEN')
+    if (booking.startTime.getTime() <= Date.now()) throw new BookingError('This meeting has already started, so it can’t be cancelled.', 'INVALID_STATE')
     const kind = booking.status === 'PENDING' && booking.source === 'PUBLIC_PAGE' ? 'declined' : 'cancelled'
     await cancelBookingCore(id, user.id, z.string().max(200).parse(reason), notifyGuest ? kind : false)
     revalidatePath('/admin/bookings')

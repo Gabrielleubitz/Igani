@@ -34,21 +34,33 @@ const clean = (v: unknown, max = 500): string | undefined => {
   return s ? s.slice(0, max) : undefined
 }
 
+/**
+ * Conservative email check, close to what the CRM (zod) accepts, so a typo'd email is dropped
+ * instead of making the CRM reject the whole lead (a valid phone still gets through).
+ */
+export function isValidEmail(email: string): boolean {
+  return /^(?!\.)(?!.*\.\.)[A-Za-z0-9._%+'-]+(?<!\.)@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/.test(email)
+}
+
 function splitName(name: string | undefined): { firstName?: string; lastName?: string } {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
   return { firstName: parts[0], lastName: parts.slice(1).join(' ') || undefined }
 }
 
 /** Send one lead to the CRM. Never throws. */
-export async function forwardLeadToCrm(lead: CrmLead): Promise<CrmResult> {
+export async function forwardLeadToCrm(lead: CrmLead, timeoutMs = 5000): Promise<CrmResult> {
   const url = process.env.CRM_LEAD_WEBHOOK_URL
   const key = process.env.CRM_LEAD_WEBHOOK_SECRET
   if (!url || !key) return { ok: false, skipped: true, error: 'CRM not configured' }
-  const email = clean(lead.email, 254)?.toLowerCase()
+  const rawEmail = clean(lead.email, 254)?.toLowerCase().replace(/\.+$/, '')
+  const email = rawEmail && isValidEmail(rawEmail) ? rawEmail : undefined
   const phone = clean(lead.phone, 40)
-  if (!email && !phone) return { ok: false, skipped: true, error: 'No email or phone' }
+  if (!email && !phone) {
+    console.warn('[crm] lead not forwarded: no valid email or phone', { source: lead.source, hadEmail: Boolean(rawEmail) })
+    return { ok: false, skipped: true, error: 'No valid email or phone' }
+  }
   const body = {
-    email: email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : undefined,
+    email,
     phone,
     firstName: clean(lead.firstName, 100),
     lastName: clean(lead.lastName, 100),
@@ -61,13 +73,12 @@ export async function forwardLeadToCrm(lead: CrmLead): Promise<CrmResult> {
     submittedAt: lead.submittedAt,
     backfill: lead.backfill || undefined,
   }
-  if (!body.email && !body.phone) return { ok: false, skipped: true, error: 'No valid email or phone' }
   try {
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(timeoutMs),
     })
     const data = (await res.json().catch(() => ({}))) as { id?: string; duplicate?: boolean; error?: string }
     if (!res.ok || !data.id) {
@@ -101,8 +112,9 @@ export function crmLeadFromContactSubmission(doc: Record<string, unknown>): CrmL
     phone: clean(doc.phone) ?? clean(phoneInMessage),
     message: projectType && !isFunnel ? `${projectType}: ${message ?? ''}` : message,
     source: isFunnel ? 'Landing page' : 'Website contact form',
-    sourceDetail: isFunnel ? `Funnel form${projectType ? ` · ${projectType}` : ''}` : `/contact${projectType ? ` · ${projectType}` : ''}`,
-    submittedAt: toIso(doc.createdAt),
+    sourceDetail: isFunnel ? `Funnel form${projectType ? ` · ${projectType}` : ''}` : `${clean(doc.page, 100) ?? 'Contact form'}${projectType ? ` · ${projectType}` : ''}`,
+    // contactSubmissions store the time as `submittedAt` (a Firestore Timestamp)
+    submittedAt: toIso(doc.submittedAt ?? doc.createdAt),
   }
 }
 
@@ -117,8 +129,9 @@ export function crmLeadFromSiteLead(doc: Record<string, unknown>): CrmLead {
     phone: clean(doc.phone),
     message: clean(doc.message, 5000),
     source: doc.source === 'landing_page' ? 'Landing page' : 'Website',
-    sourceDetail: [page, form].filter(Boolean).join(' · ') || undefined,
-    utm: { source: clean(d.utm_source, 200), campaign: clean(d.utm_campaign, 200) ?? clean(d.campaign, 200) },
+    // `campaign` here is our own page label (e.g. real_estate), not an ad UTM, so it goes in the detail line.
+    sourceDetail: [page, form, clean(d.campaign, 100)].filter(Boolean).join(' · ') || undefined,
+    utm: { source: clean(d.utm_source, 200), campaign: clean(d.utm_campaign, 200) },
     submittedAt: toIso(doc.createdAt),
   }
 }

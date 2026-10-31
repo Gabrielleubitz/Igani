@@ -7,15 +7,22 @@ export function SlotPicker({
   selected,
   onSelect,
   timeZone,
+  date,
 }: {
   slots: string[]
   selected: string | null
   onSelect: (iso: string) => void
   timeZone?: string
+  /** The YYYY-MM-DD the user picked; slots on another date in the viewer's zone are labelled with their day. */
+  date?: string
 }): React.ReactElement {
   const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
   if (slots.length === 0) return <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">No open times on this day. Try another date.</p>
-  const fmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZone: zone })
+  const time = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZone: zone })
+  const day = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: zone })
+  const key = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: zone })
+  const otherDay = (iso: string): boolean => Boolean(date) && key.format(new Date(iso)) !== date
+  const fmt = { format: (d: Date): string => (otherDay(d.toISOString()) ? `${day.format(d)}, ${time.format(d)}` : time.format(d)) }
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Available times">
@@ -25,7 +32,9 @@ export function SlotPicker({
           </Button>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground">Times shown in {zone.replaceAll('_', ' ')}.</p>
+      <p className="text-xs text-muted-foreground">
+        Times shown in your time zone ({zone.replaceAll('_', ' ')}).{slots.some(otherDay) ? ' Because of the time difference, some fall on a different day, which is shown.' : ''}
+      </p>
     </div>
   )
 }

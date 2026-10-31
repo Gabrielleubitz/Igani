@@ -139,6 +139,7 @@ export function BookingPageForm({ hosts, initial, defaultDuration = 30 }: { host
       <div className="space-y-1">
         <Label htmlFor={`bp-host-${fid}`}>Host</Label>
         <Select id={`bp-host-${fid}`} value={v.hostId} onChange={(e) => set({ hostId: e.target.value })}>
+          {!hosts.some((h) => h.id === v.hostId) ? <option value={v.hostId}>Former host (no longer on the team): pick a new one</option> : null}
           {hosts.map((h) => (
             <option key={h.id} value={h.id}>
               {h.label}
@@ -153,7 +154,7 @@ export function BookingPageForm({ hosts, initial, defaultDuration = 30 }: { host
       <div className="space-y-1">
         <Label htmlFor={`bp-len-${fid}`}>Length</Label>
         <Select id={`bp-len-${fid}`} value={v.durationMinutes} onChange={(e) => set({ durationMinutes: Number(e.target.value) })}>
-          {[15, 30, 45, 60, 90].map((m) => (
+          {[...new Set([15, 30, 45, 60, 90, 120, v.durationMinutes])].sort((a, b) => a - b).map((m) => (
             <option key={m} value={m}>
               {m} min
             </option>

@@ -10,7 +10,8 @@ import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
 import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
-import { isMyTask, loadTasks } from '@/lib/tasks'
+import { tasksForUser } from '@/lib/tasks'
+import { endOfLocalDay } from '@/lib/time'
 
 export const metadata = { title: 'Today' }
 export const dynamic = 'force-dynamic'
@@ -45,13 +46,10 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   ])
   const tz = me.timeZone
 
-  const ownedIds = new Set(openLeads.map((l) => l.id))
-  const allTasks = await loadTasks()
-  const due = allTasks
-    .filter((t) => !t.done && t.dueAt && t.dueAt < endOfDay && isMyTask(t, user.id, ownedIds.has(t.leadId) ? user.id : null))
-    .sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())
-  const taskLeads = await prisma.lead.findMany({ where: { id: { in: [...new Set(due.map((t) => t.leadId))] } }, select: { id: true, email: true, firstName: true, lastName: true } })
-  const byId = new Map(taskLeads.map((l) => [l.id, l]))
+  // Same task rules as the banner and Tasks page: my tasks, on contacts that exist and aren't archived, due before local midnight.
+  const { mine, leads: byId } = await tasksForUser(user)
+  const endOfToday = endOfLocalDay(now, tz)
+  const due = mine.filter((t) => !t.done && t.dueAt && t.dueAt < endOfToday).sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())
 
   const touches = await prisma.activityLog.groupBy({
     by: ['entityId'],
@@ -74,7 +72,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const stats: { label: string; value: string | number; href: string; tone?: string }[] = [
     { label: isAdmin ? 'Open deals' : 'My open deals', value: openLeads.length, href: '/sales/board' },
     { label: 'Pipeline value', value: formatMoney(pipelineValue), href: '/sales/reports' },
-    { label: 'Tasks due (next 24h)', value: due.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
+    { label: 'Tasks due today', value: due.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
     { label: 'New leads (7 days)', value: newThisWeek, href: '/sales/leads' },
   ]
 
@@ -114,7 +112,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
-              <span>Tasks due &amp; overdue (next 24h)</span>
+              <span>Due today &amp; overdue</span>
               <span className="text-sm font-normal text-muted-foreground">{due.length}</span>
             </CardTitle>
           </CardHeader>

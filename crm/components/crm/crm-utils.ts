@@ -1,9 +1,11 @@
+import { endOfLocalDay } from '@/lib/time'
 import type { LeadStatus } from '@prisma/client'
 
 /** Escape one CSV cell; also neutralises spreadsheet formula injection (=, +, -, @). */
 export function csvCell(v: unknown): string {
   let s = v == null ? '' : v instanceof Date ? v.toISOString() : String(v)
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  // Phone numbers like +972… are only digits and punctuation, so they can't be formulas and stay untouched.
+  if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d\s().-]+$/.test(s)) s = `'${s}`
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
@@ -123,6 +125,8 @@ export function buildReport(
   ownerName: (id: string | null) => string,
   now: Date = new Date(),
   days = 30,
+  /** Calendar-day key for a date (YYYY-MM-DD), e.g. in the viewer's time zone. Defaults to UTC. */
+  dayKey: (d: Date) => string = (d) => d.toISOString().slice(0, 10),
 ): Report {
   const byStatus: Record<string, number> = {}
   const src = new Map<string, { total: number; won: number }>()
@@ -134,12 +138,12 @@ export function buildReport(
     m.set(k, e)
   }
   const perDay = new Map<string, number>()
-  for (let i = days - 1; i >= 0; i--) perDay.set(new Date(now.getTime() - i * 864e5).toISOString().slice(0, 10), 0)
+  for (let i = days - 1; i >= 0; i--) perDay.set(dayKey(new Date(now.getTime() - i * 864e5)), 0)
   for (const l of leads) {
     byStatus[l.status] = (byStatus[l.status] ?? 0) + 1
     bump(src, l.source, l.status === 'WON')
     bump(own, ownerName(l.assignedToId), l.status === 'WON')
-    const d = l.createdAt.toISOString().slice(0, 10)
+    const d = dayKey(l.createdAt)
     if (perDay.has(d)) perDay.set(d, (perDay.get(d) ?? 0) + 1)
   }
   const won = byStatus.WON ?? 0
@@ -197,7 +201,7 @@ const HEADER_MAP: Record<string, string> = {
 }
 
 export interface ImportRow {
-  email: string
+  email?: string
   firstName?: string
   lastName?: string
   phone?: string
@@ -209,26 +213,32 @@ export interface ImportRow {
   sourceDetail?: string
 }
 
-/** Turn parsed CSV (first row = headers) into lead rows; bad/duplicate-in-file rows reported in `errors`. */
+/** Turn parsed CSV (first row = headers) into lead rows. Each row needs a valid email or a phone; bad or repeated rows go to `errors`. */
 export function csvToLeadRows(rows: string[][]): { leads: ImportRow[]; errors: { line: number; reason: string }[] } {
   const errors: { line: number; reason: string }[] = []
   if (rows.length === 0) return { leads: [], errors: [{ line: 1, reason: 'Empty file' }] }
   const cols = (rows[0] ?? []).map((h) => HEADER_MAP[h.trim().toLowerCase()])
-  if (!cols.includes('email')) return { leads: [], errors: [{ line: 1, reason: 'No "email" column found' }] }
+  if (!cols.includes('email') && !cols.includes('phone')) return { leads: [], errors: [{ line: 1, reason: 'No "email" or "phone" column found' }] }
   const seen = new Set<string>()
   const leads: ImportRow[] = []
   rows.slice(1).forEach((r, idx) => {
     const line = idx + 2
     const o: Record<string, string> = {}
     cols.forEach((k, i) => {
-      const v = r[i]?.trim()
+      // Undo the apostrophe our own CSV export adds to protect against spreadsheet formulas.
+      const v = r[i]?.trim().replace(/^'(?=[=+\-@])/, '')
       if (k && v) o[k] = v
     })
     const email = o.email?.toLowerCase()
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return void errors.push({ line, reason: `Invalid email "${o.email ?? ''}"` })
-    if (seen.has(email)) return void errors.push({ line, reason: `Duplicate of an earlier row (${email})` })
-    seen.add(email)
-    leads.push({ ...o, email })
+    const emailOk = Boolean(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254)
+    const phoneDigits = (o.phone ?? '').replace(/\D/g, '')
+    if (!emailOk && phoneDigits.length < 7) return void errors.push({ line, reason: email ? `Invalid email "${o.email}"` : 'Needs an email or a phone number' })
+    const key = emailOk ? email! : `tel:${phoneDigits.slice(-9)}`
+    if (seen.has(key)) return void errors.push({ line, reason: `Duplicate of an earlier row (${emailOk ? email : o.phone})` })
+    seen.add(key)
+    const { email: _drop, ...rest } = o
+    void _drop
+    leads.push(emailOk ? { ...rest, email } : rest)
   })
   return { leads, errors }
 }
@@ -239,8 +249,9 @@ export interface DueSplit {
 }
 
 /** Open tasks that are past due, or due before the end of `now`'s UTC day. */
-export function splitDue(tasks: CrmTask[], now: Date = new Date()): DueSplit {
-  const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+/** Open tasks that are past due, or due later today. "Today" ends at local midnight in `timeZone` (default UTC). */
+export function splitDue(tasks: CrmTask[], now: Date = new Date(), timeZone = 'UTC'): DueSplit {
+  const endOfDay = endOfLocalDay(now, timeZone)
   const open = tasks.filter((t) => !t.done && t.dueAt)
   return {
     overdue: open.filter((t) => t.dueAt!.getTime() < now.getTime()),

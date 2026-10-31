@@ -127,3 +127,25 @@ describe('staleDays threshold', () => {
     expect(staleDays('NEW', new Date('2026-03-28T00:00:00Z'), now, 14)).toBeNull()
   })
 })
+
+describe('local day boundaries', async () => {
+  const { endOfLocalDay, startOfLocalDay, localDateKey } = await import('@/lib/time')
+  it('ends "today" at local midnight, not UTC midnight', () => {
+    const now = new Date('2026-05-10T20:00:00Z') // 13:00 in Los Angeles, 23:00 in Jerusalem
+    expect(endOfLocalDay(now, 'America/Los_Angeles').toISOString()).toBe('2026-05-11T07:00:00.000Z')
+    expect(endOfLocalDay(now, 'Asia/Jerusalem').toISOString()).toBe('2026-05-10T21:00:00.000Z')
+    expect(startOfLocalDay(now, 'Asia/Jerusalem').toISOString()).toBe('2026-05-09T21:00:00.000Z')
+    expect(localDateKey(now, 'Asia/Jerusalem')).toBe('2026-05-10')
+  })
+  it('handles DST days (23 and 25 hours long)', () => {
+    // US spring forward 2026-03-08, fall back 2026-11-01
+    expect(endOfLocalDay(new Date('2026-03-08T12:00:00Z'), 'America/New_York').toISOString()).toBe('2026-03-09T04:00:00.000Z')
+    expect(endOfLocalDay(new Date('2026-11-01T12:00:00Z'), 'America/New_York').toISOString()).toBe('2026-11-02T05:00:00.000Z')
+  })
+  it('splitDue uses the user zone', () => {
+    const now = new Date('2026-05-10T17:00:00Z') // 10:00 LA
+    const t = { id: 'x', leadId: 'l', title: 'x', dueAt: new Date('2026-05-11T01:00:00Z'), assigneeId: 'u', done: false, priority: 'MEDIUM' as const, auto: null, createdAt: now, completedAt: null } // 18:00 LA today
+    expect(splitDue([t], now, 'America/Los_Angeles').today).toHaveLength(1)
+    expect(splitDue([t], now, 'Asia/Jerusalem').today).toHaveLength(0) // already tomorrow in Jerusalem
+  })
+})

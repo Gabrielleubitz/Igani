@@ -57,7 +57,8 @@ export function conversionRate(won: number, total: number): number {
 const csvCell = (v: unknown): string => {
   let s = v == null ? '' : v instanceof Date ? v.toISOString() : String(v)
   // Neutralise spreadsheet formula injection
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  // Phone numbers like +972… are only digits and punctuation, so they can't be formulas and stay untouched.
+  if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d\s().-]+$/.test(s)) s = `'${s}`
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

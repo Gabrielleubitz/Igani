@@ -1,3 +1,4 @@
+import { requireUser } from '@/lib/auth'
 import { SettingsForm } from '../_components/SettingsForm'
 import { getSettings } from '@/lib/settings'
 import { PageIntro } from '@/components/PageIntro'
@@ -5,6 +6,7 @@ import { PageIntro } from '@/components/PageIntro'
 export const metadata = { title: 'Settings' }
 
 export default async function SettingsPage(): Promise<React.ReactElement> {
+  await requireUser(['ADMIN'])
   return (
     <div className="space-y-6">
       <PageIntro title="Settings" hint="Company-wide options for emails, reminders and booking." />

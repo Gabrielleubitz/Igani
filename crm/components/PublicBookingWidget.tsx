@@ -66,7 +66,7 @@ export function PublicBookingWidget({ slug, requiresApproval }: { slug: string; 
         <Label htmlFor="date">Date</Label>
         <Input id="date" type="date" min={todayIso()} value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
-      {loading ? <p className="text-sm text-muted-foreground">Loading times…</p> : <SlotPicker slots={slots} selected={slot} onSelect={setSlot} />}
+      {loading ? <p className="text-sm text-muted-foreground">Loading times…</p> : <SlotPicker slots={slots} selected={slot} onSelect={setSlot} date={date} />}
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="name">Your name</Label>

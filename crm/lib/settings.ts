@@ -32,7 +32,7 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
 }
 
 export function isSettingKey(key: string): key is SettingKey {
-  return key in SETTING_SCHEMAS
+  return Object.prototype.hasOwnProperty.call(SETTING_SCHEMAS, key)
 }
 
 export async function getSettings(): Promise<typeof SETTING_DEFAULTS> {

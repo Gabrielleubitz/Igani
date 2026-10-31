@@ -88,7 +88,8 @@ export async function getAvailableSlots(
 /** True if [start, end) is still bookable for the host (used right before confirming). */
 export async function isSlotStillFree(hostId: string, start: Date, end: Date, excludeBookingId?: string): Promise<boolean> {
   const host = await hostOrThrow(hostId)
-  const slot = { start, end }
+  const pad = (await getSetting('booking.bufferMinutes')) * 60_000
+  const slot = { start: new Date(start.getTime() - pad), end: new Date(end.getTime() + pad) }
   const [googleBusy, dbBusy] = await Promise.all([
     getGoogleBusy(hostId, slot, host.timeZone),
     getDbBusy(hostId, slot, excludeBookingId),

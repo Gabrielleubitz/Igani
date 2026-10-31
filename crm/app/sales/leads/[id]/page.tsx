@@ -22,8 +22,9 @@ import { foldTasksFromLogs } from '@/lib/task-view'
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
-  const lead = await prisma.lead.findUnique({ where: { id: params.id }, select: { firstName: true, lastName: true, email: true } })
-  return { title: lead ? leadName(lead) : 'Contact' }
+  const user = await requireUser()
+  const lead = await prisma.lead.findUnique({ where: { id: params.id }, select: { firstName: true, lastName: true, email: true, phone: true, assignedToId: true } })
+  return { title: lead && canSeeLead(user, lead) ? leadName(lead) : 'Contact' }
 }
 
 const ICON: Record<string, string> = {
@@ -67,6 +68,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   const tz = me.timeZone
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
   const reps = people.filter((p) => p.role === 'SALES' || p.role === 'ADMIN').map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))
+  // Keep a former owner (left the team / role changed) selectable so the owner menu shows the truth.
+  if (lead.assignedToId && !reps.some((r) => r.id === lead.assignedToId)) reps.unshift({ id: lead.assignedToId, label: `${lead.assignedTo?.name ?? lead.assignedTo?.email ?? 'Former teammate'} (no access)` })
   const teammates = people.map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))
 
   const { tasks, titles } = foldTasksFromLogs(logs)
@@ -256,10 +259,10 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               {taskViews.length === 0 ? <p className="text-sm text-muted-foreground">No tasks yet. Add a follow-up so nothing slips.</p> : null}
               <div className="divide-y">
                 {taskViews.map((t) => (
-                  <TaskRow key={t.id} task={t} teammates={teammates} />
+                  <TaskRow key={t.id} task={t} teammates={teammates} timeZone={tz} />
                 ))}
               </div>
-              <AddTaskForm leadId={lead.id} teammates={teammates} currentUserId={user.id} />
+              <AddTaskForm leadId={lead.id} teammates={teammates} currentUserId={user.id} timeZone={tz} />
             </CardContent>
           </Card>
 

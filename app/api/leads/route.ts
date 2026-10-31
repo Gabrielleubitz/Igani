@@ -148,7 +148,8 @@ export async function POST(request: Request) {
       message: leadData.message,
       sourceDetails: leadData.sourceDetails
     })
-    await Promise.all([
+    // allSettled: a mail/sheet/CRM hiccup must not turn a saved lead into an error for the visitor.
+    await Promise.allSettled([
       sendAdminNotification(
         `[IGANI] New lead: ${leadData.name}`,
         html,

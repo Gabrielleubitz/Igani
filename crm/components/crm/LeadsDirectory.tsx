@@ -27,7 +27,9 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
     }),
     prisma.user.findMany({ where: { role: { in: ['SALES', 'ADMIN'] } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
     prisma.lead.findMany({ where: scope, distinct: ['source'], select: { source: true }, orderBy: { source: 'asc' } }),
-    prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" ORDER BY tag LIMIT 200`,
+    user.role === 'ADMIN'
+      ? prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false ORDER BY tag LIMIT 200`
+      : prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false AND ("assignedToId" = ${user.id} OR "assignedToId" IS NULL) ORDER BY tag LIMIT 200`,
     prisma.lead.groupBy({ by: ['status'], where: { AND: [buildLeadWhere({ ...f, status: undefined }), scope] }, _count: { _all: true } }),
   ])
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -130,7 +132,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
       <LeadsTable rows={rows} reps={reps.map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))} archivedView={Boolean(f.archived)} query={query} isAdmin={user.role === 'ADMIN'} currentUserId={user.id} role={user.role} />
       <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <span className="text-muted-foreground">
-          {total === 0 ? 'No contacts' : `Showing ${(f.page - 1) * PAGE_SIZE + 1}–${Math.min(f.page * PAGE_SIZE, total)} of ${total}`}
+          {total === 0 ? 'No contacts' : rows.length === 0 ? `Page ${f.page} is past the end (${total} contacts)` : `Showing ${(f.page - 1) * PAGE_SIZE + 1}–${Math.min(f.page * PAGE_SIZE, total)} of ${total}`}
         </span>
         <div className="flex gap-2">
           {f.page > 1 ? (

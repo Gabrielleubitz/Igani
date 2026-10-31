@@ -7,6 +7,7 @@ import { TASK_PRIORITIES, type TaskPriority } from '@/components/crm/crm-utils'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { dateToZonedInput, localMidnight, zonedInputToDate } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
 type Res = { ok: boolean; error?: string }
@@ -126,21 +127,20 @@ export interface Teammate {
   label: string
 }
 
-/** Convert a Date to the value a <input type="datetime-local"> expects, in the browser's zone. */
-function toLocalInput(d: Date | null): string {
-  if (!d) return ''
-  const off = d.getTimezoneOffset() * 60_000
-  return new Date(d.getTime() - off).toISOString().slice(0, 16)
-}
+/** Date/time inputs work in the user's saved time zone (the same zone every due-date label uses). */
+const toInput = (d: Date | null, tz: string): string => (d ? dateToZonedInput(d, tz) : '')
+const fromInput = (v: string, tz: string): string | null => (v ? zonedInputToDate(v, tz).toISOString() : null)
 
-const QUICK_DUE: [string, () => Date][] = [
-  ['Today 5pm', () => { const d = new Date(); d.setHours(17, 0, 0, 0); return d }],
-  ['Tomorrow 9am', () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d }],
-  ['In 3 days', () => { const d = new Date(); d.setDate(d.getDate() + 3); d.setHours(9, 0, 0, 0); return d }],
-  ['Next week', () => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(9, 0, 0, 0); return d }],
+/** Quick picks as wall-clock values in the user's zone: [label, days from today, hour]. */
+const QUICK_DUE: [string, number, number][] = [
+  ['Today 5pm', 0, 17],
+  ['Tomorrow 9am', 1, 9],
+  ['In 3 days', 3, 9],
+  ['Next week', 7, 9],
 ]
+const quickValue = (days: number, hour: number, tz: string): string => `${dateToZonedInput(localMidnight(new Date(), tz, days), tz).slice(0, 10)}T${String(hour).padStart(2, '0')}:00`
 
-export function AddTaskForm({ leadId, teammates, currentUserId }: { leadId: string; teammates: Teammate[]; currentUserId: string }): React.ReactElement {
+export function AddTaskForm({ leadId, teammates, currentUserId, timeZone }: { leadId: string; teammates: Teammate[]; currentUserId: string; timeZone: string }): React.ReactElement {
   const { pending, error, run } = useRun()
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
@@ -152,7 +152,7 @@ export function AddTaskForm({ leadId, teammates, currentUserId }: { leadId: stri
       onSubmit={(e) => {
         e.preventDefault()
         run(
-          () => createTask(leadId, title, due ? new Date(due).toISOString() : null, priority, assignee || null),
+          () => createTask(leadId, title, fromInput(due, timeZone), priority, assignee || null),
           () => {
             setTitle('')
             setDue('')
@@ -163,8 +163,8 @@ export function AddTaskForm({ leadId, teammates, currentUserId }: { leadId: stri
     >
       <Input aria-label="Task title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New task, e.g. Send proposal" className="h-9" maxLength={200} />
       <div className="flex flex-wrap gap-1">
-        {QUICK_DUE.map(([label, fn]) => (
-          <button key={label} type="button" onClick={() => setDue(toLocalInput(fn()))} className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
+        {QUICK_DUE.map(([label, days, hour]) => (
+          <button key={label} type="button" onClick={() => setDue(quickValue(days, hour, timeZone))} className="rounded-full border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground">
             {label}
           </button>
         ))}
@@ -230,11 +230,11 @@ const PRIORITY_TONE: Record<TaskPriority, string> = {
 }
 
 /** One task with complete / reopen / edit / delete. Used on the contact page and the Tasks page. */
-export function TaskRow({ task, teammates, contact }: { task: TaskView; teammates: Teammate[]; contact?: React.ReactNode }): React.ReactElement {
+export function TaskRow({ task, teammates, contact, timeZone }: { task: TaskView; teammates: Teammate[]; contact?: React.ReactNode; timeZone: string }): React.ReactElement {
   const { pending, error, run } = useRun()
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(task.title)
-  const [due, setDue] = useState(toLocalInput(task.dueAt ? new Date(task.dueAt) : null))
+  const [due, setDue] = useState(toInput(task.dueAt ? new Date(task.dueAt) : null, timeZone))
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
   const [assignee, setAssignee] = useState(task.assigneeId ?? '')
   // Optimistic tick: flips instantly, then the server state takes over after refresh (or reverts on error).
@@ -288,7 +288,7 @@ export function TaskRow({ task, teammates, contact }: { task: TaskView; teammate
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault()
-            run(() => updateTask(task.leadId, task.id, { title, dueAt: due ? new Date(due).toISOString() : null, priority, assigneeId: assignee || null }), () => setEditing(false))
+            run(() => updateTask(task.leadId, task.id, { title, dueAt: fromInput(due, timeZone), priority, assigneeId: assignee || null }), () => setEditing(false))
           }}
         >
           <div className="space-y-1">
@@ -296,7 +296,7 @@ export function TaskRow({ task, teammates, contact }: { task: TaskView; teammate
             <Input id={`t-${task.id}`} value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor={`d-${task.id}`}>Due</Label>
+            <Label htmlFor={`d-${task.id}`}>Due ({timeZone.replaceAll('_', ' ')})</Label>
             <Input id={`d-${task.id}`} type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
           </div>
           <div className="grid grid-cols-2 gap-2">

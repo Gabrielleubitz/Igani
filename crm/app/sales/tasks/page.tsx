@@ -8,9 +8,9 @@ import { Select } from '@/components/ui/input'
 import { buttonVariants } from '@/components/ui/button'
 import { requireUser } from '@/lib/auth'
 import { formatDateTime, leadName } from '@/lib/format'
-import { leadScope } from '@/lib/lead-access'
+import { endOfLocalDay } from '@/lib/time'
 import { prisma } from '@/lib/prisma'
-import { isMyTask, loadTasks } from '@/lib/tasks'
+import { tasksForUser } from '@/lib/tasks'
 
 export const metadata = { title: 'Tasks' }
 export const dynamic = 'force-dynamic'
@@ -20,21 +20,19 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
   const showDone = searchParams.status === 'done'
   const priority = TASK_PRIORITIES.find((x) => x === searchParams.priority)
   const scope = searchParams.scope === 'all' ? 'all' : 'mine'
-  const [visible, me, people] = await Promise.all([
-    prisma.lead.findMany({ where: leadScope(user), select: { id: true, email: true, firstName: true, lastName: true, assignedToId: true, company: true } }),
+  const [{ all, mine, leads: byId }, me, people] = await Promise.all([
+    tasksForUser(user),
     prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
     prisma.user.findMany({ where: { role: { not: null } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
   ])
-  const byId = new Map(visible.map((l) => [l.id, l]))
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
   const teammates = people.map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))
-  const all = (await loadTasks(user.role === 'ADMIN' ? undefined : visible.map((l) => l.id))).filter((t) => byId.has(t.leadId))
-  const filtered = all
-    .filter((t) => t.done === showDone && (scope === 'all' || isMyTask(t, user.id, byId.get(t.leadId)?.assignedToId)) && (!priority || t.priority === priority))
+  const filtered = (scope === 'all' ? all : mine)
+    .filter((t) => t.done === showDone && (!priority || t.priority === priority))
     .sort((a, b) => (showDone ? (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0) : (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity)))
   const now = new Date()
-  const endOfToday = new Date(now)
-  endOfToday.setHours(23, 59, 59, 999)
+  // "Today" ends at midnight in the user's own time zone.
+  const endOfToday = endOfLocalDay(now, me.timeZone)
 
   const view = (t: (typeof filtered)[number]): TaskView => ({
     id: t.id,
@@ -53,8 +51,8 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
     ? [['Completed', filtered]]
     : [
         ['Overdue', filtered.filter((t) => t.dueAt && t.dueAt < now)],
-        ['Today', filtered.filter((t) => t.dueAt && t.dueAt >= now && t.dueAt <= endOfToday)],
-        ['Upcoming', filtered.filter((t) => t.dueAt && t.dueAt > endOfToday)],
+        ['Today', filtered.filter((t) => t.dueAt && t.dueAt >= now && t.dueAt < endOfToday)],
+        ['Upcoming', filtered.filter((t) => t.dueAt && t.dueAt >= endOfToday)],
         ['No due date', filtered.filter((t) => !t.dueAt)],
       ]
   const tab = (label: string, params: Record<string, string | undefined>, active: boolean): React.ReactElement => {
@@ -118,6 +116,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
                     key={t.id}
                     task={view(t)}
                     teammates={teammates}
+                    timeZone={me.timeZone}
                     contact={
                       <Link href={`/sales/leads/${lead.id}`} className="font-medium text-foreground/80 underline-offset-4 hover:underline">
                         {leadName(lead)}
