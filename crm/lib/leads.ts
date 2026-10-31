@@ -321,66 +321,91 @@ export async function reassignUserWork(fromId: string, toId: string | null, acto
 
 /** A teammate who added leads by hand or by import (as opposed to a website form). */
 export interface LeadAdder {
+  id: string
   name: string
   email: string
 }
 
-/** Admins to alert: every active admin plus the extra addresses in Settings → Notifications, except whoever added the lead. */
-async function alertRecipients(except?: string): Promise<string[]> {
+/** Every active admin plus the extra addresses in Settings → Notifications. */
+async function alertRecipients(): Promise<string[]> {
   const [extraEmails, admins] = await Promise.all([
     getSetting('notifications.emails'),
     prisma.allowedUser.findMany({ where: { role: 'ADMIN', active: true }, select: { email: true } }),
   ])
-  return newLeadRecipients({ adminEmails: admins.map((a) => a.email), extraEmails, exceptEmail: except })
+  return newLeadRecipients({ adminEmails: admins.map((a) => a.email), extraEmails })
+}
+
+const ALERT_TIMEOUT_MS = 8000
+
+/** Runs an email send but gives up after a while, so a slow provider can't hang the page that added the lead. */
+function withTimeout<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('the email service took too long to answer')), ALERT_TIMEOUT_MS)
+  })
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer))
+}
+
+/** Writes what the alert did to the audit log (Admin → Audit, search "alert"), so a missing email can be traced. */
+async function logAlert(leadId: string, action: 'lead.alert_sent' | 'lead.alert_skipped' | 'lead.alert_failed', metadata: Record<string, string | number>, actorId?: string): Promise<void> {
+  await logActivity({ entityType: 'LEAD', entityId: leadId, action, actorId: actorId ?? null, metadata }).catch((err: unknown) => console.error('[leads] could not log alert outcome', leadId, err))
 }
 
 /**
  * Best-effort alert the moment a lead is added: emails every admin (and the Settings → Notifications list).
  * Pass `addedBy` for leads a teammate added by hand, so the email reads "New lead from <teammate>".
- * Honors the "new lead alerts" switch in Settings. Never throws.
+ * Honors the "new lead alerts" switch in Settings. Records its outcome in the audit log. Never throws.
  */
 export async function notifyTeamOfNewLead(leadId: string, opts: { addedBy?: LeadAdder } = {}): Promise<void> {
   try {
-    if (!(await getSetting('notifications.newLead'))) return
-    const to = await alertRecipients(opts.addedBy?.email)
-    if (to.length === 0) return
+    if (!(await getSetting('notifications.newLead'))) return await logAlert(leadId, 'lead.alert_skipped', { reason: 'new-lead alerts are switched off in Settings' }, opts.addedBy?.id)
+    const to = await alertRecipients()
+    if (to.length === 0) return await logAlert(leadId, 'lead.alert_skipped', { reason: 'no active admins and no notification emails to send to' }, opts.addedBy?.id)
     const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { assignedTo: { select: { name: true, email: true } } } })
     if (!lead) return
-    await sendNewLeadAlertEmail(to, {
-      leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email || lead.phone || 'New lead',
-      leadEmail: lead.email,
-      phone: lead.phone,
-      company: lead.company,
-      budget: lead.budget,
-      source: lead.sourceDetail ? `${lead.source} · ${lead.sourceDetail}` : lead.source,
-      campaign: lead.utmCampaign,
-      message: lead.message,
-      owner: lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : null,
-      addedBy: opts.addedBy?.name ?? null,
-      leadUrl: appUrl(`/sales/leads/${lead.id}`),
-    })
+    await withTimeout(
+      sendNewLeadAlertEmail(to, {
+        leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email || lead.phone || 'New lead',
+        leadEmail: lead.email,
+        phone: lead.phone,
+        company: lead.company,
+        budget: lead.budget,
+        source: lead.sourceDetail ? `${lead.source} · ${lead.sourceDetail}` : lead.source,
+        campaign: lead.utmCampaign,
+        message: lead.message,
+        owner: lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : null,
+        addedBy: opts.addedBy?.name ?? null,
+        leadUrl: appUrl(`/sales/leads/${lead.id}`),
+      }),
+    )
+    await logAlert(leadId, 'lead.alert_sent', { to: to.length }, opts.addedBy?.id)
   } catch (err) {
     console.error('[leads] new-lead alert failed', leadId, err)
+    await logAlert(leadId, 'lead.alert_failed', { error: err instanceof Error ? err.message : String(err) }, opts.addedBy?.id)
   }
 }
 
 /** One summary alert for leads a teammate imported in bulk (a single lead gets the normal alert). Never throws. */
 export async function notifyTeamOfImportedLeads(leadIds: string[], addedBy: LeadAdder): Promise<void> {
+  const [first] = leadIds
+  if (!first) return
+  if (leadIds.length === 1) return notifyTeamOfNewLead(first, { addedBy })
   try {
-    if (leadIds.length === 0) return
-    const [only] = leadIds
-    if (leadIds.length === 1 && only) return await notifyTeamOfNewLead(only, { addedBy })
-    if (!(await getSetting('notifications.newLead'))) return
-    const to = await alertRecipients(addedBy.email)
-    if (to.length === 0) return
+    if (!(await getSetting('notifications.newLead'))) return await logAlert(first, 'lead.alert_skipped', { reason: 'new-lead alerts are switched off in Settings', imported: leadIds.length }, addedBy.id)
+    const to = await alertRecipients()
+    if (to.length === 0) return await logAlert(first, 'lead.alert_skipped', { reason: 'no active admins and no notification emails to send to', imported: leadIds.length }, addedBy.id)
     const sample = await prisma.lead.findMany({ where: { id: { in: leadIds.slice(0, 6) } }, select: { firstName: true, lastName: true, email: true, phone: true, company: true } })
-    await sendLeadsImportedEmail(to, {
-      addedBy: addedBy.name,
-      count: leadIds.length,
-      sample: sample.map((l) => ({ name: [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || l.phone || 'New lead', detail: l.company ?? l.email })),
-      leadsUrl: appUrl('/sales/leads'),
-    })
+    await withTimeout(
+      sendLeadsImportedEmail(to, {
+        addedBy: addedBy.name,
+        count: leadIds.length,
+        sample: sample.map((l) => ({ name: [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || l.phone || 'New lead', detail: l.company ?? l.email })),
+        leadsUrl: appUrl('/sales/leads'),
+      }),
+    )
+    await logAlert(first, 'lead.alert_sent', { to: to.length, imported: leadIds.length }, addedBy.id)
   } catch (err) {
     console.error('[leads] imported-leads alert failed', err)
+    await logAlert(first, 'lead.alert_failed', { error: err instanceof Error ? err.message : String(err), imported: leadIds.length }, addedBy.id)
   }
 }

@@ -33,8 +33,9 @@ export function AvailabilityForm({ timeZone: initialZone, days: initialDays }: {
   const copyToAll = (i: number): void => {
     const src = days[i]
     if (!src) return
-    setDays((d) => d.map((x) => (x.enabled ? { ...x, startTime: src.startTime, endTime: src.endTime } : x)))
-    setMsg({ ok: true, text: `Copied ${DAYS[i]}'s hours to every working day. Remember to save.` })
+    // Every day, including the ones marked Unavailable: turn them on and give them the same hours (untick any day off, then save).
+    setDays((d) => d.map((x) => ({ ...x, enabled: true, startTime: src.startTime, endTime: src.endTime })))
+    setMsg({ ok: true, text: `Copied ${DAYS[i]}'s hours (${src.startTime}–${src.endTime}) to all 7 days. Untick any day off, then save.` })
   }
   const preset = (kind: 'sun-thu' | 'mon-fri'): void => {
     const on = kind === 'sun-thu' ? [0, 1, 2, 3, 4] : [1, 2, 3, 4, 5]
@@ -50,7 +51,7 @@ export function AvailabilityForm({ timeZone: initialZone, days: initialDays }: {
         timeZone,
         rules: days.flatMap((d, dayOfWeek) => (d.enabled ? [{ dayOfWeek, startTime: d.startTime, endTime: d.endTime }] : [])),
       })
-      setMsg(res.ok ? { ok: true, text: '✓ Hours saved. New bookings will use them right away.' } : { ok: false, text: res.error })
+      setMsg(res.ok ? { ok: true, text: '✓ Availability saved. New bookings will use it right away.' } : { ok: false, text: res.error })
     })
   }
 
@@ -107,7 +108,7 @@ export function AvailabilityForm({ timeZone: initialZone, days: initialDays }: {
       {invalid ? <p className="text-sm text-red-400">End time must be after start time.</p> : null}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={pending || invalid}>
-          {pending ? 'Saving…' : 'Save hours'}
+          {pending ? 'Saving…' : 'Save availability'}
         </Button>
         {msg ? <p className={`text-sm ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</p> : null}
       </div>

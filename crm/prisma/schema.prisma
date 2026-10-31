@@ -59,6 +59,8 @@ model AllowedUser {
   inviteToken      String?   @unique
   invitedAt        DateTime?
   inviteAcceptedAt DateTime?
+  /// Salesman's commission as basis points of a won deal (1000 = 10%). Null = none set. Admins change it any time.
+  commissionBps    Int?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

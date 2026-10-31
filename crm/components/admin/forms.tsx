@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import { resendInvite, upsertAllowedUser, upsertBookingPage } from '@/app/actions/admin'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { bpsToPercent } from '@/lib/commission'
 
 type Msg = { ok: boolean; text: string } | null
 
@@ -38,14 +39,16 @@ const ROLE_HELP: Record<Role, string> = {
 export function AllowedUserForm(): React.ReactElement {
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<Role>('SALES')
+  const [commission, setCommission] = useState('')
   const [pending, msg, run] = useAction()
   return (
     <form
       className="flex flex-wrap items-end gap-3"
       onSubmit={(e) => {
         e.preventDefault()
-        run(() => upsertAllowedUser({ email, role, active: true }), `✓ ${email} can sign in. New teammates get an invite email.`)
+        run(() => upsertAllowedUser({ email, role, active: true, ...(role === 'SALES' ? { commissionPercent: commission } : {}) }), `✓ ${email} can sign in. New teammates get an invite email.`)
         setEmail('')
+        setCommission('')
       }}
     >
       <div className="space-y-2">
@@ -60,19 +63,56 @@ export function AllowedUserForm(): React.ReactElement {
           <option value="ADMIN">Admin</option>
         </Select>
       </div>
+      {role === 'SALES' ? (
+        <div className="space-y-2">
+          <Label htmlFor="wl-commission">Commission %</Label>
+          <Input id="wl-commission" inputMode="decimal" className="w-28" placeholder="e.g. 10" value={commission} onChange={(e) => setCommission(e.target.value)} />
+        </div>
+      ) : null}
       <Button type="submit" disabled={pending}>
         {pending ? 'Adding…' : 'Add & send invite'}
       </Button>
-      <p className="w-full text-xs text-muted-foreground">{ROLE_HELP[role]}</p>
+      <p className="w-full text-xs text-muted-foreground">
+        {ROLE_HELP[role]}
+        {role === 'SALES' ? '. Commission is their cut of each deal they win; you can change it any time on the Team page.' : ''}
+      </p>
       <Note msg={msg} />
     </form>
   )
 }
 
-export function AllowedUserToggle({ email, role, active, showResend = true }: { email: string; role: Role; active: boolean; showResend?: boolean }): React.ReactElement {
+export function AllowedUserToggle({ email, role, active, commissionBps, showResend = true }: { email: string; role: Role; active: boolean; commissionBps?: number | null; showResend?: boolean }): React.ReactElement {
   const [pending, msg, run] = useAction()
+  const saved = bpsToPercent(commissionBps)
+  const [commission, setCommission] = useState(saved)
+  const saveCommission = (): void => {
+    if (commission.trim() === saved) return
+    run(() => upsertAllowedUser({ email, role, active, commissionPercent: commission }), commission.trim() === '' ? 'Commission cleared.' : `Commission set to ${commission.trim()}%.`)
+  }
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {role === 'SALES' ? (
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground" title="Their cut of every deal they win. Applies to the deals shown from now on.">
+          Commission
+          <Input
+            aria-label={`Commission percent for ${email}`}
+            inputMode="decimal"
+            className="h-8 w-20"
+            placeholder="%"
+            disabled={pending}
+            value={commission}
+            onChange={(e) => setCommission(e.target.value)}
+            onBlur={saveCommission}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                saveCommission()
+              }
+            }}
+          />
+          %
+        </label>
+      ) : null}
       <Select aria-label={`Role for ${email}`} title={ROLE_HELP[role]} className="h-8 w-36" disabled={pending} value={role} onChange={(e) => run(() => upsertAllowedUser({ email, role: e.target.value as Role, active }), 'Role updated.')}>
         <option value="SALES">Sales</option>
         <option value="MARKETING">Marketing</option>

@@ -69,7 +69,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
           <Link href="/sales/import" className={buttonVariants({ variant: 'outline' })}>
             Import CSV
           </Link>
-          <Popover label="+ Add contact" panelClassName="w-[min(92vw,34rem)]">
+          <Popover label="+ Add lead" panelClassName="w-[min(92vw,34rem)]">
               <NewLeadForm />
             </Popover>
         </div>

@@ -11,14 +11,12 @@ describe('new-lead alert recipients', () => {
     expect(to).toEqual(['ann@igani.co', 'bo@igani.co', 'ops@igani.co'])
   })
 
-  it('leaves out the person who added the lead, however their address is cased', () => {
-    const to = newLeadRecipients({ adminEmails: ['ann@igani.co', 'bo@igani.co'], extraEmails: [], exceptEmail: 'ANN@igani.co' })
-    expect(to).toEqual(['bo@igani.co'])
+  it('includes the admin who added the lead, so a lone admin can see it work', () => {
+    expect(newLeadRecipients({ adminEmails: ['ann@igani.co'], extraEmails: [] })).toEqual(['ann@igani.co'])
   })
 
   it('ignores blanks and non-addresses, and can end up empty', () => {
     expect(newLeadRecipients({ adminEmails: [' ', 'nope'], extraEmails: [] })).toEqual([])
-    expect(newLeadRecipients({ adminEmails: ['ann@igani.co'], extraEmails: [], exceptEmail: 'ann@igani.co' })).toEqual([])
   })
 })
 

@@ -4,7 +4,7 @@ import { requireUser } from '@/lib/auth'
 import { PageIntro } from '@/components/PageIntro'
 import { prisma } from '@/lib/prisma'
 
-export const metadata = { title: 'My hours' }
+export const metadata = { title: 'My availability' }
 
 export default async function AvailabilityPage(): Promise<React.ReactElement> {
   const user = await requireUser(['ADMIN', 'SALES'])
@@ -19,7 +19,7 @@ export default async function AvailabilityPage(): Promise<React.ReactElement> {
   })
   return (
     <div className="space-y-6">
-      <PageIntro title="My hours" hint="When people can book you. Bookable times = these hours minus anything busy on your Google Calendar (and at least an hour from now)." />
+      <PageIntro title="My availability" hint="When people can book you. Bookable times = these hours minus anything busy on your Google Calendar (and at least an hour from now)." />
       {!googleConnected ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
           <span>

@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { normalizeEmail, requireUser } from '@/lib/auth'
+import { percentToBps } from '@/lib/commission'
 import { sendTeamInviteEmail } from '@/lib/email'
 import { prisma } from '@/lib/prisma'
 import { reassignUserWork } from '@/lib/leads'
@@ -16,16 +17,21 @@ import { toActionError, type ActionResult } from './result'
 const emailSchema = z.string().trim().email().max(254).transform(normalizeEmail)
 
 /** Add or update a whitelisted email. Role is mirrored to the User row immediately. */
-export async function upsertAllowedUser(input: { email: string; role: Role; active: boolean }): Promise<ActionResult> {
+export async function upsertAllowedUser(input: { email: string; role: Role; active: boolean; commissionPercent?: string | number | null }): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
-    const data = z.object({ email: emailSchema, role: z.nativeEnum(Role), active: z.boolean() }).parse(input)
+    const { commissionPercent, ...rest } = input
+    const data = z.object({ email: emailSchema, role: z.nativeEnum(Role), active: z.boolean() }).parse(rest)
+    // undefined = leave the saved commission alone (role/active toggles); blank = clear it; otherwise 0–100 with up to 2 decimals.
+    const bps = commissionPercent === undefined ? undefined : percentToBps(commissionPercent)
+    if (bps === undefined && commissionPercent !== undefined) throw new z.ZodError([{ code: 'custom', path: ['commission'], message: 'Commission must be a percentage from 0 to 100, like 10 or 7.5' }])
+    const commission = bps === undefined ? {} : { commissionBps: bps }
     if (data.email === admin.email && (!data.active || data.role !== 'ADMIN')) {
       throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'You cannot demote or deactivate yourself' }])
     }
     const isNew = !(await prisma.allowedUser.findUnique({ where: { email: data.email }, select: { id: true } }))
     const row = await prisma.$transaction(async (tx) => {
-      const allowed = await tx.allowedUser.upsert({ where: { email: data.email }, create: data, update: { role: data.role, active: data.active } })
+      const allowed = await tx.allowedUser.upsert({ where: { email: data.email }, create: { ...data, ...commission }, update: { role: data.role, active: data.active, ...commission } })
       const users = await tx.user.findMany({ where: { email: data.email }, select: { id: true } })
       await tx.user.updateMany({ where: { email: data.email }, data: { role: data.active ? data.role : null } })
       // Deactivated (or moved off SALES/ADMIN) users must not keep owning leads.
@@ -34,7 +40,7 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
         // They can't host any more, so their public booking pages go offline too.
         await tx.bookingPage.updateMany({ where: { hostId: users[0].id }, data: { active: false } })
       }
-      await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: data }, tx)
+      await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: { ...data, ...(bps !== undefined ? { commissionBps: bps } : {}) } }, tx)
       return allowed
     })
     revalidatePath('/admin/users')

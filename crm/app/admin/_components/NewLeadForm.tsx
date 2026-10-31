@@ -32,7 +32,7 @@ export function NewLeadForm(): React.ReactElement {
             phone: get('phone'),
             tags: (get('tags') ?? '').split(',').map((t) => t.trim()).filter(Boolean),
           })
-          setMsg(res.ok ? { ok: true, text: '✓ Contact added.', id: res.data.id } : { ok: false, text: res.error })
+          setMsg(res.ok ? { ok: true, text: '✓ Lead added.', id: res.data.id } : { ok: false, text: res.error })
           if (res.ok) {
             form.reset()
             setFormKey((k) => k + 1)
@@ -69,7 +69,7 @@ export function NewLeadForm(): React.ReactElement {
       <p className="col-span-2 text-xs text-muted-foreground">An email or a phone number is required.</p>
       <div className="col-span-2 flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>
-          {pending ? 'Adding…' : 'Add contact'}
+          {pending ? 'Adding…' : 'Add lead'}
         </Button>
         {msg ? (
           <span className={`text-sm ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>

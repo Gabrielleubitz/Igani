@@ -101,7 +101,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
               📅 Send invite
             </Link>
             <Link href="/sales/leads" className={buttonVariants({ size: 'sm' })}>
-              + Add contact
+              + Add lead
             </Link>
           </div>
         ) : null}

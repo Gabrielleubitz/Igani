@@ -1,7 +1,6 @@
 'use server'
 
 import { LeadStatus } from '@prisma/client'
-import { waitUntil } from '@vercel/functions'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
@@ -10,6 +9,7 @@ import { logActivity } from '@/lib/audit'
 import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, notifyTeamOfNewLead, phoneKey } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
+import { assigneeCommission, type AssigneeCommission } from '@/lib/commission-lookup'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
@@ -28,6 +28,18 @@ export async function updateLeadStatus(
     await changeLeadStatus(id, parsed, user.id, ex)
     revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** The commission rate of the salesman who owns a lead, for the "mark as won" dialog. Only for leads you can see. */
+export async function getLeadCommission(leadId: string): Promise<ActionResult<AssigneeCommission | null>> {
+  try {
+    const user = await requireUser()
+    const id = z.string().cuid().parse(leadId)
+    await assertCanSeeLead(id, user)
+    return { ok: true, data: await assigneeCommission(id) }
   } catch (err) {
     return toActionError(err)
   }
@@ -148,12 +160,12 @@ export async function createLead(input: { email?: string; firstName?: string; la
       .parse(input)
     if (data.email) {
       const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
-      if (exists) throw new BookingError('A contact with this email already exists.', 'INVALID_STATE')
+      if (exists) throw new BookingError('A lead with this email already exists.', 'INVALID_STATE')
     } else if (data.phone) {
       // Phone-only: same matching rule as the website forms (last 9 digits), so hand-added contacts don't duplicate.
       const key = phoneKey(data.phone)
       const dup = key ? await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) LIMIT 1` : []
-      if (dup.length) throw new BookingError('A contact with this phone number already exists. Search for it in Leads.', 'INVALID_STATE')
+      if (dup.length) throw new BookingError('A lead with this phone number already exists. Search for it in Leads.', 'INVALID_STATE')
     }
     const lead = await prisma.$transaction(async (tx) => {
       // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.
@@ -162,8 +174,8 @@ export async function createLead(input: { email?: string; firstName?: string; la
       return l
     })
     revalidatePath('/sales', 'layout')
-    // Alert the admins right away, without making the person who added it wait for the email.
-    waitUntil(notifyTeamOfNewLead(lead.id, { addedBy: { name: admin.name ?? admin.email, email: admin.email } }))
+    // Alert the admins now. Awaited (it never throws and gives up after a few seconds) so the send isn't cut off when this request ends.
+    await notifyTeamOfNewLead(lead.id, { addedBy: { id: admin.id, name: admin.name ?? admin.email, email: admin.email } })
     return { ok: true, data: { id: lead.id } }
   } catch (err) {
     return toActionError(err)

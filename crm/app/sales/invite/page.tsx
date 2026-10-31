@@ -37,7 +37,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
         <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
           You haven&apos;t set your working hours yet, so no times will show.{' '}
           <Link href="/sales/availability" className="font-medium underline underline-offset-4">
-            Set my hours →
+            Set my availability →
           </Link>
         </p>
       ) : null}

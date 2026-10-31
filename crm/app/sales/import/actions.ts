@@ -1,6 +1,5 @@
 'use server'
 
-import { waitUntil } from '@vercel/functions'
 import { z } from 'zod'
 import { toActionError, type ActionResult } from '@/app/actions/result'
 import { logActivity } from '@/lib/audit'
@@ -95,7 +94,7 @@ export async function commitLeadImport(rows: unknown, mode: 'skip' | 'merge'): P
     await logActivity({ entityType: 'LEAD', entityId: 'import', actorId: user.id, action: 'leads.imported', metadata: { created, merged, skipped, mode } })
     revalidatePath('/sales', 'layout')
     // One summary email to the admins for the whole import (not one per row).
-    waitUntil(notifyTeamOfImportedLeads(createdIds, { name: user.name ?? user.email, email: user.email }))
+    await notifyTeamOfImportedLeads(createdIds, { id: user.id, name: user.name ?? user.email, email: user.email })
     return { ok: true, data: { created, merged, skipped } }
   } catch (err) {
     return toActionError(err)

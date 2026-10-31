@@ -3,10 +3,12 @@
 import type { LeadStatus } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { updateLeadStatus } from '@/app/actions/leads'
+import { getLeadCommission, updateLeadStatus } from '@/app/actions/leads'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
+import { commissionCut, formatBps, formatIls } from '@/lib/commission'
+import type { AssigneeCommission } from '@/lib/commission-lookup'
 import { LEAD_STATUSES, STATUS_LABEL } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -28,6 +30,8 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [ask, setAsk] = useState<{ leadId: string; to: 'WON' | 'LOST'; value: string } | null>(null)
+  // Commission rate of the salesman who owns the lead, fetched when the "won" dialog opens.
+  const [commission, setCommission] = useState<AssigneeCommission | null>(null)
   const [reason, setReason] = useState<string>(LOST_REASONS[0])
   const [detail, setDetail] = useState('')
 
@@ -45,6 +49,12 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
       setReason(LOST_REASONS[0])
       setDetail('')
       setAsk({ leadId, to, value: currentValue ? String(currentValue) : '' })
+      setCommission(null)
+      if (to === 'WON') {
+        void getLeadCommission(leadId).then((res) => {
+          if (res.ok) setCommission(res.data)
+        })
+      }
     } else commit(leadId, to)
   }
 
@@ -54,7 +64,7 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
       open={ask !== null}
       onClose={close}
       title={ask?.to === 'WON' ? 'Mark as won 🎉' : 'Mark as lost'}
-      description={ask?.to === 'WON' ? 'Nice work. Add the deal value so revenue reports stay accurate (optional).' : 'Pick a reason. It is saved on the contact and shows up in Reports.'}
+      description={ask?.to === 'WON' ? 'Nice work. Add the deal value (in ₪) so revenue reports stay accurate (optional).' : 'Pick a reason. It is saved on the contact and shows up in Reports.'}
     >
       <form
         className="space-y-4"
@@ -73,8 +83,9 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
       >
         {ask?.to === 'WON' ? (
           <div className="space-y-2">
-            <Label htmlFor="deal-value">Deal value</Label>
+            <Label htmlFor="deal-value">Deal value (₪)</Label>
             <Input id="deal-value" inputMode="numeric" autoFocus placeholder="e.g. 12000" value={ask.value} onChange={(e) => setAsk({ ...ask, value: e.target.value })} />
+            <CommissionLine commission={commission} value={ask.value} />
           </div>
         ) : (
           <>
@@ -104,6 +115,27 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
     </Dialog>
   )
   return { request, pending, error, dialog }
+}
+
+/** "Dana's cut at 10%: ₪1,000", updating as the amount is typed. */
+function CommissionLine({ commission, value }: { commission: AssigneeCommission | null; value: string }): React.ReactElement | null {
+  if (!commission) return null
+  if (commission.bps == null) return <p className="text-xs text-muted-foreground">No commission is set for {commission.name} yet. An admin can set it on the Team page.</p>
+  const amount = Number(value.replace(/[^\d]/g, ''))
+  const cut = value.replace(/[^\d]/g, '') ? commissionCut(amount, commission.bps) : null
+  return (
+    <p className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" aria-live="polite">
+      {cut == null ? (
+        <>
+          {commission.name}&apos;s commission is {formatBps(commission.bps)}. Enter the amount to see the cut.
+        </>
+      ) : (
+        <>
+          {commission.name}&apos;s cut at {formatBps(commission.bps)}: <strong>{formatIls(cut)}</strong>
+        </>
+      )}
+    </p>
+  )
 }
 
 /** Stage dropdown used in tables and on the contact page. */

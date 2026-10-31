@@ -9,7 +9,7 @@ export { GMAIL_READ_SCOPE }
 
 export class GoogleNotConnectedError extends Error {
   constructor(hostId: string) {
-    super(`Host ${hostId} has no Google account with a refresh token — they must connect Google (My hours → Connect Google).`)
+    super(`Host ${hostId} has no Google account with a refresh token — they must connect Google (My availability → Connect Google).`)
     this.name = 'GoogleNotConnectedError'
   }
 }
