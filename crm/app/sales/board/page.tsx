@@ -7,7 +7,7 @@ import { leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 import { filterLeads } from '@/components/crm/crm-utils'
 
-export const metadata = { title: 'Pipeline board' }
+export const metadata = { title: 'Board' }
 
 type SP = Record<string, string | string[] | undefined>
 const one = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v) || undefined

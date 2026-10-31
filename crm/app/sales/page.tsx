@@ -8,7 +8,7 @@ import { requireUser } from '@/lib/auth'
 import { LEAD_STATUSES, formatDateTime, leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 
-export const metadata = { title: 'Pipeline' }
+export const metadata = { title: 'Pipeline & meetings' }
 
 export default async function PipelinePage(): Promise<React.ReactElement> {
   const user = await requireUser()
@@ -35,9 +35,7 @@ export default async function PipelinePage(): Promise<React.ReactElement> {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Pipeline &amp; meetings</h1>
-      </div>
+      <h1 className="text-2xl font-semibold">Pipeline &amp; meetings</h1>
 
       <Card>
         <CardHeader>

@@ -4,7 +4,7 @@ import { conversionRate } from '@/lib/lead-query'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 
-export const metadata = { title: 'Dashboard' }
+export const metadata = { title: 'Overview' }
 export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage(): Promise<React.ReactElement> {

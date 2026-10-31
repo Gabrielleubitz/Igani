@@ -4,7 +4,7 @@ import { leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 
-export const metadata = { title: 'New invite' }
+export const metadata = { title: 'Send invite' }
 
 export default async function InvitePage({ searchParams }: { searchParams: { leadId?: string } }): Promise<React.ReactElement> {
   const user = await requireUser(['ADMIN', 'SALES'])
