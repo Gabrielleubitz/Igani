@@ -7,17 +7,11 @@ import GoogleProvider from 'next-auth/providers/google'
 import { redirect } from 'next/navigation'
 import { logActivity } from './audit'
 import { env } from './env'
+import { SIGN_IN_SCOPES, grantsWorkspaceAccess } from './google-scopes'
 import { prisma } from './prisma'
 
-/** Google scopes: identity + create events (Meet) + read free/busy + read Gmail (to file client emails under contacts). */
-export const GOOGLE_SCOPES = [
-  'openid',
-  'email',
-  'profile',
-  'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/calendar.freebusy',
-  'https://www.googleapis.com/auth/gmail.readonly',
-].join(' ')
+// Signing in asks Google for identity only. Calendar and Gmail access (sensitive scopes, which trigger Google's
+// "unverified app" warning) are requested separately, when someone clicks "Connect Google" (see lib/google-scopes.ts).
 
 /** How often the JWT re-checks the whitelist so revoked users lose access. */
 const ROLE_RECHECK_MS = 5 * 60 * 1000
@@ -46,9 +40,7 @@ export function authOptions(): NextAuthOptions {
       GoogleProvider({
         clientId: e.GOOGLE_CLIENT_ID,
         clientSecret: e.GOOGLE_CLIENT_SECRET,
-        authorization: {
-          params: { scope: GOOGLE_SCOPES, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' },
-        },
+        authorization: { params: { scope: SIGN_IN_SCOPES } },
       }),
       ...(devLoginEnabled()
         ? [
@@ -79,7 +71,9 @@ export function authOptions(): NextAuthOptions {
         // Returning user: sync role and refresh stored Google tokens (the adapter only writes them on first link).
         await prisma.user.updateMany({ where: { email: normalizeEmail(email) }, data: { role } })
         await prisma.allowedUser.updateMany({ where: { email: normalizeEmail(email), invitedAt: { not: null }, inviteAcceptedAt: null }, data: { inviteAcceptedAt: new Date(), inviteToken: null } })
-        if (account?.provider === 'google') {
+        // Only store tokens from a grant that includes Calendar or Gmail (the "Connect Google" step). A plain
+        // sign-in grants identity only; saving it would overwrite a teammate's saved Calendar/Gmail connection.
+        if (account?.provider === 'google' && grantsWorkspaceAccess(account.scope)) {
           await prisma.account.updateMany({
             where: { provider: 'google', providerAccountId: account.providerAccountId },
             data: {
