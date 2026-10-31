@@ -13,7 +13,7 @@ interface LeadOption {
   company?: string | null
 }
 
-export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts = [], currentUserId }: { leads: LeadOption[]; initialLeadId?: string; defaultDuration?: number; hosts?: { id: string; label: string }[]; currentUserId?: string }): React.ReactElement {
+export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts = [], currentUserId, teammates = [], teammatesAreAdminsOnly = false }: { leads: LeadOption[]; initialLeadId?: string; defaultDuration?: number; hosts?: { id: string; label: string }[]; currentUserId?: string; teammates?: { id: string; label: string }[]; teammatesAreAdminsOnly?: boolean }): React.ReactElement {
   const initial = leads.find((l) => l.id === initialLeadId)
   const [leadId, setLeadId] = useState(initial?.id ?? '')
   const [guestName, setGuestName] = useState(initial?.name ?? '')
@@ -26,6 +26,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
   const [slot, setSlot] = useState<string | null>(null)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
   const [hostId, setHostId] = useState(currentUserId ?? '')
+  const [teammateIds, setTeammateIds] = useState<string[]>([])
   const [loadingSlots, startSlots] = useTransition()
   const [sending, startSend] = useTransition()
 
@@ -65,6 +66,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
         startTime: slot,
         durationMinutes: duration,
         hostId: hostId || undefined,
+        teammateIds: teammateIds.filter((id) => id !== hostId),
       })
       if (res.ok) {
         setMessage({ kind: 'ok', text: `✓ Invite sent to ${guestEmail}. The slot is held until they confirm; you'll see it under Meetings.` })
@@ -105,6 +107,28 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
           <Label htmlFor="notes">Note to guest (optional)</Label>
           <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
+        {teammates.length > 0 ? (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">Add teammates to the call (optional)</legend>
+            <p className="text-xs text-muted-foreground">
+              {teammatesAreAdminsOnly ? 'You can add admins.' : 'Anyone on the team.'} They get the Meet link by email and can join the moment it starts, with nothing to approve.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {teammates
+                .filter((t) => t.id !== hostId)
+                .map((t) => (
+                  <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={teammateIds.includes(t.id)}
+                      onChange={(e) => setTeammateIds((ids) => (e.target.checked ? [...ids, t.id] : ids.filter((x) => x !== t.id)))}
+                    />
+                    {t.label}
+                  </label>
+                ))}
+            </div>
+          </fieldset>
+        ) : null}
       </div>
       <div className="space-y-4">
         {hosts.length > 1 ? (

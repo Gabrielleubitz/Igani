@@ -106,6 +106,8 @@ export interface MeetEventInput {
   end: Date
   guestEmail: string
   guestName: string
+  /** Teammates added to the event (no RSVP needed to join the Meet). */
+  teammates?: { email: string; name?: string | null }[]
 }
 
 /** Inserts the event on the host's primary calendar with an auto-provisioned Google Meet. */
@@ -120,7 +122,10 @@ export async function createMeetEvent(input: MeetEventInput): Promise<{ eventId:
       description: input.description,
       start: { dateTime: input.start.toISOString() },
       end: { dateTime: input.end.toISOString() },
-      attendees: [{ email: input.guestEmail, displayName: input.guestName }],
+      attendees: [
+        { email: input.guestEmail, displayName: input.guestName },
+        ...(input.teammates ?? []).filter((t) => t.email.toLowerCase() !== input.guestEmail.toLowerCase()).map((t) => ({ email: t.email, displayName: t.name ?? undefined })),
+      ],
       extendedProperties: { private: { iganiBookingId: input.bookingId } },
       conferenceData: {
         createRequest: { requestId: `igani-${input.bookingId}-${randomUUID()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } },

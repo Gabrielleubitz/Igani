@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import {
   BookingError,
+  allowedTeammates,
   assertSlotOffered,
   cancelBooking as cancelBookingCore,
   confirmBooking,
@@ -32,6 +33,8 @@ const salesInviteSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
   /** ADMINs may book on behalf of another host; reps always book for themselves. */
   hostId: z.string().cuid().optional(),
+  /** Teammates to add to the call (admins: anyone; others: admins only). */
+  teammateIds: z.array(z.string().cuid()).max(20).optional(),
 })
 
 export type SalesInviteInput = z.input<typeof salesInviteSchema>
@@ -70,6 +73,11 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
     if (lead && user.role === 'SALES' && !lead.assignedToId) {
       await prisma.lead.updateMany({ where: { id: lead.id, assignedToId: null }, data: { assignedToId: user.id } })
     }
+    const teammateIds = [...new Set(data.teammateIds ?? [])]
+    if (teammateIds.length > 0) {
+      const allowed = new Set((await allowedTeammates(user, hostId)).map((t) => t.id))
+      if (teammateIds.some((id) => !allowed.has(id))) throw new BookingError(user.role === 'ADMIN' ? 'One of those teammates cannot be added.' : 'You can only add admins to a call.', 'FORBIDDEN')
+    }
     await assertSlotOffered(hostId, start, data.durationMinutes)
 
     const booking = await createPendingBooking({
@@ -86,6 +94,7 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
     })
 
     // The pending booking holds the slot, so the invite stays valid until the meeting starts.
+    if (teammateIds.length > 0) await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', actorId: user.id, metadata: { userIds: teammateIds } })
     const token = createInviteToken(booking.id, booking.startTime)
     await prisma.booking.update({ where: { id: booking.id }, data: { inviteToken: token } })
 

@@ -126,6 +126,33 @@ export async function sendBookingConfirmedEmail(b: BookingEmailData & { meetUrl:
   })
 }
 
+/** Sent to teammates added to a meeting: the Meet link and time, nothing to approve. */
+export async function sendTeammateMeetingEmail(b: BookingEmailData & { meetUrl: string; teammateEmail: string; teammateName: string }): Promise<string> {
+  const icsFileName = 'igani-meeting.ics'
+  const ics = buildIcs({
+    uid: `${b.bookingId}-${b.teammateEmail}@app.igani.co`,
+    start: b.startTime,
+    end: b.endTime,
+    title: b.title,
+    description: `Join Google Meet: ${b.meetUrl}`,
+    location: b.meetUrl,
+    url: b.meetUrl,
+    organizerName: b.hostName,
+    organizerEmail: b.hostEmail,
+    attendeeName: b.teammateName,
+    attendeeEmail: b.teammateEmail,
+  })
+  const element = BookingConfirmed({ ...b, guestName: b.teammateName, meetUrl: b.meetUrl, logoUrl: logoUrl(), icsFileName, teammateOf: { guestName: b.guestName }, ...(await brand()) })
+  return send({
+    to: b.teammateEmail,
+    replyTo: b.hostEmail,
+    subject: `You're on the call: ${b.title} with ${b.guestName}`,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+    attachments: [{ filename: icsFileName, content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; method=REQUEST' }],
+  })
+}
+
 /** Branded notice to admins that a public booking awaits approval. */
 export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData): Promise<string | null> {
   if (to.length === 0) return null

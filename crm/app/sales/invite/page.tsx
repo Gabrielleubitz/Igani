@@ -4,6 +4,7 @@ import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
+import { allowedTeammates } from '@/lib/bookings'
 import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
@@ -26,6 +27,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
     prisma.availability.count({ where: { hostId: user.id } }),
     getSetting('booking.defaultDurationMinutes'),
   ])
+  const teammates = await allowedTeammates(user, user.id)
   const all = preselected && !leads.some((l) => l.id === preselected.id) ? [preselected, ...leads] : leads
   return (
     <div className="space-y-5">
@@ -49,6 +51,8 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
             initialLeadId={preselected?.id}
             hosts={hosts.map((h) => ({ id: h.id, label: h.id === user.id ? `${h.name ?? h.email} (me)` : (h.name ?? h.email ?? h.id) }))}
             currentUserId={user.id}
+            teammates={teammates.map((t) => ({ id: t.id, label: t.name ?? t.email }))}
+            teammatesAreAdminsOnly={user.role !== 'ADMIN'}
           />
         </CardContent>
       </Card>

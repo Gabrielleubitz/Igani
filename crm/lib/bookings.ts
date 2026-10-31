@@ -4,7 +4,7 @@ import { logActivity } from './audit'
 import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, isSlotStillFree } from './calendar'
 import { getSetting } from './settings'
 import { createAutoTask, deleteAutoTasksForBooking } from './tasks'
-import { sendApprovalRequestEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail, sendBookingRequestedEmail, type BookingEmailData } from './email'
+import { sendApprovalRequestEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail, sendBookingRequestedEmail, sendTeammateMeetingEmail, type BookingEmailData } from './email'
 import { appUrl, env } from './env'
 import { prisma } from './prisma'
 
@@ -143,6 +143,25 @@ export async function emailDataFor(bookingId: string): Promise<BookingEmailData>
   }
 }
 
+/** Teammates who may be added to a call: admins can add anyone on the team, everyone else only admins. */
+export async function allowedTeammates(actor: { id: string; role: 'ADMIN' | 'SALES' | 'MARKETING' | null }, hostId: string): Promise<{ id: string; name: string | null; email: string }[]> {
+  const users = await prisma.user.findMany({
+    where: { role: actor.role === 'ADMIN' ? { in: ['ADMIN', 'SALES', 'MARKETING'] } : 'ADMIN', email: { not: null }, id: { notIn: [actor.id, hostId] } },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: 'asc' },
+  })
+  return users.flatMap((u) => (u.email ? [{ id: u.id, name: u.name, email: u.email }] : []))
+}
+
+/** Teammate ids saved with the invite (kept in the audit log), narrowed to people who still have access. */
+async function teammatesForBooking(bookingId: string, hostId: string): Promise<{ id: string; name: string | null; email: string }[]> {
+  const row = await prisma.activityLog.findFirst({ where: { entityType: 'BOOKING', entityId: bookingId, action: 'booking.teammates' }, orderBy: { createdAt: 'desc' }, select: { metadata: true } })
+  const ids = (row?.metadata as { userIds?: unknown } | null)?.userIds
+  if (!Array.isArray(ids) || ids.length === 0) return []
+  const users = await prisma.user.findMany({ where: { id: { in: ids.filter((i): i is string => typeof i === 'string'), not: hostId }, role: { not: null }, email: { not: null } }, select: { id: true, name: true, email: true } })
+  return users.flatMap((u) => (u.email ? [{ id: u.id, name: u.name, email: u.email }] : []))
+}
+
 /**
  * PENDING → CONFIRMED: re-checks the calendar, creates the Google Calendar event with a Meet
  * link (conferenceDataVersion 1), stores meetUrl, moves the lead to DEMO_SCHEDULED and emails
@@ -169,6 +188,7 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
     throw new BookingError('This booking was cancelled.', 'INVALID_STATE')
   }
 
+  const teammates = await teammatesForBooking(bookingId, booking.hostId)
   let event: Awaited<ReturnType<typeof createMeetEvent>>
   try {
     event = await createMeetEvent({
@@ -182,6 +202,7 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
       end: booking.endTime,
       guestEmail: booking.guestEmail,
       guestName: booking.guestName,
+      teammates,
     })
   } catch (err) {
     // Only roll back if nobody cancelled it meanwhile.
@@ -231,6 +252,17 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
   try {
     const emailId = await sendBookingConfirmedEmail({ ...(await emailDataFor(bookingId)), meetUrl: event.meetUrl })
     await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.confirmation_sent', actorId, metadata: { emailId } })
+    if (teammates.length > 0) {
+      const data = await emailDataFor(bookingId)
+      for (const t of teammates) {
+        try {
+          await sendTeammateMeetingEmail({ ...data, meetUrl: event.meetUrl, teammateEmail: t.email, teammateName: t.name ?? t.email })
+        } catch (err) {
+          console.error('[bookings] teammate email failed', bookingId, t.id, err)
+        }
+      }
+      await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.teammates_notified', actorId, metadata: { userIds: teammates.map((t) => t.id) } })
+    }
   } catch (err) {
     // The meeting exists; a mail outage must not undo it. Surface it in the audit log instead.
     console.error('[bookings] confirmation email failed', bookingId, err)
