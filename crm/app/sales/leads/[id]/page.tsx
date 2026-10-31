@@ -57,8 +57,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
 
   return (
     <div className="space-y-6">
-      <Link href="/sales/board" className="text-sm text-muted-foreground underline underline-offset-4">
-        ← Pipeline
+      <Link href="/sales/leads" className="text-sm text-muted-foreground underline underline-offset-4">
+        ← Contacts
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -124,9 +124,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Edit contact</CardTitle>
-            </CardHeader>
+            <details>
+            <summary className="cursor-pointer list-none p-6 text-lg font-semibold leading-none tracking-tight">Edit contact <span className="text-sm font-normal text-muted-foreground">(show)</span></summary>
             <CardContent>
               <EditContactForm
                 key={lead.updatedAt.toISOString()}
@@ -134,6 +133,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                 initial={{ firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, dealValue: lead.dealValue, tags: lead.tags }}
               />
             </CardContent>
+            </details>
           </Card>
 
           <Card>
