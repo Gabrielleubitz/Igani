@@ -67,9 +67,32 @@ client emails show on **Today** and as a badge on the contact; replying from the
   opening a contact pull new mail. Only messages where a known contact's email is in From/To/Cc are stored; the
   rest of the mailbox is never saved. An email in two teammates' inboxes is stored once (matched by Message-ID).
 - Google Cloud setup: enable the **Gmail API** in the same project as Calendar, and add the
-  `https://www.googleapis.com/auth/gmail.readonly` scope to the OAuth consent screen. Keep the app type **Internal**
-  (Workspace): read-only Gmail is a "restricted" scope that otherwise needs Google's security review.
+  `https://www.googleapis.com/auth/gmail.readonly` scope under **OAuth consent screen → Data access**.
 - Status per teammate (connected / last error) is on **Team**.
+
+**Current state of the `igani` Google project:** Gmail API on, `gmail.readonly` saved. The project is not inside a
+Google Workspace organization, so the app is **External · In production · unverified** ("Make internal" is greyed out).
+Sync works, with two consequences:
+
+- **"Google hasn't verified this app" warning.** When a teammate clicks *Connect Gmail*, Google shows this first.
+  It is expected and safe: click **Advanced → Go to igani (unsafe) → Allow**. It's our own app asking for read-only
+  access to the signed-in teammate's mailbox.
+- **User cap of 100** Google accounts for the app (2 used), which is plenty for the team.
+
+To remove the warning (recommended, no Google review): a Workspace admin signs in to console.cloud.google.com with an
+@igani.co account (this creates the igani.co organization), moves the project under **IAM & Admin → Settings →
+Migrate**, then sets **OAuth consent screen → Make internal**. The alternative, Google verification of a restricted
+scope, needs a demo video and usually a paid security assessment, which isn't worth it for internal use.
+
+**If something goes wrong when connecting Gmail**
+
+- *"Google hasn't verified this app"*: expected (see above): **Advanced → Go to igani (unsafe) → Allow**.
+- *"Access blocked" / "This app is blocked"*: the Gmail API is off, or the `gmail.readonly` scope isn't saved under
+  Data access. If neither, the 100-user cap may be reached (Google Cloud → OAuth consent screen shows the count).
+- *The "Connect Gmail" banner is still there after allowing*: sign out of the CRM, sign back in, connect again.
+  Make sure the "Read your email messages and settings" box was ticked on Google's screen.
+- *Team page shows "Gmail sync error"*: the message there says why (most often the access was removed in the
+  Google account's security settings; connect again).
 
 ## Task reminders (cron)
 

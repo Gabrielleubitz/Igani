@@ -69,7 +69,13 @@ export function EmailsPanel({
     <div className="space-y-3">
       {!gmailConnected ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
-          <span>Connect your Gmail so replies and emails with this contact show up here automatically.</span>
+          <span>
+            Connect your Gmail so replies and emails with this contact show up here automatically.
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Google will first say &ldquo;Google hasn&apos;t verified this app&rdquo;. That&apos;s expected for our in-house app: click <strong>Advanced</strong> →{' '}
+              <strong>Go to igani (unsafe)</strong> → <strong>Allow</strong>, and keep the &ldquo;Read your email&rdquo; box ticked.
+            </span>
+          </span>
           <Button size="sm" onClick={() => void signIn('google', { callbackUrl: window.location.pathname })}>
             Connect Gmail
           </Button>
