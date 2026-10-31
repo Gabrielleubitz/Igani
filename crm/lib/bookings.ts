@@ -382,7 +382,8 @@ export async function cancelBooking(bookingId: string, actorId: string | null, r
   const fresh = await prisma.booking.findUnique({ where: { id: bookingId }, select: { googleEventId: true } })
   if (fresh?.googleEventId) booking.googleEventId = fresh.googleEventId
   if (booking.googleEventId) {
-    await deleteCalendarEvent(booking.hostId, booking.googleEventId).catch(async (err: unknown) => {
+    // Upcoming meetings are cancelled for everyone invited (guest and teammates); a meeting that is over just disappears quietly.
+    await deleteCalendarEvent(booking.hostId, booking.googleEventId, booking.endTime.getTime() > Date.now()).catch(async (err: unknown) => {
       await logActivity({
         entityType: 'BOOKING',
         entityId: bookingId,

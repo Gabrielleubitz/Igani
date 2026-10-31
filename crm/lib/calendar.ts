@@ -141,9 +141,13 @@ export async function createMeetEvent(input: MeetEventInput): Promise<{ eventId:
   return { eventId: event.id, meetUrl, htmlLink: event.htmlLink ?? null }
 }
 
-export async function deleteCalendarEvent(hostId: string, eventId: string): Promise<void> {
+/**
+ * Deletes the event from the host's calendar. With `notifyAttendees` Google also cancels it for everyone invited
+ * (the guest and any teammates), so it disappears from their calendars too.
+ */
+export async function deleteCalendarEvent(hostId: string, eventId: string, notifyAttendees = false): Promise<void> {
   const cal = await calendarForHost(hostId)
-  await cal.events.delete({ calendarId: 'primary', eventId, sendUpdates: 'none' })
+  await cal.events.delete({ calendarId: 'primary', eventId, sendUpdates: notifyAttendees ? 'all' : 'none' })
 }
 
 export { GoogleNotConnectedError }

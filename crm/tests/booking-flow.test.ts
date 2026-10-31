@@ -18,12 +18,13 @@ Object.assign(process.env, {
 })
 
 const insert = vi.fn()
+const del = vi.fn(async () => ({}))
 const busy: { start: string; end: string }[] = []
 vi.mock('@/lib/google', () => ({
   GoogleNotConnectedError: class extends Error {},
   calendarForHost: async () => ({
     freebusy: { query: async () => ({ data: { calendars: { primary: { busy } } } }) },
-    events: { insert, delete: vi.fn(async () => ({})) },
+    events: { insert, delete: del },
   }),
 }))
 const sentConfirmations: unknown[] = []
@@ -44,7 +45,7 @@ vi.mock('@/lib/email', () => ({
 const d = testDb ? describe : describe.skip
 
 d('booking confirmation flow', async () => {
-  const { createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
+  const { cancelBooking, createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
   const prisma = new PrismaClient()
   let hostId = ''
@@ -57,6 +58,7 @@ d('booking confirmation flow', async () => {
     await prisma.lead.deleteMany()
     await prisma.user.deleteMany()
     insert.mockReset()
+    del.mockClear()
     busy.length = 0
     sentConfirmations.length = 0
     sentTeammate.length = 0
@@ -143,6 +145,19 @@ d('booking confirmation flow', async () => {
     expect(await prisma.activityLog.count({ where: { entityId: b.id, action: 'booking.deleted' } })).toBe(1)
     // the time is free again
     expect(await findTimeConflict(hostId, new Date('2030-01-07T07:00:00Z'), 30)).toBeNull()
+  })
+
+  it('cancelling an upcoming meeting removes it from everyone invited; a finished one is removed quietly', async () => {
+    insert.mockResolvedValue({ data: { id: 'evt_c', hangoutLink: 'https://meet.google.com/ccc-dddd-eee', htmlLink: null } })
+    const b = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    await confirmBooking(b.id, hostId)
+    await cancelBooking(b.id, hostId, 'test', false)
+    expect(del).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'evt_c', sendUpdates: 'all' }))
+
+    const past = await prisma.booking.create({ data: { status: 'CONFIRMED', source: 'SALES_INVITE', startTime: new Date('2020-01-07T07:00:00Z'), endTime: new Date('2020-01-07T07:30:00Z'), title: 'Old', guestName: 'G', guestEmail: 'g@example.com', hostId, googleEventId: 'evt_old' } })
+    del.mockClear()
+    await cancelBooking(past.id, hostId, 'test', false)
+    expect(del).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'evt_old', sendUpdates: 'none' }))
   })
 
   it('lets admins add anyone, and everyone else only admins', async () => {

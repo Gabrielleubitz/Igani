@@ -329,7 +329,7 @@ export async function markBookingDone(bookingId: string, done: boolean): Promise
   }
 }
 
-/** Host or admin: delete a meeting for good (the guest is not emailed; use Cancel to send a notice). */
+/** Host or admin: delete a meeting for good (upcoming ones are also removed from every invitee's calendar). */
 export async function deleteBooking(bookingId: string): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN', 'SALES'])

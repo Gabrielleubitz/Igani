@@ -28,7 +28,7 @@ export function MeetingRowActions({ bookingId, done, cancelled, title }: { booki
         variant="ghost"
         disabled={pending}
         className="text-red-400 hover:text-red-300"
-        onClick={() => window.confirm(`Delete “${title}” for good? It disappears from the list and the calendar event is removed. The guest is not emailed (use Cancel to send a notice).`) && run(() => deleteBooking(bookingId))}
+        onClick={() => window.confirm(`Delete “${title}” for good? It disappears from the list and the calendar event is removed. If it is still upcoming, it is also removed from everyone invited.`) && run(() => deleteBooking(bookingId))}
       >
         Delete
       </Button>
