@@ -1,4 +1,3 @@
-import { CrmSubNav } from '@/components/crm/CrmSubNav'
 import { buildReport } from '@/components/crm/crm-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -53,7 +52,6 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">Reports</h1>
-      <CrmSubNav active="/sales/reports" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile label="Total leads" value={r.total} />
         <Tile label="New (30 days)" value={last30} />

@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { CrmSubNav } from '@/components/crm/CrmSubNav'
 import { CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
 import { TASK_PRIORITIES, foldTasks } from '@/components/crm/crm-utils'
 import { Badge } from '@/components/ui/badge'
@@ -37,7 +36,6 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
   return (
     <div>
       <h1 className="mb-4 text-2xl font-semibold">Tasks</h1>
-      <CrmSubNav active="/sales/tasks" />
       <form className="mb-4 flex flex-wrap gap-2">
         <Select name="status" defaultValue={showDone ? 'done' : 'open'} className="h-9 w-32">
           <option value="open">Open</option>

@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import { CrmSubNav } from '@/components/crm/CrmSubNav'
 import { CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
 import { foldTasks, leadScore, scoreLabel, staleDays, visibleLeadsWhere } from '@/components/crm/crm-utils'
 import { Badge } from '@/components/ui/badge'
@@ -57,7 +56,6 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   return (
     <div>
       <h1 className="mb-4 text-2xl font-semibold">Today</h1>
-      <CrmSubNav active="/sales/today" />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>

@@ -1,5 +1,4 @@
 import type { Prisma } from '@prisma/client'
-import { CrmSubNav } from '@/components/crm/CrmSubNav'
 import { KanbanBoard } from '@/components/crm/KanbanBoard'
 import { LeadFilters } from '@/components/crm/LeadFilters'
 import { requireUser } from '@/lib/auth'
@@ -28,7 +27,6 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
   return (
     <div>
       <h1 className="mb-4 text-2xl font-semibold">Board</h1>
-      <CrmSubNav active="/sales/board" />
       <LeadFilters
         action="/sales/board"
         values={f}

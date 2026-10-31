@@ -1,4 +1,3 @@
-import { CrmSubNav } from '@/components/crm/CrmSubNav'
 import { LeadsDirectory } from '@/components/crm/LeadsDirectory'
 import { requireUser } from '@/lib/auth'
 
@@ -8,7 +7,6 @@ export default async function ContactsPage({ searchParams }: { searchParams: Rec
   const user = await requireUser()
   return (
     <div>
-      <CrmSubNav active="/sales/leads" />
       {await LeadsDirectory({ searchParams, basePath: '/sales/leads', isAdmin: user.role === 'ADMIN' })}
     </div>
   )
