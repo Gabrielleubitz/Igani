@@ -28,7 +28,6 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
     title: 'Tools',
     items: [
       { href: '/sales/invite', label: 'Send meeting invite', icon: 'invite', roles: SELLERS },
-      { href: '/sales/availability', label: 'My availability', icon: 'hours', roles: SELLERS },
       { href: '/sales/import', label: 'Import leads', icon: 'import', roles: ALL },
       { href: '/marketing', label: 'Marketing', icon: 'marketing', roles: ['ADMIN', 'MARKETING'] },
     ],

@@ -10,7 +10,6 @@ import { sendTeamInviteEmail } from '@/lib/email'
 import { prisma } from '@/lib/prisma'
 import { reassignUserWork } from '@/lib/leads'
 import { SETTING_SCHEMAS, isSettingKey } from '@/lib/settings'
-import { parseHHmm } from '@/lib/slots'
 import { toActionError, type ActionResult } from './result'
 
 const emailSchema = z.string().trim().email().max(254).transform(normalizeEmail)
@@ -90,48 +89,6 @@ export async function updateTeamMember(input: { userId: string; name: string; ti
     revalidatePath('/admin/team')
     revalidatePath(`/admin/team/${data.userId}`)
     revalidatePath('/admin/users')
-    return { ok: true, data: undefined }
-  } catch (err) {
-    return toActionError(err)
-  }
-}
-
-const hhmm = z.string().refine((v) => {
-  try {
-    parseHHmm(v)
-    return true
-  } catch {
-    return false
-  }
-}, 'Expected HH:mm')
-
-const availabilitySchema = z.object({
-  timeZone: z.string().refine((tz) => {
-    try {
-      new Intl.DateTimeFormat('en-US', { timeZone: tz })
-      return true
-    } catch {
-      return false
-    }
-  }, 'Unknown time zone'),
-  rules: z
-    .array(z.object({ dayOfWeek: z.number().int().min(0).max(6), startTime: hhmm, endTime: hhmm }))
-    .max(50)
-    .refine((rules) => rules.every((r) => parseHHmm(r.endTime) > parseHHmm(r.startTime)), 'End must be after start'),
-})
-
-/** Replace the signed-in user's weekly working hours. */
-export async function saveMyAvailability(input: z.input<typeof availabilitySchema>): Promise<ActionResult> {
-  try {
-    const user = await requireUser(['ADMIN', 'SALES'])
-    const data = availabilitySchema.parse(input)
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: user.id }, data: { timeZone: data.timeZone } })
-      await tx.availability.deleteMany({ where: { hostId: user.id } })
-      if (data.rules.length) await tx.availability.createMany({ data: data.rules.map((r) => ({ ...r, hostId: user.id })) })
-      await logActivity({ entityType: 'AVAILABILITY', entityId: user.id, action: 'availability.updated', actorId: user.id, metadata: data }, tx)
-    })
-    revalidatePath('/sales/availability')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)

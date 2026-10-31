@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { MeetingCard, Quote, Shell, Steps } from './Shell'
+import { MeetingCard, Quote, Shell } from './Shell'
 import { formatWhen, googleCalendarUrl, outlookCalendarUrl } from './theme'
 
 export interface BookingConfirmedProps {
@@ -52,13 +52,6 @@ export function BookingConfirmed({ guestName, hostName, title, startTime, endTim
     >
       <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="success" rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Where', value: 'Google Meet (link below)' }]} />
       {notes ? <Quote label="Your note">{notes}</Quote> : null}
-      <Steps
-        title="Before the call"
-        steps={[
-          { title: 'Join a minute early', body: 'Open the Meet link from a laptop or phone, no installs needed.' },
-          { title: 'Bring examples', body: 'Sites you like, your current one, and any goals or deadlines.' },
-        ]}
-      />
     </Shell>
   )
 }

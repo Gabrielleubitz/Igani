@@ -7,7 +7,7 @@ export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; e
 /** Maps known domain errors to user-safe messages; logs everything else. */
 export function toActionError(err: unknown): { ok: false; error: string } {
   if (err instanceof BookingError) return { ok: false, error: err.message }
-  if (err instanceof GoogleNotConnectedError) return { ok: false, error: 'The host must connect Google Calendar first (My availability → Connect Google).' }
+  if (err instanceof GoogleNotConnectedError) return { ok: false, error: 'The host must connect Google Calendar first (Send meeting invite → Connect Google).' }
   // Unique-constraint race (two people saving the same email at once)
   if (typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'P2002') return { ok: false, error: 'That already exists (for example, another contact with this email). Refresh and try again.' }
   if (err instanceof ZodError) return { ok: false, error: err.issues.map((i) => `${i.path.join('.') || 'input'}: ${i.message}`).join('; ') }

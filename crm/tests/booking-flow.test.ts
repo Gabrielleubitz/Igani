@@ -62,21 +62,23 @@ d('booking confirmation flow', async () => {
     sentTeammate.length = 0
     const host = await prisma.user.create({ data: { email: 'host@igani.co', name: 'Host', role: 'SALES', timeZone: 'Asia/Jerusalem' } })
     hostId = host.id
-    // 2030-01-07 is a Monday (dayOfWeek 1); 09:00–11:00 Jerusalem = 07:00–09:00 UTC
-    await prisma.availability.create({ data: { hostId, dayOfWeek: 1, startTime: '09:00', endTime: '11:00' } })
   })
   afterAll(async () => prisma.$disconnect())
 
-  it('combines working hours, Google busy time and held bookings', async () => {
+  it('is open around the clock, minus Google busy time and held bookings', async () => {
     busy.push({ start: '2030-01-07T07:30:00Z', end: '2030-01-07T08:00:00Z' })
-    expect(await getAvailableSlots(hostId, new Date('2030-01-07'), 30)).toEqual([
-      '2030-01-07T07:00:00.000Z',
-      '2030-01-07T08:00:00.000Z',
-      '2030-01-07T08:30:00.000Z',
-    ])
+    const slots = await getAvailableSlots(hostId, new Date('2030-01-07'), 30)
+    // Jerusalem is UTC+2 in January: the whole local day, 00:00-24:00, in half-hour steps (48), minus the busy slot.
+    expect(slots).toHaveLength(47)
+    expect(slots).toContain('2030-01-06T22:00:00.000Z') // local midnight
+    expect(slots).toContain('2030-01-07T21:30:00.000Z') // local 23:30
+    expect(slots).not.toContain('2030-01-07T07:30:00.000Z')
     await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T08:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'G', guestEmail: 'g@example.com' })
-    expect(await getAvailableSlots(hostId, new Date('2030-01-07'), 30)).toEqual(['2030-01-07T07:00:00.000Z', '2030-01-07T08:30:00.000Z'])
-    expect(await getAvailableSlots(hostId, new Date('2030-01-08'), 30)).toEqual([]) // no hours on Tuesday
+    const after = await getAvailableSlots(hostId, new Date('2030-01-07'), 30)
+    expect(after).toHaveLength(46)
+    expect(after).not.toContain('2030-01-07T08:00:00.000Z')
+    // No weekend or hours rules any more: a Tuesday is as open as a Monday.
+    expect(await getAvailableSlots(hostId, new Date('2030-01-08'), 30)).toHaveLength(48)
     await expect(assertSlotOffered(hostId, new Date('2030-01-07T07:30:00Z'), 30)).rejects.toBeInstanceOf(BookingError)
   })
 

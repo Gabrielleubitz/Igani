@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { ConnectGoogleButton, UnverifiedAppHint } from '@/components/ConnectGoogle'
 import { InviteForm } from '@/components/InviteForm'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export default async function InvitePage({ searchParams }: { searchParams: { leadId?: string } }): Promise<React.ReactElement> {
   const user = await requireUser(['ADMIN', 'SALES'])
   const select = { id: true, email: true, firstName: true, lastName: true, company: true } as const
-  const [leads, preselected, hosts, myRules, defaultDuration] = await Promise.all([
+  const [leads, preselected, hosts, googleConnected, defaultDuration] = await Promise.all([
     prisma.lead.findMany({
       where: { AND: [leadScope(user), { archived: false, email: { not: null }, status: { notIn: ['WON', 'LOST'] } }] },
       orderBy: { updatedAt: 'desc' },
@@ -24,7 +24,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
     }),
     typeof searchParams.leadId === 'string' ? prisma.lead.findFirst({ where: { AND: [leadScope(user), { id: searchParams.leadId, email: { not: null } }] }, select }) : null,
     user.role === 'ADMIN' ? prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
-    prisma.availability.count({ where: { hostId: user.id } }),
+    prisma.account.findFirst({ where: { userId: user.id, provider: 'google', refresh_token: { not: null } }, select: { id: true } }),
     getSetting('booking.defaultDurationMinutes'),
   ])
   const teammates = await allowedTeammates(user, user.id)
@@ -35,13 +35,14 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
         title="Send meeting invite"
         hint="Pick a free slot from the calendar. The guest gets a branded email with one button to confirm; the Google Meet link is created the moment they accept."
       />
-      {myRules === 0 ? (
-        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          You haven&apos;t set your working hours yet, so no times will show.{' '}
-          <Link href="/sales/availability" className="font-medium underline underline-offset-4">
-            Set my availability →
-          </Link>
-        </p>
+      {!googleConnected ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
+          <span>
+            Connect Google so invites get a Meet link and the times skip what&apos;s busy on your calendar. Until you do, you can&apos;t send invites.
+            <UnverifiedAppHint />
+          </span>
+          <ConnectGoogleButton callbackUrl="/sales/invite" />
+        </div>
       ) : null}
       <Card>
         <CardContent className="pt-6">

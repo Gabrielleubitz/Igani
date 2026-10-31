@@ -21,7 +21,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
         id: true,
         email: true,
         name: true,
-        _count: { select: { assignedLeads: { where: { archived: false, status: { notIn: ['WON', 'LOST'] } } }, availability: true } },
+        _count: { select: { assignedLeads: { where: { archived: false, status: { notIn: ['WON', 'LOST'] } } } } },
         accounts: { select: { refresh_token: true, scope: true } },
         mailboxSync: { select: { lastSyncedAt: true, lastError: true } },
       },
@@ -70,7 +70,6 @@ export default async function UsersPage(): Promise<React.ReactElement> {
                     {u ? ` · ${u._count.assignedLeads} open contact${u._count.assignedLeads === 1 ? '' : 's'}` : ''}
                     {u && a.role !== 'MARKETING' ? (calendar ? ' · 📅 calendar connected' : ' · ⚠ calendar not connected') : ''}
                     {u ? (gmail ? (u.mailboxSync?.lastError ? ` · ⚠ Gmail sync error: ${u.mailboxSync.lastError.slice(0, 60)}` : ' · 📨 Gmail synced') : ' · Gmail not connected') : ''}
-                    {u && a.role !== 'MARKETING' && u._count.availability === 0 ? ' · no working hours set' : ''}
                     {last ? ` · last active ${timeAgo(last, now)}` : ''}
                   </div>
                 </div>

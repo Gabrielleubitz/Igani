@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic'
 export default async function BookingPagesPage(): Promise<React.ReactElement> {
   await requireUser(['ADMIN'])
   const [pages, hosts, defaultDuration] = await Promise.all([
-    prisma.bookingPage.findMany({ orderBy: { createdAt: 'asc' }, include: { host: { select: { name: true, email: true, availability: { select: { id: true } } } }, _count: { select: { bookings: true } } } }),
+    prisma.bookingPage.findMany({ orderBy: { createdAt: 'asc' }, include: { host: { select: { name: true, email: true } }, _count: { select: { bookings: true } } } }),
     prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true } }),
     getSetting('booking.defaultDurationMinutes'),
   ])
@@ -48,7 +48,6 @@ export default async function BookingPagesPage(): Promise<React.ReactElement> {
                   {p.durationMinutes} min · host {p.host.name ?? p.host.email} · {p._count.bookings} booking{p._count.bookings === 1 ? '' : 's'}
                 </p>
                 <code className="block truncate text-xs text-primary">{url}</code>
-                {p.host.availability.length === 0 ? <p className="text-xs text-amber-300">⚠ The host hasn&apos;t set working hours, so no times are offered yet.</p> : null}
               </div>
               <div className="flex shrink-0 gap-2">
                 <CopyButton text={url} />

@@ -2,8 +2,11 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { GoogleNotConnectedError, calendarForHost } from './google'
 import { prisma } from './prisma'
-import { civilDate, computeSlots, overlaps, windowsForDate, type Interval } from './slots'
+import { computeSlots, overlaps, windowsForDate, type Interval } from './slots'
 import { getSetting } from './settings'
+
+/** Everyone is expected to be reachable 24/7, so every day is one open window. */
+const ALL_DAY = [{ startTime: '00:00', endTime: '24:00' }] as const
 
 /** Minimum lead time before a slot can be booked. */
 export const MIN_NOTICE_MINUTES = 60
@@ -50,7 +53,8 @@ async function getDbBusy(hostId: string, range: Interval, excludeBookingId?: str
 /**
  * Available start times (ISO) for `hostId` on the civil date of `date` (read as UTC Y-M-D,
  * e.g. `new Date('2026-11-02')`), interpreted in the host's time zone.
- * Combines weekly Availability, live Google free/busy and existing PENDING/CONFIRMED bookings.
+ * The team is bookable around the clock, so the only limits are live Google free/busy, existing
+ * PENDING/CONFIRMED bookings, the notice period and the buffer.
  */
 export async function getAvailableSlots(
   hostId: string,
@@ -59,13 +63,7 @@ export async function getAvailableSlots(
   options: { now?: Date; excludeBookingId?: string } = {},
 ): Promise<string[]> {
   const host = await hostOrThrow(hostId)
-  const { dayOfWeek } = civilDate(date)
-  const rules = await prisma.availability.findMany({
-    where: { hostId, dayOfWeek },
-    select: { startTime: true, endTime: true },
-    orderBy: { startTime: 'asc' },
-  })
-  const windows = windowsForDate(date, rules, host.timeZone)
+  const windows = windowsForDate(date, ALL_DAY, host.timeZone)
   const first = windows[0]
   const last = windows[windows.length - 1]
   if (!first || !last) return []
