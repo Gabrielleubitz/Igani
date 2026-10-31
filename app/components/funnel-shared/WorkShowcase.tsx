@@ -268,10 +268,14 @@ function PinnedRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme
 
   useEffect(() => {
     const el = firstRef.current
-    const box = el?.parentElement?.parentElement
-    if (!el || !box) return
-    // Step = one slide plus the gap after it; offset centres a slide in the row
-    const measure = () => setSize({ step: el.offsetWidth + 64, offset: (box.clientWidth - el.offsetWidth) / 2 })
+    const track = el?.parentElement
+    const box = track?.parentElement
+    if (!el || !track || !box) return
+    // Step = one slide plus the gap after it (the gap differs on phones); offset centres a slide in the row
+    const measure = () => {
+      const gap = parseFloat(getComputedStyle(track).columnGap) || 0
+      setSize({ step: el.offsetWidth + gap, offset: (box.clientWidth - el.offsetWidth) / 2 })
+    }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(box)
@@ -279,7 +283,8 @@ function PinnedRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme
   }, [])
 
   return (
-    <PinnedStage screens={n - 1} className="overflow-clip pb-6 pt-28">
+    // Extra room at the bottom on phones for the sticky button bar
+    <PinnedStage screens={n - 1} className="overflow-clip pb-24 pt-28 lg:pb-6">
       {(progress) => <PinnedTrack projects={projects} progress={progress} size={size} active={active} setActive={setActive} firstRef={firstRef} theme={theme} onOpen={onOpen} />}
     </PinnedStage>
   )
@@ -316,19 +321,19 @@ function PinnedTrack({
   return (
     <div className="relative w-full">
       <Glow color={project.accent} />
-      <motion.div style={{ x }} className="relative flex gap-16">
+      <motion.div style={{ x }} className="relative flex gap-5 lg:gap-16">
         {projects.map((p, i) => (
           <div
             key={p.id}
             ref={i === 0 ? firstRef : undefined}
-            className="w-[min(66%,calc((100svh-380px)*1.5))] shrink-0 transition-[opacity,transform] duration-500"
+            className="w-[86%] shrink-0 transition-[opacity,transform] duration-500 lg:w-[min(66%,calc((100svh-380px)*1.5))]"
             style={{ opacity: i === active ? 1 : 0.35, transform: `scale(${i === active ? 1 : 0.94})` }}
           >
             <Showpiece project={p} theme={theme} active={i === active} load={Math.abs(i - active) <= 1} onOpen={() => onOpen(p)} />
           </div>
         ))}
       </motion.div>
-      <div className="relative mx-auto mt-14 w-[min(66%,calc((100svh-380px)*1.5))]">
+      <div className="relative mx-auto mt-10 w-[86%] lg:mt-14 lg:w-[min(66%,calc((100svh-380px)*1.5))]">
         <AnimatePresence mode="wait">
           <motion.div key={project.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
             <Caption project={project} theme={theme} index={active} total={n} onOpen={() => onOpen(project)} />
@@ -391,28 +396,20 @@ function SwipeRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme:
 }
 
 /**
- * "Our work" gallery: every project as a live-looking site on a laptop with its
- * phone version in front. Pinned sideways scroll on desktop, swipe cards on
- * phones, and a full-screen look that ends on the call to action.
+ * Gallery: every project as a live-looking site on a laptop with its phone version
+ * in front. Scrolling down pins the section and swipes sideways to the next site, on
+ * phones as well as desktop (swipe cards only when the visitor prefers reduced
+ * motion), and a full-screen look ends on the call to action.
  */
 export function WorkGallery({ theme, onWant, projects = workProjects }: { theme: WorkTheme; onWant: () => void; projects?: WorkProject[] }) {
   const reduce = useReducedMotionSafe()
   const [open, setOpen] = useState<WorkProject | null>(null)
   const [mounted, setMounted] = useState(false)
-  // Render only the layout for this screen, so the hidden one never loads or plays videos
-  const [wide, setWide] = useState(false)
-  useEffect(() => {
-    setMounted(true)
-    const mq = window.matchMedia('(min-width: 1024px)')
-    const update = () => setWide(mq.matches)
-    update()
-    mq.addEventListener('change', update)
-    return () => mq.removeEventListener('change', update)
-  }, [])
+  useEffect(() => setMounted(true), [])
 
   return (
     <>
-      {wide && !reduce ? <PinnedRow projects={projects} theme={theme} onOpen={setOpen} /> : <SwipeRow projects={projects} theme={theme} onOpen={setOpen} />}
+      {reduce ? <SwipeRow projects={projects} theme={theme} onOpen={setOpen} /> : <PinnedRow projects={projects} theme={theme} onOpen={setOpen} />}
       {mounted && (
         <AnimatePresence>
           {open && (

@@ -165,7 +165,7 @@ export function BeforeAfter({ study, sample = false }: { study: CaseStudy; sampl
         }`}
       >
         {study.after.image ? (
-          <Screenshot src={study.after.image} mobileSrc={study.after.mobileImage} alt={`${study.client} — ${study.after.caption}`} />
+          <Screenshot src={study.after.image} mobileSrc={study.after.mobileImage} video={study.after.video} alt={`${study.client} — ${study.after.caption}`} />
         ) : (
           <ModernMock name={study.client} />
         )}

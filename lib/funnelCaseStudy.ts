@@ -19,7 +19,8 @@ export type CaseStudy = {
   /** Live URL of the site we built */
   url?: string
   before: { image?: string; mobileImage?: string; caption: string }
-  after: { image?: string; mobileImage?: string; caption: string }
+  /** `video`: a recording of the live site (its hero video playing); `image` is its poster */
+  after: { image?: string; mobileImage?: string; video?: string; caption: string }
   results: { value: string; label: string }[]
   quote?: { text: string; author: string; role?: string }
 }
@@ -31,7 +32,7 @@ export const caseStudy: CaseStudy = {
   location: 'Jerusalem',
   url: 'https://www.gabairealestate.com',
   before: { image: '/case-studies/gabai-before.jpg', caption: 'Their old site' },
-  after: { image: '/case-studies/gabai-after.jpg', caption: 'The site we built' },
+  after: { image: '/case-studies/gabai-after.jpg', video: '/work/gabai-after.mp4', caption: 'The site we built' },
   results: [],
   quote: undefined,
 }

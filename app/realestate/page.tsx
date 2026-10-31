@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import Script from 'next/script'
 import { ArrowRight } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
-import { WHATSAPP_HREF } from '@/app/components/realestate/contact'
+import { ADDRESS, PHONE_DISPLAY, PHONE_TEL, WHATSAPP_HREF } from '@/app/components/realestate/contact'
 import { IganiLogo } from '@/components/IganiLogo'
 import { FunnelBanner } from '@/app/components/funnels/FunnelBanner'
 import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
@@ -29,7 +29,7 @@ const scrollToForm = scrollTo('build-form')
 const RAIL = [
   { id: 'reason', index: '01', label: 'First impression' },
   { id: 'proof', index: '02', label: 'The proof' },
-  { id: 'work', index: '03', label: 'Our work' },
+  { id: 'work', index: '03', label: 'Site concepts' },
   { id: 'tour', index: '04', label: '3D tours' },
   { id: 'build-what', index: '05', label: 'What we build' },
   { id: 'build', index: '06', label: 'The bottom line' },
@@ -167,7 +167,7 @@ export default function RealEstatePage() {
         <div className="relative bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]">
           <HeroBackdrop />
           <FunnelBanner className="mt-[76px] sm:mt-[92px]" />
-          <Hero onCta={scrollToForm} />
+          <Hero onSeeWork={scrollTo('reason')} />
         </div>
         <SectionSheet id="sheet-reason" layer={1} className="bg-[#061225]">
           <CompareSlider
@@ -175,8 +175,8 @@ export default function RealEstatePage() {
               index: '01',
               label: 'Your website is your first listing presentation',
               aside: 'drag the line',
-              title: 'Design is trust. In real estate, *trust is the listing.*',
-              sub: 'Before a seller lets you in their door, they’ve already compared you to two other agents online. They decide who looks like the one who sells for top dollar.',
+              title: 'Clients google you *before they buy*.',
+              sub: 'Before a seller lets you in their door, they’ve already compared you to two other agents online.',
             }}
             caption="From a dated template to a premium showcase for high-end Jerusalem properties."
           />
@@ -210,11 +210,17 @@ export default function RealEstatePage() {
         </SectionSheet>
       </main>
 
-      <footer className="relative z-[7] bg-[#030814] px-4 pb-28 pt-8 text-center text-[13px] text-white/45 lg:pb-8">
-        © 2026 IGANI. All rights reserved. ·{' '}
-        <a href="mailto:info@igani.co" className="text-[#9ec0f5] hover:text-white">
-          info@igani.co
-        </a>
+      <footer className="relative z-[7] bg-[#030814] px-4 pb-28 pt-10 text-center text-[13px] leading-relaxed text-white/45 lg:pb-10">
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-x-6">
+          <a href={`tel:${PHONE_TEL}`} className="text-[#9ec0f5] hover:text-white">
+            {PHONE_DISPLAY}
+          </a>
+          <span>{ADDRESS}</span>
+          <a href="mailto:info@igani.co" className="text-[#9ec0f5] hover:text-white">
+            info@igani.co
+          </a>
+        </div>
+        <div className="mt-3">© 2026 IGANI. All rights reserved.</div>
       </footer>
     </div>
   )

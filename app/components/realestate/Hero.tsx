@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowRight } from 'lucide-react'
+import { ArrowDown } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
 import { FocusIn } from '@/app/components/funnel-shared/FocusIn'
@@ -16,7 +16,7 @@ const fadeUp = (delay: number) => ({
 })
 
 /** Brand-blue opener: an agent's website is their first listing presentation. */
-export function Hero({ onCta }: { onCta: () => void }) {
+export function Hero({ onSeeWork }: { onSeeWork: () => void }) {
   return (
     <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI for real estate">
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-white/15 blur-[140px]" />
@@ -34,17 +34,15 @@ export function Hero({ onCta }: { onCta: () => void }) {
           </h1>
         </FocusIn>
 
-        <motion.p {...fadeUp(1.0)} className="!mt-6 text-xl font-medium text-white sm:text-2xl">
+        {/* Same serif as the italic accent words in the headline */}
+        <motion.p {...fadeUp(1.0)} className="font-display !mt-7 text-[clamp(1.6rem,3.4vw,2.6rem)] italic leading-[1.1] text-[#e9f0ff]">
           Give them a reason to book the showing.
         </motion.p>
-        <motion.p {...fadeUp(1.15)} className="!mt-4 max-w-xl text-lg leading-relaxed text-white/85">
-          If your site looks like 2018, sellers assume your marketing is too, and they call the agent whose site looks like a luxury brand.
-        </motion.p>
 
-        <motion.div {...fadeUp(1.3)} className="mt-10 flex flex-wrap items-center justify-center gap-3">
-          <MagneticButton onClick={onCta}>
-            I want a site like this
-            <ArrowRight className="h-4 w-4" />
+        <motion.div {...fadeUp(1.2)} className="mt-10 flex flex-wrap items-center justify-center gap-3">
+          <MagneticButton onClick={onSeeWork}>
+            See what we&rsquo;ve built
+            <ArrowDown className="h-4 w-4" />
           </MagneticButton>
           <MagneticButton variant="ghost" href={WHATSAPP_HREF} external>
             <WhatsAppGlyph className="h-4 w-4" />

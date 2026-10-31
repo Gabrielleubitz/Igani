@@ -10,18 +10,35 @@ import { useReducedMotionSafe } from '@/app/components/funnel-shared/useReducedM
 const spring = { type: 'spring', stiffness: 220, damping: 22 } as const
 const inView = { once: true, amount: 0.5 } as const
 
-function Card({ index, title, body, className = '', children }: { index: string; title: string; body: string; className?: string; children: ReactNode }) {
+function Card({
+  index,
+  title,
+  body,
+  className = '',
+  wide = false,
+  children,
+}: {
+  index: string
+  title: string
+  body: string
+  className?: string
+  /** Full-row card: demo on the left, text on the right (from md up) */
+  wide?: boolean
+  children: ReactNode
+}) {
   return (
     <motion.div whileHover={{ y: -4 }} transition={spring} className={className}>
       <SpotlightCard className="h-full p-6 sm:p-8">
         {/* SpotlightCard wraps its children in a full-height box, so the column lives here */}
-        <div className="flex h-full flex-col">
-          <div className="mb-8 flex flex-1 flex-col justify-center">{children}</div>
-          <p className="!mt-0 flex items-baseline gap-3 text-sm text-white/55">
-            <span className="font-display text-lg text-white/70">{index}</span>
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{title}</h3>
-          <div className="mt-3 max-w-md text-[15px] leading-relaxed text-white/70">{body}</div>
+        <div className={`flex h-full flex-col ${wide ? 'md:flex-row md:items-center md:gap-12' : ''}`}>
+          <div className={`mb-8 flex flex-1 flex-col justify-center ${wide ? 'md:mb-0 md:w-1/2 md:flex-none' : ''}`}>{children}</div>
+          <div className={wide ? 'md:w-1/2' : ''}>
+            <p className="!mt-0 flex items-baseline gap-3 text-sm text-white/55">
+              <span className="font-display text-lg text-white/70">{index}</span>
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">{title}</h3>
+            <div className="mt-3 max-w-md text-[15px] leading-relaxed text-white/70">{body}</div>
+          </div>
         </div>
       </SpotlightCard>
     </motion.div>
@@ -216,27 +233,6 @@ function ListingsDemo() {
   )
 }
 
-/** Your name, not your brokerage's logo. */
-function BrandDemo() {
-  return (
-    <div className="flex items-center gap-4">
-      <motion.span
-        initial={{ rotate: -8, scale: 0.85, opacity: 0.4 }}
-        whileInView={{ rotate: 0, scale: 1, opacity: 1 }}
-        viewport={inView}
-        transition={{ ...spring, delay: 0.2 }}
-        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white font-display text-2xl text-[#04101e]"
-      >
-        JR
-      </motion.span>
-      <div>
-        <div className="text-lg font-semibold text-white">Jordan Reyes</div>
-        <div className="text-[13px] text-white/55">jordanreyes.com · goes where you go</div>
-      </div>
-    </div>
-  )
-}
-
 /** 04 — What we build: what agents measure. Listings, leads and brand. */
 export function WhatWeBuild() {
   return (
@@ -256,16 +252,14 @@ export function WhatWeBuild() {
           <Card index="02" title="Your listings, beautifully." body="Your listings and featured homes laid out like a magazine, not a spreadsheet, with a showing request one tap away.">
             <ListingsDemo />
           </Card>
-          <Card index="03" title="Neighborhood pages that rank." body="Local pages that bring in buyers and sellers searching your area on Google.">
-            <RankingDemo />
-          </Card>
           <Card
-            index="04"
-            title="A brand that’s yours, not your brokerage’s."
-            body="Your name, your face, your story. Take it with you if you ever switch brokerages."
-            className="md:col-span-2"
+            index="03"
+            title="Neighborhood pages that rank."
+            body="Local pages that bring in buyers and sellers searching your area on Google."
+            className="md:col-span-3"
+            wide
           >
-            <BrandDemo />
+            <RankingDemo />
           </Card>
         </div>
       </div>

@@ -183,7 +183,7 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
           }`}
         >
           {cs?.after.image ? (
-            <Screenshot src={cs.after.image} mobileSrc={cs.after.mobileImage} alt={`${cs.client} — ${cs.after.caption}`} />
+            <Screenshot src={cs.after.image} mobileSrc={cs.after.mobileImage} video={cs.after.video} alt={`${cs.client} — ${cs.after.caption}`} />
           ) : (
             <ModernSite name={cs?.client} />
           )}
