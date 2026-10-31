@@ -14,13 +14,16 @@ export interface ContactEmailProps {
   supportEmail?: string
 }
 
-/** A personal email a teammate writes from the CRM, wrapped in the Igani brand frame. Replies go to the sender. */
+/**
+ * A personal email a teammate writes from the CRM. Deliberately letter-like (no status chip noise, no icon):
+ * personal emails read best when they look written by a person, framed lightly by the brand.
+ */
 export function ContactEmail({ subject, body, senderName, senderEmail, cta, logoUrl, brandName = 'Igani', supportEmail }: ContactEmailProps): React.ReactElement {
   const paragraphs = body.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
   return (
     <Shell
-      preview={paragraphs[0]?.slice(0, 120) ?? subject}
-      eyebrow={`Message from ${brandName}`}
+      preview={paragraphs.find((x) => !/^(hi|hello|hey)\b/i.test(x))?.slice(0, 140) ?? subject}
+      eyebrow={brandName}
       title={subject}
       logoUrl={logoUrl}
       brandName={brandName}
@@ -30,11 +33,11 @@ export function ContactEmail({ subject, body, senderName, senderEmail, cta, logo
       footerNote={`Sent by ${senderName} at ${brandName}. Reply to this email to reach them directly.`}
     >
       {paragraphs.map((para, i) => (
-        <Text key={i} style={{ color: colors.text, fontSize: 15, lineHeight: '25px', whiteSpace: 'pre-wrap', margin: '0 0 18px' }}>
+        <Text key={i} style={{ color: colors.text, fontSize: 16, lineHeight: '27px', whiteSpace: 'pre-wrap', margin: '0 0 18px' }}>
           {para}
         </Text>
       ))}
-      {cta ? <div style={{ height: 6 }} /> : null}
+      {cta ? <div style={{ height: 8 }} /> : null}
     </Shell>
   )
 }

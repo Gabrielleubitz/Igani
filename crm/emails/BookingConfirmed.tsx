@@ -1,7 +1,6 @@
-import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Quote, Shell } from './Shell'
-import { formatWhen, googleCalendarUrl } from './theme'
+import { MeetingCard, Quote, Shell, Steps } from './Shell'
+import { formatWhen, googleCalendarUrl, outlookCalendarUrl } from './theme'
 
 export interface BookingConfirmedProps {
   guestName: string
@@ -21,37 +20,37 @@ export interface BookingConfirmedProps {
   notes?: string | null
 }
 
-export function BookingConfirmed({
-  guestName,
-  hostName,
-  title,
-  startTime,
-  endTime,
-  timeZone,
-  meetUrl,
-  logoUrl,
-  brandName = 'Igani',
-  supportEmail,
-  icsFileName,
-  notes,
-}: BookingConfirmedProps): React.ReactElement {
-  const when = formatWhen(startTime, endTime, timeZone)
+export function BookingConfirmed({ guestName, hostName, title, startTime, endTime, timeZone, meetUrl, logoUrl, brandName = 'Igani', supportEmail, icsFileName, notes }: BookingConfirmedProps): React.ReactElement {
+  const w = formatWhen(startTime, endTime, timeZone)
+  const cal = { title, start: startTime, end: endTime, details: `Join Google Meet: ${meetUrl}`, location: meetUrl }
   return (
     <Shell
-      preview={`Confirmed: ${title} — ${when.date}`}
-      eyebrow="Meeting confirmed"
+      preview={`You're booked: ${title}, ${w.date} at ${w.time}`}
+      eyebrow="Confirmed"
       tone="success"
-      title={title}
+      icon="✓"
+      title="You're all set!"
+      intro={<>Hi {guestName}, your meeting with {hostName} is confirmed. See you there.</>}
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
       cta={{ href: meetUrl, label: 'Join Google Meet' }}
-      secondary={{ href: googleCalendarUrl({ title, start: startTime, end: endTime, details: `Join Google Meet: ${meetUrl}`, location: meetUrl }), label: 'Add to Google Calendar' }}
-      ctaHint={icsFileName ? `Using Outlook or Apple Calendar? Open the attached ${icsFileName} file. Meet link: ${meetUrl}` : `Meet link: ${meetUrl}`}
+      links={[
+        { href: googleCalendarUrl(cal), label: 'Google Calendar' },
+        { href: outlookCalendarUrl(cal), label: 'Outlook' },
+      ]}
+      ctaHint={icsFileName ? `Apple Calendar or desktop Outlook? Open the attached ${icsFileName}. Meet link: ${meetUrl}` : `Meet link: ${meetUrl}`}
+      footerNote={`You booked a meeting with ${brandName}. Need to change it? Reply to this email.`}
     >
-      <Text style={p}>Hi {guestName}, you&apos;re booked with {hostName} from {brandName}. Here are the details:</Text>
-      <DetailCard rows={[{ label: 'Date', value: when.date }, { label: 'Time', value: when.time }, { label: 'Host', value: hostName }, { label: 'Where', value: 'Google Meet (link below)' }]} />
-      {notes ? <Quote>{notes}</Quote> : null}
+      <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="success" rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Where', value: 'Google Meet (link below)' }]} />
+      {notes ? <Quote label="Your note">{notes}</Quote> : null}
+      <Steps
+        title="Before the call"
+        steps={[
+          { title: 'Join a minute early', body: 'Open the Meet link from a laptop or phone, no installs needed.' },
+          { title: 'Bring examples', body: 'Sites you like, your current one, and any goals or deadlines.' },
+        ]}
+      />
     </Shell>
   )
 }

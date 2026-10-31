@@ -1,6 +1,5 @@
 import * as React from 'react'
-import { Text } from '@react-email/components'
-import { DetailCard, p, Quote, Shell } from './Shell'
+import { MeetingCard, Quote, Shell } from './Shell'
 import { formatWhen } from './theme'
 
 export interface BookingInviteProps {
@@ -18,22 +17,23 @@ export interface BookingInviteProps {
 }
 
 export function BookingInvite({ guestName, hostName, title, startTime, endTime, timeZone, acceptUrl, logoUrl, brandName = 'Igani', supportEmail, notes }: BookingInviteProps): React.ReactElement {
-  const when = formatWhen(startTime, endTime, timeZone)
+  const w = formatWhen(startTime, endTime, timeZone)
   return (
     <Shell
-      preview={`${hostName} invited you: ${title}`}
+      preview={`${hostName} invited you to ${title} on ${w.date}. One click to confirm.`}
       eyebrow="Meeting invitation"
-      title={title}
+      title={`${hostName} would like to meet`}
+      intro={<>Hi {guestName}, here&apos;s a time that works for us. If it suits you too, confirm with one click.</>}
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
       cta={{ href: acceptUrl, label: 'Confirm this time' }}
-      ctaHint="One click confirms it. A Google Meet link and calendar invite are sent as soon as you do. If the time doesn't work, just reply to this email."
+      ctaHint="A Google Meet link and calendar invite arrive the moment you confirm. Need a different time? Just reply to this email."
       signature={{ name: hostName, detail: brandName }}
+      footerNote={`${hostName} at ${brandName} invited you to this meeting.`}
     >
-      <Text style={p}>Hi {guestName}, {hostName} from {brandName} would like to meet with you.</Text>
-      <DetailCard rows={[{ label: 'Date', value: when.date }, { label: 'Time', value: when.time }, { label: 'Host', value: hostName }, { label: 'Where', value: 'Google Meet' }]} />
-      {notes ? <Quote>{notes}</Quote> : null}
+      <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Where', value: 'Google Meet (video call)' }]} />
+      {notes ? <Quote label={`A note from ${hostName.split(' ')[0]}`}>{notes}</Quote> : null}
     </Shell>
   )
 }

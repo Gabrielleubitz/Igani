@@ -1,7 +1,6 @@
-import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Quote, Shell } from './Shell'
-import { colors, formatWhen } from './theme'
+import { MeetingCard, PersonHeader, Quote, Shell } from './Shell'
+import { formatWhen } from './theme'
 
 export interface PendingBookingProps {
   guestName: string
@@ -19,21 +18,24 @@ export interface PendingBookingProps {
 }
 
 export function PendingBooking({ guestName, guestEmail, hostName, title, startTime, endTime, timeZone, reviewUrl, logoUrl, brandName, supportEmail, notes }: PendingBookingProps): React.ReactElement {
-  const when = formatWhen(startTime, endTime, timeZone)
+  const w = formatWhen(startTime, endTime, timeZone)
   return (
-    <Shell preview={`Approval needed: ${title} with ${guestName}`} eyebrow="Approval needed" tone="warning" title={title} logoUrl={logoUrl} brandName={brandName} supportEmail={supportEmail} cta={{ href: reviewUrl, label: 'Review & approve' }} ctaHint="The time is held for the guest until you approve or decline.">
-      <Text style={p}>
-        <strong style={{ color: colors.text }}>{guestName}</strong> ({guestEmail}) requested a meeting with {hostName}.
-      </Text>
-      <DetailCard
-        rows={[
-          { label: 'Guest', value: `${guestName} (${guestEmail})` },
-          { label: 'Date', value: when.date },
-          { label: 'Time', value: when.time },
-          { label: 'Host', value: hostName },
-        ]}
-      />
-      {notes ? <Quote>{notes}</Quote> : null}
+    <Shell
+      preview={`${guestName} wants to meet ${w.date} at ${w.time}. Approve or decline.`}
+      eyebrow="Needs approval"
+      tone="warning"
+      title="New booking request"
+      intro="Someone booked through a page that needs your approval. The time is held until you decide."
+      logoUrl={logoUrl}
+      brandName={brandName}
+      supportEmail={supportEmail}
+      cta={{ href: reviewUrl, label: 'Review & approve' }}
+      links={[{ href: `mailto:${guestEmail}`, label: `Email ${guestName.split(' ')[0]}` }]}
+      footerNote={`You're an admin of the ${brandName ?? 'Igani'} CRM, so approval requests come to you.`}
+    >
+      <PersonHeader name={guestName} sub={guestEmail} />
+      <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="warning" rows={[{ label: 'Host', value: hostName }]} />
+      {notes ? <Quote label="Their note">{notes}</Quote> : null}
     </Shell>
   )
 }

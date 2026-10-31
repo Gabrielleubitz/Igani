@@ -1,7 +1,7 @@
-import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Shell } from './Shell'
-import { colors, formatWhen } from './theme'
+import { MeetingCard, Shell, p } from './Shell'
+import { Text } from '@react-email/components'
+import { formatWhen } from './theme'
 
 export interface BookingCancelledProps {
   guestName: string
@@ -20,14 +20,22 @@ export interface BookingCancelledProps {
 }
 
 export function BookingCancelled({ guestName, hostName, title, startTime, endTime, timeZone, kind, rebookUrl, logoUrl, brandName = 'Igani', supportEmail }: BookingCancelledProps): React.ReactElement {
-  const when = formatWhen(startTime, endTime, timeZone)
+  const w = formatWhen(startTime, endTime, timeZone)
   const declined = kind === 'declined'
   return (
     <Shell
-      preview={declined ? `We couldn't confirm ${title} on ${when.date}` : `Cancelled: ${title} on ${when.date}`}
-      eyebrow={declined ? 'Request not confirmed' : 'Meeting cancelled'}
+      preview={declined ? `We couldn't confirm ${title} on ${w.date}. Here's how to pick another time.` : `Cancelled: ${title} on ${w.date}`}
+      eyebrow={declined ? 'Not confirmed' : 'Cancelled'}
       tone="danger"
-      title={declined ? "We couldn't confirm this time" : `${title} is cancelled`}
+      icon="✕"
+      title={declined ? "We couldn't confirm this time" : 'This meeting is cancelled'}
+      intro={
+        declined ? (
+          <>Hi {guestName}, unfortunately {hostName} can&apos;t make the time you requested. Sorry about that, we&apos;d still love to talk.</>
+        ) : (
+          <>Hi {guestName}, the meeting below has been cancelled and removed from the calendar. Sorry for any inconvenience.</>
+        )
+      }
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
@@ -35,13 +43,8 @@ export function BookingCancelled({ guestName, hostName, title, startTime, endTim
       ctaHint={supportEmail ? `Questions? Reply to this email or write to ${supportEmail}.` : 'Questions? Just reply to this email.'}
       signature={{ name: hostName, detail: brandName }}
     >
-      <Text style={p}>
-        Hi {guestName},{' '}
-        {declined
-          ? `unfortunately ${hostName} can't make the time you requested. Sorry about that, we'd still love to talk.`
-          : `the meeting below has been cancelled and removed from the calendar. Sorry for any inconvenience.`}
-      </Text>
-      <DetailCard accent={colors.danger} rows={[{ label: 'Meeting', value: title }, { label: 'Date', value: when.date }, { label: 'Time', value: when.time }]} />
+      <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="danger" struck />
+      {!rebookUrl ? <Text style={p}>Reply to this email with a few times that work for you and we&apos;ll set something up.</Text> : null}
     </Shell>
   )
 }

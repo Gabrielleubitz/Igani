@@ -102,7 +102,7 @@ export async function GET(req: Request): Promise<Response> {
           return {
             title: t.title,
             overdue: overdueNow,
-            due: `${overdueNow ? 'Overdue · was due' : 'Due'} ${formatDateTime(t.dueAt!, u.timeZone)}`,
+            due: `${overdueNow ? 'Overdue since' : 'Due'} ${formatDateTime(t.dueAt!, u.timeZone)}`,
             url: appUrl(`/sales/leads/${t.leadId}`),
             contact: lead ? leadName(lead) : undefined,
           }

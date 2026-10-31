@@ -1,7 +1,6 @@
-import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Shell } from './Shell'
-import { colors, formatWhen } from './theme'
+import { MeetingCard, Shell, Steps } from './Shell'
+import { formatWhen } from './theme'
 
 export interface BookingRequestedProps {
   guestName: string
@@ -17,21 +16,29 @@ export interface BookingRequestedProps {
 
 /** Receipt for the guest when a booking page needs approval: "we got it, we'll confirm soon". */
 export function BookingRequested({ guestName, hostName, title, startTime, endTime, timeZone, logoUrl, brandName = 'Igani', supportEmail }: BookingRequestedProps): React.ReactElement {
-  const when = formatWhen(startTime, endTime, timeZone)
+  const w = formatWhen(startTime, endTime, timeZone)
   return (
     <Shell
-      preview={`Request received: ${title} on ${when.date}`}
+      preview={`Request received: ${title} on ${w.date}. We'll confirm shortly.`}
       eyebrow="Request received"
       tone="warning"
-      title="Thanks, your time is on hold"
+      icon="⏳"
+      title="Your time is on hold"
+      intro={<>Thanks {guestName}! We&apos;re holding this slot for you while {hostName} confirms.</>}
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
-      ctaHint="You'll get a confirmation with the Google Meet link as soon as it's approved, usually within one business day."
       signature={{ name: hostName, detail: brandName }}
+      footerNote={`You requested a meeting with ${brandName}.`}
     >
-      <Text style={p}>Hi {guestName}, we received your request to meet with {hostName}. We're holding this time for you while we confirm.</Text>
-      <DetailCard accent={colors.warning} rows={[{ label: 'Meeting', value: title }, { label: 'Date', value: when.date }, { label: 'Time', value: when.time }, { label: 'Status', value: 'Waiting for confirmation' }]} />
+      <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="warning" rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Status', value: 'Waiting for confirmation' }]} />
+      <Steps
+        title="What happens next"
+        steps={[
+          { title: `${hostName.split(' ')[0]} reviews your request`, body: 'Usually within one business day.' },
+          { title: 'You get a confirmation', body: 'With the Google Meet link and a calendar invite.' },
+        ]}
+      />
     </Shell>
   )
 }

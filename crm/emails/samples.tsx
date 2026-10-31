@@ -34,8 +34,8 @@ export const SAMPLES: Record<string, React.ReactElement> = {
       name="Noa"
       tasksUrl="https://app.igani.co/sales/tasks"
       tasks={[
-        { title: 'Send proposal', contact: 'Acme · Dana Levi', due: 'Overdue · was due Nov 1, 2026, 2:00 PM GMT+2', overdue: true, url: 'https://x' },
-        { title: 'Call back about pricing', contact: 'Yoni Cohen', due: 'Due Nov 2, 2026, 4:00 PM GMT+2', overdue: false, url: 'https://y' },
+        { title: 'Send proposal', contact: 'Acme · Dana Levi', due: 'Overdue since Nov 1, 2:00 PM', overdue: true, url: 'https://x' },
+        { title: 'Call back about pricing', contact: 'Yoni Cohen', due: 'Due today, 4:00 PM', overdue: false, url: 'https://y' },
       ]}
     />
   ),

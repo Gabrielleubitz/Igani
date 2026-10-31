@@ -1,6 +1,5 @@
-import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Quote, Shell } from './Shell'
+import { DetailCard, PersonHeader, Quote, Shell } from './Shell'
 
 export interface NewLeadAlertProps {
   leadName: string
@@ -22,26 +21,27 @@ export interface NewLeadAlertProps {
 export function NewLeadAlert({ leadName, leadEmail, phone, company, budget, source, campaign, message, owner, leadUrl, logoUrl, brandName = 'Igani', supportEmail }: NewLeadAlertProps): React.ReactElement {
   return (
     <Shell
-      preview={`New lead: ${leadName}${company ? ` (${company})` : ''}`}
+      preview={`New lead: ${leadName}${company ? ` from ${company}` : ''}${budget ? ` · ${budget}` : ''}`}
       eyebrow="New inbound lead"
       tone="success"
-      title={`${leadName}${company ? ` from ${company}` : ''}`}
+      title="A new lead just came in"
+      intro={owner ? <>Assigned to {owner} automatically.</> : 'Nobody owns it yet, so the first teammate to claim it gets it.'}
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
-      cta={{ href: leadUrl, label: 'Open in CRM' }}
+      cta={{ href: leadUrl, label: owner ? 'Open in CRM' : 'Open & claim' }}
       footerNote={`You get this because your address is in ${brandName} CRM → Settings → Notification emails.`}
     >
-      <Text style={p}>A new lead just came in{owner ? ` and was assigned to ${owner}` : ' and is waiting to be claimed'}.</Text>
+      <PersonHeader name={leadName} sub={company ? `${company} · ${leadEmail}` : leadEmail} />
       <DetailCard
         rows={[
-          { label: 'Email', value: leadEmail },
           ...(phone ? [{ label: 'Phone', value: phone }] : []),
           ...(budget ? [{ label: 'Budget', value: budget }] : []),
           { label: 'Source', value: campaign ? `${source} · ${campaign}` : source },
+          { label: 'Owner', value: owner ?? 'Unassigned' },
         ]}
       />
-      {message ? <Quote>{message.length > 800 ? `${message.slice(0, 800)}…` : message}</Quote> : null}
+      {message ? <Quote label="Their message">{message.length > 800 ? `${message.slice(0, 800)}…` : message}</Quote> : null}
     </Shell>
   )
 }

@@ -1,6 +1,5 @@
-import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Quote, Shell } from './Shell'
+import { DetailCard, PersonHeader, Quote, Shell } from './Shell'
 
 export interface LeadAssignedProps {
   repName: string
@@ -18,18 +17,29 @@ export interface LeadAssignedProps {
 
 export function LeadAssigned({ repName, leadName, leadEmail, company, source, phone, message, leadUrl, logoUrl, brandName, supportEmail }: LeadAssignedProps): React.ReactElement {
   return (
-    <Shell preview={`New lead assigned: ${leadName}`} eyebrow="New lead" tone="success" title={`${leadName} is yours`} logoUrl={logoUrl} brandName={brandName} supportEmail={supportEmail} cta={{ href: leadUrl, label: 'Open contact' }} ctaHint="Leads contacted within the first hour are far more likely to convert.">
-      <Text style={p}>Hi {repName}, a new lead was just assigned to you. Here is what we know so far:</Text>
+    <Shell
+      preview={`${leadName}${company ? ` (${company})` : ''} is yours. Reach out while they're warm.`}
+      eyebrow="New lead"
+      tone="success"
+      title={`You have a new lead, ${repName.split(' ')[0]}`}
+      intro="They were just assigned to you. Leads contacted within the first hour are far more likely to convert."
+      logoUrl={logoUrl}
+      brandName={brandName}
+      supportEmail={supportEmail}
+      cta={{ href: leadUrl, label: 'Open contact' }}
+      links={[{ href: `mailto:${leadEmail}`, label: 'Email them' }, ...(phone ? [{ href: `tel:${phone.replace(/[^\d+]/g, '')}`, label: 'Call them' }] : [])]}
+      footerNote={`You're on the ${brandName ?? 'Igani'} sales team, so new leads are routed to you.`}
+    >
+      <PersonHeader name={leadName} sub={company ?? leadEmail} />
       <DetailCard
         rows={[
-          { label: 'Name', value: leadName },
           { label: 'Email', value: leadEmail },
           ...(phone ? [{ label: 'Phone', value: phone }] : []),
           ...(company ? [{ label: 'Company', value: company }] : []),
           { label: 'Source', value: source },
         ]}
       />
-      {message ? <Quote>{message.length > 600 ? `${message.slice(0, 600)}…` : message}</Quote> : null}
+      {message ? <Quote label="Their message">{message.length > 600 ? `${message.slice(0, 600)}…` : message}</Quote> : null}
     </Shell>
   )
 }
