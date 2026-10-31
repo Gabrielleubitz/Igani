@@ -16,7 +16,7 @@ export default async function BookingPagesPage(): Promise<React.ReactElement> {
   const hostOptions = hosts.map((h) => ({ id: h.id, label: h.name ?? h.email ?? h.id }))
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Public booking pages</h1>
+      <h1 className="text-2xl font-semibold">Booking pages</h1>
       <Card>
         <CardHeader>
           <CardTitle>New page</CardTitle>

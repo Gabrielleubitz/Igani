@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { SessionUser } from '@/lib/auth'
 import { Logo } from '@/components/brand/Logo'
 import { SignOutButton } from './AuthButtons'
-import { AppNav, type NavGroup } from './AppNav'
+import { AppNav, MobileMenu, type NavGroup } from './AppNav'
 
 type Role = SessionUser['role']
 const ALL: Role[] = ['ADMIN', 'SALES', 'MARKETING']
@@ -49,20 +49,18 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
   return (
     <div className="min-h-screen lg:flex">
-      <aside className="border-b bg-card/40 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
+      <aside className="relative border-b bg-card/40 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:shrink-0 lg:overflow-y-auto lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:flex-col lg:items-stretch lg:gap-5 lg:px-4 lg:py-5">
           <Link href="/" aria-label="Igani home">
-            <Logo height={24} />
+            <Logo height={34} />
           </Link>
-          <div className="lg:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
+            <MobileMenu groups={groups} />
             <SignOutButton />
           </div>
           <div className="hidden lg:block">
             <AppNav groups={groups} />
           </div>
-        </div>
-        <div className="px-4 pb-3 lg:hidden">
-          <AppNav groups={groups} />
         </div>
         <div className="hidden border-t px-4 py-4 lg:block">
           <div className="truncate text-sm font-medium">{user.email}</div>

@@ -15,7 +15,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
   const byEmail = new Map(users.map((u) => [u.email, u]))
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Team whitelist</h1>
+      <h1 className="text-2xl font-semibold">Team</h1>
       <Card>
         <CardHeader>
           <CardTitle>Add a team member</CardTitle>

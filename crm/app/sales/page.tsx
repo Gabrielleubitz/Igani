@@ -37,9 +37,6 @@ export default async function PipelinePage(): Promise<React.ReactElement> {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Pipeline &amp; meetings</h1>
-        <Link href="/sales/invite" className="text-sm underline underline-offset-4">
-          Send a meeting invite →
-        </Link>
       </div>
 
       <Card>
@@ -78,12 +75,12 @@ export default async function PipelinePage(): Promise<React.ReactElement> {
       {LEAD_STATUSES.map((status) => {
         const inStage = leads.filter((l) => l.status === status)
         return (
-          <section key={status} className="space-y-2">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <details key={status} open={inStage.length > 0 && inStage.length <= 15} className="space-y-2">
+            <summary className="cursor-pointer select-none text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               {status.replace('_', ' ')} <span className="ml-1">({inStage.length})</span>
-            </h2>
-            {inStage.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : null}
-            <div className="divide-y rounded-lg border">
+            </summary>
+            {inStage.length === 0 ? <p className="pt-2 text-sm text-muted-foreground">Nothing here.</p> : null}
+            <div className="mt-2 divide-y rounded-lg border">
               {inStage.map((l) => (
                 <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
                   <div className="min-w-0">
@@ -112,7 +109,7 @@ export default async function PipelinePage(): Promise<React.ReactElement> {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         )
       })}
     </div>

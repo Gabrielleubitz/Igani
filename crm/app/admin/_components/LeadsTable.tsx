@@ -107,7 +107,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
   const [sorting, setSorting] = useState<SortingState>([])
-  const [visibility, setVisibility] = useState<VisibilityState>({})
+  const [visibility, setVisibility] = useState<VisibilityState>({ source: false, dealValue: false })
   const columns = useMemo<ColumnDef<LeadRow>[]>(
     () => [
       { id: 'select', header: '', enableHiding: false, enableSorting: false, cell: ({ row }) => <input type="checkbox" aria-label={`Select ${row.original.email}`} checked={sel.has(row.original.id)} onChange={() => toggle(row.original.id)} /> },
@@ -151,7 +151,25 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <Input aria-label="Instant search" placeholder="Search name, email, company, phone…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full sm:w-72" />
+        <details className="relative text-sm">
+          <summary className="cursor-pointer rounded-md border px-3 py-1.5">Columns</summary>
+          <div className="absolute z-10 mt-1 space-y-1 rounded-md border bg-card p-3 shadow">
+            {table.getAllLeafColumns().filter((c) => c.getCanHide()).map((c) => (
+              <label key={c.id} className="flex items-center gap-2">
+                <input type="checkbox" checked={c.getIsVisible()} onChange={c.getToggleVisibilityHandler()} /> {String(c.columnDef.header)}
+              </label>
+            ))}
+          </div>
+        </details>
+        <Button size="sm" variant="outline" disabled={pending} onClick={download} className="ml-auto">
+          Export CSV
+        </Button>
+        {msg && !sel.size ? <span className="text-xs text-muted-foreground">{msg}</span> : null}
+      </div>
+      {sel.size ? (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-2 text-sm">
         <span className="text-muted-foreground">{sel.size} selected</span>
         <Select aria-label="Bulk assign" className="h-8 w-44" disabled={pending || !sel.size} value="" onChange={(e) => e.target.value && run(() => bulkUpdateLeads(ids, { assigneeId: e.target.value === 'none' ? null : e.target.value }), 'Assigned.')}>
           <option value="">Assign to…</option>
@@ -183,31 +201,16 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
             Delete
           </Button>
         ) : null}
-        <Button size="sm" variant="outline" disabled={pending} onClick={download}>
-          Export CSV
-        </Button>
         {msg ? <span className="text-xs text-muted-foreground">{msg}</span> : null}
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Input aria-label="Instant search" placeholder="Search name, email, company, phone…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 w-64" />
-        <details className="relative text-sm">
-          <summary className="cursor-pointer rounded-md border px-3 py-1.5">Columns</summary>
-          <div className="absolute z-10 mt-1 space-y-1 rounded-md border bg-card p-3 shadow">
-            {table.getAllLeafColumns().filter((c) => c.getCanHide()).map((c) => (
-              <label key={c.id} className="flex items-center gap-2">
-                <input type="checkbox" checked={c.getIsVisible()} onChange={c.getToggleVisibilityHandler()} /> {String(c.columnDef.header)}
-              </label>
-            ))}
-          </div>
-        </details>
-      </div>
+      ) : null}
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-left text-sm">
           <thead className="border-b text-xs uppercase text-muted-foreground">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
-                  <th key={h.id} className="p-3 font-medium">
+                  <th key={h.id} className="whitespace-nowrap px-3 py-2 font-medium">
                     {h.column.getCanSort() ? (
                       <button type="button" onClick={h.column.getToggleSortingHandler()}>
                         {flexRender(h.column.columnDef.header, h.getContext())}
@@ -225,7 +228,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
             {table.getRowModel().rows.map((r) => (
               <tr key={r.id}>
                 {r.getVisibleCells().map((c) => (
-                  <td key={c.id} className="p-3">
+                  <td key={c.id} className="px-3 py-2">
                     {flexRender(c.column.columnDef.cell, c.getContext())}
                   </td>
                 ))}

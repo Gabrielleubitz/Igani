@@ -36,7 +36,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-semibold">Tasks &amp; reminders</h1>
+      <h1 className="mb-4 text-2xl font-semibold">Tasks</h1>
       <CrmSubNav active="/sales/tasks" />
       <form className="mb-4 flex flex-wrap gap-2">
         <Select name="status" defaultValue={showDone ? 'done' : 'open'} className="h-9 w-32">

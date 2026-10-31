@@ -20,7 +20,8 @@ export default async function BookingsPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-8">
       <section className="space-y-3">
-        <h1 className="text-2xl font-semibold">Awaiting approval ({pending.length})</h1>
+        <h1 className="text-2xl font-semibold">Bookings</h1>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Awaiting approval ({pending.length})</h2>
         {pending.length === 0 ? <p className="text-sm text-muted-foreground">Nothing to approve.</p> : null}
         <div className="divide-y rounded-lg border">
           {pending.map((b) => (

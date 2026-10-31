@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { LeadsTable } from '@/app/admin/_components/LeadsTable'
 import { NewLeadForm } from '@/app/admin/_components/NewLeadForm'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select } from '@/components/ui/input'
 import { LEAD_STATUSES, leadName } from '@/lib/format'
 import { PAGE_SIZE, buildLeadWhere, parseLeadFilters } from '@/lib/lead-query'
@@ -44,10 +43,20 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Leads {f.archived ? '(archived)' : ''}</h1>
-      <form className="flex flex-wrap items-end gap-2" method="get">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold">Contacts {f.archived ? '(archived)' : ''}</h1>
+        <details className="group relative">
+          <summary className="inline-flex h-10 cursor-pointer list-none items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">+ Add contact</summary>
+          <div className="absolute right-0 z-20 mt-2 w-[min(92vw,36rem)] rounded-lg border bg-card p-4 shadow-lg">
+            <NewLeadForm />
+          </div>
+        </details>
+      </div>
+      <details open={Boolean(f.status || f.assignee || f.source || f.tag || f.archived)} className="rounded-lg border bg-card/40 px-4 py-2">
+      <summary className="cursor-pointer select-none text-sm font-medium">Filters{[f.status, f.assignee, f.source, f.tag, f.archived].filter(Boolean).length ? ` (${[f.status, f.assignee, f.source, f.tag, f.archived].filter(Boolean).length} active)` : ''}</summary>
+      <form className="mt-3 grid grid-cols-2 items-end gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-6" method="get">
         {f.q ? <input type="hidden" name="q" value={f.q} /> : null}
-        <Select name="status" defaultValue={f.status ?? ''} className="w-44">
+        <Select name="status" defaultValue={f.status ?? ''} className="w-full">
           <option value="">All stages</option>
           {LEAD_STATUSES.map((s) => (
             <option key={s} value={s}>
@@ -55,7 +64,7 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
             </option>
           ))}
         </Select>
-        <Select name="assignee" defaultValue={f.assignee ?? ''} className="w-44">
+        <Select name="assignee" defaultValue={f.assignee ?? ''} className="w-full">
           <option value="">Any owner</option>
           <option value="none">Unassigned</option>
           {reps.map((r) => (
@@ -64,7 +73,7 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
             </option>
           ))}
         </Select>
-        <Select name="source" defaultValue={f.source ?? ''} className="w-40">
+        <Select name="source" defaultValue={f.source ?? ''} className="w-full">
           <option value="">Any source</option>
           {sources.map((s) => (
             <option key={s.source} value={s.source}>
@@ -72,7 +81,7 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
             </option>
           ))}
         </Select>
-        <Select name="tag" defaultValue={f.tag ?? ''} className="w-36">
+        <Select name="tag" defaultValue={f.tag ?? ''} className="w-full">
           <option value="">Any tag</option>
           {tagRows.map((t) => (
             <option key={t.tag} value={t.tag}>
@@ -80,12 +89,13 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
             </option>
           ))}
         </Select>
-        <Select name="archived" defaultValue={f.archived ? '1' : ''} className="w-32">
+        <Select name="archived" defaultValue={f.archived ? '1' : ''} className="w-full">
           <option value="">Active</option>
           <option value="1">Archived</option>
         </Select>
-        <button className="h-10 rounded-md border px-4 text-sm">Filter</button>
+        <button className="h-10 rounded-md border px-4 text-sm hover:bg-muted">Apply</button>
       </form>
+      </details>
       <p className="text-sm text-muted-foreground">
         {total} lead{total === 1 ? '' : 's'} · page {f.page} of {pages}
       </p>
@@ -94,14 +104,6 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
         {f.page > 1 ? <Link href={link(f.page - 1)}>← Previous</Link> : null}
         {f.page < pages ? <Link href={link(f.page + 1)}>Next →</Link> : null}
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Add a lead</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <NewLeadForm />
-        </CardContent>
-      </Card>
     </div>
   )
 }

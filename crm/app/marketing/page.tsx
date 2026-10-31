@@ -23,7 +23,10 @@ export default async function MarketingPage(): Promise<React.ReactElement> {
   )
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Lead sources · last 30 days</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">Marketing</h1>
+        <p className="text-sm text-muted-foreground">Lead sources · last 30 days</p>
+      </div>
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader><CardTitle>UTM source</CardTitle></CardHeader>
