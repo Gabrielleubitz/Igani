@@ -44,7 +44,10 @@ export async function LeadsDirectory({ searchParams, basePath, isAdmin }: { sear
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Contacts {f.archived ? '(archived)' : ''}</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">Contacts {f.archived ? '(archived)' : ''}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Everyone you work with. Search, filter, change a stage, or open a name for notes, tasks and meetings.</p>
+        </div>
         <details className="group relative">
           <summary className="inline-flex h-10 cursor-pointer list-none items-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">+ Add contact</summary>
           <div className="absolute right-0 z-20 mt-2 w-[min(92vw,36rem)] rounded-lg border bg-card p-4 shadow-lg">

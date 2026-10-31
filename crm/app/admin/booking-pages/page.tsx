@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { appUrl } from '@/lib/env'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Booking pages' }
 
@@ -17,7 +18,7 @@ export default async function BookingPagesPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Booking pages</h1>
+        <PageIntro title="Booking pages" hint="Public links where visitors book a meeting with you. Share the link anywhere." />
         <details className="relative">
           <summary className="cursor-pointer list-none rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">+ New page</summary>
           <div className="absolute right-0 z-20 mt-2 w-[min(92vw,40rem)] rounded-lg border bg-card p-4 shadow-lg">

@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 import { filterLeads } from '@/components/crm/crm-utils'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Board' }
 
@@ -26,7 +27,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-semibold">Board</h1>
+      <PageIntro title="Board" hint="The same contacts as cards in columns. Drag a card to the next stage as the deal moves." className="mb-4" />
       <LeadFilters
         action="/sales/board"
         values={f}

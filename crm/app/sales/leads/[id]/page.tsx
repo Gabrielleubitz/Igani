@@ -141,7 +141,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               <CardTitle>Tasks</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {tasks.length === 0 ? <p className="text-sm text-muted-foreground">No tasks yet.</p> : null}
+              {tasks.length === 0 ? <p className="text-sm text-muted-foreground">No tasks yet. Add one below so you never forget a follow-up.</p> : null}
               {tasks.map((t) => (
                 <div key={t.id} className="flex items-center justify-between gap-2 text-sm">
                   <div className={t.done ? 'text-muted-foreground line-through' : ''}>
@@ -175,7 +175,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                   <Badge variant="outline">Meeting</Badge> {b.title} · {formatDateTime(b.startTime, tz)} · {b.status}
                 </div>
               ))}
-              {logs.length === 0 ? <p className="text-sm text-muted-foreground">No activity yet.</p> : null}
+              {logs.length === 0 ? <p className="text-sm text-muted-foreground">No activity yet. Notes, calls and stage changes will appear here.</p> : null}
               {logs.map((l) => (
                 <div key={l.id} className="border-l-2 pl-3 text-sm">
                   <div className="flex flex-wrap items-center gap-2">

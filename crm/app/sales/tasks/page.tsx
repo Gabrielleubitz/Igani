@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/input'
 import { requireUser } from '@/lib/auth'
 import { formatDateTime, leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Tasks' }
 
@@ -35,7 +36,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-semibold">Tasks</h1>
+      <PageIntro title="Tasks" hint="Follow-ups you set on a contact. Overdue ones show in red." className="mb-4" />
       <form className="mb-4 flex flex-wrap gap-2">
         <Select name="status" defaultValue={showDone ? 'done' : 'open'} className="h-9 w-32">
           <option value="open">Open</option>

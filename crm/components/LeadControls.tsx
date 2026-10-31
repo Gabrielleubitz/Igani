@@ -62,8 +62,8 @@ export function LeadControls({ leadId, status, assignedToId, currentUserId, isAd
             ))}
           </Select>
           {!assignedToId ? (
-            <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => autoAssignLead(leadId))}>
-              Round-robin
+            <Button size="sm" variant="outline" title="Give this contact to the next teammate in turn" disabled={pending} onClick={() => run(() => autoAssignLead(leadId))}>
+              Auto-assign
             </Button>
           ) : null}
         </>

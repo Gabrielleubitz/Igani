@@ -3,6 +3,7 @@ import { removeAllowedUser } from '@/app/actions/admin'
 import { AllowedUserForm, AllowedUserToggle } from '@/components/admin/forms'
 import { Badge } from '@/components/ui/badge'
 import { prisma } from '@/lib/prisma'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Team' }
 
@@ -15,7 +16,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold">Team</h1>
+        <PageIntro title="Team" hint="Only people listed here can sign in. Add a teammate and pick what they can do." />
         <details className="relative">
           <summary className="cursor-pointer list-none rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">+ Add team member</summary>
           <div className="absolute right-0 z-20 mt-2 w-[min(92vw,36rem)] rounded-lg border bg-card p-4 shadow-lg">

@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { conversionRate } from '@/lib/lead-query'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Overview' }
 export const dynamic = 'force-dynamic'
@@ -38,7 +39,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   ]
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Overview</h1>
+      <PageIntro title="Overview" hint="A snapshot of the whole business: leads, meetings and wins." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {tiles.map((t) => (
           <Link key={t.label} href={t.href}>

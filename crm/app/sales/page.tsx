@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { LEAD_STATUSES, formatDateTime, leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Pipeline & meetings' }
 
@@ -35,7 +36,7 @@ export default async function PipelinePage(): Promise<React.ReactElement> {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-2xl font-semibold">Pipeline &amp; meetings</h1>
+      <PageIntro title="Pipeline &amp; meetings" hint="Every contact grouped by stage, plus your upcoming meetings. Change a stage or owner from the dropdowns." />
 
       <Card>
         <CardHeader>
@@ -100,8 +101,8 @@ export default async function PipelinePage(): Promise<React.ReactElement> {
                       isAdmin={isAdmin}
                       reps={repOptions}
                     />
-                    <Link href={`/sales/invite?leadId=${l.id}`} className="text-xs underline underline-offset-4">
-                      Invite
+                    <Link href={`/sales/invite?leadId=${l.id}`} title="Email this contact a link to pick a meeting time" className="text-xs underline underline-offset-4">
+                      Send invite
                     </Link>
                   </div>
                 </div>

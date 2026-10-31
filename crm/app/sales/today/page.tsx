@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { formatDateTime, leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Today' }
 
@@ -55,7 +56,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-semibold">Today</h1>
+      <PageIntro title="Today" hint="Your daily starting point: what is due, who to call next, and which leads are hottest." className="mb-4" />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -130,6 +131,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
         <Card>
           <CardHeader>
             <CardTitle>Hottest leads</CardTitle>
+            <p className="text-xs text-muted-foreground">Score out of 100: how far along the deal is and how complete the contact details are.</p>
           </CardHeader>
           <CardContent className="space-y-3">
             {hot.length === 0 ? <p className="text-sm text-muted-foreground">No hot leads right now.</p> : null}

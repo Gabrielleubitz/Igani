@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { LEAD_STATUSES } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Reports' }
 
@@ -51,7 +52,7 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Reports</h1>
+      <PageIntro title="Reports" hint="How many leads you have, where they come from, and how many you win." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile label="Total leads" value={r.total} />
         <Tile label="New (30 days)" value={last30} />

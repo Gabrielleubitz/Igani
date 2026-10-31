@@ -2,6 +2,7 @@ import type { EntityType } from '@prisma/client'
 import { EntityType as EntityTypes } from '@prisma/client'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
+import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Audit log' }
 
@@ -15,7 +16,7 @@ export default async function AuditPage({ searchParams }: { searchParams: { type
   })
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Audit log</h1>
+      <PageIntro title="Audit log" hint="A record of who changed what, and when. Use the filters to narrow it down." />
       <div className="flex flex-wrap gap-2 text-sm">
         <Link href="/admin/audit" className={`rounded-full border px-3 py-1 ${!type ? 'bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}>
           All

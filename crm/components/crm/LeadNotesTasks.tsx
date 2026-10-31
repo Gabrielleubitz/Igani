@@ -25,7 +25,7 @@ export function AddNoteForm({ leadId }: { leadId: string }): React.ReactElement 
         })
       }}
     >
-      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Add a note…" maxLength={5000} />
+      <Textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="Add a note, or pick Log call / email / meeting above to record what happened…" maxLength={5000} />
       <div className="flex items-center gap-3">
         <Button size="sm" type="submit" disabled={pending || !body.trim()}>
           Add note
@@ -59,7 +59,7 @@ export function AddTaskForm({ leadId }: { leadId: string }): React.ReactElement 
         })
       }}
     >
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Follow up…" className="h-9 w-64" maxLength={200} />
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What needs doing? e.g. Send proposal" className="h-9 w-64" maxLength={200} />
       <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="h-9 w-52" />
       <Select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="h-9 w-32">
         {TASK_PRIORITIES.map((x) => (
