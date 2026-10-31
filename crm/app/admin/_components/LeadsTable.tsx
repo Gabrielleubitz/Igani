@@ -5,11 +5,12 @@ import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type Col
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
-import { archiveLeads, bulkUpdateLeads, deleteLeads, exportLeadsCsv, updateLead, updateLeadStatus } from '@/app/actions/leads'
+import { archiveLeads, bulkUpdateLeads, deleteLeads, exportLeadsCsv, updateLead } from '@/app/actions/leads'
+import { StageSelect } from '@/components/crm/StageSelect'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
-import { LEAD_STATUSES } from '@/lib/format'
+import { LEAD_STATUSES, STATUS_LABEL, formatMoney } from '@/lib/format'
 
 export interface LeadRow {
   id: string
@@ -32,9 +33,11 @@ interface Props {
   archivedView: boolean
   query: Record<string, string | undefined>
   isAdmin: boolean
+  currentUserId: string
+  role: 'ADMIN' | 'SALES' | 'MARKETING'
 }
 
-export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props): React.ReactElement {
+export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUserId, role }: Props): React.ReactElement {
   const router = useRouter()
   const [sel, setSel] = useState<Set<string>>(new Set())
   const [pending, start] = useTransition()
@@ -54,18 +57,6 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
       else n.add(id)
       return n
     })
-  const changeStatus = (id: string, status: LeadStatus): void => {
-    let extras: { lostReason?: string; dealValue?: number } = {}
-    if (status === 'LOST') {
-      const reason = window.prompt('Why was this lead lost?')
-      if (!reason?.trim()) return
-      extras = { lostReason: reason }
-    } else if (status === 'WON') {
-      const v = window.prompt('Deal value (optional, whole number)')
-      if (v && /^\d+$/.test(v.trim())) extras = { dealValue: Number(v) }
-    }
-    run(() => updateLeadStatus(id, status, extras), 'Status updated.')
-  }
   const download = (): void =>
     start(async () => {
       const res = await exportLeadsCsv(query)
@@ -110,9 +101,9 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
   const [visibility, setVisibility] = useState<VisibilityState>({ source: false, dealValue: false })
   const columns = useMemo<ColumnDef<LeadRow>[]>(
     () => [
-      { id: 'select', header: '', enableHiding: false, enableSorting: false, cell: ({ row }) => <input type="checkbox" aria-label={`Select ${row.original.email}`} checked={sel.has(row.original.id)} onChange={() => toggle(row.original.id)} /> },
+      { id: 'select', header: () => <input type="checkbox" aria-label="Select all on this page" checked={rows.length > 0 && sel.size === rows.length} onChange={(e) => setSel(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())} />, enableHiding: false, enableSorting: false, cell: ({ row }) => <input type="checkbox" aria-label={`Select ${row.original.email}`} checked={sel.has(row.original.id)} onChange={() => toggle(row.original.id)} /> },
       { accessorKey: 'name', header: 'Name', enableHiding: false, cell: ({ row }) => <Link href={`/sales/leads/${row.original.id}`} className="font-medium underline-offset-4 hover:underline">{row.original.name}</Link> },
-      { accessorKey: 'email', header: 'Email' },
+      { accessorKey: 'email', header: 'Email', cell: ({ row }) => <a href={`mailto:${row.original.email}`} className="text-muted-foreground hover:text-foreground hover:underline">{row.original.email}</a> },
       { accessorKey: 'company', header: 'Company' },
       { id: 'tags', header: 'Tags', accessorFn: (l) => l.tags.join(' '), cell: ({ row }) => (
         <div className="flex flex-wrap items-center gap-1">
@@ -126,18 +117,26 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
           )}
         </div>
       ) },
-      { accessorKey: 'status', header: 'Stage', cell: ({ row }) => (
-        <Select aria-label="Stage" className="h-8 w-40" disabled={pending} value={row.original.status} onChange={(e) => changeStatus(row.original.id, e.target.value as LeadStatus)}>
-          {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
-        </Select>
-      ) },
+      { accessorKey: 'status', header: 'Stage', cell: ({ row }) => {
+        const canMove = isAdmin || row.original.assignedToId === currentUserId
+        return (
+          <StageSelect
+            leadId={row.original.id}
+            status={row.original.status}
+            dealValue={row.original.dealValue}
+            disabled={!canMove}
+            className="h-8 w-40"
+            title={canMove ? 'Change stage' : row.original.assignedToId ? 'Only the owner can change the stage' : 'Open the contact and claim it to change the stage'}
+          />
+        )
+      } },
       { accessorKey: 'owner', header: 'Owner', cell: ({ row }) => row.original.owner ?? <Badge variant="secondary">unassigned</Badge> },
       { accessorKey: 'source', header: 'Source' },
-      { accessorKey: 'dealValue', header: 'Value', cell: ({ row }) => row.original.dealValue ?? '' },
+      { accessorKey: 'dealValue', header: 'Value', cell: ({ row }) => (row.original.dealValue != null ? formatMoney(row.original.dealValue) : '') },
       { accessorKey: 'createdAt', header: 'Created', cell: ({ row }) => row.original.createdAt.slice(0, 10) },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sel, pending, tagFor, tagText],
+    [sel, pending, tagFor, tagText, isAdmin, currentUserId, rows],
   )
   const table = useReactTable({
     data: rows,
@@ -171,6 +170,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
       {sel.size ? (
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/40 p-2 text-sm">
         <span className="text-muted-foreground">{sel.size} selected</span>
+        {isAdmin ? (
         <Select aria-label="Bulk assign" className="h-8 w-44" disabled={pending || !sel.size} value="" onChange={(e) => e.target.value && run(() => bulkUpdateLeads(ids, { assigneeId: e.target.value === 'none' ? null : e.target.value }), 'Assigned.')}>
           <option value="">Assign to…</option>
           <option value="none">Unassigned</option>
@@ -180,17 +180,22 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
             </option>
           ))}
         </Select>
+        ) : null}
+        {role !== 'MARKETING' ? (
+        <>
         <Select aria-label="Bulk status" className="h-8 w-44" disabled={pending || !sel.size} value="" onChange={(e) => e.target.value && run(() => bulkUpdateLeads(ids, { status: e.target.value as LeadStatus }), 'Status updated.')}>
           <option value="">Move to…</option>
           {LEAD_STATUSES.filter((s) => s !== 'LOST').map((s) => (
             <option key={s} value={s}>
-              {s.replace('_', ' ')}
+              {STATUS_LABEL[s]}
             </option>
           ))}
         </Select>
         <Button size="sm" variant="outline" disabled={pending || !sel.size} onClick={() => run(() => archiveLeads(ids, !archivedView), archivedView ? 'Restored.' : 'Archived.')}>
           {archivedView ? 'Restore' : 'Archive'}
         </Button>
+        </>
+        ) : null}
         {isAdmin ? (
           <Button
             size="sm"
@@ -201,12 +206,15 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
             Delete
           </Button>
         ) : null}
+        <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>
+          Clear
+        </Button>
         {msg ? <span className="text-xs text-muted-foreground">{msg}</span> : null}
       </div>
       ) : null}
       <div className="overflow-x-auto rounded-lg border">
         <table className="w-full text-left text-sm">
-          <thead className="border-b text-xs uppercase text-muted-foreground">
+          <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
@@ -226,7 +234,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
           </thead>
           <tbody className="divide-y">
             {table.getRowModel().rows.map((r) => (
-              <tr key={r.id}>
+              <tr key={r.id} className={sel.has(r.original.id) ? 'bg-primary/5' : 'hover:bg-muted/30'}>
                 {r.getVisibleCells().map((c) => (
                   <td key={c.id} className="px-3 py-2">
                     {flexRender(c.column.columnDef.cell, c.getContext())}
@@ -236,7 +244,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin }: Props):
             ))}
           </tbody>
         </table>
-        {table.getRowModel().rows.length === 0 ? <p className="p-4 text-sm text-muted-foreground">No leads match.</p> : null}
+        {table.getRowModel().rows.length === 0 ? <p className="p-8 text-center text-sm text-muted-foreground">No contacts match. Try clearing the search or filters.</p> : null}
       </div>
     </div>
   )

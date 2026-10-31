@@ -1,27 +1,34 @@
 import { buildReport } from '@/components/crm/crm-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
-import { LEAD_STATUSES } from '@/lib/format'
+import { LEAD_STATUSES, STATUS_LABEL, formatMoney } from '@/lib/format'
+import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Reports' }
 
-export default async function ReportsPage(): Promise<React.ReactElement> {
+export const dynamic = 'force-dynamic'
+
+export default async function ReportsPage({ searchParams }: { searchParams: { scope?: string } }): Promise<React.ReactElement> {
   const user = await requireUser()
-  void user
+  const mine = searchParams.scope === 'mine' && user.role !== 'MARKETING'
   const now = Date.now()
   const d30 = new Date(now - 30 * 864e5)
   const d60 = new Date(now - 60 * 864e5)
-  const [leads, users, bookings] = await Promise.all([
-    prisma.lead.findMany({ select: { status: true, source: true, assignedToId: true, createdAt: true, updatedAt: true, dealValue: true } }),
+  const [allLeads, users, bookings, wonLogs] = await Promise.all([
+    prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, updatedAt: true, dealValue: true, lostReason: true } }),
     prisma.user.findMany({ select: { id: true, name: true, email: true } }),
-    prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 } }, select: { status: true, endTime: true } }),
+    prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),
+    // When a deal was actually won (not just last edited), from the stage-change history.
+    prisma.activityLog.findMany({ where: { entityType: 'LEAD', action: 'lead.status_changed', metadata: { path: ['to'], equals: 'WON' } }, select: { entityId: true, createdAt: true }, orderBy: { createdAt: 'asc' } }),
   ])
+  const wonAt = new Map(wonLogs.map((l) => [l.entityId, l.createdAt]))
+  const leads = allLeads.map((l) => ({ ...l, wonAt: l.status === 'WON' ? (wonAt.get(l.id) ?? l.updatedAt) : null }))
   // Metrics for [from, to): open pipeline value, won revenue, conversion, and held-meeting rate (past meetings not cancelled).
   const window = (from: Date, to: Date): { pipeline: number; won: number; conversion: number; held: number } => {
     const created = leads.filter((l) => l.createdAt >= from && l.createdAt < to)
-    const wonLeads = leads.filter((l) => l.status === 'WON' && l.updatedAt >= from && l.updatedAt < to)
+    const wonLeads = leads.filter((l) => l.wonAt && l.wonAt >= from && l.wonAt < to)
     const bk = bookings.filter((b) => b.endTime >= from && b.endTime < to && b.status !== 'PENDING')
     return {
       pipeline: created.filter((l) => l.status !== 'WON' && l.status !== 'LOST').reduce((n, l) => n + (l.dealValue ?? 0), 0),
@@ -39,6 +46,8 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
   const maxDay = Math.max(1, ...r.perDay.map((d) => d.count))
   const maxStage = Math.max(1, ...Object.values(r.byStatus))
   const last30 = r.perDay.reduce((n, d) => n + d.count, 0)
+  const lostReasons = [...leads.filter((l) => l.status === 'LOST').reduce((m, l) => m.set((l.lostReason ?? 'No reason').split(':')[0]!.trim(), (m.get((l.lostReason ?? 'No reason').split(':')[0]!.trim()) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])
+  const maxLost = Math.max(1, ...lostReasons.map(([, n]) => n))
 
   const Tile = ({ label, value, sub }: { label: string; value: string | number; sub?: string }): React.ReactElement => (
     <Card>
@@ -52,7 +61,19 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
 
   return (
     <div className="space-y-6">
-      <PageIntro title="Reports" hint="How many leads you have, where they come from, and how many you win." />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <PageIntro title="Reports" hint="How many leads you have, where they come from, and how many you win. Archived contacts are left out." />
+        {user.role !== 'MARKETING' ? (
+          <div className="flex gap-1">
+            <Link href="/sales/reports" className={`rounded-full border px-3 py-1 text-sm ${!mine ? 'border-primary/50 bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}>
+              Whole team
+            </Link>
+            <Link href="/sales/reports?scope=mine" className={`rounded-full border px-3 py-1 text-sm ${mine ? 'border-primary/50 bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}>
+              Just me
+            </Link>
+          </div>
+        ) : null}
+      </div>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Tile label="Total leads" value={r.total} />
         <Tile label="New (30 days)" value={last30} />
@@ -61,10 +82,10 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label="Pipeline value (open)" value={totalPipeline.toLocaleString()} sub={`New 30d: ${cur.pipeline.toLocaleString()} · ${delta(cur.pipeline, prev.pipeline)}`} />
-        <Tile label="Won revenue (30d)" value={cur.won.toLocaleString()} sub={delta(cur.won, prev.won)} />
+        <Tile label="Pipeline value (open)" value={formatMoney(totalPipeline)} sub={`New 30d: ${formatMoney(cur.pipeline)} · ${delta(cur.pipeline, prev.pipeline)}`} />
+        <Tile label="Won revenue (30d)" value={formatMoney(cur.won)} sub={delta(cur.won, prev.won)} />
         <Tile label="Conversion (30d cohort)" value={`${cur.conversion}%`} sub={delta(cur.conversion, prev.conversion)} />
-        <Tile label="Meeting show-up rate (30d)" value={`${cur.held}%`} sub={`${delta(cur.held, prev.held)} · past meetings not cancelled`} />
+        <Tile label="Meetings held (30d)" value={`${cur.held}%`} sub={`${delta(cur.held, prev.held)} · of past meetings, not cancelled`} />
       </div>
 
       <Card>
@@ -74,15 +95,38 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
         <CardContent className="space-y-2">
           {LEAD_STATUSES.map((s) => (
             <div key={s} className="flex items-center gap-3 text-sm">
-              <span className="w-36 text-muted-foreground">{s.replace('_', ' ')}</span>
+              <Link href={`/sales/leads?status=${s}`} className="w-36 text-muted-foreground hover:text-foreground">
+                {STATUS_LABEL[s]}
+              </Link>
               <div className="h-4 flex-1 rounded bg-muted">
-                <div className="h-4 rounded bg-primary" style={{ width: `${((r.byStatus[s] ?? 0) / maxStage) * 100}%` }} />
+                <div className={`h-4 rounded ${s === 'LOST' ? 'bg-rose-500/70' : s === 'WON' ? 'bg-emerald-500/80' : 'bg-primary'}`} style={{ width: `${((r.byStatus[s] ?? 0) / maxStage) * 100}%` }} />
               </div>
-              <span className="w-10 text-right">{r.byStatus[s] ?? 0}</span>
+              <span className="w-10 text-right tabular-nums">{r.byStatus[s] ?? 0}</span>
             </div>
           ))}
         </CardContent>
       </Card>
+
+      {lostReasons.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Why deals are lost</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {lostReasons.map(([reason, n]) => (
+              <div key={reason} className="flex items-center gap-3 text-sm">
+                <span className="w-40 truncate text-muted-foreground" title={reason}>
+                  {reason}
+                </span>
+                <div className="h-3 flex-1 rounded bg-muted">
+                  <div className="h-3 rounded bg-rose-500/70" style={{ width: `${(n / maxLost) * 100}%` }} />
+                </div>
+                <span className="w-10 text-right tabular-nums">{n}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>
@@ -115,6 +159,7 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
                     <th className="pb-2 font-normal">Name</th>
                     <th className="pb-2 text-right font-normal">Leads</th>
                     <th className="pb-2 text-right font-normal">Won</th>
+                    <th className="pb-2 text-right font-normal">Win %</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -123,6 +168,7 @@ export default async function ReportsPage(): Promise<React.ReactElement> {
                       <td className="py-1.5">{name}</td>
                       <td className="py-1.5 text-right">{total}</td>
                       <td className="py-1.5 text-right">{won}</td>
+                      <td className="py-1.5 text-right text-muted-foreground">{total ? `${Math.round((won / total) * 100)}%` : '—'}</td>
                     </tr>
                   ))}
                 </tbody>

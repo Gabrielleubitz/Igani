@@ -1,5 +1,6 @@
 import { AvailabilityForm, type DayHours } from '@/components/AvailabilityForm'
 import { requireUser } from '@/lib/auth'
+import { PageIntro } from '@/components/PageIntro'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'My hours' }
@@ -16,10 +17,7 @@ export default async function AvailabilityPage(): Promise<React.ReactElement> {
   })
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">My hours</h1>
-        <p className="text-sm text-muted-foreground">Bookable times = these hours minus anything busy on your Google Calendar.</p>
-      </div>
+      <PageIntro title="My hours" hint="When people can book you. Bookable times = these hours minus anything busy on your Google Calendar (and at least an hour from now)." />
       <AvailabilityForm timeZone={me.timeZone} days={days} />
     </div>
   )

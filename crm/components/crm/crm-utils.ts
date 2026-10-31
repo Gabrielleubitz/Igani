@@ -29,9 +29,20 @@ export interface CrmTask {
   assigneeId: string | null
   done: boolean
   priority: TaskPriority
+  /** 'prep' / 'follow-up' for tasks the system created around meetings */
+  auto: string | null
+  createdAt: Date
+  completedAt: Date | null
 }
 
-/** Tasks live in the activity log (`task.created` / `task.completed`); fold them into current state. */
+export const TASK_ACTIONS = ['task.created', 'task.completed', 'task.reopened', 'task.updated', 'task.deleted'] as const
+
+const isPriority = (v: unknown): v is TaskPriority => (TASK_PRIORITIES as readonly unknown[]).includes(v)
+
+/**
+ * Tasks live in the activity log as events (`task.created`, `.updated`, `.completed`, `.reopened`, `.deleted`),
+ * so every change keeps its history. Fold the events (oldest first) into each task's current state.
+ */
 export function foldTasks(logs: TaskLog[]): CrmTask[] {
   const tasks = new Map<string, CrmTask>()
   const sorted = [...logs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
@@ -47,11 +58,28 @@ export function foldTasks(logs: TaskLog[]): CrmTask[] {
         dueAt: typeof m.dueAt === 'string' ? new Date(m.dueAt) : null,
         assigneeId: typeof m.assigneeId === 'string' ? m.assigneeId : null,
         done: false,
-        priority: (TASK_PRIORITIES as readonly unknown[]).includes(m.priority) ? (m.priority as TaskPriority) : 'MEDIUM',
+        priority: isPriority(m.priority) ? m.priority : 'MEDIUM',
+        auto: typeof m.auto === 'string' ? m.auto : null,
+        createdAt: l.createdAt,
+        completedAt: null,
       })
-    } else if (l.action === 'task.completed') {
-      const t = tasks.get(taskId)
-      if (t) t.done = true
+      continue
+    }
+    const t = tasks.get(taskId)
+    if (!t) continue
+    if (l.action === 'task.completed') {
+      t.done = true
+      t.completedAt = l.createdAt
+    } else if (l.action === 'task.reopened') {
+      t.done = false
+      t.completedAt = null
+    } else if (l.action === 'task.deleted') {
+      tasks.delete(taskId)
+    } else if (l.action === 'task.updated') {
+      if (typeof m.title === 'string' && m.title) t.title = m.title
+      if ('dueAt' in m) t.dueAt = typeof m.dueAt === 'string' ? new Date(m.dueAt) : null
+      if ('assigneeId' in m) t.assigneeId = typeof m.assigneeId === 'string' ? m.assigneeId : null
+      if (isPriority(m.priority)) t.priority = m.priority
     }
   }
   return [...tasks.values()]
@@ -254,10 +282,10 @@ export function scoreLabel(score: number): 'Hot' | 'Warm' | 'Cold' {
 }
 
 /** Whole days an open lead has gone untouched, or null if it is closed or touched within STALE_DAYS. */
-export function staleDays(status: string, lastTouch: Date, now: Date = new Date()): number | null {
+export function staleDays(status: string, lastTouch: Date, now: Date = new Date(), threshold: number = STALE_DAYS): number | null {
   if (!OPEN_STATUSES.includes(status)) return null
   const d = Math.floor((now.getTime() - lastTouch.getTime()) / 864e5)
-  return d >= STALE_DAYS ? d : null
+  return d >= threshold ? d : null
 }
 
 /** Prisma `where` for leads a user may see: admins all; others their own plus unassigned (matches the lead page). */

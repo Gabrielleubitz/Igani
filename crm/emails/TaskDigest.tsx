@@ -5,7 +5,7 @@ import { colors } from './theme'
 
 export interface TaskDigestProps {
   name: string
-  tasks: { title: string; due: string; overdue: boolean; url: string }[]
+  tasks: { title: string; due: string; overdue: boolean; url: string; contact?: string }[]
   tasksUrl: string
   logoUrl: string
   brandName?: string
@@ -15,11 +15,12 @@ export interface TaskDigestProps {
 export function TaskDigest({ name, tasks, tasksUrl, logoUrl, brandName, supportEmail }: TaskDigestProps): React.ReactElement {
   const n = tasks.length
   return (
-    <Shell preview={`${n} task${n === 1 ? '' : 's'} need attention`} eyebrow="Daily reminder" title={`${n} task${n === 1 ? '' : 's'} need attention`} logoUrl={logoUrl} brandName={brandName} supportEmail={supportEmail} cta={{ href: tasksUrl, label: 'Open tasks' }}>
-      <Text style={p}>Hi {name},</Text>
+    <Shell preview={`${n} task${n === 1 ? '' : 's'} need attention`} eyebrow="Task reminder" tone={tasks.some((t) => t.overdue) ? 'danger' : 'warning'} title={`${n} task${n === 1 ? '' : 's'} need attention`} logoUrl={logoUrl} brandName={brandName} supportEmail={supportEmail} cta={{ href: tasksUrl, label: 'Open tasks' }}>
+      <Text style={p}>Hi {name}, here is what is due. Tap a task to open the contact.</Text>
       {tasks.map((t) => (
         <Text key={t.url + t.title} style={{ ...p, backgroundColor: colors.panel, border: `1px solid ${colors.border}`, borderLeft: `4px solid ${t.overdue ? colors.danger : colors.accent}`, borderRadius: 10, padding: '10px 14px', margin: '0 0 10px' }}>
-          <Link href={t.url} style={{ color: colors.text, fontWeight: 600 }}>{t.title}</Link>
+          <Link href={t.url} style={{ color: colors.text, fontWeight: 600, textDecoration: 'none' }}>{t.title}</Link>
+          {t.contact ? <span style={{ color: colors.muted }}> · {t.contact}</span> : null}
           <br />
           <span style={{ color: t.overdue ? colors.danger : colors.muted }}>{t.due}</span>
         </Text>

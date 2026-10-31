@@ -10,6 +10,7 @@ import {
   confirmBooking,
   createPendingBooking,
   notifyAdminsOfPendingBooking,
+  notifyGuestOfPendingBooking,
 } from '@/lib/bookings'
 import { getAvailableSlots } from '@/lib/calendar'
 import { sendBookingInviteEmail } from '@/lib/email'
@@ -178,6 +179,7 @@ export async function createPublicBooking(
 
     if (page.requiresApproval) {
       await notifyAdminsOfPendingBooking(booking.id).catch((err: unknown) => console.error('[bookings] approval notice failed', err))
+      await notifyGuestOfPendingBooking(booking.id)
       return { ok: true, data: { status: 'PENDING', meetUrl: null } }
     }
     try {
@@ -203,16 +205,18 @@ export async function approveBooking(bookingId: string): Promise<ActionResult> {
   }
 }
 
-export async function cancelBooking(bookingId: string, reason = 'cancelled-by-staff'): Promise<ActionResult> {
+/** Staff cancel (or, for a pending approval request, decline). The guest is emailed unless `notifyGuest` is false. */
+export async function cancelBooking(bookingId: string, reason = 'cancelled-by-staff', notifyGuest = true): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN', 'SALES'])
     const id = z.string().cuid().parse(bookingId)
-    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true } })
+    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, status: true, source: true } })
     if (!booking) throw new BookingError('Booking not found.', 'NOT_FOUND')
     if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can cancel.', 'FORBIDDEN')
-    await cancelBookingCore(id, user.id, z.string().max(200).parse(reason))
+    const kind = booking.status === 'PENDING' && booking.source === 'PUBLIC_PAGE' ? 'declined' : 'cancelled'
+    await cancelBookingCore(id, user.id, z.string().max(200).parse(reason), notifyGuest ? kind : false)
     revalidatePath('/admin/bookings')
-    revalidatePath('/sales')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)

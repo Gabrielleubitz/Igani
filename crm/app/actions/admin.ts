@@ -115,10 +115,13 @@ const bookingPageSchema = z.object({
   hostId: z.string().cuid(),
 })
 
-export async function upsertBookingPage(input: z.input<typeof bookingPageSchema>): Promise<ActionResult> {
+export async function upsertBookingPage(input: z.input<typeof bookingPageSchema>, opts: { isNew?: boolean } = {}): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
     const data = bookingPageSchema.parse(input)
+    if (opts.isNew && (await prisma.bookingPage.findUnique({ where: { slug: data.slug }, select: { id: true } }))) {
+      throw new z.ZodError([{ code: 'custom', path: ['slug'], message: `/book/${data.slug} is already taken, pick another link` }])
+    }
     const host = await prisma.user.findUnique({ where: { id: data.hostId }, select: { role: true } })
     if (!host || (host.role !== 'ADMIN' && host.role !== 'SALES')) {
       throw new z.ZodError([{ code: 'custom', path: ['hostId'], message: 'Host must be an ADMIN or SALES user' }])

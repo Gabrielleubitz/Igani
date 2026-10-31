@@ -1,8 +1,15 @@
 import 'server-only'
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { BookingCancelled } from '@/emails/BookingCancelled'
 import { BookingConfirmed } from '@/emails/BookingConfirmed'
 import { BookingInvite } from '@/emails/BookingInvite'
+import { BookingRequested } from '@/emails/BookingRequested'
+import { ContactEmail } from '@/emails/ContactEmail'
+import { MeetingReminder } from '@/emails/MeetingReminder'
+import { NewLeadAlert, type NewLeadAlertProps } from '@/emails/NewLeadAlert'
 import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
 import { PendingBooking } from '@/emails/PendingBooking'
 import { TaskDigest, type TaskDigestProps } from '@/emails/TaskDigest'
@@ -17,6 +24,12 @@ function resend(): Resend {
   return client
 }
 
+/**
+ * Dev/QA only: with EMAIL_DRY_RUN=1 (ignored in production) emails are written to .email-outbox/
+ * as HTML instead of being sent, so every flow can be clicked through without a Resend key.
+ */
+const dryRun = (): boolean => process.env.NODE_ENV !== 'production' && process.env.EMAIL_DRY_RUN === '1'
+
 async function send(args: {
   to: string | string[]
   subject: string
@@ -25,6 +38,15 @@ async function send(args: {
   replyTo?: string
   attachments?: { filename: string; content: Buffer; contentType?: string }[]
 }): Promise<string> {
+  if (dryRun()) {
+    const id = `dry_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const dir = join(process.cwd(), '.email-outbox')
+    mkdirSync(dir, { recursive: true })
+    const meta = `<!-- to: ${[args.to].flat().join(', ')} | subject: ${args.subject} | replyTo: ${args.replyTo ?? ''} | attachments: ${(args.attachments ?? []).map((a) => a.filename).join(', ')} -->\n`
+    writeFileSync(join(dir, `${id}.html`), meta + args.html)
+    console.info(`[email:dry-run] ${args.subject} → ${[args.to].flat().join(', ')} (${id})`)
+    return id
+  }
   const { data, error } = await resend().emails.send({
     from: env().EMAIL_FROM,
     to: args.to,
@@ -128,4 +150,41 @@ export async function sendTaskDigestEmail(to: string, a: Omit<TaskDigestProps, '
   const element = TaskDigest({ ...a, logoUrl: logoUrl(), ...(await brand()) })
   const n = a.tasks.length
   return send({ to, subject: `${n} CRM task${n === 1 ? '' : 's'} need attention`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** Guest notice that a meeting was cancelled, or that an approval request was declined. */
+export async function sendBookingCancelledEmail(b: BookingEmailData & { kind: 'cancelled' | 'declined'; rebookUrl?: string | null }): Promise<string> {
+  const element = BookingCancelled({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  return send({
+    to: b.guestEmail,
+    replyTo: b.hostEmail,
+    subject: b.kind === 'declined' ? `Update on your request: ${b.title}` : `Cancelled: ${b.title}`,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+  })
+}
+
+/** Guest receipt for a booking that waits for approval. */
+export async function sendBookingRequestedEmail(b: BookingEmailData): Promise<string> {
+  const element = BookingRequested({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Request received: ${b.title}`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** Guest reminder ~24h before a confirmed meeting (sent by the hourly cron). */
+export async function sendMeetingReminderEmail(b: BookingEmailData & { meetUrl: string | null }): Promise<string> {
+  const element = MeetingReminder({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Reminder: ${b.title} is coming up`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** Team alert for a brand-new inbound lead. */
+export async function sendNewLeadAlertEmail(to: string[], a: Omit<NewLeadAlertProps, 'logoUrl' | 'brandName' | 'supportEmail'>): Promise<string | null> {
+  if (to.length === 0) return null
+  const element = NewLeadAlert({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to, subject: `New lead: ${a.leadName}${a.company ? ` (${a.company})` : ''}`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** A personal, branded email from a teammate to a contact. Replies go straight to the teammate. */
+export async function sendContactEmail(a: { to: string; subject: string; body: string; firstName: string | null; senderName: string; senderEmail: string; cta?: { label: string; href: string } }): Promise<string> {
+  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, cta: a.cta, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to: a.to, replyTo: a.senderEmail, subject: a.subject, html: await render(element), text: await render(element, { plainText: true }) })
 }

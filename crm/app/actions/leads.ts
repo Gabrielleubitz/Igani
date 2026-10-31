@@ -8,17 +8,9 @@ import { BookingError } from '@/lib/bookings'
 import { logActivity } from '@/lib/audit'
 import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
+import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
-
-async function assertCanTouchLead(leadId: string, user: { id: string; role: string }): Promise<void> {
-  const lead = await prisma.lead.findUnique({ where: { id: leadId }, select: { assignedToId: true } })
-  if (!lead) throw new BookingError('Lead not found.', 'NOT_FOUND')
-  // Reps must own a lead (claim it first) before changing it.
-  if (user.role === 'SALES' && lead.assignedToId !== user.id) {
-    throw new BookingError(lead.assignedToId ? 'This lead is assigned to another rep.' : 'Claim this lead before changing it.', 'FORBIDDEN')
-  }
-}
 
 export async function updateLeadStatus(
   leadId: string,
@@ -28,13 +20,12 @@ export async function updateLeadStatus(
   try {
     const user = await requireUser()
     const id = z.string().cuid().parse(leadId)
-    await assertCanTouchLead(id, user)
+    await assertCanMoveLead(id, user)
     const parsed = z.nativeEnum(LeadStatus).parse(status)
     const ex = z.object({ lostReason: z.string().trim().max(500).optional(), dealValue: z.number().int().min(0).max(1_000_000_000).optional() }).parse(extras)
     if (parsed === 'LOST' && !ex.lostReason) throw new z.ZodError([{ code: 'custom', path: ['lostReason'], message: 'A reason is required when marking a lead as lost' }])
     await changeLeadStatus(id, parsed, user.id, ex)
-    revalidatePath('/sales')
-    revalidatePath('/admin/leads')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -53,8 +44,7 @@ export async function assignLead(leadId: string, assigneeId: string | null): Pro
       if (to !== user.id || lead.assignedToId) throw new BookingError('Reps can only claim unassigned leads.', 'FORBIDDEN')
     }
     await assignLeadManually(id, to, user.id)
-    revalidatePath('/sales')
-    revalidatePath('/admin/leads')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -65,7 +55,8 @@ export async function autoAssignLead(leadId: string): Promise<ActionResult<{ ass
   try {
     await requireUser(['ADMIN'])
     const assignedToId = await assignLeadRoundRobin(z.string().cuid().parse(leadId), { force: true })
-    revalidatePath('/sales')
+    if (!assignedToId) throw new BookingError('No active sales reps to assign to. Add one under Team, or pick an owner manually.', 'INVALID_STATE')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: { assignedToId } }
   } catch (err) {
     return toActionError(err)
@@ -93,17 +84,22 @@ const leadEditSchema = z.object({
   tags: z.array(z.string().trim().toLowerCase().min(1).max(40)).max(20).transform((t) => [...new Set(t)]).optional(),
 })
 
-/** Any role: edit contact fields of a lead (email is the dedupe key and stays fixed). */
+/** Edit contact fields of a lead the user can see (email is the dedupe key and stays fixed). */
 export async function updateLead(leadId: string, input: z.input<typeof leadEditSchema>): Promise<ActionResult> {
   try {
     const admin = await requireUser()
     const id = z.string().cuid().parse(leadId)
     const data = leadEditSchema.parse(input)
+    await assertCanSeeLead(id, admin)
     await prisma.$transaction(async (tx) => {
+      const before = await tx.lead.findUniqueOrThrow({ where: { id } })
+      // Only record fields that really changed, so the timeline stays readable.
+      const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => data[k] !== undefined && JSON.stringify(data[k]) !== JSON.stringify(before[k]))
+      if (changed.length === 0) return
       await tx.lead.update({ where: { id }, data })
-      await logActivity({ entityType: 'LEAD', entityId: id, action: 'lead.edited', actorId: admin.id, metadata: { fields: Object.keys(data) } }, tx)
+      await logActivity({ entityType: 'LEAD', entityId: id, action: 'lead.edited', actorId: admin.id, metadata: { fields: changed } }, tx)
     })
-    revalidatePath('/admin/leads')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -120,29 +116,31 @@ export async function createLead(input: { email: string; firstName?: string; las
     const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
     if (exists) throw new BookingError('A lead with this email already exists.', 'INVALID_STATE')
     const lead = await prisma.$transaction(async (tx) => {
-      const l = await tx.lead.create({ data: { ...data, source: data.source ?? 'manual' } })
+      // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.
+      const l = await tx.lead.create({ data: { ...data, source: data.source ?? 'manual', assignedToId: admin.role === 'SALES' ? admin.id : null } })
       await logActivity({ entityType: 'LEAD', entityId: l.id, action: 'lead.created', actorId: admin.id, metadata: { source: l.source } }, tx)
       return l
     })
-    revalidatePath('/admin/leads')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: { id: lead.id } }
   } catch (err) {
     return toActionError(err)
   }
 }
 
-/** Any role: archive (soft-delete) or restore leads. */
+/** Archive (soft-delete) or restore leads: admins any, reps only their own. */
 export async function archiveLeads(leadIds: string[], archived: boolean): Promise<ActionResult<{ count: number }>> {
   try {
     const admin = await requireUser()
     const ids = z.array(z.string().cuid()).min(1).max(500).parse(leadIds)
+    if (admin.role === 'MARKETING') throw new BookingError('Only sales and admins can archive contacts.', 'FORBIDDEN')
+    await assertCanSeeLeads(ids, admin, true)
     const res = await prisma.$transaction(async (tx) => {
       const r = await tx.lead.updateMany({ where: { id: { in: ids } }, data: { archived } })
       await tx.activityLog.createMany({ data: ids.map((id) => ({ entityType: 'LEAD' as const, entityId: id, action: archived ? 'lead.archived' : 'lead.restored', actorId: admin.id })) })
       return r
     })
-    revalidatePath('/admin/leads')
-    revalidatePath('/sales')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: { count: res.count } }
   } catch (err) {
     return toActionError(err)
@@ -160,52 +158,36 @@ export async function deleteLeads(leadIds: string[]): Promise<ActionResult<{ cou
       await tx.activityLog.createMany({ data: leads.map((l) => ({ entityType: 'LEAD' as const, entityId: l.id, action: 'lead.deleted', actorId: admin.id, metadata: { email: l.email } })) })
       return r
     })
-    revalidatePath('/admin/leads')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: { count: res.count } }
   } catch (err) {
     return toActionError(err)
   }
 }
 
-/** Any role: bulk assign (null = unassign) and/or bulk status change. */
+/** Bulk assign (ADMIN only; null = unassign) and/or bulk stage change (reps: own contacts only). */
 export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: string | null; status?: LeadStatus }): Promise<ActionResult<{ count: number }>> {
   try {
     const admin = await requireUser()
     const ids = z.array(z.string().cuid()).min(1).max(500).parse(leadIds)
     const ch = z.object({ assigneeId: z.string().cuid().nullable().optional(), status: z.nativeEnum(LeadStatus).optional() }).parse(change)
+    if (ch.assigneeId !== undefined && admin.role !== 'ADMIN') throw new BookingError('Only admins can reassign contacts in bulk.', 'FORBIDDEN')
+    if (ch.status) await assertCanSeeLeads(ids, admin, true)
     if (ch.status === 'LOST') throw new BookingError('Mark leads as lost one by one so a reason is recorded.', 'INVALID_STATE')
     await bulkUpdateLeadsTx(ids, ch, admin.id)
-    revalidatePath('/admin/leads')
-    revalidatePath('/sales')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: { count: ids.length } }
   } catch (err) {
     return toActionError(err)
   }
 }
 
-export async function addLeadNote(leadId: string, body: string): Promise<ActionResult> {
-  try {
-    const user = await requireUser()
-    const id = z.string().cuid().parse(leadId)
-    const text = z.string().trim().min(1).max(5000).parse(body)
-    await assertCanTouchLead(id, user)
-    await prisma.$transaction(async (tx) => {
-      await tx.leadNote.create({ data: { leadId: id, authorId: user.id, body: text } })
-      await logActivity({ entityType: 'LEAD', entityId: id, action: 'lead.note_added', actorId: user.id }, tx)
-    })
-    revalidatePath('/admin/leads')
-    return { ok: true, data: undefined }
-  } catch (err) {
-    return toActionError(err)
-  }
-}
-
-/** Any role: CSV export of leads matching the (URL-style) filters. */
+/** CSV export of the contacts the user can see, matching the (URL-style) filters. */
 export async function exportLeadsCsv(params: Record<string, string | undefined> = {}): Promise<ActionResult<{ csv: string }>> {
   try {
-    await requireUser()
+    const user = await requireUser()
     const leads = await prisma.lead.findMany({
-      where: buildLeadWhere(parseLeadFilters(params)),
+      where: { AND: [buildLeadWhere(parseLeadFilters(params)), leadScope(user)] },
       orderBy: { createdAt: 'desc' },
       take: 10000,
       include: { assignedTo: { select: { email: true } } },

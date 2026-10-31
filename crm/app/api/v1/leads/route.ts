@@ -1,7 +1,7 @@
 import { waitUntil } from '@vercel/functions'
 import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/lib/env'
-import { assignLeadRoundRobin, ingestLead, leadPayloadSchema } from '@/lib/leads'
+import { assignLeadRoundRobin, ingestLead, leadPayloadSchema, notifyTeamOfNewLead } from '@/lib/leads'
 import { safeEqual } from '@/lib/tokens'
 
 export const runtime = 'nodejs'
@@ -34,7 +34,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (result.created || result.needsAssignment) {
       // Respond immediately; assignment continues after the response is sent.
       waitUntil(
-        assignLeadRoundRobin(result.leadId).catch((err: unknown) => console.error('[leads] round-robin failed', result.leadId, err)),
+        assignLeadRoundRobin(result.leadId)
+          .catch((err: unknown) => console.error('[leads] round-robin failed', result.leadId, err))
+          // Alert after assignment so the email can say who owns the lead.
+          .then(() => (result.created ? notifyTeamOfNewLead(result.leadId) : undefined)),
       )
     }
     return NextResponse.json(

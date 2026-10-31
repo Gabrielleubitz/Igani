@@ -4,8 +4,8 @@ import { logActivity } from './audit'
 import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, isSlotStillFree } from './calendar'
 import { getSetting } from './settings'
 import { createAutoTask } from './tasks'
-import { sendApprovalRequestEmail, sendBookingConfirmedEmail, type BookingEmailData } from './email'
-import { env } from './env'
+import { sendApprovalRequestEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail, sendBookingRequestedEmail, type BookingEmailData } from './email'
+import { appUrl, env } from './env'
 import { prisma } from './prisma'
 
 export class BookingError extends Error {
@@ -122,7 +122,7 @@ export async function createPendingBooking(input: NewBookingInput): Promise<Book
   })
 }
 
-async function emailDataFor(bookingId: string): Promise<BookingEmailData> {
+export async function emailDataFor(bookingId: string): Promise<BookingEmailData> {
   const b = await prisma.booking.findUniqueOrThrow({
     where: { id: bookingId },
     include: { host: { select: { name: true, email: true, timeZone: true } } },
@@ -239,13 +239,20 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
   return confirmed
 }
 
-export async function cancelBooking(bookingId: string, actorId: string | null, reason: string): Promise<void> {
-  const booking = await prisma.booking.findUnique({ where: { id: bookingId } })
+/**
+ * Cancels a booking, removes the Google event and (when `notifyGuest` is set) emails the guest a branded notice
+ * — 'declined' for an approval request that was turned down, 'cancelled' for a meeting that was called off.
+ */
+export async function cancelBooking(bookingId: string, actorId: string | null, reason: string, notifyGuest: false | 'cancelled' | 'declined' = false): Promise<void> {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { bookingPage: { select: { slug: true, active: true } } } })
   if (!booking) throw new BookingError('Booking not found.', 'NOT_FOUND')
   if (booking.status === 'CANCELLED') return
   await prisma.$transaction(async (tx) => {
     await tx.booking.update({ where: { id: bookingId }, data: { status: 'CANCELLED', cancelledAt: new Date() } })
     await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.cancelled', actorId, metadata: { reason } }, tx)
+    if (booking.leadId) {
+      await logActivity({ entityType: 'LEAD', entityId: booking.leadId, action: 'meeting.cancelled', actorId, metadata: { bookingId, title: booking.title, start: booking.startTime.toISOString(), reason } }, tx)
+    }
   })
   if (booking.googleEventId) {
     await deleteCalendarEvent(booking.hostId, booking.googleEventId).catch(async (err: unknown) => {
@@ -257,6 +264,25 @@ export async function cancelBooking(bookingId: string, actorId: string | null, r
         metadata: { error: err instanceof Error ? err.message : String(err) },
       })
     })
+  }
+  if (notifyGuest && booking.startTime.getTime() > Date.now()) {
+    try {
+      const rebookUrl = booking.bookingPage?.active ? appUrl(`/book/${booking.bookingPage.slug}`) : null
+      const emailId = await sendBookingCancelledEmail({ ...(await emailDataFor(bookingId)), kind: notifyGuest, rebookUrl })
+      await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.cancellation_sent', actorId, metadata: { emailId, kind: notifyGuest } })
+    } catch (err) {
+      console.error('[bookings] cancellation email failed', bookingId, err)
+      await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.cancellation_failed', actorId, metadata: { error: err instanceof Error ? err.message : String(err) } })
+    }
+  }
+}
+
+/** Guest receipt for a request that waits for approval (best effort). */
+export async function notifyGuestOfPendingBooking(bookingId: string): Promise<void> {
+  try {
+    await sendBookingRequestedEmail(await emailDataFor(bookingId))
+  } catch (err) {
+    console.error('[bookings] request receipt failed', bookingId, err)
   }
 }
 

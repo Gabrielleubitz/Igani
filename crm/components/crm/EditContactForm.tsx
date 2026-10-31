@@ -35,7 +35,7 @@ export function EditContactForm({ leadId, initial }: Props): React.ReactElement 
             dealValue: value ? Number(value) : null,
             tags: s('tags').split(',').filter((t) => t.trim()),
           })
-          setMsg(res.ok ? 'Saved.' : res.error)
+          setMsg(res.ok ? '✓ Saved.' : res.error)
           router.refresh()
         })
       }}

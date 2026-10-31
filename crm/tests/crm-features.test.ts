@@ -68,7 +68,7 @@ describe('csv import', () => {
 describe('splitDue', () => {
   it('splits overdue and due today', () => {
     const now = new Date('2026-05-10T12:00:00Z')
-    const mk = (id: string, dueAt: string | null, done = false) => ({ id, leadId: 'l', title: id, dueAt: dueAt ? new Date(dueAt) : null, assigneeId: 'u', done, priority: 'MEDIUM' as const })
+    const mk = (id: string, dueAt: string | null, done = false) => ({ id, leadId: 'l', title: id, dueAt: dueAt ? new Date(dueAt) : null, assigneeId: 'u', done, priority: 'MEDIUM' as const, auto: null, createdAt: now, completedAt: null })
     const r = splitDue([mk('a', '2026-05-09T00:00:00Z'), mk('b', '2026-05-10T20:00:00Z'), mk('c', '2026-05-11T01:00:00Z'), mk('d', null), mk('e', '2026-05-01T00:00:00Z', true)], now)
     expect(r.overdue.map((t) => t.id)).toEqual(['a'])
     expect(r.today.map((t) => t.id)).toEqual(['b'])
@@ -94,5 +94,36 @@ describe('visibleLeadsWhere', () => {
   it('admins see all; others only own or unassigned leads', () => {
     expect(visibleLeadsWhere('ADMIN', 'u1')).toEqual({})
     expect(visibleLeadsWhere('SALES', 'u1')).toEqual({ OR: [{ assignedToId: 'u1' }, { assignedToId: null }] })
+  })
+})
+
+describe('foldTasks lifecycle', () => {
+  const t0 = new Date('2026-06-01T10:00:00Z')
+  const at = (min: number): Date => new Date(t0.getTime() + min * 60_000)
+  const ev = (action: string, min: number, metadata: Record<string, unknown>) => ({ entityId: 'lead1', action, createdAt: at(min), metadata: { taskId: 't1', ...metadata } })
+  it('applies edits, completion, reopen and delete in time order (input order does not matter)', () => {
+    const logs = [
+      ev('task.updated', 2, { title: 'Send proposal v2', dueAt: null, priority: 'HIGH', assigneeId: 'u2' }),
+      ev('task.created', 0, { title: 'Send proposal', dueAt: '2026-06-02T09:00:00Z', assigneeId: 'u1', priority: 'LOW' }),
+      ev('task.completed', 3, {}),
+    ]
+    const [t] = foldTasks(logs)
+    expect(t).toMatchObject({ title: 'Send proposal v2', dueAt: null, priority: 'HIGH', assigneeId: 'u2', done: true, completedAt: at(3) })
+    expect(foldTasks([...logs, ev('task.reopened', 4, {})])[0]).toMatchObject({ done: false, completedAt: null })
+    expect(foldTasks([...logs, ev('task.deleted', 5, {})])).toEqual([])
+  })
+  it('ignores events for unknown tasks and keeps unspecified fields', () => {
+    const logs = [ev('task.created', 0, { title: 'Call', dueAt: '2026-06-02T09:00:00Z', assigneeId: 'u1', priority: 'MEDIUM', auto: 'prep' }), ev('task.updated', 1, { title: 'Call Dana' }), { ...ev('task.completed', 2, {}), metadata: { taskId: 'other' } }]
+    const [t] = foldTasks(logs)
+    expect(t).toMatchObject({ title: 'Call Dana', assigneeId: 'u1', auto: 'prep', done: false })
+    expect(t?.dueAt?.toISOString()).toBe('2026-06-02T09:00:00.000Z')
+  })
+})
+
+describe('staleDays threshold', () => {
+  it('respects a custom number of days', () => {
+    const now = new Date('2026-03-31T00:00:00Z')
+    expect(staleDays('NEW', new Date('2026-03-28T00:00:00Z'), now, 3)).toBe(3)
+    expect(staleDays('NEW', new Date('2026-03-28T00:00:00Z'), now, 14)).toBeNull()
   })
 })

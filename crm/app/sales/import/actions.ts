@@ -58,12 +58,13 @@ export async function commitLeadImport(rows: unknown, mode: 'skip' | 'merge'): P
         continue
       }
       const res = await ingestLead(p)
+      // A rep's own import belongs to them; admin/marketing imports stay unassigned for routing.
+      if (res.created && user.role === 'SALES') await prisma.lead.update({ where: { id: res.leadId }, data: { assignedToId: user.id } })
       if (res.created) created++
       else merged++
     }
     await logActivity({ entityType: 'LEAD', entityId: 'import', actorId: user.id, action: 'leads.imported', metadata: { created, merged, skipped, mode } })
-    revalidatePath('/sales')
-    revalidatePath('/admin/leads')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: { created, merged, skipped } }
   } catch (err) {
     return toActionError(err)

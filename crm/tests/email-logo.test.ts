@@ -31,3 +31,35 @@ describe('email logo', () => {
     }
   })
 })
+
+describe('every CRM email (samples)', () => {
+  it('renders with the brand frame, dark wordmark, and a plain-text version', async () => {
+    const { SAMPLES } = await import('@/emails/samples')
+    expect(Object.keys(SAMPLES).length).toBeGreaterThanOrEqual(12)
+    for (const [name, el] of Object.entries(SAMPLES)) {
+      const html = await render(el)
+      const text = await render(el, { plainText: true })
+      expect(html, name).toContain('src="https://app.igani.co/igani-logo%202.png"')
+      expect(html, name).not.toMatch(/igani-logo\.png/)
+      expect(html, name).toContain('igani.co')
+      expect(text.length, name).toBeGreaterThan(40)
+    }
+  })
+
+  it('cancellation vs decline wording and rebook link', async () => {
+    const { SAMPLES } = await import('@/emails/samples')
+    const cancelled = await render(SAMPLES.BookingCancelled!, { plainText: true })
+    const declined = await render(SAMPLES.BookingDeclined!, { plainText: true })
+    expect(cancelled).toMatch(/cancelled/i)
+    expect(declined).toMatch(/couldn.t confirm/i)
+    expect(declined).toContain('https://app.igani.co/book/intro')
+  })
+
+  it('contact email keeps the sender signature and escapes user content', async () => {
+    const { ContactEmail } = await import('@/emails/ContactEmail')
+    const html = await render(React.createElement(ContactEmail, { subject: 'Hi', body: 'Hello <script>alert(1)</script>\n\nSecond', senderName: 'Gabriel', senderEmail: 'g@igani.co', logoUrl: LOGO }))
+    expect(html).not.toContain('<script>alert(1)</script>')
+    expect(html).toContain('Gabriel')
+    expect(html).toContain('Second')
+  })
+})

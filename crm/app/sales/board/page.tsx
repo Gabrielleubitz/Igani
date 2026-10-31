@@ -3,8 +3,9 @@ import { KanbanBoard } from '@/components/crm/KanbanBoard'
 import { LeadFilters } from '@/components/crm/LeadFilters'
 import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
+import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
-import { filterLeads } from '@/components/crm/crm-utils'
+import { filterLeads, leadScore } from '@/components/crm/crm-utils'
 import { PageIntro } from '@/components/PageIntro'
 
 export const metadata = { title: 'Board' }
@@ -15,7 +16,7 @@ const one = (v: string | string[] | undefined): string | undefined => (Array.isA
 export default async function BoardPage({ searchParams }: { searchParams: SP }): Promise<React.ReactElement> {
   const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
-  const scope: Prisma.LeadWhereInput = isAdmin ? {} : { OR: [{ assignedToId: user.id }, { assignedToId: null }] }
+  const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), { archived: false }] }
   const f = { q: one(searchParams.q), status: one(searchParams.status), source: one(searchParams.source), owner: one(searchParams.owner) }
 
   const [all, reps] = await Promise.all([
@@ -27,7 +28,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
 
   return (
     <div>
-      <PageIntro title="Board" hint="The same contacts as cards in columns. Drag a card to the next stage as the deal moves." className="mb-4" />
+      <PageIntro title="Board" hint="Your pipeline as cards. Drag a card to the next stage as the deal moves (on a phone, use the menu on each card)." className="mb-4" />
       <LeadFilters
         action="/sales/board"
         values={f}
@@ -36,7 +37,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
         exportHref={`/sales/export?${new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString()}`}
       />
       <p className="mb-3 text-xs text-muted-foreground">
-        {leads.length} lead{leads.length === 1 ? '' : 's'} · drag cards between columns to change stage
+        {leads.length} contact{leads.length === 1 ? '' : 's'}{isAdmin ? '' : ' · you can move the cards you own'}
       </p>
       <KanbanBoard
         leads={leads.map((l) => ({
@@ -46,6 +47,8 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
           email: l.email,
           owner: l.assignedTo ? (l.assignedTo.name ?? l.assignedTo.email) : null,
           budget: l.budget,
+          dealValue: l.dealValue,
+          score: leadScore(l),
           status: l.status,
           canMove: isAdmin || l.assignedToId === user.id,
         }))}

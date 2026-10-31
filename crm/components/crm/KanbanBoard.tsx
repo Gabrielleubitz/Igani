@@ -2,10 +2,10 @@
 
 import type { LeadStatus } from '@prisma/client'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
-import { updateLeadStatus } from '@/app/actions/leads'
-import { LEAD_STATUSES } from '@/lib/format'
+import { useState } from 'react'
+import { useStageChange } from '@/components/crm/StageSelect'
+import { LEAD_STATUSES, STATUS_LABEL, formatMoney } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 export interface BoardLead {
   id: string
@@ -14,6 +14,8 @@ export interface BoardLead {
   email: string
   owner: string | null
   budget: string | null
+  dealValue: number | null
+  score: number
   canMove: boolean
 }
 
@@ -26,30 +28,26 @@ const COLORS: Record<string, string> = {
   LOST: 'border-t-rose-400',
 }
 
-/** Drag a card between columns to change status (reuses the audited updateLeadStatus action). */
+/**
+ * Drag a card between columns to change stage (desktop), or use the small stage menu on each card (touch/keyboard).
+ * Won/Lost open the same dialog as everywhere else, so a Lost reason is always captured.
+ */
 export function KanbanBoard({ leads }: { leads: (BoardLead & { status: LeadStatus })[] }): React.ReactElement {
-  const router = useRouter()
-  const [pending, start] = useTransition()
-  const [error, setError] = useState<string | null>(null)
+  const { request, pending, error, dialog } = useStageChange()
   const [over, setOver] = useState<string | null>(null)
-  const items = leads
-
-  const move = (id: string, status: LeadStatus): void =>
-    start(async () => {
-      const res = await updateLeadStatus(id, status)
-      setError(res.ok ? null : res.error)
-      router.refresh()
-    })
+  const [dragging, setDragging] = useState<string | null>(null)
 
   return (
     <div>
-      {error ? <p className="mb-2 text-sm text-red-400">{error}</p> : null}
-      <div className={`grid gap-3 overflow-x-auto md:grid-cols-3 xl:grid-cols-6 ${pending ? 'opacity-70' : ''}`}>
+      {error ? <p className="mb-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
+      <div className={cn('flex snap-x gap-3 overflow-x-auto pb-3 xl:grid xl:grid-cols-6 xl:overflow-visible', pending && 'opacity-70')}>
         {LEAD_STATUSES.map((status) => {
-          const col = items.filter((l) => l.status === status)
+          const col = leads.filter((l) => l.status === status)
+          const value = col.reduce((n, l) => n + (l.dealValue ?? 0), 0)
           return (
-            <div
+            <section
               key={status}
+              aria-label={STATUS_LABEL[status]}
               onDragOver={(e) => {
                 e.preventDefault()
                 setOver(status)
@@ -58,39 +56,69 @@ export function KanbanBoard({ leads }: { leads: (BoardLead & { status: LeadStatu
               onDrop={(e) => {
                 e.preventDefault()
                 setOver(null)
+                setDragging(null)
                 const id = e.dataTransfer.getData('text/plain')
-                const lead = items.find((l) => l.id === id)
-                if (lead && lead.status !== status && lead.canMove) move(id, status)
+                const lead = leads.find((l) => l.id === id)
+                if (lead && lead.status !== status && lead.canMove) request(id, status, lead.dealValue)
               }}
-              className={`min-h-[200px] rounded-lg border border-t-4 bg-card/40 p-2 ${COLORS[status]} ${over === status ? 'ring-2 ring-ring' : ''}`}
+              className={cn('min-h-[240px] w-64 shrink-0 snap-start rounded-lg border border-t-4 bg-card/40 p-2 xl:w-auto', COLORS[status], over === status && 'ring-2 ring-ring')}
             >
-              <h2 className="mb-2 flex justify-between px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                <span>{status.replace('_', ' ')}</span>
-                <span>{col.length}</span>
+              <h2 className="mb-2 flex items-baseline justify-between px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <span>{STATUS_LABEL[status]}</span>
+                <span className="tabular-nums">{col.length}</span>
               </h2>
+              {value ? <div className="-mt-1 mb-2 px-1 text-xs tabular-nums text-muted-foreground">{formatMoney(value)} value</div> : null}
               <div className="space-y-2">
+                {col.length === 0 ? <p className="px-1 py-6 text-center text-xs text-muted-foreground/70">Drop here</p> : null}
                 {col.map((l) => (
-                  <div
+                  <article
                     key={l.id}
                     draggable={l.canMove}
-                    onDragStart={(e) => e.dataTransfer.setData('text/plain', l.id)}
-                    className={`rounded-md border bg-background p-2 text-sm shadow-sm ${l.canMove ? 'cursor-grab' : ''}`}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('text/plain', l.id)
+                      setDragging(l.id)
+                    }}
+                    onDragEnd={() => setDragging(null)}
+                    className={cn('rounded-md border bg-background p-2.5 text-sm shadow-sm transition-shadow hover:shadow-md', l.canMove && 'cursor-grab active:cursor-grabbing', dragging === l.id && 'opacity-50')}
                   >
-                    <Link href={`/sales/leads/${l.id}`} className="font-medium hover:underline">
-                      {l.name}
-                    </Link>
-                    {l.company ? <div className="text-xs text-muted-foreground">{l.company}</div> : null}
-                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
-                      <span>{l.owner ?? 'unassigned'}</span>
-                      {l.budget ? <span>{l.budget}</span> : null}
+                    <div className="flex items-start justify-between gap-2">
+                      <Link href={`/sales/leads/${l.id}`} className="min-w-0 truncate font-medium hover:underline">
+                        {l.name}
+                      </Link>
+                      {status !== 'WON' && status !== 'LOST' ? (
+                        <span title="Heat score" className={cn('shrink-0 rounded px-1 text-[10px] font-semibold tabular-nums', l.score >= 65 ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground')}>
+                          {l.score}
+                        </span>
+                      ) : null}
                     </div>
-                  </div>
+                    {l.company ? <div className="truncate text-xs text-muted-foreground">{l.company}</div> : null}
+                    <div className="mt-1.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="truncate">{l.owner ?? 'Unassigned'}</span>
+                      {l.dealValue ? <span className="tabular-nums">{formatMoney(l.dealValue)}</span> : l.budget ? <span className="truncate">{l.budget}</span> : null}
+                    </div>
+                    {l.canMove ? (
+                      <select
+                        aria-label={`Move ${l.name} to stage`}
+                        value={status}
+                        disabled={pending}
+                        onChange={(e) => request(l.id, e.target.value as LeadStatus, l.dealValue)}
+                        className="mt-2 w-full rounded border bg-transparent px-1 py-0.5 text-xs text-muted-foreground xl:hidden"
+                      >
+                        {LEAD_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            Move to: {STATUS_LABEL[s]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </article>
                 ))}
               </div>
-            </div>
+            </section>
           )
         })}
       </div>
+      {dialog}
     </div>
   )
 }

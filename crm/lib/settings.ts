@@ -11,6 +11,10 @@ export const SETTING_SCHEMAS = {
   'brand.name': z.string().trim().min(1).max(80),
   'brand.supportEmail': z.string().trim().email().max(254),
   'leads.staleDays': z.number().int().min(1).max(365),
+  /** Email the notification list whenever a new inbound lead arrives */
+  'notifications.newLead': z.boolean(),
+  /** Email guests a reminder ~24 hours before a confirmed meeting */
+  'reminders.meetingEmails': z.boolean(),
 } as const
 
 export type SettingKey = keyof typeof SETTING_SCHEMAS
@@ -23,6 +27,8 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'brand.name': 'Igani',
   'brand.supportEmail': 'hello@igani.co',
   'leads.staleDays': 7,
+  'notifications.newLead': true,
+  'reminders.meetingEmails': true,
 }
 
 export function isSettingKey(key: string): key is SettingKey {

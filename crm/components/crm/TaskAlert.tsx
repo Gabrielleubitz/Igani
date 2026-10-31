@@ -1,25 +1,27 @@
 import Link from 'next/link'
-import { foldTasks, splitDue } from './crm-utils'
+import { splitDue } from './crm-utils'
 import { prisma } from '@/lib/prisma'
+import { isMyTask, loadTasks } from '@/lib/tasks'
 
-/** Banner shown on every /sales page: the caller's overdue and due-today tasks. */
-export async function TaskAlert({ userId, isAdmin }: { userId: string; isAdmin: boolean }): Promise<React.ReactElement | null> {
-  const logs = await prisma.activityLog.findMany({
-    where: { entityType: 'LEAD', action: { in: ['task.created', 'task.completed'] } },
-    orderBy: { createdAt: 'desc' },
-    take: 3000,
-  })
-  const mine = foldTasks(logs).filter((t) => isAdmin || t.assigneeId === userId)
+/** Banner on every CRM page: the signed-in user's own overdue and due-today tasks. */
+export async function TaskAlert({ userId }: { userId: string }): Promise<React.ReactElement | null> {
+  const owned = await prisma.lead.findMany({ where: { OR: [{ assignedToId: userId }] }, select: { id: true } })
+  const ownedIds = new Set(owned.map((l) => l.id))
+  const mine = (await loadTasks()).filter((t) => isMyTask(t, userId, ownedIds.has(t.leadId) ? userId : null))
   const { overdue, today } = splitDue(mine)
   if (overdue.length === 0 && today.length === 0) return null
   return (
     <Link
       href="/sales/tasks"
-      className={`mb-6 block rounded-md border px-4 py-2 text-sm ${overdue.length ? 'border-red-500/40 bg-red-500/10 text-red-300' : 'border-amber-500/40 bg-amber-500/10 text-amber-200'}`}
+      className={`mb-6 flex items-center justify-between gap-3 rounded-lg border px-4 py-2.5 text-sm transition-colors ${overdue.length ? 'border-red-500/40 bg-red-500/10 text-red-200 hover:bg-red-500/15' : 'border-amber-500/40 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15'}`}
     >
-      {overdue.length ? `${overdue.length} overdue task${overdue.length === 1 ? '' : 's'}` : null}
-      {overdue.length && today.length ? ' · ' : null}
-      {today.length ? `${today.length} due today` : null} — view tasks →
+      <span>
+        <span aria-hidden>{overdue.length ? '⏰ ' : '📌 '}</span>
+        {overdue.length ? `${overdue.length} overdue task${overdue.length === 1 ? '' : 's'}` : null}
+        {overdue.length && today.length ? ' · ' : null}
+        {today.length ? `${today.length} due today` : null}
+      </span>
+      <span className="font-medium">View tasks →</span>
     </Link>
   )
 }

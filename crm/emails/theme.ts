@@ -10,6 +10,8 @@ export const colors = {
   brand: '#001429',
   panel: '#f6f8fb',
   danger: '#d64545',
+  warning: '#d9930d',
+  success: '#1f9d63',
 } as const
 
 export const font =
@@ -22,4 +24,13 @@ export function formatWhen(start: Date, end: Date, timeZone: string): { date: st
     new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'short' }).formatToParts(start).find((p) => p.type === 'timeZoneName')
       ?.value ?? timeZone
   return { date, time: `${t.format(start)} – ${t.format(end)} (${zone})` }
+}
+
+/** "Add to Google Calendar" template link (works without the guest signing in to anything). */
+export function googleCalendarUrl(e: { title: string; start: Date; end: Date; details?: string; location?: string }): string {
+  const fmt = (d: Date): string => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: e.title, dates: `${fmt(e.start)}/${fmt(e.end)}` })
+  if (e.details) q.set('details', e.details)
+  if (e.location) q.set('location', e.location)
+  return `https://calendar.google.com/calendar/render?${q.toString()}`
 }

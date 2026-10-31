@@ -1,7 +1,7 @@
-import { Link, Text } from '@react-email/components'
+import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Shell } from './Shell'
-import { colors, formatWhen } from './theme'
+import { DetailCard, p, Quote, Shell } from './Shell'
+import { formatWhen, googleCalendarUrl } from './theme'
 
 export interface BookingConfirmedProps {
   guestName: string
@@ -40,19 +40,18 @@ export function BookingConfirmed({
     <Shell
       preview={`Confirmed: ${title} — ${when.date}`}
       eyebrow="Meeting confirmed"
+      tone="success"
       title={title}
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
       cta={{ href: meetUrl, label: 'Join Google Meet' }}
-      ctaHint={icsFileName ? `Add it to your calendar with the attached ${icsFileName} file.` : undefined}
+      secondary={{ href: googleCalendarUrl({ title, start: startTime, end: endTime, details: `Join Google Meet: ${meetUrl}`, location: meetUrl }), label: 'Add to Google Calendar' }}
+      ctaHint={icsFileName ? `Using Outlook or Apple Calendar? Open the attached ${icsFileName} file. Meet link: ${meetUrl}` : `Meet link: ${meetUrl}`}
     >
       <Text style={p}>Hi {guestName}, you&apos;re booked with {hostName} from {brandName}. Here are the details:</Text>
-      <DetailCard rows={[{ label: 'Date', value: when.date }, { label: 'Time', value: when.time }, { label: 'Host', value: hostName }]} />
-      {notes ? <Text style={{ ...p, fontSize: 14, lineHeight: '22px' }}>{notes}</Text> : null}
-      <Text style={{ color: colors.muted, fontSize: 12, margin: '0 0 20px' }}>
-        Or open: <Link href={meetUrl} style={{ color: colors.accent }}>{meetUrl}</Link>
-      </Text>
+      <DetailCard rows={[{ label: 'Date', value: when.date }, { label: 'Time', value: when.time }, { label: 'Host', value: hostName }, { label: 'Where', value: 'Google Meet (link below)' }]} />
+      {notes ? <Quote>{notes}</Quote> : null}
     </Shell>
   )
 }

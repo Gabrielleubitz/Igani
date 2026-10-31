@@ -2,7 +2,8 @@ import 'server-only'
 import type { LeadStatus, Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
-import { sendLeadAssignedEmail } from './email'
+import { sendLeadAssignedEmail, sendNewLeadAlertEmail } from './email'
+import { getSetting } from './settings'
 import { appUrl } from './env'
 import { prisma } from './prisma'
 
@@ -129,6 +130,8 @@ export async function notifyLeadAssigned(leadId: string, repId: string): Promise
       leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email,
       leadEmail: lead.email,
       company: lead.company,
+      phone: lead.phone,
+      message: lead.message,
       source: lead.source,
       leadUrl: appUrl(`/sales/leads/${lead.id}`),
     })
@@ -262,4 +265,28 @@ export async function reassignUserWork(fromId: string, toId: string | null, acto
     })),
   })
   return leads.length
+}
+
+/** Best-effort team alert for a brand-new inbound lead (Settings → Notifications). Never throws. */
+export async function notifyTeamOfNewLead(leadId: string): Promise<void> {
+  try {
+    const [enabled, to] = await Promise.all([getSetting('notifications.newLead'), getSetting('notifications.emails')])
+    if (!enabled || to.length === 0) return
+    const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { assignedTo: { select: { name: true, email: true } } } })
+    if (!lead) return
+    await sendNewLeadAlertEmail(to, {
+      leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email,
+      leadEmail: lead.email,
+      phone: lead.phone,
+      company: lead.company,
+      budget: lead.budget,
+      source: lead.source,
+      campaign: lead.utmCampaign,
+      message: lead.message,
+      owner: lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : null,
+      leadUrl: appUrl(`/sales/leads/${lead.id}`),
+    })
+  } catch (err) {
+    console.error('[leads] new-lead alert failed', leadId, err)
+  }
 }

@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { commitLeadImport, previewLeadImport, type ImportPreview } from '@/app/sales/import/actions'
 import { Button } from '@/components/ui/button'
@@ -43,13 +44,17 @@ export function LeadImport(): React.ReactElement {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        CSV with a header row. Recognised columns: email (required), first name, last name, phone, company, website, message, budget, source. Max 2000 rows.
-      </p>
-      <Input type="file" accept=".csv,text/csv" onChange={(e) => void onFile(e.target.files?.[0])} className="h-auto max-w-sm py-2" />
+      <Input type="file" aria-label="CSV file" accept=".csv,text/csv" onChange={(e) => void onFile(e.target.files?.[0])} className="h-auto max-w-sm cursor-pointer py-2 file:mr-3 file:rounded file:border-0 file:bg-primary file:px-3 file:py-1 file:text-sm file:text-primary-foreground" />
       {pending ? <p className="text-sm text-muted-foreground">Working…</p> : null}
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
-      {msg ? <p className="text-sm text-emerald-400">{msg}</p> : null}
+      {msg ? (
+        <p className="text-sm text-emerald-400">
+          {msg}{' '}
+          <Link href="/sales/leads?source=csv-import" className="font-medium underline underline-offset-4">
+            View imported contacts →
+          </Link>
+        </p>
+      ) : null}
 
       {fileErrors.length > 0 ? (
         <div className="rounded-md border p-3 text-sm">
@@ -97,7 +102,7 @@ export function LeadImport(): React.ReactElement {
               <option value="merge">Duplicates: merge (fill blanks, append message)</option>
             </Select>
             <Button onClick={commit} disabled={pending || preview.fresh + (mode === 'merge' ? preview.duplicates.length : 0) === 0}>
-              Import
+              {pending ? 'Importing…' : `Import ${preview.fresh + (mode === 'merge' ? preview.duplicates.length : 0)} contact${preview.fresh + (mode === 'merge' ? preview.duplicates.length : 0) === 1 ? '' : 's'}`}
             </Button>
           </div>
         </div>

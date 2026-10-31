@@ -3,22 +3,24 @@
 import type { LeadStatus } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { assignLead, autoAssignLead, updateLeadStatus } from '@/app/actions/leads'
+import { assignLead, autoAssignLead } from '@/app/actions/leads'
+import { StageSelect } from '@/components/crm/StageSelect'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/input'
-import { LEAD_STATUSES } from '@/lib/format'
-
 
 interface Props {
   leadId: string
   status: LeadStatus
+  dealValue?: number | null
   assignedToId: string | null
   currentUserId: string
   isAdmin: boolean
+  canClaim?: boolean
   reps: { id: string; label: string }[]
 }
 
-export function LeadControls({ leadId, status, assignedToId, currentUserId, isAdmin, reps }: Props): React.ReactElement {
+/** Stage + owner controls for one contact (pipeline rows and the contact page). */
+export function LeadControls({ leadId, status, dealValue, assignedToId, currentUserId, isAdmin, canClaim = true, reps }: Props): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -28,32 +30,21 @@ export function LeadControls({ leadId, status, assignedToId, currentUserId, isAd
       setError(res.ok ? null : (res.error ?? 'Failed'))
       router.refresh()
     })
-  const canEdit = isAdmin || assignedToId === currentUserId
+  const canMove = isAdmin || assignedToId === currentUserId
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Select
-        aria-label="Stage"
-        className="h-8 w-44"
-        disabled={pending || !canEdit}
-        value={status}
-        onChange={(e) => run(() => updateLeadStatus(leadId, e.target.value as LeadStatus))}
-      >
-        {LEAD_STATUSES.map((s) => (
-          <option key={s} value={s}>
-            {s.replace('_', ' ')}
-          </option>
-        ))}
-      </Select>
+      <StageSelect
+        leadId={leadId}
+        status={status}
+        dealValue={dealValue}
+        disabled={!canMove}
+        title={canMove ? 'Change stage' : assignedToId ? 'Only the owner can change the stage' : 'Claim this contact to change its stage'}
+        onDone={(res) => setError(res.ok ? null : (res.error ?? 'Failed'))}
+      />
       {isAdmin ? (
         <>
-          <Select
-            aria-label="Assignee"
-            className="h-8 w-44"
-            disabled={pending}
-            value={assignedToId ?? ''}
-            onChange={(e) => run(() => assignLead(leadId, e.target.value || null))}
-          >
+          <Select aria-label="Owner" className="h-8 w-44" disabled={pending} value={assignedToId ?? ''} onChange={(e) => run(() => assignLead(leadId, e.target.value || null))}>
             <option value="">Unassigned</option>
             {reps.map((r) => (
               <option key={r.id} value={r.id}>
@@ -62,13 +53,13 @@ export function LeadControls({ leadId, status, assignedToId, currentUserId, isAd
             ))}
           </Select>
           {!assignedToId ? (
-            <Button size="sm" variant="outline" title="Give this contact to the next teammate in turn" disabled={pending} onClick={() => run(() => autoAssignLead(leadId))}>
+            <Button size="sm" variant="outline" className="h-8" title="Give this contact to the next sales rep in turn" disabled={pending} onClick={() => run(() => autoAssignLead(leadId))}>
               Auto-assign
             </Button>
           ) : null}
         </>
-      ) : !assignedToId ? (
-        <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => assignLead(leadId, currentUserId))}>
+      ) : !assignedToId && canClaim ? (
+        <Button size="sm" variant="outline" className="h-8" disabled={pending} onClick={() => run(() => assignLead(leadId, currentUserId))}>
           Claim
         </Button>
       ) : null}

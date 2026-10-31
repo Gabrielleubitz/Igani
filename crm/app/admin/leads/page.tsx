@@ -1,7 +1,7 @@
-import { LeadsDirectory } from '@/components/crm/LeadsDirectory'
+import { redirect } from 'next/navigation'
 
-export const metadata = { title: 'Contacts' }
-
-export default function AdminLeadsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }): Promise<React.ReactElement> {
-  return LeadsDirectory({ searchParams, basePath: '/admin/leads', isAdmin: true })
+/** Old admin contacts URL: there is one contact directory now, so keep links and bookmarks working. */
+export default function AdminLeadsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }): never {
+  const q = new URLSearchParams(Object.entries(searchParams).flatMap(([k, v]) => (typeof v === 'string' ? [[k, v]] : [])))
+  redirect(`/sales/leads${q.size ? `?${q}` : ''}`)
 }

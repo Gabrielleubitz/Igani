@@ -13,15 +13,19 @@ export function SlotPicker({
   onSelect: (iso: string) => void
   timeZone?: string
 }): React.ReactElement {
-  if (slots.length === 0) return <p className="text-sm text-muted-foreground">No open times on this day.</p>
-  const fmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZone })
+  const zone = timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone
+  if (slots.length === 0) return <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">No open times on this day. Try another date.</p>
+  const fmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit', timeZone: zone })
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-      {slots.map((s) => (
-        <Button key={s} type="button" size="sm" variant={selected === s ? 'default' : 'outline'} onClick={() => onSelect(s)}>
-          {fmt.format(new Date(s))}
-        </Button>
-      ))}
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Available times">
+        {slots.map((s) => (
+          <Button key={s} type="button" role="radio" aria-checked={selected === s} size="sm" variant={selected === s ? 'default' : 'outline'} onClick={() => onSelect(s)}>
+            {fmt.format(new Date(s))}
+          </Button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">Times shown in {zone.replaceAll('_', ' ')}.</p>
     </div>
   )
 }
