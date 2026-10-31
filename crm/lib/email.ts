@@ -154,12 +154,12 @@ export async function sendTeammateMeetingEmail(b: BookingEmailData & { meetUrl: 
 }
 
 /** Branded notice to admins that a public booking awaits approval. */
-export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData): Promise<string | null> {
+export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData, opts: { teamRequest?: boolean } = {}): Promise<string | null> {
   if (to.length === 0) return null
-  const element = PendingBooking({ ...b, reviewUrl: appUrl('/admin/bookings'), logoUrl: logoUrl(), ...(await brand()) })
+  const element = PendingBooking({ ...b, teamRequest: opts.teamRequest, reviewUrl: appUrl(opts.teamRequest ? '/sales' : '/admin/bookings'), logoUrl: logoUrl(), ...(await brand()) })
   return send({
     to,
-    subject: `Approval needed: ${b.title} with ${b.guestName}`,
+    subject: opts.teamRequest ? `Team meeting request from ${b.hostName}: ${b.title}` : `Approval needed: ${b.title} with ${b.guestName}`,
     html: await render(element),
     text: await render(element, { plainText: true }),
   })

@@ -10,13 +10,14 @@ import {
   cancelBooking as cancelBookingCore,
   confirmBooking,
   createPendingBooking,
+  emailDataFor,
   findTimeConflict,
   teamMeetingIds,
   notifyAdminsOfPendingBooking,
   notifyGuestOfPendingBooking,
 } from '@/lib/bookings'
 import { getAvailableSlots } from '@/lib/calendar'
-import { sendBookingInviteEmail } from '@/lib/email'
+import { sendApprovalRequestEmail, sendBookingInviteEmail } from '@/lib/email'
 import { appUrl } from '@/lib/env'
 import { logActivity } from '@/lib/audit'
 import { prisma } from '@/lib/prisma'
@@ -76,10 +77,11 @@ const teamMeetingSchema = z.object({
 })
 
 /**
- * Internal call with teammates (no client). Same rules as invites: admins can add anyone, everyone else only admins.
- * Nothing to approve: the Meet is created straight away and the teammates are emailed the link.
+ * Internal call with teammates (no client). Admins can add anyone and book straight away: the Meet is created and
+ * everyone is emailed the link. Everyone else can only REQUEST a call with admins: the time is held, the admins are
+ * emailed, and the Meet is created when an admin approves it on the Meetings page.
  */
-export async function createTeamMeeting(input: z.input<typeof teamMeetingSchema>): Promise<ActionResult<{ bookingId: string; meetUrl: string | null }>> {
+export async function createTeamMeeting(input: z.input<typeof teamMeetingSchema>): Promise<ActionResult<{ bookingId: string; meetUrl: string | null; requested: boolean }>> {
   try {
     const user = await requireUser(['ADMIN', 'SALES'])
     const data = teamMeetingSchema.parse(input)
@@ -108,10 +110,22 @@ export async function createTeamMeeting(input: z.input<typeof teamMeetingSchema>
     })
     await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.team_meeting', actorId: user.id })
     await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', actorId: user.id, metadata: { userIds: people.map((p) => p.id) } })
+    if (user.role !== 'ADMIN') {
+      try {
+        const base = await emailDataFor(booking.id)
+        const emailId = await sendApprovalRequestEmail(people.map((p) => p.email), { ...base, hostName: user.name ?? user.email, hostEmail: user.email, guestName: user.name ?? user.email, guestEmail: user.email }, { teamRequest: true })
+        await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.team_request_sent', actorId: user.id, metadata: { emailId, to: people.map((p) => p.id) } })
+      } catch (err) {
+        await cancelBookingCore(booking.id, user.id, 'request-email-failed').catch(() => undefined) // release the held time so they can retry
+        throw new BookingError(`Could not email the admins: ${err instanceof Error ? err.message : 'unknown error'}`, 'INVALID_STATE')
+      }
+      revalidatePath('/sales', 'layout')
+      return { ok: true, data: { bookingId: booking.id, meetUrl: null, requested: true } }
+    }
     try {
       const confirmed = await confirmBooking(booking.id, user.id)
       revalidatePath('/sales', 'layout')
-      return { ok: true, data: { bookingId: booking.id, meetUrl: confirmed.meetUrl } }
+      return { ok: true, data: { bookingId: booking.id, meetUrl: confirmed.meetUrl, requested: false } }
     } catch (err) {
       await cancelBookingCore(booking.id, user.id, 'team-meeting-failed').catch(() => undefined) // release the held time
       throw err

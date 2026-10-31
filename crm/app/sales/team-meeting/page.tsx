@@ -19,7 +19,7 @@ export default async function TeamMeetingPage(): Promise<React.ReactElement> {
   ])
   return (
     <div className="space-y-5">
-      <PageIntro title="Book meeting with team" hint="An internal call with teammates. Choose who and when; they get the Google Meet link by email straight away, with nothing to approve." />
+      <PageIntro title="Book meeting with team" hint={user.role === 'ADMIN' ? 'An internal call with teammates. Choose who and when; they get the Google Meet link by email straight away, with nothing to approve.' : 'Ask an admin for a call. Choose who and when; the time is held and they approve it before the Google Meet is created.'} />
       {!googleConnected ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
           <span>

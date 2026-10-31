@@ -41,7 +41,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
     startSend(async () => {
       const res = await createTeamMeeting({ title, notes: notes || undefined, startTime: startIso, durationMinutes: duration, teammateIds: ids })
       if (res.ok) {
-        setMessage({ kind: 'ok', text: '✓ Booked. Your teammates were emailed the Meet link and can join as soon as it starts.', link: res.data.meetUrl })
+        setMessage(res.data.requested ? { kind: 'ok', text: '✓ Request sent. The time is held and the admins you picked were emailed. You will see it as “Needs approval” on Meetings until one approves it.' } : { kind: 'ok', text: '✓ Booked. Your teammates were emailed the Meet link and can join as soon as it starts.', link: res.data.meetUrl })
         setIds([])
         setWhen('')
       } else setMessage({ kind: 'error', text: res.error })
@@ -54,7 +54,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
         <div className="space-y-2">
           <Label>Teammates</Label>
           <TeammatePicker teammates={teammates} value={ids} onChange={setIds} />
-          <p className="text-xs text-muted-foreground">{adminsOnly ? 'You can add admins.' : 'Anyone on the team.'} They get the Meet link by email, with nothing to approve.</p>
+          <p className="text-xs text-muted-foreground">{adminsOnly ? 'You can request a call with admins. An admin has to approve it before the Meet is created.' : 'Anyone on the team. They get the Meet link by email straight away, with nothing to approve.'}</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="tm-title">Meeting title</Label>
@@ -84,7 +84,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
         </div>
         {note ? <p className="text-xs text-amber-300">{note}</p> : startIso && !checking ? <p className="text-xs text-muted-foreground">✓ You are free at this time.</p> : null}
         <Button type="submit" className="w-full" disabled={sending || !startIso || checking || Boolean(note) || ids.length === 0}>
-          {sending ? 'Booking…' : ids.length === 0 ? 'Select a teammate to continue' : startIso ? 'Book team meeting' : 'Choose a time to continue'}
+          {sending ? (adminsOnly ? 'Sending…' : 'Booking…') : ids.length === 0 ? 'Select a teammate to continue' : startIso ? (adminsOnly ? 'Request team meeting' : 'Book team meeting') : 'Choose a time to continue'}
         </Button>
         {message ? (
           <p className={message.kind === 'ok' ? 'text-sm text-green-400' : 'text-sm text-red-400'}>

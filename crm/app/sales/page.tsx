@@ -111,14 +111,14 @@ export default async function MeetingsPage({ searchParams }: { searchParams: { v
                   <div className="flex flex-wrap items-center gap-2">
                     {live ? <Badge variant="success">Live now</Badge> : null}
                     <Badge variant={b.status === 'CONFIRMED' ? (b.endTime < now ? 'secondary' : 'success') : b.status === 'PENDING' ? 'warning' : 'outline'}>
-                      {b.status === 'CONFIRMED' ? (b.endTime < now ? 'Held' : 'Confirmed') : b.status === 'PENDING' ? (b.source === 'PUBLIC_PAGE' ? 'Needs approval' : 'Awaiting guest') : 'Cancelled'}
+                      {b.status === 'CONFIRMED' ? (b.endTime < now ? 'Held' : 'Confirmed') : b.status === 'PENDING' ? (b.source === 'PUBLIC_PAGE' || isTeam ? 'Needs approval' : 'Awaiting guest') : 'Cancelled'}
                     </Badge>
                     {b.meetUrl && b.status === 'CONFIRMED' && b.endTime >= now ? (
                       <a href={b.meetUrl} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm' })}>
                         Join Meet
                       </a>
                     ) : null}
-                    {b.status !== 'CANCELLED' && b.startTime > now && (isAdmin || b.hostId === user.id) ? <BookingActions bookingId={b.id} canApprove={isAdmin && b.status === 'PENDING' && b.source === 'PUBLIC_PAGE'} guestName={b.guestName} /> : null}
+                    {b.status !== 'CANCELLED' && b.startTime > now && (isAdmin || b.hostId === user.id) ? <BookingActions bookingId={b.id} canApprove={isAdmin && b.status === 'PENDING' && (b.source === 'PUBLIC_PAGE' || isTeam)} guestName={b.guestName} /> : null}
                   </div>
                 </div>
               )
