@@ -20,7 +20,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Send invite</h1>
+        <h1 className="text-2xl font-semibold">Send booking invite</h1>
         <p className="text-sm text-muted-foreground">
           Pick a free slot from your calendar. The guest gets an email to confirm; a Google Meet is created when they accept.
         </p>
