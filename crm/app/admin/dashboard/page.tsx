@@ -66,7 +66,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           </Link>
         ))}
       </div>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Team leaderboard</CardTitle>

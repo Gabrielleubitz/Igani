@@ -174,7 +174,7 @@ export function AddTaskForm({ leadId, teammates, currentUserId }: { leadId: stri
         <Select aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="h-9">
           {TASK_PRIORITIES.map((x) => (
             <option key={x} value={x}>
-              {x.charAt(0) + x.slice(1).toLowerCase()} priority
+              {x.charAt(0) + x.slice(1).toLowerCase()}
             </option>
           ))}
         </Select>
@@ -237,25 +237,40 @@ export function TaskRow({ task, teammates, contact }: { task: TaskView; teammate
   const [due, setDue] = useState(toLocalInput(task.dueAt ? new Date(task.dueAt) : null))
   const [priority, setPriority] = useState<TaskPriority>(task.priority)
   const [assignee, setAssignee] = useState(task.assigneeId ?? '')
+  // Optimistic tick: flips instantly, then the server state takes over after refresh (or reverts on error).
+  const [done, setDone] = useState(task.done)
+  const [prevDone, setPrevDone] = useState(task.done)
+  if (task.done !== prevDone) {
+    setPrevDone(task.done)
+    setDone(task.done)
+  }
   return (
     <div className={cn('group flex items-start gap-3 py-2.5 text-sm', pending && 'opacity-60')}>
       <input
         type="checkbox"
-        aria-label={task.done ? `Reopen ${task.title}` : `Complete ${task.title}`}
+        aria-label={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
         className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-[hsl(var(--primary))]"
-        checked={task.done}
+        checked={done}
         disabled={pending}
-        onChange={() => run(() => (task.done ? reopenTask(task.leadId, task.id) : completeTask(task.leadId, task.id)))}
+        onChange={() => {
+          const was = done
+          setDone(!was)
+          run(async () => {
+            const res = await (was ? reopenTask(task.leadId, task.id) : completeTask(task.leadId, task.id))
+            if (!res.ok) setDone(was)
+            return res
+          })
+        }}
       />
       <div className="min-w-0 flex-1">
-        <div className={cn('font-medium', task.done && 'text-muted-foreground line-through')}>
+        <div className={cn('font-medium', done && 'text-muted-foreground line-through')}>
           {task.title}
           <span className={cn('ml-2 rounded-full border px-1.5 py-px text-[10px] uppercase tracking-wide', PRIORITY_TONE[task.priority])}>{task.priority.toLowerCase()}</span>
           {task.auto ? <span className="ml-1 rounded-full border px-1.5 py-px text-[10px] uppercase tracking-wide text-muted-foreground">auto</span> : null}
         </div>
         <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
           {contact}
-          {task.dueLabel ? <span className={task.overdue && !task.done ? 'font-medium text-red-400' : ''}>{task.overdue && !task.done ? 'Overdue · ' : 'Due '}{task.dueLabel}</span> : <span>No due date</span>}
+          {task.dueLabel ? <span className={task.overdue && !done ? 'font-medium text-red-400' : ''}>{task.overdue && !done ? 'Overdue · ' : 'Due '}{task.dueLabel}</span> : <span>No due date</span>}
           <span>· {task.assigneeLabel ?? 'Unassigned'}</span>
         </div>
         {error ? <div className="text-xs text-red-400">{error}</div> : null}

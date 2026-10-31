@@ -68,7 +68,7 @@ export async function AppShell({ user, children }: { user: SessionUser; children
         Skip to content
       </a>
       <aside className="relative border-b bg-card/40 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between gap-3 px-4 py-3 lg:flex-1 lg:flex-col lg:items-stretch lg:gap-5 lg:overflow-y-auto lg:px-4 lg:py-5">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 lg:flex-1 lg:flex-col lg:items-stretch lg:justify-start lg:gap-5 lg:overflow-y-auto lg:px-4 lg:py-5">
           <Link href="/" aria-label="Igani CRM home" className="flex items-center gap-2">
             <Logo height={32} />
             <span className="hidden rounded border border-primary/40 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-primary lg:inline">CRM</span>

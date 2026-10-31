@@ -4,6 +4,7 @@ import { BookingPageForm } from '@/components/admin/forms'
 import { PageIntro } from '@/components/PageIntro'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
+import { Popover } from '@/components/ui/popover'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { CopyButton } from '@/components/ui/copy-button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -25,12 +26,9 @@ export default async function BookingPagesPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro title="Booking pages" hint="Public links where anyone can book a meeting, e.g. on your website or email signature. Each booking lands in the CRM as a contact." />
-        <details className="relative">
-          <summary className={`${buttonVariants()} cursor-pointer list-none`}>+ New page</summary>
-          <div className="absolute right-0 z-30 mt-2 w-[min(92vw,40rem)] rounded-xl border bg-card p-4 shadow-2xl">
+        <Popover label="+ New page" panelClassName="w-[min(92vw,40rem)]">
             {hostOptions.length ? <BookingPageForm hosts={hostOptions} defaultDuration={defaultDuration} /> : <p className="text-sm text-muted-foreground">A sales or admin teammate must sign in once before they can host a page.</p>}
-          </div>
-        </details>
+          </Popover>
       </div>
       {pages.length === 0 ? <EmptyState title="No booking pages yet" description="Create one, then share its link anywhere people should be able to book a call with you." /> : null}
       {pages.map((p) => {

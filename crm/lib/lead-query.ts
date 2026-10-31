@@ -35,8 +35,11 @@ export function parseLeadFilters(params: Params): LeadFilters {
 export function buildLeadWhere(f: LeadFilters): Prisma.LeadWhereInput {
   const and: Prisma.LeadWhereInput[] = [{ archived: f.archived ?? false }]
   if (f.q) {
-    const c = { contains: f.q, mode: 'insensitive' as const }
-    and.push({ OR: [{ email: c }, { firstName: c }, { lastName: c }, { company: c }, { phone: c }] })
+    // Every word must match some field, so "Dana Levi" or "levi acme" find the right person.
+    for (const word of f.q.split(/\s+/).filter(Boolean).slice(0, 5)) {
+      const c = { contains: word, mode: 'insensitive' as const }
+      and.push({ OR: [{ email: c }, { firstName: c }, { lastName: c }, { company: c }, { phone: c }] })
+    }
   }
   if (f.status) and.push({ status: f.status })
   if (f.assignee === 'none') and.push({ assignedToId: null })

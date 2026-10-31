@@ -4,6 +4,7 @@ import { AllowedUserForm, AllowedUserToggle } from '@/components/admin/forms'
 import { PageIntro } from '@/components/PageIntro'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
+import { Popover } from '@/components/ui/popover'
 import { requireUser } from '@/lib/auth'
 import { timeAgo } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
@@ -34,12 +35,9 @@ export default async function UsersPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro title="Team" hint={`Only people listed here can sign in (${active} active). Add a teammate, pick their role, and they get a branded invite email.`} />
-        <details className="relative">
-          <summary className={`${buttonVariants()} cursor-pointer list-none`}>+ Add teammate</summary>
-          <div className="absolute right-0 z-30 mt-2 w-[min(92vw,36rem)] rounded-xl border bg-card p-4 shadow-2xl">
+        <Popover label="+ Add teammate" panelClassName="w-[min(92vw,36rem)]">
             <AllowedUserForm />
-          </div>
-        </details>
+          </Popover>
       </div>
       <div className="divide-y rounded-lg border">
         {allowed.map((a) => {

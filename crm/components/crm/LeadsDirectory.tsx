@@ -3,6 +3,7 @@ import { LeadsTable } from '@/app/admin/_components/LeadsTable'
 import { NewLeadForm } from '@/app/admin/_components/NewLeadForm'
 import { PageIntro } from '@/components/PageIntro'
 import { buttonVariants } from '@/components/ui/button'
+import { Popover } from '@/components/ui/popover'
 import { Select } from '@/components/ui/input'
 import type { SessionUser } from '@/lib/auth'
 import { LEAD_STATUSES, STATUS_LABEL, leadName } from '@/lib/format'
@@ -65,12 +66,9 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
           <Link href="/sales/import" className={buttonVariants({ variant: 'outline' })}>
             Import CSV
           </Link>
-          <details className="group relative">
-            <summary className={`${buttonVariants()} cursor-pointer list-none`}>+ Add contact</summary>
-            <div className="absolute right-0 z-30 mt-2 w-[min(92vw,34rem)] rounded-xl border bg-card p-4 shadow-2xl">
+          <Popover label="+ Add contact" panelClassName="w-[min(92vw,34rem)]">
               <NewLeadForm />
-            </div>
-          </details>
+            </Popover>
         </div>
       </div>
 

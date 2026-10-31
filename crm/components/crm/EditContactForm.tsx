@@ -40,14 +40,38 @@ export function EditContactForm({ leadId, initial }: Props): React.ReactElement 
         })
       }}
     >
-      <Input name="firstName" aria-label="First name" placeholder="First name" defaultValue={initial.firstName ?? ''} />
-      <Input name="lastName" aria-label="Last name" placeholder="Last name" defaultValue={initial.lastName ?? ''} />
-      <Input name="company" aria-label="Company" placeholder="Company" defaultValue={initial.company ?? ''} />
-      <Input name="phone" aria-label="Phone" placeholder="Phone" defaultValue={initial.phone ?? ''} />
-      <Input name="website" aria-label="Website" placeholder="Website" defaultValue={initial.website ?? ''} />
-      <Input name="budget" aria-label="Budget" placeholder="Budget" defaultValue={initial.budget ?? ''} />
-      <Input name="dealValue" aria-label="Deal value" type="number" min={0} placeholder="Deal value" defaultValue={initial.dealValue ?? ''} />
-      <Input name="tags" aria-label="Tags" placeholder="Tags (comma separated)" defaultValue={initial.tags.join(', ')} />
+      <label className="space-y-1 text-xs text-muted-foreground">
+        First name
+  <Input name="firstName" aria-label="First name" placeholder="First name" defaultValue={initial.firstName ?? ''} />
+      </label>
+      <label className="space-y-1 text-xs text-muted-foreground">
+        Last name
+  <Input name="lastName" aria-label="Last name" placeholder="Last name" defaultValue={initial.lastName ?? ''} />
+      </label>
+      <label className="space-y-1 text-xs text-muted-foreground">
+        Company
+  <Input name="company" aria-label="Company" placeholder="Company" defaultValue={initial.company ?? ''} />
+      </label>
+      <label className="space-y-1 text-xs text-muted-foreground">
+        Phone
+  <Input name="phone" aria-label="Phone" placeholder="Phone" defaultValue={initial.phone ?? ''} />
+      </label>
+      <label className="space-y-1 text-xs text-muted-foreground">
+        Website
+  <Input name="website" aria-label="Website" placeholder="Website" defaultValue={initial.website ?? ''} />
+      </label>
+      <label className="space-y-1 text-xs text-muted-foreground">
+        Budget
+  <Input name="budget" aria-label="Budget" placeholder="Budget" defaultValue={initial.budget ?? ''} />
+      </label>
+      <label className="space-y-1 text-xs text-muted-foreground">
+        Deal value
+  <Input name="dealValue" aria-label="Deal value" type="number" min={0} placeholder="Deal value" defaultValue={initial.dealValue ?? ''} />
+      </label>
+      <label className="space-y-1 text-xs text-muted-foreground">
+        Tags
+  <Input name="tags" aria-label="Tags" placeholder="Tags (comma separated)" defaultValue={initial.tags.join(', ')} />
+      </label>
       <div className="col-span-2 flex items-center gap-3">
         <Button type="submit" size="sm" disabled={pending}>
           Save

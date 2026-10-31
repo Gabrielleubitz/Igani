@@ -4,7 +4,7 @@ import type { LeadStatus } from '@prisma/client'
 import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type ColumnDef, type SortingState, type VisibilityState } from '@tanstack/react-table'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { archiveLeads, bulkUpdateLeads, deleteLeads, exportLeadsCsv, updateLead } from '@/app/actions/leads'
 import { StageSelect } from '@/components/crm/StageSelect'
 import { Badge } from '@/components/ui/badge'
@@ -80,20 +80,18 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
   const pathname = usePathname()
   const params = useSearchParams()
   const [search, setSearch] = useState(query.q ?? '')
-  const first = useRef(true)
   // Debounced server-side search so every page of the directory is searched.
+  // Only navigates when the box differs from the URL (safe under React strict-mode double effects).
   useEffect(() => {
-    if (first.current) {
-      first.current = false
-      return
-    }
+    const current = params.get('q') ?? ''
+    if (search.trim() === current) return
     const t = setTimeout(() => {
       const next = new URLSearchParams(params.toString())
       if (search.trim()) next.set('q', search.trim())
       else next.delete('q')
       next.delete('page')
       router.replace(`${pathname}?${next}`)
-    }, 250)
+    }, 300)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])

@@ -103,7 +103,7 @@ export function filterLeads<T extends { email: string; firstName: string | null;
     if (f.owner === 'none' ? l.assignedToId !== null : f.owner && l.assignedToId !== f.owner) return false
     if (q) {
       const hay = [l.email, l.firstName, l.lastName, l.company, l.phone].filter(Boolean).join(' ').toLowerCase()
-      if (!hay.includes(q)) return false
+      if (!q.split(/\s+/).every((w) => hay.includes(w))) return false
     }
     return true
   })

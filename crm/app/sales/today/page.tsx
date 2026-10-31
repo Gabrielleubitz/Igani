@@ -74,7 +74,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const stats: { label: string; value: string | number; href: string; tone?: string }[] = [
     { label: isAdmin ? 'Open deals' : 'My open deals', value: openLeads.length, href: '/sales/board' },
     { label: 'Pipeline value', value: formatMoney(pipelineValue), href: '/sales/reports' },
-    { label: 'Tasks due today', value: due.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
+    { label: 'Tasks due (next 24h)', value: due.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
     { label: 'New leads (7 days)', value: newThisWeek, href: '/sales/leads' },
   ]
 
@@ -110,11 +110,11 @@ export default async function TodayPage(): Promise<React.ReactElement> {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
-              <span>Tasks due &amp; overdue</span>
+              <span>Tasks due &amp; overdue (next 24h)</span>
               <span className="text-sm font-normal text-muted-foreground">{due.length}</span>
             </CardTitle>
           </CardHeader>
