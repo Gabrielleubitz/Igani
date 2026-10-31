@@ -1,6 +1,5 @@
 import { Logo } from '@/components/brand/Logo'
-import { ConfirmInviteButton } from '@/components/ConfirmInviteButton'
-import { Button } from '@/components/ui/button'
+import { ApprovedNotice, ConfirmInviteButton } from '@/components/ConfirmInviteButton'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatDateTime } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
@@ -41,12 +40,8 @@ export default async function InvitePage({ params }: { params: { token: string }
   if (booking.status === 'CANCELLED') return <Shell title="Invitation withdrawn" description={`The ${when} meeting was cancelled.`} />
   if (booking.status === 'CONFIRMED') {
     return (
-      <Shell title={booking.title} description={`Confirmed for ${when} with ${booking.host.name ?? 'Igani'}.`}>
-        {booking.meetUrl ? (
-          <Button asChild className="w-full">
-            <a href={booking.meetUrl}>Join Google Meet</a>
-          </Button>
-        ) : null}
+      <Shell title={booking.title} description={`${when} with ${booking.host.name ?? 'Igani'}.`}>
+        <ApprovedNotice />
       </Shell>
     )
   }
