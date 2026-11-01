@@ -18,12 +18,8 @@ describe('calculateCommission (default terms: 30%, ₪15,000 threshold, ₪5,000
     expect(calculateCommission(10_000)).toMatchObject({ baseAmount: 10_000, completedIncrements: 0, bonusTotal: 0 })
   })
 
-  it('splits into a 30% downpayment and a 70% final milestone that add up exactly', () => {
-    expect(calculateCommission(25_000)).toMatchObject({ total: 6_500, downpayment: 1_950, final: 4_550 })
-    for (const deal of [1, 777, 12_345, 18_001, 33_333]) {
-      const c = calculateCommission(deal)
-      expect(c.downpayment + c.final).toBe(c.total)
-    }
+  it('has no downpayment split: one total', () => {
+    expect(Object.keys(calculateCommission(25_000)).sort()).toEqual(['amount', 'baseAmount', 'baseCommission', 'bonusTotal', 'completedIncrements', 'total'])
   })
 
   it('rounds to whole shekels', () => {
@@ -32,8 +28,8 @@ describe('calculateCommission (default terms: 30%, ₪15,000 threshold, ₪5,000
   })
 
   it('uses custom terms, and copes with nonsense', () => {
-    const t = { baseRatePct: 20, threshold: 10_000, incrementSize: 2_000, bonusPerIncrement: 500, downpaymentSharePct: 50 }
-    expect(calculateCommission(15_000, t)).toMatchObject({ total: 2_000 + 1_000, downpayment: 1_500, final: 1_500 })
+    const t = { baseRatePct: 20, threshold: 10_000, incrementSize: 2_000, bonusPerIncrement: 500 }
+    expect(calculateCommission(15_000, t)).toMatchObject({ total: 2_000 + 1_000 })
     expect(calculateCommission(0).total).toBe(0)
     expect(calculateCommission(-5).total).toBe(0)
     expect(calculateCommission(50_000, { ...DEFAULT_COMMISSION_TERMS, incrementSize: 0 }).total).toBe(4_500) // no division by zero
@@ -52,17 +48,16 @@ describe('terms', () => {
 })
 
 describe('commission status: nothing is payable before the client pays', () => {
-  const base = { commissionTotal: 6_500, commissionDownpayment: 1_950, commissionFinal: 4_550, downpaymentReceivedAt: null, finalPaymentReceivedAt: null, downpaymentPaidAt: null, finalPaidAt: null }
+  const base = { commissionTotal: 6_500, finalPaymentReceivedAt: null, finalPaidAt: null }
   const d = new Date('2026-11-03')
   it('starts fully pending', () => expect(commissionStatus(base)).toEqual({ total: 6_500, paid: 0, payable: 0, pending: 6_500 }))
-  it('downpayment received makes only that part payable', () => expect(commissionStatus({ ...base, downpaymentReceivedAt: d })).toEqual({ total: 6_500, paid: 0, payable: 1_950, pending: 4_550 }))
-  it('then paid out', () => expect(commissionStatus({ ...base, downpaymentReceivedAt: d, downpaymentPaidAt: d })).toEqual({ total: 6_500, paid: 1_950, payable: 0, pending: 4_550 }))
-  it('a payout date without the client money does not count', () => expect(commissionStatus({ ...base, downpaymentPaidAt: d })).toEqual({ total: 6_500, paid: 0, payable: 0, pending: 6_500 }))
-  it('everything collected and paid', () => expect(commissionStatus({ ...base, downpaymentReceivedAt: d, finalPaymentReceivedAt: d, downpaymentPaidAt: d, finalPaidAt: d })).toEqual({ total: 6_500, paid: 6_500, payable: 0, pending: 0 }))
+  it('the client paying makes all of it payable', () => expect(commissionStatus({ ...base, finalPaymentReceivedAt: d })).toEqual({ total: 6_500, paid: 0, payable: 6_500, pending: 0 }))
+  it('then paid out', () => expect(commissionStatus({ ...base, finalPaymentReceivedAt: d, finalPaidAt: d })).toEqual({ total: 6_500, paid: 6_500, payable: 0, pending: 0 }))
+  it('a payout date without the client money does not count', () => expect(commissionStatus({ ...base, finalPaidAt: d })).toEqual({ total: 6_500, paid: 0, payable: 0, pending: 6_500 }))
 
   it('the salesperson view carries only the total, paid and pending amounts', () => {
-    const view = salespersonCommissionView(commissionStatus({ ...base, downpaymentReceivedAt: d, downpaymentPaidAt: d }))
-    expect(view).toEqual({ total: 6_500, paid: 1_950, pending: 4_550 })
+    const view = salespersonCommissionView(commissionStatus({ ...base, finalPaymentReceivedAt: d }))
+    expect(view).toEqual({ total: 6_500, paid: 0, pending: 6_500 })
     expect(Object.keys(view).sort()).toEqual(['paid', 'pending', 'total'])
   })
 })

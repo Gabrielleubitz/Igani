@@ -3,7 +3,7 @@
 import type { LeadSourceType } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
-import { recalculateWonCommission, saveCommissionOverrides, saveQuotedPrice, setCommissionMilestone, setLeadSourceType } from '@/app/actions/deals'
+import { recalculateWonCommission, saveCommissionOverrides, saveQuotedPrice, setCommissionPayment, setLeadSourceType } from '@/app/actions/deals'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select } from '@/components/ui/input'
@@ -22,7 +22,8 @@ export interface DealPanelProps {
   overridden: boolean
   /** Frozen when the deal was won */
   snapshot: { terms: CommissionTerms; breakdown: CommissionBreakdown; at: string | null; overridden: boolean } | null
-  milestones: { downpaymentReceivedAt: string | null; finalPaymentReceivedAt: string | null; downpaymentPaidAt: string | null; finalPaidAt: string | null }
+  /** The client's payment (makes the commission payable) and the payout to the salesperson */
+  payment: { finalPaymentReceivedAt: string | null; finalPaidAt: string | null }
 }
 
 const SOURCE_LABEL: Record<LeadSourceType, string> = { COLD_CALL: 'Salesperson cold call', ADS: 'Ads', OTHER: 'Other' }
@@ -45,8 +46,6 @@ function Breakdown({ b, t }: { b: CommissionBreakdown; t: CommissionTerms }): Re
       <Row label={`Completed increments (each ${formatIls(t.incrementSize)} above ${formatIls(t.threshold)})`} value={b.completedIncrements} />
       <Row label={`Bonus: ${b.completedIncrements} × ${formatIls(t.bonusPerIncrement)}`} value={formatIls(b.bonusTotal)} />
       <Row label="Total commission" value={formatIls(b.total)} strong />
-      <Row label={`Downpayment milestone (${t.downpaymentSharePct}%)`} value={formatIls(b.downpayment)} />
-      <Row label={`Final milestone (${Math.round((100 - t.downpaymentSharePct) * 100) / 100}%)`} value={formatIls(b.final)} />
     </div>
   )
 }
@@ -63,7 +62,6 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
     threshold: String(p.terms.threshold),
     incrementSize: String(p.terms.incrementSize),
     bonusPerIncrement: String(p.terms.bonusPerIncrement),
-    downpaymentSharePct: String(p.terms.downpaymentSharePct),
   })
   const [payDate, setPayDate] = useState(today())
 
@@ -82,59 +80,54 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
       threshold: n(ov.threshold, p.terms.threshold),
       incrementSize: n(ov.incrementSize, p.terms.incrementSize),
       bonusPerIncrement: n(ov.bonusPerIncrement, p.terms.bonusPerIncrement),
-      downpaymentSharePct: Math.min(100, n(ov.downpaymentSharePct, p.terms.downpaymentSharePct)),
     }
   }, [ov, p.terms])
   const live = amount > 0 ? calculateCommission(amount, workingTerms) : null
   const frozen = p.isWon && p.snapshot
-  const m = p.milestones
+  const m = p.payment
   const status = frozen
     ? commissionStatus({
         commissionTotal: p.snapshot!.breakdown.total,
-        commissionDownpayment: p.snapshot!.breakdown.downpayment,
-        commissionFinal: p.snapshot!.breakdown.final,
-        downpaymentReceivedAt: m.downpaymentReceivedAt ? new Date(m.downpaymentReceivedAt) : null,
         finalPaymentReceivedAt: m.finalPaymentReceivedAt ? new Date(m.finalPaymentReceivedAt) : null,
-        downpaymentPaidAt: m.downpaymentPaidAt ? new Date(m.downpaymentPaidAt) : null,
         finalPaidAt: m.finalPaidAt ? new Date(m.finalPaidAt) : null,
       })
     : null
 
-  const milestone = (key: 'DOWNPAYMENT' | 'FINAL', label: string, amountDue: number, received: string | null, paid: string | null): React.ReactElement => (
+  const paymentBox = (amountDue: number): React.ReactElement => (
     <div className="space-y-2 rounded-md border p-3 text-sm">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium">{label}</span>
+        <span className="font-medium">Payout</span>
         <span className="tabular-nums">{formatIls(amountDue)}</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        {received ? (
+        {m.finalPaymentReceivedAt ? (
           <>
-            <span className="text-emerald-400">Client paid on {day(received)}</span>
-            {!paid ? (
-              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setCommissionMilestone(p.leadId, { milestone: key, kind: 'received', date: null }), 'Undone.')}>
+            <span className="text-emerald-400">Client paid on {day(m.finalPaymentReceivedAt)}</span>
+            {!m.finalPaidAt ? (
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'received', date: null }), 'Undone.')}>
                 Undo
               </Button>
             ) : null}
           </>
         ) : (
-          <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => setCommissionMilestone(p.leadId, { milestone: key, kind: 'received', date: payDate }), `${label} received.`)}>
-            {key === 'DOWNPAYMENT' ? 'Downpayment received' : 'Final payment received'}
+          <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'received', date: payDate }), 'Client payment recorded.')}>
+            Client payment received
           </Button>
         )}
       </div>
-      {received ? (
+      {m.finalPaymentReceivedAt ? (
         <div className="flex flex-wrap items-center gap-2">
-          {paid ? (
+          {m.finalPaidAt ? (
             <>
-              <span className="text-emerald-400">Commission paid out on {day(paid)}</span>
-              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setCommissionMilestone(p.leadId, { milestone: key, kind: 'paid', date: null }), 'Undone.')}>
+              <span className="text-emerald-400">Commission paid out on {day(m.finalPaidAt)}</span>
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'paid', date: null }), 'Undone.')}>
                 Undo
               </Button>
             </>
           ) : (
             <>
               <span className="text-amber-300">Payable now: {formatIls(amountDue)}</span>
-              <Button size="sm" disabled={pending} onClick={() => run(() => setCommissionMilestone(p.leadId, { milestone: key, kind: 'paid', date: payDate }), 'Marked as paid out.')}>
+              <Button size="sm" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'paid', date: payDate }), 'Marked as paid out.')}>
                 Mark commission paid
               </Button>
             </>
@@ -197,12 +190,11 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
                   <Label htmlFor="pay-date" className="text-xs">Date for the next action</Label>
                   <Input id="pay-date" type="date" className="h-8 w-40" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
                 </div>
-                {milestone('DOWNPAYMENT', 'Downpayment milestone', p.snapshot!.breakdown.downpayment, m.downpaymentReceivedAt, m.downpaymentPaidAt)}
-                {milestone('FINAL', 'Final milestone', p.snapshot!.breakdown.final, m.finalPaymentReceivedAt, m.finalPaidAt)}
+                {paymentBox(p.snapshot!.breakdown.total)}
                 {live && (live.total !== p.snapshot!.breakdown.total || amount !== p.snapshot!.breakdown.amount) ? (
                   <p className="text-xs text-amber-300">The price or terms now would give {formatIls(live.total)}. Save the price, then recalculate to refresh the frozen commission.</p>
                 ) : null}
-                {!m.downpaymentReceivedAt && !m.finalPaymentReceivedAt ? null : <p className="text-xs text-muted-foreground">Client money is already in, so the commission only changes if you recalculate it yourself.</p>}
+                {!m.finalPaymentReceivedAt ? null : <p className="text-xs text-muted-foreground">Client money is already in, so the commission only changes if you recalculate it yourself.</p>}
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => window.confirm('Recalculate this deal’s commission from the current price and terms?') && run(() => recalculateWonCommission(p.leadId), 'Commission recalculated.')}>
                   Recalculate
                 </Button>
@@ -232,7 +224,6 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
                     ['threshold', 'Threshold ₪'],
                     ['incrementSize', 'Increment size ₪'],
                     ['bonusPerIncrement', 'Bonus per increment ₪'],
-                    ['downpaymentSharePct', 'Downpayment share %'],
                   ] as const
                 ).map(([k, label]) => (
                   <label key={k} className="space-y-1 text-xs text-muted-foreground">

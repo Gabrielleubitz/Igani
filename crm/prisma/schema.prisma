@@ -182,16 +182,12 @@ model Lead {
   commissionOverrides Json?
   /// Terms + breakdown used when the deal was won. Never changes when the salesperson's terms change later. Admin-only.
   commissionSnapshot  Json?
-  /// Commission in whole shekels, split into the two milestones. These three are all a salesperson ever sees.
+  /// The salesperson's commission in whole shekels. This, with the two payment dates, is all a salesperson ever sees.
   commissionTotal       Int?
-  commissionDownpayment Int?
-  commissionFinal       Int?
-  /// Client money collected (admin enters the date) - commission for a milestone is only payable after this
-  downpaymentReceivedAt  DateTime?
+  /// The client paid us (admin enters the date): the commission is only payable from here
   finalPaymentReceivedAt DateTime?
-  /// Commission actually paid out to the salesperson
-  downpaymentPaidAt DateTime?
-  finalPaidAt       DateTime?
+  /// The commission was paid out to the salesperson
+  finalPaidAt            DateTime?
   /// Soft-delete: hidden from pipelines, restorable by admin
   archived     Boolean    @default(false)
   tags         String[]   @default([])

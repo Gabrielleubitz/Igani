@@ -24,7 +24,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
     // Commission on my own won deals. These columns are all a salesperson ever gets; no prices, no terms.
     prisma.lead.findMany({
       where: { archived: false, status: 'WON', commissionTotal: { not: null }, ...(user.role === 'ADMIN' ? (mine ? { assignedToId: user.id } : {}) : { assignedToId: user.id }) },
-      select: { commissionTotal: true, commissionDownpayment: true, commissionFinal: true, downpaymentReceivedAt: true, finalPaymentReceivedAt: true, downpaymentPaidAt: true, finalPaidAt: true },
+      select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true },
     }),
     prisma.user.findMany({ where: user.role === 'SALES' ? { id: user.id } : {}, select: { id: true, name: true, email: true } }),
     prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, leadId: { not: null }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),

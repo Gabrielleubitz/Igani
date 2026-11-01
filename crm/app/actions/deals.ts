@@ -17,7 +17,7 @@ const leadId = z.string().cuid()
 const money = z.number().int().min(0).max(1_000_000_000)
 const pct = z.number().min(0).max(100)
 
-const termsSchema = z.object({ baseRatePct: pct, threshold: money, incrementSize: money, bonusPerIncrement: money, downpaymentSharePct: pct })
+const termsSchema = z.object({ baseRatePct: pct, threshold: money, incrementSize: money, bonusPerIncrement: money })
 
 function refresh(id: string): void {
   revalidatePath(`/sales/leads/${id}`)
@@ -95,34 +95,32 @@ export async function recalculateWonCommission(id: string): Promise<ActionResult
   }
 }
 
-const milestoneSchema = z.object({
-  milestone: z.enum(['DOWNPAYMENT', 'FINAL']),
-  /** received = the client paid us; paid = we paid the salesperson their part */
+const paymentSchema = z.object({
+  /** received = the client paid us; paid = we paid the salesperson their commission */
   kind: z.enum(['received', 'paid']),
   /** YYYY-MM-DD, or null to undo */
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
 })
 
-/** Mark a client payment as received (with its date), or the salesperson's part as paid out, or undo either. */
-export async function setCommissionMilestone(id: string, input: z.input<typeof milestoneSchema>): Promise<ActionResult> {
+/** Mark the client's payment as received (with its date), or the commission as paid out, or undo either. */
+export async function setCommissionPayment(id: string, input: z.input<typeof paymentSchema>): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
-    const m = milestoneSchema.parse(input)
-    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, commissionTotal: true, downpaymentReceivedAt: true, finalPaymentReceivedAt: true, downpaymentPaidAt: true, finalPaidAt: true } })
+    const m = paymentSchema.parse(input)
+    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
     if (!lead || lead.status !== 'WON' || lead.commissionTotal === null) throw new BookingError('Win the deal and enter its price first: that is when the commission is set.', 'INVALID_STATE')
     const date = m.date ? new Date(`${m.date}T12:00:00Z`) : null
-    const down = m.milestone === 'DOWNPAYMENT'
-    if (m.kind === 'paid' && date && !(down ? lead.downpaymentReceivedAt : lead.finalPaymentReceivedAt)) {
+    if (m.kind === 'paid' && date && !lead.finalPaymentReceivedAt) {
       throw new BookingError('Nothing is payable before the client’s money is collected. Mark the payment as received first.', 'INVALID_STATE')
     }
-    if (m.kind === 'received' && !date && (down ? lead.downpaymentPaidAt : lead.finalPaidAt)) {
-      throw new BookingError('The salesperson was already paid for this milestone. Undo the payout first.', 'INVALID_STATE')
+    if (m.kind === 'received' && !date && lead.finalPaidAt) {
+      throw new BookingError('The salesperson was already paid. Undo the payout first.', 'INVALID_STATE')
     }
-    const field = m.kind === 'received' ? (down ? 'downpaymentReceivedAt' : 'finalPaymentReceivedAt') : down ? 'downpaymentPaidAt' : 'finalPaidAt'
+    const field = m.kind === 'received' ? 'finalPaymentReceivedAt' : 'finalPaidAt'
     await prisma.$transaction(async (tx) => {
       await tx.lead.update({ where: { id: lid }, data: { [field]: date } })
-      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.commission_milestone', actorId: admin.id, metadata: { milestone: m.milestone, kind: m.kind, date: m.date } }, tx)
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.commission_payment', actorId: admin.id, metadata: { kind: m.kind, date: m.date } }, tx)
     })
     refresh(lid)
     return { ok: true, data: undefined }

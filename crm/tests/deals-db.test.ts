@@ -33,10 +33,10 @@ d('quoted price, commission snapshot and milestones', async () => {
 
   const lead = (email: string) => prisma.lead.create({ data: { email, assignedToId: repId } })
 
-  it('marking a deal won with a price freezes the commission on the default terms (₪25,000 → ₪6,500 = ₪1,950 + ₪4,550)', async () => {
+  it('marking a deal won with a price freezes the commission on the default terms (₪25,000 → ₪6,500)', async () => {
     const l = await lead('a@x.com')
     await changeLeadStatus(l.id, 'WON', null, { quotedPrice: 25_000 })
-    expect(await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).toMatchObject({ status: 'WON', quotedPrice: 25_000, currency: 'ILS', commissionTotal: 6_500, commissionDownpayment: 1_950, commissionFinal: 4_550 })
+    expect(await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).toMatchObject({ status: 'WON', quotedPrice: 25_000, currency: 'ILS', commissionTotal: 6_500 })
   })
 
   it('later changes to the salesperson’s terms do not touch a deal that is already won', async () => {
@@ -52,7 +52,7 @@ d('quoted price, commission snapshot and milestones', async () => {
 
   it('a per-deal override applies to that deal only', async () => {
     const l = await lead('d@x.com')
-    await prisma.lead.update({ where: { id: l.id }, data: { commissionOverrides: { baseRatePct: 20, threshold: 15_000, incrementSize: 5_000, bonusPerIncrement: 1_000, downpaymentSharePct: 30 } } })
+    await prisma.lead.update({ where: { id: l.id }, data: { commissionOverrides: { baseRatePct: 20, threshold: 15_000, incrementSize: 5_000, bonusPerIncrement: 1_000 } } })
     await changeLeadStatus(l.id, 'WON', null, { quotedPrice: 10_000 })
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).commissionTotal).toBe(2_000)
     expect(await prisma.allowedUser.findUniqueOrThrow({ where: { email: 'rep@igani.co' } })).toMatchObject({ commissionTerms: null })
@@ -65,7 +65,7 @@ d('quoted price, commission snapshot and milestones', async () => {
     await prisma.lead.update({ where: { id: l.id }, data: { quotedPrice: 20_000 } })
     await snapshotWonCommission(l.id)
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).commissionTotal).toBe(5_500)
-    await prisma.lead.update({ where: { id: l.id }, data: { quotedPrice: 30_000, downpaymentReceivedAt: new Date() } })
+    await prisma.lead.update({ where: { id: l.id }, data: { quotedPrice: 30_000, finalPaymentReceivedAt: new Date() } })
     await snapshotWonCommission(l.id)
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).commissionTotal).toBe(5_500) // protected
     await snapshotWonCommission(l.id, undefined, { force: true }) // the admin's explicit recalculation
@@ -75,8 +75,8 @@ d('quoted price, commission snapshot and milestones', async () => {
   it('what a salesperson is given for a won deal is only the commission, paid and pending', async () => {
     const l = await lead('f@x.com')
     await changeLeadStatus(l.id, 'WON', null, { quotedPrice: 25_000 })
-    await prisma.lead.update({ where: { id: l.id }, data: { downpaymentReceivedAt: new Date(), downpaymentPaidAt: new Date() } })
+    await prisma.lead.update({ where: { id: l.id }, data: { finalPaymentReceivedAt: new Date() } })
     const row = await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })
-    expect(salespersonCommissionView(commissionStatus(row))).toEqual({ total: 6_500, paid: 1_950, pending: 4_550 })
+    expect(salespersonCommissionView(commissionStatus(row))).toEqual({ total: 6_500, paid: 0, pending: 6_500 })
   })
 })

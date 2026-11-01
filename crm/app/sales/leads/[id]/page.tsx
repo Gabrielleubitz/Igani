@@ -55,7 +55,7 @@ const ICON: Record<string, string> = {
 }
 const TOUCH: Record<string, string> = { call: 'Call', email: 'Email', meeting: 'Meeting', whatsapp: 'WhatsApp' }
 const HIDDEN = new Set(['task.reminded'])
-const MONEY_EVENTS = ['lead.price_changed', 'lead.commission_overridden', 'lead.commission_recalculated', 'lead.commission_milestone', 'lead.source_type_changed'] as const
+const MONEY_EVENTS = ['lead.price_changed', 'lead.commission_overridden', 'lead.commission_recalculated', 'lead.commission_payment', 'lead.source_type_changed'] as const
 
 export default async function LeadPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
   const user = await requireUser()
@@ -195,8 +195,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         return { title: `Task deleted: ${titles.get(s(m.taskId)) ?? 'task'}` }
       case 'lead.price_changed':
         return { title: `Quoted price: ${m.from != null ? `₪${formatMoney(Number(m.from))}` : 'none'} → ${m.to != null ? `₪${formatMoney(Number(m.to))}` : 'none'}` }
-      case 'lead.commission_milestone':
-        return { title: `${s(m.milestone) === 'DOWNPAYMENT' ? 'Downpayment' : 'Final payment'} ${s(m.kind) === 'received' ? 'received from the client' : 'commission paid out'}${m.date ? ` (${s(m.date)})` : ' (undone)'}` }
+      case 'lead.commission_payment':
+        return { title: `${s(m.kind) === 'received' ? 'Client payment received' : 'Commission paid out'}${m.date ? ` (${s(m.date)})` : ' (undone)'}` }
       default:
         return { title: l.action.replace(/[._]/g, ' ') }
     }
@@ -319,10 +319,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               savedTerms={adminDeal.saved}
               overridden={lead.commissionOverrides !== null}
               snapshot={adminDeal.snapshot}
-              milestones={{
-                downpaymentReceivedAt: lead.downpaymentReceivedAt?.toISOString() ?? null,
+              payment={{
                 finalPaymentReceivedAt: lead.finalPaymentReceivedAt?.toISOString() ?? null,
-                downpaymentPaidAt: lead.downpaymentPaidAt?.toISOString() ?? null,
                 finalPaidAt: lead.finalPaidAt?.toISOString() ?? null,
               }}
             />

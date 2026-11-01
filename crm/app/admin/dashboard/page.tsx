@@ -38,7 +38,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     prisma.lead.aggregate({ where: open, _sum: { quotedPrice: true } }),
     prisma.lead.findMany({
       where: { archived: false, status: 'WON', commissionTotal: { not: null } },
-      select: { commissionTotal: true, commissionDownpayment: true, commissionFinal: true, downpaymentReceivedAt: true, finalPaymentReceivedAt: true, downpaymentPaidAt: true, finalPaidAt: true },
+      select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true },
     }),
     prisma.lead.findMany({ where: { archived: false }, orderBy: { createdAt: 'desc' }, take: 6, include: { assignedTo: { select: { name: true, email: true } } } }),
     prisma.user.findMany({

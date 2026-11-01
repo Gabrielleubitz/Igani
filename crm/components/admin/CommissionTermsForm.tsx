@@ -11,7 +11,6 @@ const FIELDS: { key: keyof CommissionTerms; label: string; hint: string }[] = [
   { key: 'threshold', label: 'Threshold ₪', hint: 'Deals above this earn bonus increments' },
   { key: 'incrementSize', label: 'Increment size ₪', hint: 'Each completed step above the threshold' },
   { key: 'bonusPerIncrement', label: 'Bonus per increment ₪', hint: 'Earned per completed step' },
-  { key: 'downpaymentSharePct', label: 'Downpayment share %', hint: 'Paid with the client’s downpayment; the rest at the final payment' },
 ]
 
 /** Admin-only: a salesperson's agreed commission terms. Changing them never touches deals that are already won. */
@@ -21,12 +20,11 @@ export function CommissionTermsForm({ userId, terms, usingDefaults }: { userId: 
     threshold: String(terms.threshold),
     incrementSize: String(terms.incrementSize),
     bonusPerIncrement: String(terms.bonusPerIncrement),
-    downpaymentSharePct: String(terms.downpaymentSharePct),
   })
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [pending, start] = useTransition()
   const parsed = Object.fromEntries(FIELDS.map((f) => [f.key, Number(v[f.key])])) as unknown as CommissionTerms
-  const valid = FIELDS.every((f) => v[f.key].trim() !== '' && Number.isFinite(Number(v[f.key])) && Number(v[f.key]) >= 0) && parsed.baseRatePct <= 100 && parsed.downpaymentSharePct <= 100
+  const valid = FIELDS.every((f) => v[f.key].trim() !== '' && Number.isFinite(Number(v[f.key])) && Number(v[f.key]) >= 0) && parsed.baseRatePct <= 100
 
   const save = (next: CommissionTerms | null, ok: string): void =>
     start(async () => {

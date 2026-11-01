@@ -135,7 +135,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
     ? []
     : await prisma.lead.findMany({
         where: { archived: false, status: 'WON', assignedToId: user.id, commissionTotal: { not: null } },
-        select: { commissionTotal: true, commissionDownpayment: true, commissionFinal: true, downpaymentReceivedAt: true, finalPaymentReceivedAt: true, downpaymentPaidAt: true, finalPaidAt: true },
+        select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true },
       })
   const myCommission = salespersonCommissionView(
     myCommissionRows.reduce((t, r) => {
