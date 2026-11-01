@@ -41,7 +41,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
     setChecking(true)
     let stale = false
     const t = setTimeout(async () => {
-      const res = await checkInviteTime({ startTime: startIso, durationMinutes: duration, hostId: hostId || undefined })
+      const res = await checkInviteTime({ startTime: startIso, durationMinutes: duration, hostId: hostId || undefined, teammateIds: teammateIds.filter((id) => id !== hostId) })
       if (stale) return
       setChecking(false)
       if (res.ok) setNote(res.data.note)
@@ -51,7 +51,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
       stale = true
       clearTimeout(t)
     }
-  }, [startIso, duration, hostId])
+  }, [startIso, duration, hostId, teammateIds])
 
   function pickLead(id: string): void {
     setLeadId(id)
@@ -155,7 +155,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
             </Select>
           </div>
         </div>
-        {note ? <p className="text-xs text-amber-300">{note}</p> : startIso && !checking ? <p className="text-xs text-muted-foreground">✓ You are free at this time.</p> : null}
+        {note ? <p className="text-xs text-amber-300">{note}</p> : startIso && !checking ? <p className="text-xs text-muted-foreground">✓ You and everyone you added are free at this time.</p> : null}
         <Button type="submit" className="w-full" disabled={sending || !startIso || checking || Boolean(note)}>
           {sending ? 'Sending…' : startIso ? 'Send invite' : 'Choose a time to continue'}
         </Button>

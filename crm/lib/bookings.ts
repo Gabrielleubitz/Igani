@@ -57,6 +57,43 @@ export async function findTimeConflict(hostId: string, start: Date, durationMinu
   return null
 }
 
+/**
+ * Checks every added teammate's availability for [start, start+duration): their bookings in the CRM and their own
+ * Google Calendar (when connected). Returns a message naming each person who is not free, or null when all are.
+ */
+export async function findParticipantConflicts(userIds: string[], start: Date, durationMinutes: number, excludeBookingId?: string): Promise<string | null> {
+  const ids = [...new Set(userIds)]
+  if (ids.length === 0) return null
+  const end = new Date(start.getTime() + durationMinutes * 60_000)
+  const pad = (await getSetting('booking.bufferMinutes')) * 60_000
+  const users = await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, email: true } })
+  const busy: string[] = []
+  await Promise.all(
+    users.map(async (u) => {
+      const who = u.name ?? u.email ?? 'A teammate'
+      const clash = await prisma.booking.findFirst({
+        where: {
+          hostId: u.id,
+          status: { in: ['PENDING', 'CONFIRMED'] },
+          startTime: { lt: new Date(end.getTime() + pad) },
+          endTime: { gt: new Date(start.getTime() - pad) },
+          ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+        },
+        select: { id: true },
+      })
+      if (clash) return void busy.push(who)
+      try {
+        if (!(await isSlotStillFree(u.id, start, end, excludeBookingId))) busy.push(who)
+      } catch {
+        // Google not connected (or unreachable) for this person: their calendar cannot be read, so do not block.
+      }
+    }),
+  )
+  if (busy.length === 0) return null
+  busy.sort()
+  return busy.length === 1 ? `${busy[0]} is not free at this time.` : `${busy.slice(0, -1).join(', ')} and ${busy[busy.length - 1]} are not free at this time.`
+}
+
 /** Finds or creates the lead for a guest email (bookings always attach to the pipeline). */
 async function upsertLeadForGuest(
   tx: Prisma.TransactionClient,

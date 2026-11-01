@@ -12,6 +12,7 @@ import {
   createPendingBooking,
   deleteBooking as deleteBookingCore,
   emailDataFor,
+  findParticipantConflicts,
   findTimeConflict,
   teamMeetingIds,
   notifyAdminsOfPendingBooking,
@@ -57,13 +58,18 @@ export async function getHostSlots(input: { date: string; durationMinutes: numbe
 }
 
 /** Live note under the time field: is the chosen time free? (`note` is null when it is.) */
-export async function checkInviteTime(input: { startTime: string; durationMinutes: number; hostId?: string }): Promise<ActionResult<{ note: string | null }>> {
+export async function checkInviteTime(input: { startTime: string; durationMinutes: number; hostId?: string; teammateIds?: string[] }): Promise<ActionResult<{ note: string | null }>> {
   try {
     const user = await requireUser(['ADMIN', 'SALES'])
-    const data = z.object({ startTime: z.string().datetime(), durationMinutes: z.coerce.number().int().min(15).max(240), hostId: z.string().cuid().optional() }).parse(input)
+    const data = z.object({ startTime: z.string().datetime(), durationMinutes: z.coerce.number().int().min(15).max(240), hostId: z.string().cuid().optional(), teammateIds: z.array(z.string().cuid()).max(20).optional() }).parse(input)
     const hostId = user.role === 'ADMIN' && data.hostId ? data.hostId : user.id
     await assertActiveHost(hostId)
-    return { ok: true, data: { note: await findTimeConflict(hostId, new Date(data.startTime), data.durationMinutes) } }
+    const start = new Date(data.startTime)
+    const hostNote = await findTimeConflict(hostId, start, data.durationMinutes)
+    const allowed = new Set((await allowedTeammates(user, hostId)).map((t) => t.id))
+    const others = (data.teammateIds ?? []).filter((id) => allowed.has(id))
+    const note = hostNote ?? (await findParticipantConflicts(others, start, data.durationMinutes))
+    return { ok: true, data: { note } }
   } catch (err) {
     return toActionError(err)
   }
@@ -96,6 +102,8 @@ export async function createTeamMeeting(input: z.input<typeof teamMeetingSchema>
     const start = new Date(data.startTime)
     const conflict = await findTimeConflict(user.id, start, data.durationMinutes)
     if (conflict) throw new BookingError(conflict, 'SLOT_TAKEN')
+    const peopleConflict = await findParticipantConflicts(people.map((p) => p.id), start, data.durationMinutes)
+    if (peopleConflict) throw new BookingError(peopleConflict, 'SLOT_TAKEN')
 
     const booking = await createPendingBooking({
       hostId: user.id,
@@ -162,6 +170,8 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
     // Any time is fine as long as it is in the future and the host has nothing else then.
     const conflict = await findTimeConflict(hostId, start, data.durationMinutes)
     if (conflict) throw new BookingError(conflict, 'SLOT_TAKEN')
+    const peopleConflict = await findParticipantConflicts(teammateIds, start, data.durationMinutes)
+    if (peopleConflict) throw new BookingError(peopleConflict, 'SLOT_TAKEN')
 
     const booking = await createPendingBooking({
       hostId,
