@@ -29,10 +29,13 @@ export function DateTimePicker({
   placeholder,
   className,
   clearable,
+  timeZone,
 }: {
   value: string
   onChange: (value: string) => void
   mode?: 'date' | 'datetime'
+  /** Time zone used to decide which slots have passed today; defaults to the browser's. */
+  timeZone?: string
   /** Earliest selectable day, YYYY-MM-DD. */
   min?: string
   id?: string
@@ -51,11 +54,11 @@ export function DateTimePicker({
   const minDay = min ? parseDay(min) : undefined
   const slots = useMemo(() => {
     // Today: hide slots that have already passed (keep the currently selected one).
-    const now = new Date()
-    const nowKey = `${pad(now.getHours())}:${pad(now.getMinutes())}`
-    const base = dayStr === toIsoDay(now) ? SLOTS.filter((t) => t >= nowKey || t === time) : SLOTS
+    const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map((x) => [x.type, x.value]))
+    const nowKey = `${parts.hour}:${parts.minute}`
+    const base = dayStr === `${parts.year}-${parts.month}-${parts.day}` ? SLOTS.filter((t) => t >= nowKey || t === time) : SLOTS
     return time && !base.includes(time) ? [...base, time].sort() : base
-  }, [time, dayStr])
+  }, [time, dayStr, timeZone])
   const timeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {

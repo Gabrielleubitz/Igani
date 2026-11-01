@@ -10,5 +10,5 @@ export function DateTimeField({ idPrefix, onChange, timeZone }: { idPrefix: stri
   useEffect(() => {
     onChange(value.length === 16 ? value : '')
   }, [value, onChange])
-  return <DateTimePicker id={`${idPrefix}-day`} aria-label="Date and time" min={localDateKey(new Date(), timeZone)} value={value} onChange={setValue} />
+  return <DateTimePicker timeZone={timeZone} id={`${idPrefix}-day`} aria-label="Date and time" min={localDateKey(new Date(), timeZone)} value={value} onChange={setValue} />
 }

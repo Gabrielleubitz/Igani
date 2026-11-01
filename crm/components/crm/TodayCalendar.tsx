@@ -84,7 +84,7 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
     const hourIn = (d: Date): string => new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(d)
     const dayKey = (d: Date): string => new Intl.DateTimeFormat('en-CA', { timeZone }).format(d)
     if (view !== 'day' || dayKey(date) !== dayKey(tick)) return 6
-    return Math.min(Math.max(Number(hourIn(tick)), 0), 20)
+    return Math.min(Math.max(Number(hourIn(tick)), 0), 22)
   }, [view, date, tick, timeZone])
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
 
@@ -112,7 +112,7 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
         views={['day', 'month']}
         timeZone={timeZone}
         dayStartHour={startHour}
-        dayEndHour={22}
+        dayEndHour={Math.max(22, startHour + 2)}
         interactions={{ drag: false, resize: false, selectSlot: false }}
         onSlotClick={onSlotClick}
         onEventClick={onEventClick}
@@ -148,7 +148,7 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
 
       <Dialog className="w-[min(92vw,34rem)]" open={form !== null} onClose={() => setForm(null)} title="New event" description="Added to your calendar and synced to Google Calendar if connected.">
         {form ? (
-          <EntryForm
+          <EntryForm timeZone={timeZone}
             initial={form}
             onDone={() => {
               setForm(null)
@@ -316,7 +316,7 @@ function endLabel(start: string, minutes: number): string {
   return d.toLocaleString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
-function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; durationMin: number; allDay: boolean }; onDone: () => void; onCancel: () => void }): React.ReactElement {
+function EntryForm({ initial, timeZone, onDone, onCancel }: { timeZone: string; initial: { start: string; durationMin: number; allDay: boolean }; onDone: () => void; onCancel: () => void }): React.ReactElement {
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
   const [allDay, setAllDay] = useState(initial.allDay)
@@ -353,7 +353,7 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; du
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="ev-start">Starts</Label>
-          <DateTimePicker id="ev-start" mode={mode} value={val(start)} onChange={setStart} />
+          <DateTimePicker timeZone={timeZone} id="ev-start" mode={mode} value={val(start)} onChange={setStart} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="ev-duration">{allDay ? 'Length' : 'Meeting duration'}</Label>
