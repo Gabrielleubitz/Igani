@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { refreshBookingCounters } from '@/lib/refresh-bookings'
 import { toActionError, type ActionResult } from '@/app/actions/result'
 import { requireUser } from '@/lib/auth'
 import { backfillMeetingTasks } from '@/lib/meeting-tasks'
@@ -12,6 +13,7 @@ export async function importTeamMeetingsAction(): Promise<ActionResult<ImportRes
     const admin = await requireUser(['ADMIN'])
     const r = await importTeamMeetings(admin.id)
     await backfillMeetingTasks().catch((e: unknown) => console.error('[team-meetings] task backfill failed', e))
+    refreshBookingCounters()
     revalidatePath('/sales/team-meeting')
     revalidatePath('/sales/tasks')
     return { ok: true, data: r }
