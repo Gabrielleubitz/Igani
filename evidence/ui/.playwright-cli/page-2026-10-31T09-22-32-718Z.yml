@@ -1,0 +1,15 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - img "Igani" [ref=e3]
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - heading "Igani CRM" [level=3] [ref=e7]
+        - paragraph [ref=e8]: Team access only. Sign in with your whitelisted Google account.
+      - generic [ref=e9]:
+        - button "Continue with Google" [ref=e10] [cursor=pointer]
+        - generic [ref=e11]:
+          - paragraph [ref=e12]: Dev login (whitelisted email)
+          - textbox "Dev login email" [ref=e13]
+          - button "Dev sign in" [ref=e14] [cursor=pointer]
+    - paragraph [ref=e15]: © 2026 Igani · Team CRM
+  - alert [ref=e16]

@@ -1,0 +1,75 @@
+- generic [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - complementary [ref=f6e3]:
+      - generic [ref=f6e4]:
+        - link "Igani home" [ref=f6e5] [cursor=pointer]:
+          - /url: /
+          - img "Igani" [ref=f6e6]
+        - generic [ref=f6e7]:
+          - generic [ref=f6e8]:
+            - button "Menu" [expanded] [active] [ref=f6e9] [cursor=pointer]:
+              - generic [aria-hidden] [ref=f6e10]: ✕
+              - text: Menu
+            - navigation "Main" [ref=f6e44]:
+              - generic [ref=f6e45]:
+                - generic [ref=f6e46]: Workspace
+                - link "Today" [ref=f6e47] [cursor=pointer]:
+                  - /url: /sales/today
+                - link "Contacts" [ref=f6e48] [cursor=pointer]:
+                  - /url: /sales/leads
+                - link "Board" [ref=f6e49] [cursor=pointer]:
+                  - /url: /sales/board
+                - link "Tasks" [ref=f6e50] [cursor=pointer]:
+                  - /url: /sales/tasks
+                - link "Reports" [ref=f6e51] [cursor=pointer]:
+                  - /url: /sales/reports
+              - generic [ref=f6e52]:
+                - generic [ref=f6e53]: Sales
+                - link "Pipeline & meetings" [ref=f6e54] [cursor=pointer]:
+                  - /url: /sales
+                - link "Send invite" [ref=f6e55] [cursor=pointer]:
+                  - /url: /sales/invite
+                - link "My hours" [ref=f6e56] [cursor=pointer]:
+                  - /url: /sales/availability
+                - link "Marketing" [ref=f6e57] [cursor=pointer]:
+                  - /url: /marketing
+              - generic [ref=f6e58]:
+                - generic [ref=f6e59]: Admin
+                - link "Overview" [ref=f6e60] [cursor=pointer]:
+                  - /url: /admin/dashboard
+                - link "Bookings" [ref=f6e61] [cursor=pointer]:
+                  - /url: /admin/bookings
+                - link "Booking pages" [ref=f6e62] [cursor=pointer]:
+                  - /url: /admin/booking-pages
+                - link "Team" [ref=f6e63] [cursor=pointer]:
+                  - /url: /admin/users
+                - link "Audit log" [ref=f6e64] [cursor=pointer]:
+                  - /url: /admin/audit
+                - link "Settings" [ref=f6e65] [cursor=pointer]:
+                  - /url: /admin/settings
+          - button "Sign out" [ref=f6e11] [cursor=pointer]
+    - main [ref=f6e12]:
+      - generic [ref=f6e14]:
+        - heading "Today" [level=1] [ref=f6e15]
+        - generic [ref=f6e16]:
+          - generic [ref=f6e17]:
+            - heading "Tasks due & overdue (0)" [level=3] [ref=f6e19]
+            - paragraph [ref=f6e21]: Nothing due. Nice.
+          - generic [ref=f6e22]:
+            - heading "Meetings next 24h (0)" [level=3] [ref=f6e24]
+            - paragraph [ref=f6e26]: No meetings coming up.
+          - generic [ref=f6e27]:
+            - heading "Needs follow-up (0)" [level=3] [ref=f6e29]
+            - paragraph [ref=f6e31]: Every open lead was touched recently.
+          - generic [ref=f6e32]:
+            - heading "Hottest leads" [level=3] [ref=f6e34]
+            - generic [ref=f6e35]:
+              - generic [ref=f6e36]:
+                - link "Test3 Lead" [ref=f6e37] [cursor=pointer]:
+                  - /url: /sales/leads/qa3
+                - generic [ref=f6e38]: "73"
+              - generic [ref=f6e39]:
+                - link "Test7 Lead" [ref=f6e40] [cursor=pointer]:
+                  - /url: /sales/leads/qa7
+                - generic [ref=f6e41]: "73"
+  - alert [ref=f6e42]

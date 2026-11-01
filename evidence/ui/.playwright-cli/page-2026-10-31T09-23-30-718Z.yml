@@ -1,0 +1,270 @@
+- generic [active] [ref=f6e1]:
+  - generic [ref=f6e2]:
+    - complementary [ref=f6e3]:
+      - generic [ref=f6e4]:
+        - link "Igani home" [ref=f6e5] [cursor=pointer]:
+          - /url: /
+          - img "Igani" [ref=f6e6]
+        - generic [ref=f6e7]:
+          - button "Menu" [ref=f6e9] [cursor=pointer]:
+            - generic [aria-hidden] [ref=f6e10]: ☰
+            - text: Menu
+          - button "Sign out" [ref=f6e11] [cursor=pointer]
+    - main [ref=f6e12]:
+      - generic [ref=f6e67]:
+        - generic [ref=f6e68]:
+          - heading "Contacts" [level=1] [ref=f6e69]
+          - group [ref=f6e70]:
+            - generic "+ Add contact" [ref=f6e71] [cursor=pointer]
+        - group [ref=f6e72]:
+          - generic "Filters" [ref=f6e73] [cursor=pointer]
+          - option "All stages" [selected]
+          - option "NEW"
+          - option "CONTACTED"
+          - option "DEMO SCHEDULED"
+          - option "PROPOSAL SENT"
+          - option "WON"
+          - option "LOST"
+          - option "Any owner" [selected]
+          - option "Unassigned"
+          - option "Gabriel"
+          - option "Rita Rep"
+          - option "Any source" [selected]
+          - option "igani.co"
+          - option "manual"
+          - option "Any tag" [selected]
+          - option "hot"
+          - option "vip"
+          - option "Active" [selected]
+          - option "Archived"
+        - paragraph [ref=f6e74]: 10 leads · page 1 of 1
+        - generic [ref=f6e75]:
+          - generic [ref=f6e76]:
+            - textbox "Instant search" [ref=f6e77]:
+              - /placeholder: Search name, email, company, phone…
+            - group [ref=f6e78]:
+              - generic "Columns" [ref=f6e79] [cursor=pointer]
+            - button "Export CSV" [ref=f6e80] [cursor=pointer]
+          - table [ref=f6e82]:
+            - rowgroup [ref=f6e83]:
+              - row [ref=f6e84]:
+                - columnheader [ref=f6e85]
+                - columnheader [ref=f6e86]:
+                  - button "Name" [ref=f6e87] [cursor=pointer]
+                - columnheader [ref=f6e88]:
+                  - button "Email" [ref=f6e89] [cursor=pointer]
+                - columnheader [ref=f6e90]:
+                  - button "Company" [ref=f6e91] [cursor=pointer]
+                - columnheader [ref=f6e92]:
+                  - button "Tags" [ref=f6e93] [cursor=pointer]
+                - columnheader [ref=f6e94]:
+                  - button "Stage" [ref=f6e95] [cursor=pointer]
+                - columnheader [ref=f6e96]:
+                  - button "Owner" [ref=f6e97] [cursor=pointer]
+                - columnheader [ref=f6e98]:
+                  - button "Created" [ref=f6e99] [cursor=pointer]
+            - rowgroup [ref=f6e100]:
+              - row [ref=f6e101]:
+                - cell [ref=f6e102]:
+                  - checkbox "Select qa8@example.com" [ref=f6e103]
+                - cell [ref=f6e104]:
+                  - link "Test8 Lead" [ref=f6e105] [cursor=pointer]:
+                    - /url: /sales/leads/qa8
+                - cell "qa8@example.com" [ref=f6e106]
+                - cell "Co 8" [ref=f6e107]
+                - cell [ref=f6e108]:
+                  - button "+ tag" [ref=f6e110] [cursor=pointer]
+                - cell "NEW" [ref=f6e111]:
+                  - combobox "Stage" [ref=f6e112]:
+                    - option "NEW" [selected]
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e113]
+                - cell "2026-10-31" [ref=f6e115]
+              - row [ref=f6e116]:
+                - cell [ref=f6e117]:
+                  - checkbox "Select qa7@example.com" [ref=f6e118]
+                - cell [ref=f6e119]:
+                  - link "Test7 Lead" [ref=f6e120] [cursor=pointer]:
+                    - /url: /sales/leads/qa7
+                - cell "qa7@example.com" [ref=f6e121]
+                - cell "Co 7" [ref=f6e122]
+                - cell [ref=f6e123]:
+                  - button "+ tag" [ref=f6e125] [cursor=pointer]
+                - cell "PROPOSAL SENT" [ref=f6e126]:
+                  - combobox "Stage" [ref=f6e127]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT" [selected]
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e128]
+                - cell "2026-10-31" [ref=f6e130]
+              - row [ref=f6e131]:
+                - cell [ref=f6e132]:
+                  - checkbox "Select qa1@example.com" [ref=f6e133]
+                - cell [ref=f6e134]:
+                  - link "Test1 Lead" [ref=f6e135] [cursor=pointer]:
+                    - /url: /sales/leads/qa1
+                - cell "qa1@example.com" [ref=f6e136]
+                - cell "Co 1" [ref=f6e137]
+                - cell [ref=f6e138]:
+                  - button "+ tag" [ref=f6e140] [cursor=pointer]
+                - cell "CONTACTED" [ref=f6e141]:
+                  - combobox "Stage" [ref=f6e142]:
+                    - option "NEW"
+                    - option "CONTACTED" [selected]
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e143]
+                - cell "2026-10-31" [ref=f6e145]
+              - row [ref=f6e146]:
+                - cell [ref=f6e147]:
+                  - checkbox "Select qa2@example.com" [ref=f6e148]
+                - cell [ref=f6e149]:
+                  - link "Test2 Lead" [ref=f6e150] [cursor=pointer]:
+                    - /url: /sales/leads/qa2
+                - cell "qa2@example.com" [ref=f6e151]
+                - cell "Co 2" [ref=f6e152]
+                - cell [ref=f6e153]:
+                  - button "+ tag" [ref=f6e155] [cursor=pointer]
+                - cell "DEMO SCHEDULED" [ref=f6e156]:
+                  - combobox "Stage" [ref=f6e157]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED" [selected]
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e158]
+                - cell "2026-10-31" [ref=f6e160]
+              - row [ref=f6e161]:
+                - cell [ref=f6e162]:
+                  - checkbox "Select qa3@example.com" [ref=f6e163]
+                - cell [ref=f6e164]:
+                  - link "Test3 Lead" [ref=f6e165] [cursor=pointer]:
+                    - /url: /sales/leads/qa3
+                - cell "qa3@example.com" [ref=f6e166]
+                - cell "Co 3" [ref=f6e167]
+                - cell [ref=f6e168]:
+                  - button "+ tag" [ref=f6e170] [cursor=pointer]
+                - cell "PROPOSAL SENT" [ref=f6e171]:
+                  - combobox "Stage" [ref=f6e172]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT" [selected]
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e173]
+                - cell "2026-10-31" [ref=f6e175]
+              - row [ref=f6e176]:
+                - cell [ref=f6e177]:
+                  - checkbox "Select qa4@example.com" [ref=f6e178]
+                - cell [ref=f6e179]:
+                  - link "Test4 Lead" [ref=f6e180] [cursor=pointer]:
+                    - /url: /sales/leads/qa4
+                - cell "qa4@example.com" [ref=f6e181]
+                - cell "Co 4" [ref=f6e182]
+                - cell [ref=f6e183]:
+                  - button "+ tag" [ref=f6e185] [cursor=pointer]
+                - cell "NEW" [ref=f6e186]:
+                  - combobox "Stage" [ref=f6e187]:
+                    - option "NEW" [selected]
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e188]
+                - cell "2026-10-31" [ref=f6e190]
+              - row [ref=f6e191]:
+                - cell [ref=f6e192]:
+                  - checkbox "Select qa5@example.com" [ref=f6e193]
+                - cell [ref=f6e194]:
+                  - link "Test5 Lead" [ref=f6e195] [cursor=pointer]:
+                    - /url: /sales/leads/qa5
+                - cell "qa5@example.com" [ref=f6e196]
+                - cell "Co 5" [ref=f6e197]
+                - cell [ref=f6e198]:
+                  - button "+ tag" [ref=f6e200] [cursor=pointer]
+                - cell "CONTACTED" [ref=f6e201]:
+                  - combobox "Stage" [ref=f6e202]:
+                    - option "NEW"
+                    - option "CONTACTED" [selected]
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e203]
+                - cell "2026-10-31" [ref=f6e205]
+              - row [ref=f6e206]:
+                - cell [ref=f6e207]:
+                  - checkbox "Select qa6@example.com" [ref=f6e208]
+                - cell [ref=f6e209]:
+                  - link "Test6 Lead" [ref=f6e210] [cursor=pointer]:
+                    - /url: /sales/leads/qa6
+                - cell "qa6@example.com" [ref=f6e211]
+                - cell "Co 6" [ref=f6e212]
+                - cell [ref=f6e213]:
+                  - button "+ tag" [ref=f6e215] [cursor=pointer]
+                - cell "DEMO SCHEDULED" [ref=f6e216]:
+                  - combobox "Stage" [ref=f6e217]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED" [selected]
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e218]
+                - cell "2026-10-31" [ref=f6e220]
+              - row [ref=f6e221]:
+                - cell [ref=f6e222]:
+                  - checkbox "Select qa-atlas@example.com" [ref=f6e223]
+                - cell [ref=f6e224]:
+                  - link "qa-atlas@example.com" [ref=f6e225] [cursor=pointer]:
+                    - /url: /sales/leads/cmvvjznvb0004m8one0m2q9le
+                - cell "qa-atlas@example.com" [ref=f6e226]
+                - cell [ref=f6e227]
+                - cell "vip hot + tag" [ref=f6e228]:
+                  - generic [ref=f6e229]:
+                    - generic [ref=f6e230]: vip
+                    - generic [ref=f6e231]: hot
+                    - button "+ tag" [ref=f6e232] [cursor=pointer]
+                - cell "NEW" [ref=f6e233]:
+                  - combobox "Stage" [ref=f6e234]:
+                    - option "NEW" [selected]
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f6e235]
+                - cell "2026-10-30" [ref=f6e237]
+              - row [ref=f6e238]:
+                - cell [ref=f6e239]:
+                  - checkbox "Select dana@acme.com" [ref=f6e240]
+                - cell [ref=f6e241]:
+                  - link "Dana" [ref=f6e242] [cursor=pointer]:
+                    - /url: /sales/leads/cmvv7xg5t0001wc1s0lrt3qfd
+                - cell "dana@acme.com" [ref=f6e243]
+                - cell "Acme" [ref=f6e244]
+                - cell [ref=f6e245]:
+                  - button "+ tag" [ref=f6e247] [cursor=pointer]
+                - cell "WON" [ref=f6e248]:
+                  - combobox "Stage" [ref=f6e249]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON" [selected]
+                    - option "LOST"
+                - cell "Rita Rep" [ref=f6e250]
+                - cell "2026-10-30" [ref=f6e251]
+  - alert [ref=f6e42]: Contacts · Igani CRM

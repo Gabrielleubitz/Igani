@@ -1,0 +1,150 @@
+- generic [active] [ref=f7e1]:
+  - generic [ref=f7e2]:
+    - complementary [ref=f7e3]:
+      - generic [ref=f7e4]:
+        - link "Igani home" [ref=f7e5] [cursor=pointer]:
+          - /url: /
+          - img "Igani" [ref=f7e6]
+        - navigation "Main" [ref=f7e8]:
+          - generic [ref=f7e9]:
+            - generic [ref=f7e10]: Workspace
+            - link "Today" [ref=f7e11] [cursor=pointer]:
+              - /url: /sales/today
+            - link "Contacts" [ref=f7e12] [cursor=pointer]:
+              - /url: /sales/leads
+            - link "Board" [ref=f7e13] [cursor=pointer]:
+              - /url: /sales/board
+            - link "Tasks" [ref=f7e14] [cursor=pointer]:
+              - /url: /sales/tasks
+            - link "Reports" [ref=f7e15] [cursor=pointer]:
+              - /url: /sales/reports
+          - generic [ref=f7e16]:
+            - generic [ref=f7e17]: Sales
+            - link "Pipeline & meetings" [ref=f7e18] [cursor=pointer]:
+              - /url: /sales
+            - link "Send invite" [ref=f7e19] [cursor=pointer]:
+              - /url: /sales/invite
+            - link "My hours" [ref=f7e20] [cursor=pointer]:
+              - /url: /sales/availability
+            - link "Marketing" [ref=f7e21] [cursor=pointer]:
+              - /url: /marketing
+          - generic [ref=f7e22]:
+            - generic [ref=f7e23]: Admin
+            - link "Overview" [ref=f7e24] [cursor=pointer]:
+              - /url: /admin/dashboard
+            - link "Bookings" [ref=f7e25] [cursor=pointer]:
+              - /url: /admin/bookings
+            - link "Booking pages" [ref=f7e26] [cursor=pointer]:
+              - /url: /admin/booking-pages
+            - link "Team" [ref=f7e27] [cursor=pointer]:
+              - /url: /admin/users
+            - link "Audit log" [ref=f7e28] [cursor=pointer]:
+              - /url: /admin/audit
+            - link "Settings" [ref=f7e29] [cursor=pointer]:
+              - /url: /admin/settings
+      - generic [ref=f7e30]:
+        - generic [ref=f7e31]: gabrielleubitz@igani.co
+        - generic [ref=f7e32]: admin
+        - button "Sign out" [ref=f7e33] [cursor=pointer]
+    - main [ref=f7e34]:
+      - generic [ref=f7e37]:
+        - generic [ref=f7e38]:
+          - heading "Contacts" [level=1] [ref=f7e39]
+          - group [ref=f7e40]:
+            - generic "+ Add contact" [ref=f7e41] [cursor=pointer]
+        - group [ref=f7e42]:
+          - generic "Filters (1 active)" [ref=f7e43] [cursor=pointer]
+          - generic [ref=f7e44]:
+            - combobox [ref=f7e45]:
+              - option "All stages"
+              - option "NEW"
+              - option "CONTACTED" [selected]
+              - option "DEMO SCHEDULED"
+              - option "PROPOSAL SENT"
+              - option "WON"
+              - option "LOST"
+            - combobox [ref=f7e46]:
+              - option "Any owner" [selected]
+              - option "Unassigned"
+              - option "Gabriel"
+              - option "Rita Rep"
+            - combobox [ref=f7e47]:
+              - option "Any source" [selected]
+              - option "igani.co"
+              - option "manual"
+            - combobox [ref=f7e48]:
+              - option "Any tag" [selected]
+              - option "hot"
+              - option "vip"
+            - combobox [ref=f7e49]:
+              - option "Active" [selected]
+              - option "Archived"
+            - button "Apply" [ref=f7e50] [cursor=pointer]
+        - paragraph [ref=f7e51]: 2 leads · page 1 of 1
+        - generic [ref=f7e52]:
+          - generic [ref=f7e53]:
+            - textbox "Instant search" [ref=f7e54]:
+              - /placeholder: Search name, email, company, phone…
+            - group [ref=f7e55]:
+              - generic "Columns" [ref=f7e56] [cursor=pointer]
+            - button "Export CSV" [ref=f7e57] [cursor=pointer]
+          - table [ref=f7e59]:
+            - rowgroup [ref=f7e60]:
+              - row [ref=f7e61]:
+                - columnheader [ref=f7e62]
+                - columnheader [ref=f7e63]:
+                  - button "Name" [ref=f7e64] [cursor=pointer]
+                - columnheader [ref=f7e65]:
+                  - button "Email" [ref=f7e66] [cursor=pointer]
+                - columnheader [ref=f7e67]:
+                  - button "Company" [ref=f7e68] [cursor=pointer]
+                - columnheader [ref=f7e69]:
+                  - button "Tags" [ref=f7e70] [cursor=pointer]
+                - columnheader [ref=f7e71]:
+                  - button "Stage" [ref=f7e72] [cursor=pointer]
+                - columnheader [ref=f7e73]:
+                  - button "Owner" [ref=f7e74] [cursor=pointer]
+                - columnheader [ref=f7e75]:
+                  - button "Created" [ref=f7e76] [cursor=pointer]
+            - rowgroup [ref=f7e77]:
+              - row [ref=f7e78]:
+                - cell [ref=f7e79]:
+                  - checkbox "Select qa1@example.com" [ref=f7e80]
+                - cell [ref=f7e81]:
+                  - link "Test1 Lead" [ref=f7e82] [cursor=pointer]:
+                    - /url: /sales/leads/qa1
+                - cell "qa1@example.com" [ref=f7e83]
+                - cell "Co 1" [ref=f7e84]
+                - cell [ref=f7e85]:
+                  - button "+ tag" [ref=f7e87] [cursor=pointer]
+                - cell "CONTACTED" [ref=f7e88]:
+                  - combobox "Stage" [ref=f7e89]:
+                    - option "NEW"
+                    - option "CONTACTED" [selected]
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f7e90]
+                - cell "2026-10-31" [ref=f7e92]
+              - row [ref=f7e93]:
+                - cell [ref=f7e94]:
+                  - checkbox "Select qa5@example.com" [ref=f7e95]
+                - cell [ref=f7e96]:
+                  - link "Test5 Lead" [ref=f7e97] [cursor=pointer]:
+                    - /url: /sales/leads/qa5
+                - cell "qa5@example.com" [ref=f7e98]
+                - cell "Co 5" [ref=f7e99]
+                - cell [ref=f7e100]:
+                  - button "+ tag" [ref=f7e102] [cursor=pointer]
+                - cell "CONTACTED" [ref=f7e103]:
+                  - combobox "Stage" [ref=f7e104]:
+                    - option "NEW"
+                    - option "CONTACTED" [selected]
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                - cell "unassigned" [ref=f7e105]
+                - cell "2026-10-31" [ref=f7e107]
+  - alert [ref=f7e108]
