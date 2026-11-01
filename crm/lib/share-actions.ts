@@ -4,7 +4,6 @@ const NAME_SPLIT = /\s*(?:,|&|\band\b|\+|\/)\s*/i
 
 export function shareActions(actions: string[], text: string, team: string[]): string[] {
   const names = team.map((t) => t.trim()).filter(Boolean)
-  const find = (n: string): string | undefined => names.find((t) => t.toLowerCase() === n.trim().toLowerCase())
   const out: string[] = []
   const add = (l: string): void => { if (!out.some((o) => o.toLowerCase() === l.toLowerCase())) out.push(l) }
   // 1) lines the model wrote as "Gabriel and Dana: task"
@@ -20,15 +19,17 @@ export function shareActions(actions: string[], text: string, team: string[]): s
   for (const line of base) {
     add(line)
     const m = line.match(/^\s*([^:：]{1,40})[:：]\s+(.+)$/)
-    if (!m || !find(m[1]!)) continue
+    if (!m) continue
+    const owner = m[1]!.trim()
     const tw = [...new Set(words(m[2]!))]
     if (!tw.length) continue
     for (const s of sentences) {
       const sw = new Set(words(s))
       if (tw.filter((w) => sw.has(w)).length / tw.length < 0.6) continue
-      const subj = s.split(/\b(?:will|to|should|needs?|going|are|is|can|must|'ll)\b|[:,]\s+(?=[a-z])/i)[0] ?? ''
-      const named = names.filter((n) => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(subj))
-      if (named.length > 1 && named.some((n) => n.toLowerCase() === m[1]!.trim().toLowerCase())) named.forEach((n) => add(`${n}: ${m[2]!.trim()}`))
+      const subj = s.split(/\b(?:will|to|should|needs?|going|are|is|can|must|'ll)\b/i)[0] ?? ''
+      const has = (n: string): boolean => new RegExp(`\\b${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(subj)
+      const named = names.filter(has)
+      if (named.length && has(owner)) named.forEach((n) => add(`${n}: ${m[2]!.trim()}`))
     }
   }
   return out
