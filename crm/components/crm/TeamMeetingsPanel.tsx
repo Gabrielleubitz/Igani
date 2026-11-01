@@ -7,16 +7,34 @@ import { formatDateTime } from '@/lib/format'
 import { googleGrants } from '@/lib/google'
 import { prisma } from '@/lib/prisma'
 
-/** Admin-only block under the booking form: Google status, import, and every team call with its real times and Gemini notes. */
-export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promise<React.ReactElement> {
-  const admin = { id: adminId }
+async function load(adminId: string) {
   // Calls booked here (an activity-log tag) and calls imported from Google Calendar / Meet.
   const tagged = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.team_meeting' }, select: { entityId: true }, take: 500, orderBy: { createdAt: 'desc' } })
   const [grants, me, rows] = await Promise.all([
-    googleGrants(admin.id),
-    prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { timeZone: true } }),
+    googleGrants(adminId),
+    prisma.user.findUniqueOrThrow({ where: { id: adminId }, select: { timeZone: true } }),
     prisma.booking.findMany({ where: { OR: [{ source: 'TEAM_MEETING' }, { id: { in: tagged.map((t) => t.entityId) } }], status: { not: 'CANCELLED' } }, orderBy: { startTime: 'desc' }, take: 100, include: { host: { select: { name: true, email: true } }, meeting: true } }),
   ])
+  return { grants, me, rows }
+}
+
+/** Admin-only block under the booking form: Google status, import, and every team call with its real times and Gemini notes. */
+export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promise<React.ReactElement> {
+  const admin = { id: adminId }
+  let data: Awaited<ReturnType<typeof load>>
+  try {
+    data = await load(admin.id)
+  } catch (err) {
+    // A failing query (e.g. a pending database migration) must not take the whole booking page down.
+    console.error('[team-meetings] panel failed', err instanceof Error ? err.message : err)
+    return (
+      <section className="space-y-2 border-t pt-6">
+        <h2 className="text-base font-semibold">Tracked team meetings</h2>
+        <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-sm">Could not load tracked meetings right now. Booking above still works. Reload in a minute, or ask an engineer to check the database migrations.</p>
+      </section>
+    )
+  }
+  const { grants, me, rows } = data
   const timeOnly = (d: Date): string => new Intl.DateTimeFormat('en-GB', { timeZone: me.timeZone, hour: '2-digit', minute: '2-digit' }).format(d)
   const view = (b: (typeof rows)[number]): MeetingCallView | null => {
     const m = b.meeting
