@@ -7,12 +7,12 @@ export const aiTidyEnabled = (): boolean => Boolean(process.env.OPENAI_API_KEY)
 const PROMPT = `You tidy meeting notes for a CRM. Return ONLY JSON: {"overview": string[], "decisions": string[], "actions": string[], "topics": [{"title": string, "points": string[]}]}.
 - overview: 2-4 short plain sentences on what the call was about.
 - decisions: what was agreed, one short line each (empty if none).
-- actions: next steps as "Who: task" when the owner is known, one short line each.
+- actions: one line per person per next step, formatted exactly "Who: task" (Who = a single first name; if an item belongs to several people, write one line for each). Use a name from the TEAM list when it is that person; other people keep their own name. No owner stated -> just the task, no prefix.
 - topics: the main subjects discussed, each with a short title and 1-4 brief points.
 Use only facts in the notes. Never invent names, dates or numbers. Plain text, no markdown, same language as the notes.`
 
 /** Rewrites raw notes into the organized shape with OpenAI. Returns null on any problem (the caller keeps the free tidy-up). */
-export async function tidyWithAI(text: string): Promise<OrganizedNotes | null> {
+export async function tidyWithAI(text: string, team: string[] = []): Promise<OrganizedNotes | null> {
   const key = process.env.OPENAI_API_KEY
   if (!key || !text.trim()) return null
   try {
@@ -24,7 +24,7 @@ export async function tidyWithAI(text: string): Promise<OrganizedNotes | null> {
         temperature: 0.2,
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: PROMPT },
+          { role: 'system', content: team.length ? `${PROMPT}\nTEAM (first names): ${team.join(', ')}` : PROMPT },
           { role: 'user', content: text.slice(0, 30_000) },
         ],
       }),

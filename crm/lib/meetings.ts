@@ -273,7 +273,8 @@ async function trackNotes(b: BookingRow, s: MeetingSession, api: MeetingApi, now
     const doc = await api.readDoc(ref.docId)
     const text = doc.text.slice(0, NOTES_TEXT_CAP)
     const { summary, nextSteps } = parseGeminiNotes(text)
-    const organized = await tidyWithAI(text)
+    const roster = await prisma.user.findMany({ where: { role: { not: null } }, select: { name: true } })
+    const organized = await tidyWithAI(text, roster.map((u) => (u.name ?? '').trim().split(/\s+/)[0] ?? '').filter(Boolean))
     const done = await prisma.meetingSession.updateMany({
       where: { id: s.id, OR: [{ notesStatus: null }, { notesStatus: { not: 'READY' } }] },
       data: { ...link, docTitle: doc.title ?? link.docTitle, notesStatus: 'READY', summaryText: summary, nextStepsText: nextSteps, fullText: text, organizedJson: organized ?? undefined, notesAttempts: attempts, nextCheckAt: null, notesFetchedAt: now, lastError: null },

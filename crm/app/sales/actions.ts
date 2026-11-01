@@ -286,7 +286,8 @@ export async function tidyMeetingNotes(bookingId: string): Promise<ActionResult<
     if (b.leadId) await assertCanSeeLead(b.leadId, user)
     else if (b.hostId !== user.id && user.role !== 'ADMIN') return { ok: false, error: 'Meeting not found.' }
     if (!aiTidyEnabled()) return { ok: false, error: 'AI tidy-up is not switched on (no OpenAI key).' }
-    const organized = await tidyWithAI(b.meeting.fullText)
+    const roster = await prisma.user.findMany({ where: { role: { not: null } }, select: { name: true } })
+    const organized = await tidyWithAI(b.meeting.fullText, roster.map((u) => (u.name ?? '').trim().split(/\s+/)[0] ?? '').filter(Boolean))
     if (!organized) return { ok: false, error: 'The AI tidy-up failed. Try again in a moment.' }
     await prisma.meetingSession.update({ where: { id: b.meeting.id }, data: { organizedJson: organized } })
     refresh(b.leadId ?? undefined)
