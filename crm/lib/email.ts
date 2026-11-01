@@ -235,10 +235,12 @@ export async function sendContactEmail(a: {
   senderName: string
   senderEmail: string
   cta?: { label: string; href: string }
+  /** Email language (default English) */
+  lang?: 'en' | 'he'
   /** When replying: the original email, quoted under the message and threaded via In-Reply-To/References */
   inReplyTo?: { messageIdHeader: string | null; quote: { from: string; sentAt: string; text: string } }
 }): Promise<string> {
-  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, cta: a.cta, quote: a.inReplyTo?.quote, logoUrl: logoUrl(), ...(await brand()) })
+  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, cta: a.cta, quote: a.inReplyTo?.quote, lang: a.lang, logoUrl: logoUrl(), ...(await brand()) })
   const mid = a.inReplyTo?.messageIdHeader
   return send({
     to: a.to,

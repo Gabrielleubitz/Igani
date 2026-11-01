@@ -25,6 +25,8 @@ export interface ShellProps {
   signature?: { name: string; detail?: string }
   /** Footer reason line; defaults to CRM activity */
   footerNote?: string
+  /** Email language; Hebrew switches the whole frame to right-to-left */
+  lang?: 'en' | 'he'
   children?: React.ReactNode
 }
 
@@ -33,11 +35,13 @@ export interface ShellProps {
  * Apple Mail and Outlook: brand gradient strip, logo + status chip, hero (optional status icon), content,
  * one primary button, quiet secondary links, optional signature, and a calm footer.
  */
-export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, logoUrl, brandName = 'Igani', supportEmail, cta, links, ctaHint, signature, footerNote, children }: ShellProps): React.ReactElement {
+export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, logoUrl, brandName = 'Igani', supportEmail, cta, links, ctaHint, signature, footerNote, lang = 'en', children }: ShellProps): React.ReactElement {
   const t = TONES[tone]
   const center = Boolean(icon)
+  const rtl = lang === 'he'
+  const start = rtl ? 'right' : 'left'
   return (
-    <Html lang="en" dir="ltr">
+    <Html lang={lang} dir={rtl ? 'rtl' : 'ltr'}>
       <Head>
         <meta name="color-scheme" content="light" />
         <meta name="supported-color-schemes" content="light" />
@@ -60,7 +64,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
               </Row>
             </Section>
 
-            <Section style={{ padding: '32px 40px 8px', textAlign: center ? 'center' : 'left' }}>
+            <Section style={{ padding: '32px 40px 8px', textAlign: center ? 'center' : start }}>
               {icon ? (
                 <table role="presentation" cellPadding={0} cellSpacing={0} align="center" style={{ margin: '0 auto 18px' }}>
                   <tbody>
@@ -79,17 +83,17 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
             <Section style={{ padding: '20px 40px 36px' }}>
               {children}
               {cta ? (
-                <Section style={{ textAlign: center ? 'center' : 'left', margin: '4px 0 0' }}>
+                <Section style={{ textAlign: center ? 'center' : start, margin: '4px 0 0' }}>
                   <Button
                     href={cta.href}
                     style={{ backgroundColor: colors.brand, color: colors.accentText, borderRadius: 10, fontSize: 15, fontWeight: 600, lineHeight: '20px', padding: '15px 30px', textDecoration: 'none', display: 'inline-block', boxShadow: '0 1px 2px rgba(11,31,58,0.12)' }}
                   >
-                    {cta.label} &rarr;
+                    {cta.label} {rtl ? '\u2190' : '\u2192'}
                   </Button>
                 </Section>
               ) : null}
               {links?.length ? (
-                <Text style={{ fontSize: 13, lineHeight: '20px', color: colors.faint, margin: cta ? '16px 0 0' : '0', textAlign: center ? 'center' : 'left' }}>
+                <Text style={{ fontSize: 13, lineHeight: '20px', color: colors.faint, margin: cta ? '16px 0 0' : '0', textAlign: center ? 'center' : start }}>
                   {links.map((l, i) => (
                     <React.Fragment key={l.href + l.label}>
                       {i > 0 ? <span style={{ color: colors.faint }}>&nbsp;&nbsp;·&nbsp;&nbsp;</span> : null}
@@ -100,7 +104,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
                   ))}
                 </Text>
               ) : null}
-              {ctaHint ? <Text style={{ color: colors.muted, fontSize: 13, lineHeight: '20px', margin: '16px 0 0', textAlign: center ? 'center' : 'left' }}>{ctaHint}</Text> : null}
+              {ctaHint ? <Text style={{ color: colors.muted, fontSize: 13, lineHeight: '20px', margin: '16px 0 0', textAlign: center ? 'center' : start }}>{ctaHint}</Text> : null}
               {signature ? <Signature {...signature} /> : null}
             </Section>
           </Section>
@@ -120,7 +124,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
                 </>
               ) : null}
             </Text>
-            <Text style={{ color: colors.faint, fontSize: 11, lineHeight: '17px', margin: '6px auto 0', maxWidth: 420 }}>{footerNote ?? `You're receiving this because of activity with ${brandName}.`}</Text>
+            <Text style={{ color: colors.faint, fontSize: 11, lineHeight: '17px', margin: '6px auto 0', maxWidth: 420 }}>{footerNote ?? (rtl ? `קיבלת הודעה זו בעקבות פעילות מול ${brandName}.` : `You're receiving this because of activity with ${brandName}.`)}</Text>
           </Section>
         </Container>
       </Body>

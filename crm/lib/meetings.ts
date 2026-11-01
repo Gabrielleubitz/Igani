@@ -1,3 +1,4 @@
+import { createMeetingTasks } from './meeting-tasks'
 import { tidyWithAI } from './meeting-ai'
 import 'server-only'
 import type { MeetingSession, Prisma } from '@prisma/client'
@@ -277,7 +278,10 @@ async function trackNotes(b: BookingRow, s: MeetingSession, api: MeetingApi, now
       where: { id: s.id, OR: [{ notesStatus: null }, { notesStatus: { not: 'READY' } }] },
       data: { ...link, docTitle: doc.title ?? link.docTitle, notesStatus: 'READY', summaryText: summary, nextStepsText: nextSteps, fullText: text, organizedJson: organized ?? undefined, notesAttempts: attempts, nextCheckAt: null, notesFetchedAt: now, lastError: null },
     })
-    if (done.count === 1) await logOnLead(b, 'meeting.notes', { docUrl: link.docUrl, summary: (summary ?? text).slice(0, 1200) })
+    if (done.count === 1) {
+      await logOnLead(b, 'meeting.notes', { docUrl: link.docUrl, summary: (summary ?? text).slice(0, 1200) })
+      await createMeetingTasks(b.id).catch((err: unknown) => console.error('[meetings] action-item tasks failed', err))
+    }
   } catch (err) {
     await prisma.meetingSession.update({
       where: { id: s.id },

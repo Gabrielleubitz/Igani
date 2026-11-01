@@ -12,6 +12,7 @@ import { BookingError } from '@/lib/bookings'
 import { sendContactEmail } from '@/lib/email'
 import { assertCanSeeLead } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
+import { setMeetingTaskDone } from '@/lib/meeting-tasks'
 import { loadTasks } from '@/lib/tasks'
 import { formatDateTime } from '@/lib/format'
 import { GmailNotConnectedError, hasGmailAccess } from '@/lib/google'
@@ -164,6 +165,7 @@ const emailSchema = z.object({
   cta: z
     .object({ label: z.string().trim().min(1).max(60), href: z.string().trim().url().max(1000) })
     .optional(),
+  lang: z.enum(['en', 'he']).default('en'),
   /** EmailMessage id being replied to */
   replyToId: z.string().cuid().optional(),
 })
@@ -191,6 +193,7 @@ export async function emailContact(leadId: string, input: z.input<typeof emailSc
       senderName: user.name ?? user.email,
       senderEmail: user.email,
       cta: data.cta,
+      lang: data.lang,
       inReplyTo: original
         ? { messageIdHeader: original.messageIdHeader, quote: { from: original.fromName ?? original.fromEmail, sentAt: formatDateTime(original.sentAt, me.timeZone), text: original.bodyText } }
         : undefined,
@@ -307,6 +310,20 @@ export async function recheckMeetingNotes(bookingId: string): Promise<ActionResu
     refresh(b.leadId ?? undefined)
     return { ok: true, data: { status: s?.notesStatus ?? null } }
   } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Tick / untick a meeting action item on someone's task list. */
+export async function setMeetingTask(ownerId: string, taskId: string, done: boolean): Promise<ActionResult> {
+  try {
+    const user = await requireUser()
+    await setMeetingTaskDone(user, z.string().cuid().parse(ownerId), z.string().uuid().parse(taskId), done)
+    refresh()
+    revalidatePath('/admin/dashboard')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    if (err instanceof Error && (err.message === 'Not your task.' || err.message === 'Task not found.')) return { ok: false, error: err.message }
     return toActionError(err)
   }
 }
