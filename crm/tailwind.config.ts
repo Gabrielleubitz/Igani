@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss'
+import plugin from 'tailwindcss/plugin'
 
 const config: Config = {
   darkMode: 'class',
@@ -15,16 +16,23 @@ const config: Config = {
         secondary: { DEFAULT: 'hsl(var(--secondary))', foreground: 'hsl(var(--secondary-foreground))' },
         destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
         muted: { DEFAULT: 'hsl(var(--muted))', foreground: 'hsl(var(--muted-foreground))' },
-        accent: { DEFAULT: 'hsl(var(--accent))' },
+        accent: { DEFAULT: 'hsl(var(--accent))', foreground: 'hsl(210 100% 6%)' },
         success: 'hsl(var(--success))',
         warning: 'hsl(var(--warning))',
         brand: { ink: '#002040', surface: '#204060', accent: '#4080E0', soft: '#80A0E0' },
+        popover: { DEFAULT: 'hsl(var(--popover))', foreground: 'hsl(var(--popover-foreground))' },
         card: { DEFAULT: 'hsl(var(--card))', foreground: 'hsl(var(--card-foreground))' },
       },
       borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
     },
   },
-  plugins: [],
+  plugins: [
+    // Tailwind 4 style boolean data-attribute variants and the `**` descendant variant used by the vendored event calendar
+    plugin(({ addVariant }) => {
+      for (const n of ['open', 'closed', 'disabled', 'dragging', 'horizontal', 'inset', 'loading', 'popup-open', 'selected', 'today', 'vertical']) addVariant(`data-${n}`, `&[data-${n}]`)
+      addVariant('**', '& *')
+    }),
+  ],
 }
 
 export default config

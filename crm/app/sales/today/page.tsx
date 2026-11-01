@@ -3,6 +3,7 @@ import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
 import { MailSyncTrigger } from '@/components/crm/MailSyncTrigger'
 import { MeetingSyncTrigger } from '@/components/crm/MeetingCall'
+import { TodayCalendar, type CalendarItem } from '@/components/crm/TodayCalendar'
 import { StagePill } from '@/components/crm/StagePill'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -14,7 +15,8 @@ import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { tasksForUser } from '@/lib/tasks'
-import { endOfLocalDay } from '@/lib/time'
+import { entryColorVar } from '@/lib/calendar-entries'
+import { endOfLocalDay, startOfLocalDay } from '@/lib/time'
 
 export const metadata = { title: 'Today' }
 export const dynamic = 'force-dynamic'
@@ -53,6 +55,56 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const { mine, leads: byId } = await tasksForUser(user)
   const endOfToday = endOfLocalDay(now, tz)
   const due = mine.filter((t) => !t.done && t.dueAt && t.dueAt < endOfToday).sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())
+
+  // Calendar: my meetings, due tasks and personal entries around today (the grid itself is client-side).
+  const winStart = new Date(startOfLocalDay(now, tz).getTime() - 62 * 864e5)
+  const winEnd = new Date(startOfLocalDay(now, tz).getTime() + 186 * 864e5)
+  const [calBookings, calEntries] = await Promise.all([
+    user.role === 'MARKETING'
+      ? Promise.resolve([])
+      : prisma.booking.findMany({
+          where: { status: 'CONFIRMED', startTime: { lt: winEnd }, endTime: { gt: winStart }, ...(await bookingScope(user)) },
+          orderBy: { startTime: 'asc' },
+          take: 500,
+          select: { id: true, title: true, guestName: true, startTime: true, endTime: true, leadId: true, meetUrl: true, source: true },
+        }),
+    prisma.calendarEntry.findMany({ where: { ownerId: user.id, startTime: { lt: winEnd }, endTime: { gt: winStart } }, orderBy: { startTime: 'asc' }, take: 500 }),
+  ])
+  const calendarItems: CalendarItem[] = [
+    ...calBookings.map((b): CalendarItem => ({
+      id: `b-${b.id}`,
+      title: b.source === 'TEAM_MEETING' ? b.title : `${b.title} · ${b.guestName}`,
+      start: b.startTime.toISOString(),
+      end: b.endTime.toISOString(),
+      allDay: false,
+      color: entryColorVar(b.source === 'TEAM_MEETING' ? 'violet' : 'emerald'),
+      kind: 'booking',
+      href: b.leadId ? `/sales/leads/${b.leadId}` : undefined,
+      meetUrl: b.meetUrl ?? undefined,
+    })),
+    ...mine
+      .filter((t) => !t.done && t.dueAt && t.dueAt >= winStart && t.dueAt < winEnd)
+      .map((t): CalendarItem => ({
+        id: `t-${t.id}`,
+        title: `Task: ${t.title}`,
+        start: t.dueAt!.toISOString(),
+        end: new Date(t.dueAt!.getTime() + 30 * 60_000).toISOString(),
+        allDay: false,
+        color: entryColorVar('amber'),
+        kind: 'task',
+        href: byId.get(t.leadId) ? `/sales/leads/${t.leadId}` : undefined,
+      })),
+    ...calEntries.map((e): CalendarItem => ({
+      id: e.id,
+      title: e.title,
+      start: e.startTime.toISOString(),
+      end: e.endTime.toISOString(),
+      allDay: e.allDay,
+      color: entryColorVar(e.color),
+      kind: 'entry',
+      notes: e.notes ?? undefined,
+    })),
+  ]
 
   const touches = await prisma.activityLog.groupBy({
     by: ['entityId'],
@@ -134,6 +186,8 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           </CardContent>
         </Card>
       ) : null}
+
+      <TodayCalendar items={calendarItems} timeZone={tz} />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {stats.map((s) => (

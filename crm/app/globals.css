@@ -24,6 +24,14 @@
     --input: 210 40% 24%;
     --ring: 216 74% 58%;
     --radius: 0.5rem;
+    --popover: 210 70% 12%;
+    --popover-foreground: 0 0% 96%;
+    /* event-calendar palette (the component is written for Tailwind 4 theme vars) */
+    --color-primary: hsl(var(--primary));
+    --color-border: hsl(var(--border));
+    --color-blue-500: #3b82f6; --color-emerald-500: #10b981; --color-violet-500: #8b5cf6; --color-amber-500: #f59e0b;
+    --color-rose-500: #f43f5e; --color-cyan-500: #06b6d4; --color-indigo-500: #6366f1; --color-orange-500: #f97316;
+    --color-pink-500: #ec4899; --color-teal-500: #14b8a6;
   }
   * { @apply border-border; }
   body { @apply bg-background text-foreground antialiased; }
