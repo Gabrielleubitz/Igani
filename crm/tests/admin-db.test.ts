@@ -71,6 +71,12 @@ d('admin lead flows', async () => {
     expect(won).toMatchObject({ status: 'WON', lostReason: null, dealValue: 5000 })
   })
 
+  it('can be set to Demo sent (once the DEMO_SENT migration is applied)', async () => {
+    const l = await lead('2@x.co')
+    await changeLeadStatus(l.id, 'DEMO_SENT', null)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).status).toBe('DEMO_SENT')
+  })
+
   it('settings read stored values and fall back to defaults', async () => {
     expect(await getSetting('booking.bufferMinutes')).toBe(0)
     await prisma.siteSetting.create({ data: { key: 'booking.bufferMinutes', value: 15 } })
