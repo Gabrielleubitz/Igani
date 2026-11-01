@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useStageChange } from '@/components/crm/StageSelect'
 import { LEAD_STATUSES, STATUS_LABEL, formatMoney } from '@/lib/format'
+import { canSetStage, stagesFor } from '@/lib/stage-rules'
 import { cn } from '@/lib/utils'
 
 export interface BoardLead {
@@ -32,10 +33,12 @@ const COLORS: Record<string, string> = {
  * Drag a card between columns to change stage (desktop), or use the small stage menu on each card (touch/keyboard).
  * Won/Lost open the same dialog as everywhere else, so a Lost reason is always captured.
  */
-export function KanbanBoard({ leads }: { leads: (BoardLead & { status: LeadStatus })[] }): React.ReactElement {
+export function KanbanBoard({ leads, isAdmin }: { leads: (BoardLead & { status: LeadStatus })[]; isAdmin: boolean }): React.ReactElement {
   const { request, pending, error, dialog } = useStageChange()
   const [over, setOver] = useState<string | null>(null)
   const [dragging, setDragging] = useState<string | null>(null)
+  // Non-admins can only drop cards on the stages up to Demo scheduled; cards already past it are locked.
+  const role = isAdmin ? 'ADMIN' : 'SALES'
 
   return (
     <div>
@@ -59,7 +62,7 @@ export function KanbanBoard({ leads }: { leads: (BoardLead & { status: LeadStatu
                 setDragging(null)
                 const id = e.dataTransfer.getData('text/plain')
                 const lead = leads.find((l) => l.id === id)
-                if (lead && lead.status !== status && lead.canMove) request(id, status, lead.dealValue)
+                if (lead && lead.status !== status && lead.canMove && canSetStage(role, status)) request(id, status, lead.dealValue)
               }}
               className={cn('min-h-[240px] w-64 shrink-0 snap-start rounded-lg border border-t-4 bg-card/40 p-2 xl:w-auto', COLORS[status], over === status && 'ring-2 ring-ring')}
             >
@@ -104,7 +107,7 @@ export function KanbanBoard({ leads }: { leads: (BoardLead & { status: LeadStatu
                         onChange={(e) => request(l.id, e.target.value as LeadStatus, l.dealValue)}
                         className="mt-2 w-full rounded border bg-transparent px-1 py-0.5 text-xs text-muted-foreground xl:hidden"
                       >
-                        {LEAD_STATUSES.map((s) => (
+                        {stagesFor(role, LEAD_STATUSES).map((s) => (
                           <option key={s} value={s}>
                             Move to: {STATUS_LABEL[s]}
                           </option>

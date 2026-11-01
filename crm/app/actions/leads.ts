@@ -10,6 +10,7 @@ import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLead
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
+import { canEditAtStage, stageChangeProblem } from '@/lib/stage-rules'
 import { toActionError, type ActionResult } from './result'
 
 export async function updateLeadStatus(
@@ -22,6 +23,9 @@ export async function updateLeadStatus(
     const id = z.string().cuid().parse(leadId)
     await assertCanMoveLead(id, user)
     const parsed = z.nativeEnum(LeadStatus).parse(status)
+    const current = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { status: true } })
+    const problem = stageChangeProblem(user.role, current.status, parsed)
+    if (problem) throw new BookingError(problem, 'FORBIDDEN')
     const ex = z.object({ lostReason: z.string().trim().max(500).optional(), dealValue: z.number().int().min(0).max(1_000_000_000).optional() }).parse(extras)
     if (parsed === 'LOST' && !ex.lostReason) throw new z.ZodError([{ code: 'custom', path: ['lostReason'], message: 'A reason is required when marking a lead as lost' }])
     await changeLeadStatus(id, parsed, user.id, ex)
@@ -101,6 +105,10 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
     await assertCanSeeLead(id, admin)
     await prisma.$transaction(async (tx) => {
       const before = await tx.lead.findUniqueOrThrow({ where: { id } })
+      // Revenue past Demo scheduled is the admins' to change.
+      if (data.dealValue !== undefined && data.dealValue !== before.dealValue && !canEditAtStage(admin.role, before.status)) {
+        throw new BookingError('Only an admin can change the deal value once a lead is past Demo scheduled.', 'FORBIDDEN')
+      }
       // Only record fields that really changed, so the timeline stays readable.
       const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => data[k] !== undefined && JSON.stringify(data[k]) !== JSON.stringify(before[k]))
       if (changed.length === 0) return
@@ -207,6 +215,11 @@ export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: 
     const ch = z.object({ assigneeId: z.string().cuid().nullable().optional(), status: z.nativeEnum(LeadStatus).optional() }).parse(change)
     if (ch.assigneeId !== undefined && admin.role !== 'ADMIN') throw new BookingError('Only admins can reassign contacts in bulk.', 'FORBIDDEN')
     if (ch.status) await assertCanSeeLeads(ids, admin, true)
+    if (ch.status && admin.role !== 'ADMIN') {
+      const rows = await prisma.lead.findMany({ where: { id: { in: ids } }, select: { status: true } })
+      const problem = rows.map((r) => stageChangeProblem(admin.role, r.status, ch.status!)).find(Boolean)
+      if (problem) throw new BookingError(problem, 'FORBIDDEN')
+    }
     if (ch.status === 'LOST') throw new BookingError('Mark leads as lost one by one so a reason is recorded.', 'INVALID_STATE')
     await bulkUpdateLeadsTx(ids, ch, admin.id)
     revalidatePath('/sales', 'layout')

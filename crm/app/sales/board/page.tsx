@@ -4,6 +4,7 @@ import { LeadFilters } from '@/components/crm/LeadFilters'
 import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
 import { leadScope } from '@/lib/lead-access'
+import { canEditAtStage } from '@/lib/stage-rules'
 import { prisma } from '@/lib/prisma'
 import { leadScore } from '@/components/crm/crm-utils'
 import { buildLeadWhere, parseLeadFilters } from '@/lib/lead-query'
@@ -43,6 +44,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
         {leads.length} contact{leads.length === 1 ? '' : 's'}{isAdmin ? '' : ' · you can move the cards you own'}
       </p>
       <KanbanBoard
+        isAdmin={isAdmin}
         leads={leads.map((l) => ({
           id: l.id,
           name: leadName(l),
@@ -53,7 +55,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
           dealValue: l.dealValue,
           score: leadScore(l),
           status: l.status,
-          canMove: isAdmin || l.assignedToId === user.id,
+          canMove: isAdmin || (l.assignedToId === user.id && canEditAtStage(user.role, l.status)),
         }))}
       />
     </div>

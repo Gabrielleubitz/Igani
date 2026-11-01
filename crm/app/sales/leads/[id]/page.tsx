@@ -20,6 +20,7 @@ import { requireUser } from '@/lib/auth'
 import { appUrl } from '@/lib/env'
 import { formatDateTime, formatMoney, leadName, statusLabel, timeAgo } from '@/lib/format'
 import { canSeeLead } from '@/lib/lead-access'
+import { canEditAtStage } from '@/lib/stage-rules'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { foldTasksFromLogs } from '@/lib/task-view'
@@ -306,6 +307,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                   <EditContactForm
                     key={lead.updatedAt.toISOString()}
                     leadId={lead.id}
+                    dealValueLocked={!canEditAtStage(user.role, lead.status)}
                     initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, dealValue: lead.dealValue, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }}
                   />
                 </div>

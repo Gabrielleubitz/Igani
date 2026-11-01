@@ -38,6 +38,7 @@ export function LeadControls({ leadId, status, dealValue, assignedToId, currentU
         leadId={leadId}
         status={status}
         dealValue={dealValue}
+        isAdmin={isAdmin}
         disabled={!canMove}
         title={canMove ? 'Change stage' : assignedToId ? 'Only the owner can change the stage' : 'Claim this contact to change its stage'}
         onDone={(res) => setError(res.ok ? null : (res.error ?? 'Failed'))}

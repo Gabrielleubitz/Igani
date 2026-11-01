@@ -7,6 +7,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import { archiveLeads, bulkUpdateLeads, deleteLeads, exportLeadsCsv, updateLead } from '@/app/actions/leads'
 import { StageSelect } from '@/components/crm/StageSelect'
+import { stagesFor } from '@/lib/stage-rules'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
@@ -131,6 +132,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
             leadId={row.original.id}
             status={row.original.status}
             dealValue={row.original.dealValue}
+            isAdmin={isAdmin}
             disabled={!canMove}
             className="h-8 w-40"
             title={canMove ? 'Change stage' : row.original.assignedToId ? 'Only the owner can change the stage' : 'Open the contact and claim it to change the stage'}
@@ -192,7 +194,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
         <>
         <Select aria-label="Bulk status" className="h-8 w-44" disabled={pending || !sel.size} value="" onChange={(e) => e.target.value && run(() => bulkUpdateLeads(ids, { status: e.target.value as LeadStatus }), 'Status updated.')}>
           <option value="">Move to…</option>
-          {LEAD_STATUSES.filter((s) => s !== 'LOST').map((s) => (
+          {stagesFor(isAdmin ? 'ADMIN' : 'SALES', LEAD_STATUSES).filter((s) => s !== 'LOST').map((s) => (
             <option key={s} value={s}>
               {STATUS_LABEL[s]}
             </option>

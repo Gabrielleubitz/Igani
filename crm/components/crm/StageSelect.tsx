@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { LEAD_STATUSES, STATUS_LABEL } from '@/lib/format'
+import { canEditAtStage, stagesFor } from '@/lib/stage-rules'
 import { cn } from '@/lib/utils'
 
 export const LOST_REASONS = ['Budget', 'Chose a competitor', 'No response', 'Timing / not now', 'Not a fit', 'Other'] as const
@@ -107,19 +108,23 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
 }
 
 /** Stage dropdown used in tables and on the contact page. */
-export function StageSelect({ leadId, status, dealValue, disabled, title, className, onDone }: { leadId: string; status: LeadStatus; dealValue?: number | null; disabled?: boolean; title?: string; className?: string; onDone?: (res: { ok: boolean; error?: string }) => void }): React.ReactElement {
+export function StageSelect({ leadId, status, dealValue, disabled, title, className, onDone, isAdmin }: { leadId: string; status: LeadStatus; dealValue?: number | null; isAdmin: boolean; disabled?: boolean; title?: string; className?: string; onDone?: (res: { ok: boolean; error?: string }) => void }): React.ReactElement {
   const { request, pending, error, dialog } = useStageChange(onDone)
+  const role = isAdmin ? 'ADMIN' : 'SALES'
+  // Non-admins can only pick up to Demo scheduled, and a lead already past it is locked for them.
+  const locked = !canEditAtStage(role, status)
+  const options = stagesFor(role, LEAD_STATUSES)
   return (
     <span className="inline-flex flex-col gap-1">
       <Select
         aria-label="Stage"
-        title={title}
+        title={locked ? 'Only an admin can change a lead after Demo scheduled' : title}
         className={cn('h-8 w-40', className)}
-        disabled={pending || disabled}
+        disabled={pending || disabled || locked}
         value={status}
         onChange={(e) => request(leadId, e.target.value as LeadStatus, dealValue)}
       >
-        {LEAD_STATUSES.map((s) => (
+        {(options.includes(status) ? options : [...options, status]).map((s) => (
           <option key={s} value={s}>
             {STATUS_LABEL[s]}
           </option>
