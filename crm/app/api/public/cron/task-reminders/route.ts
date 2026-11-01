@@ -10,6 +10,7 @@ import { getSetting } from '@/lib/settings'
 import { createAutoTask, loadTasks, taskOwner } from '@/lib/tasks'
 import { localHour } from '@/lib/time'
 import { syncAllMailboxes } from '@/lib/mail-sync'
+import { backfillMeetingTasks } from '@/lib/meeting-tasks'
 import { syncDueMeetings } from '@/lib/meetings'
 
 export const dynamic = 'force-dynamic'
@@ -125,6 +126,7 @@ async function run(): Promise<Record<string, number>> {
     console.error('[cron] meeting sync failed', err)
     return { checked: 0, failed: 1 }
   })
+  await backfillMeetingTasks().catch((err: unknown) => console.error('[cron] meeting task backfill failed', err))
   const followUps = await createFollowUps()
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()

@@ -81,3 +81,11 @@ export async function setMeetingTaskDone(actor: { id: string; role: string }, ow
   if (t.done === done) return
   await logActivity({ entityType: 'USER', entityId: ownerId, actorId: actor.id, action: done ? 'task.completed' : 'task.reopened', metadata: { taskId } })
 }
+
+/** Creates tasks for team meetings whose notes were pulled before this feature existed (no-op for ones already done). */
+export async function backfillMeetingTasks(): Promise<number> {
+  const rows = await prisma.booking.findMany({ where: { source: 'TEAM_MEETING', status: { not: 'CANCELLED' }, meeting: { is: { notesStatus: 'READY' } } }, select: { id: true } })
+  let n = 0
+  for (const r of rows) n += await createMeetingTasks(r.id).catch(() => 0)
+  return n
+}
