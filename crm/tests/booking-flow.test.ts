@@ -48,6 +48,7 @@ const d = testDb ? describe : describe.skip
 d('booking confirmation flow', async () => {
   const { cancelBooking, createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, findParticipantConflicts, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
+  const { syncCalendarChanges } = await import('@/lib/calendar-sync')
   const prisma = new PrismaClient()
   let hostId = ''
 
@@ -102,6 +103,29 @@ d('booking confirmation flow', async () => {
     expect(stored.lead).toMatchObject({ status: 'DEMO_SCHEDULED', firstName: 'Dana', lastName: 'Cohen' })
     expect([a.status, b.status]).toEqual(['CONFIRMED', 'CONFIRMED'])
     expect(sentConfirmations).toHaveLength(1)
+  })
+
+  it('Google Calendar -> CRM: an event cancelled or moved in Google updates the booking and the dashboard count', async () => {
+    const today = () => prisma.booking.count({ where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, endTime: { gte: new Date('2030-01-07T00:00:00Z') }, startTime: { lt: new Date('2030-01-08T00:00:00Z') } } })
+    const book = async (n: number, id: string) => {
+      insert.mockResolvedValueOnce({ data: { id, hangoutLink: `https://meet.google.com/aaa-bbbb-cc${n}`, htmlLink: null } })
+      const b = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date(`2030-01-07T0${n}:00:00Z`), durationMinutes: 30, title: `M${n}`, guestName: 'G', guestEmail: `g${n}@example.com`, noLead: true })
+      await confirmBooking(b.id, null)
+      return b.id
+    }
+    const a = await book(1, 'evt_a')
+    const m = await book(3, 'evt_m')
+    expect(await today()).toBe(2) // booked from the CRM
+    const now = new Date('2030-01-06T00:00:00Z')
+    const same = { gone: false as const, start: new Date('2030-01-07T01:00:00Z'), end: new Date('2030-01-07T01:30:00Z') }
+    const lookup = async (_h: string, ev: string) => (ev === 'evt_a' ? { gone: true as const } : ev === 'evt_m' ? { gone: false as const, start: new Date('2030-01-09T03:00:00Z'), end: new Date('2030-01-09T03:30:00Z') } : same)
+    const r = await syncCalendarChanges({ now, lookup })
+    expect(r).toMatchObject({ checked: 2, cancelled: 1, moved: 1, failed: 0 })
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: a } })).status).toBe('CANCELLED')
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: m } })).startTime.toISOString()).toBe('2030-01-09T03:00:00.000Z')
+    expect(await today()).toBe(0) // cancelled + moved away in Google -> counter dropped
+    expect(del).not.toHaveBeenCalled() // already gone in Google: no second delete
+    expect(await syncCalendarChanges({ now, lookup })).toMatchObject({ checked: 1, cancelled: 0, moved: 0 }) // idempotent
   })
 
   it('lets any future time be chosen by hand, and notes a clash with another call', async () => {

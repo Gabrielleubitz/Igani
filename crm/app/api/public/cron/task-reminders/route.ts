@@ -12,6 +12,7 @@ import { localHour } from '@/lib/time'
 import { syncAllMailboxes } from '@/lib/mail-sync'
 import { backfillMeetingTasks } from '@/lib/meeting-tasks'
 import { syncDueMeetings } from '@/lib/meetings'
+import { syncCalendarChanges } from '@/lib/calendar-sync'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -121,6 +122,11 @@ async function run(): Promise<Record<string, number>> {
     console.error('[cron] mail sync failed', err)
     return { mailboxes: 0, stored: 0, failed: 1 }
   })
+  // Google Calendar → CRM: events cancelled or moved in Google update the booking (and so the counts).
+  const calendar = await syncCalendarChanges({ limit: 200 }).catch((err: unknown) => {
+    console.error('[cron] calendar sync failed', err)
+    return { checked: 0, cancelled: 0, moved: 0, failed: 1 }
+  })
   // Google Meet calls scheduled from the CRM: real start/end + Gemini notes (failures are per call, never block the rest).
   const meet = await syncDueMeetings({ limit: 100 }).catch((err: unknown) => {
     console.error('[cron] meeting sync failed', err)
@@ -182,5 +188,5 @@ async function run(): Promise<Record<string, number>> {
     sent++
     for (const t of list) await logActivity({ entityType: 'LEAD', entityId: t.leadId, action: 'task.reminded', metadata: { taskId: t.id, dueAt: t.dueAt!.toISOString() } })
   }
-  return { checked, emailed: sent, followUps, meetingReminders, expired, emailsSynced: mail.stored, mailboxErrors: mail.failed, meetingsChecked: meet.checked, meetingErrors: meet.failed }
+  return { checked, emailed: sent, followUps, meetingReminders, expired, emailsSynced: mail.stored, mailboxErrors: mail.failed, calendarCancelled: calendar.cancelled, calendarMoved: calendar.moved, calendarErrors: calendar.failed, meetingsChecked: meet.checked, meetingErrors: meet.failed }
 }

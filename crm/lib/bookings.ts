@@ -417,7 +417,7 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
  * Cancels a booking, removes the Google event and (when `notifyGuest` is set) emails the guest a branded notice
  * — 'declined' for an approval request that was turned down, 'cancelled' for a meeting that was called off.
  */
-export async function cancelBooking(bookingId: string, actorId: string | null, reason: string, notifyGuest: false | 'cancelled' | 'declined' = false): Promise<void> {
+export async function cancelBooking(bookingId: string, actorId: string | null, reason: string, notifyGuest: false | 'cancelled' | 'declined' = false, opts: { /** The event is already gone from Google (it was cancelled there). */ googleAlreadyGone?: boolean } = {}): Promise<void> {
   const booking = await prisma.booking.findUnique({ where: { id: bookingId }, include: { bookingPage: { select: { slug: true, active: true } } } })
   if (!booking) throw new BookingError('Booking not found.', 'NOT_FOUND')
   if (booking.status === 'CANCELLED') return
@@ -437,7 +437,7 @@ export async function cancelBooking(bookingId: string, actorId: string | null, r
   // Re-read: a confirmation finishing at the same moment may have just stored the Google event id.
   const fresh = await prisma.booking.findUnique({ where: { id: bookingId }, select: { googleEventId: true } })
   if (fresh?.googleEventId) booking.googleEventId = fresh.googleEventId
-  if (booking.googleEventId) {
+  if (booking.googleEventId && !opts.googleAlreadyGone) {
     // Upcoming meetings are cancelled for everyone invited (guest and teammates); a meeting that is over just disappears quietly.
     await deleteCalendarEvent(booking.hostId, booking.googleEventId, booking.endTime.getTime() > Date.now()).catch(async (err: unknown) => {
       await logActivity({

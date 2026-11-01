@@ -3,6 +3,7 @@
 import { aiTidyEnabled, tidyWithAI } from '@/lib/meeting-ai'
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
+import { syncCalendarChanges } from '@/lib/calendar-sync'
 import { z } from 'zod'
 import { toActionError, type ActionResult } from '@/app/actions/result'
 import { TASK_PRIORITIES, type TaskPriority } from '@/components/crm/crm-utils'
@@ -274,8 +275,9 @@ export async function syncMeetings(leadId?: string): Promise<ActionResult<{ chec
   try {
     const user = await requireUser()
     if (leadId) await assertCanSeeLead(z.string().cuid().parse(leadId), user)
+    const cal = await syncCalendarChanges({ ...(leadId ? { leadId } : { hostId: user.id }), limit: 30 }) // Google → CRM: cancelled/moved events
     const r = await syncDueMeetings({ ...(leadId ? { leadId } : { hostId: user.id }), limit: 10, minGapMs: 60_000 })
-    if (r.checked) refresh(leadId)
+    if (r.checked || cal.cancelled || cal.moved) refresh(leadId)
     return { ok: true, data: { checked: r.checked } }
   } catch (err) {
     return toActionError(err)
