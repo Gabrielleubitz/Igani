@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { canEditAtStage, canEditValueAtStage, canSetStage, stageChangeProblem, stagesFor } from '../lib/stage-rules'
 
 const ALL7 = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST'] as const
@@ -36,5 +36,16 @@ describe('pipeline permissions', () => {
     for (const at of ['NEW', 'CONTACTED', 'DEMO_SCHEDULED'] as const) expect(canEditValueAtStage('SALES', at)).toBe(true)
     for (const at of ['DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST'] as const) expect(canEditValueAtStage('SALES', at)).toBe(false)
     expect(canEditValueAtStage('ADMIN', 'WON')).toBe(true)
+  })
+})
+
+describe('a database that is missing a migration', () => {
+  it('is reported plainly instead of a vague failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const { toActionError } = await import('../app/actions/result')
+    const enumError = new Error('Invalid `prisma.lead.update()` invocation: invalid input value for enum "LeadStatus": "DEMO_SENT"')
+    expect(toActionError(enumError)).toEqual({ ok: false, error: expect.stringMatching(/database has not been updated/i) })
+    expect(toActionError(Object.assign(new Error('boom'), { code: 'P2034' })).error).toMatch(/P2034/)
+    expect(toActionError(new Error('boom')).error).toBe('Something went wrong. Please try again.')
   })
 })
