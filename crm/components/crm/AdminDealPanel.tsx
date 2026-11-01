@@ -149,11 +149,20 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
           <Label htmlFor="quoted-price">Quoted price (₪)</Label>
           <div className="flex gap-2">
             <Input id="quoted-price" inputMode="numeric" placeholder="e.g. 17000" value={price} onChange={(e) => setPrice(e.target.value)} />
-            <Button disabled={pending || (price.trim() === '' ? p.quotedPrice === null : amount === p.quotedPrice)} onClick={() => run(() => saveQuotedPrice(p.leadId, price.trim() === '' ? null : amount), 'Price saved.')}>
+            <Button
+              disabled={pending || (price.trim() === '' ? p.quotedPrice === null : amount === p.quotedPrice)}
+              onClick={() =>
+                start(async () => {
+                  const res = await saveQuotedPrice(p.leadId, price.trim() === '' ? null : amount)
+                  setMsg(res.ok ? { ok: true, text: res.data.movedToProposal ? 'Price saved. The lead moved to Proposal sent.' : 'Price saved.' } : { ok: false, text: res.error })
+                  router.refresh()
+                })
+              }
+            >
               Save
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">The price agreed with the client after the call. Salespeople never see it.</p>
+          <p className="text-xs text-muted-foreground">The price agreed with the client after the call. Saving a price moves the lead to Proposal sent. Salespeople never see it.</p>
         </div>
 
         <div className="space-y-2">

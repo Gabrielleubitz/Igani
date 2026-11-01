@@ -5,7 +5,7 @@ import { flexRender, getCoreRowModel, getSortedRowModel, useReactTable, type Col
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import { archiveLeads, bulkUpdateLeads, deleteLeads, exportLeadsCsv, updateLead } from '@/app/actions/leads'
+import { archiveLeads, assignLead, bulkUpdateLeads, deleteLeads, exportLeadsCsv, updateLead } from '@/app/actions/leads'
 import { StageSelect } from '@/components/crm/StageSelect'
 import { stagesFor } from '@/lib/stage-rules'
 import { Badge } from '@/components/ui/badge'
@@ -139,7 +139,17 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
           />
         )
       } },
-      { accessorKey: 'owner', header: 'Owner', cell: ({ row }) => row.original.owner ?? <Badge variant="secondary">unassigned</Badge> },
+      { accessorKey: 'owner', header: 'Owner', cell: ({ row }) => isAdmin ? (
+        // Admins can hand any lead to any team member right from the list.
+        <Select aria-label={`Owner of ${row.original.name}`} className="h-8 w-40" disabled={pending} value={row.original.assignedToId ?? ''} onChange={(e) => run(() => assignLead(row.original.id, e.target.value || null), 'Owner updated.')}>
+          <option value="">Unassigned</option>
+          {reps.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.label}
+            </option>
+          ))}
+        </Select>
+      ) : (row.original.owner ?? <Badge variant="secondary">unassigned</Badge>) },
       { accessorKey: 'source', header: 'Came from', cell: ({ row }) => <span title={row.original.sourceDetail ?? undefined} className="text-xs text-muted-foreground">{row.original.source}{row.original.sourceDetail ? <span className="block max-w-[12rem] truncate text-[11px] opacity-70">{row.original.sourceDetail}</span> : null}</span> },
       ...(isAdmin ? [{ accessorKey: 'quotedPrice', header: 'Quoted price', cell: ({ row }: { row: { original: LeadRow } }) => (row.original.quotedPrice != null ? formatMoney(row.original.quotedPrice) : '') }] : []),
       { accessorKey: 'createdAt', header: 'Created', cell: ({ row }) => row.original.createdAt.slice(0, 10) },

@@ -25,7 +25,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
       take: PAGE_SIZE,
       include: { assignedTo: { select: { name: true, email: true } } },
     }),
-    prisma.user.findMany({ where: { role: { in: ['SALES', 'ADMIN'] }, ...(user.role === 'ADMIN' ? {} : { id: user.id }) }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
+    prisma.user.findMany({ where: user.role === 'ADMIN' ? { role: { not: null } } : { id: user.id }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
     prisma.lead.findMany({ where: scope, distinct: ['source'], select: { source: true }, orderBy: { source: 'asc' } }),
     user.role === 'ADMIN'
       ? prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false ORDER BY tag LIMIT 200`

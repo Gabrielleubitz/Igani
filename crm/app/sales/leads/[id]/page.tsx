@@ -108,7 +108,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   }
   const anyPage = myPage ?? (await prisma.bookingPage.findFirst({ where: { active: true }, select: { slug: true }, orderBy: { createdAt: 'asc' } }))
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
-  const reps = people.filter((p) => (p.role === 'SALES' || p.role === 'ADMIN') && (isAdmin || p.id === user.id)).map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))
+  const reps = people.filter((p) => p.role !== null && (isAdmin || p.id === user.id)).map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))
   // Keep a former owner (left the team / role changed) selectable so the owner menu shows the truth.
   if (lead.assignedToId && !reps.some((r) => r.id === lead.assignedToId)) reps.unshift({ id: lead.assignedToId, label: `${lead.assignedTo?.name ?? lead.assignedTo?.email ?? 'Former teammate'} (no access)` })
   // Tasks: admins can hand work to anyone; everyone else to themselves or an admin.

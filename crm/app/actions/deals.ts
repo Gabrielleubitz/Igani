@@ -7,7 +7,7 @@ import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { type CommissionTerms, dealTerms, parseTerms } from '@/lib/commission'
-import { snapshotWonCommission, termsForAssignee } from '@/lib/deals'
+import { setQuotedPrice, snapshotWonCommission, termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
@@ -38,21 +38,15 @@ export async function getDealCommissionTerms(id: string): Promise<ActionResult<{
   }
 }
 
-/** Set or clear the price agreed with the client. On a won deal it refreshes the frozen commission (unless client money is already in). */
-export async function saveQuotedPrice(id: string, price: number | null): Promise<ActionResult> {
+/** Set or clear the price agreed with the client. Quoting a price moves an earlier-stage lead to Proposal sent. On a won deal it refreshes the frozen commission (unless client money is already in). */
+export async function saveQuotedPrice(id: string, price: number | null): Promise<ActionResult<{ movedToProposal: boolean }>> {
   try {
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
     const value = price === null ? null : money.parse(price)
-    await prisma.$transaction(async (tx) => {
-      const before = await tx.lead.findUniqueOrThrow({ where: { id: lid }, select: { quotedPrice: true } })
-      if (before.quotedPrice === value) return
-      await tx.lead.update({ where: { id: lid }, data: { quotedPrice: value } })
-      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.price_changed', actorId: admin.id, metadata: { from: before.quotedPrice, to: value } }, tx)
-      await snapshotWonCommission(lid, tx)
-    })
+    const result = await prisma.$transaction((tx) => setQuotedPrice(lid, value, admin.id, tx))
     refresh(lid)
-    return { ok: true, data: undefined }
+    return { ok: true, data: { movedToProposal: result.movedToProposal } }
   } catch (err) {
     return toActionError(err)
   }

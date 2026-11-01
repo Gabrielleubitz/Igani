@@ -29,6 +29,7 @@ d('client documents: who can add and open them', async () => {
   let annLead = ''
   beforeEach(async () => {
     await prisma.activityLog.deleteMany()
+    await prisma.booking.deleteMany() // another test file may have left meetings that point at users
     await prisma.leadDocument.deleteMany()
     await prisma.lead.deleteMany()
     await prisma.user.deleteMany()

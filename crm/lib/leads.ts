@@ -233,7 +233,7 @@ export async function assignLeadManually(leadId: string, assigneeId: string | nu
   await prisma.$transaction(async (tx) => {
     if (assigneeId) {
       const user = await tx.user.findUnique({ where: { id: assigneeId }, select: { role: true } })
-      if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) throw new Error('Assignee must be a SALES or ADMIN user')
+      if (!user?.role) throw new Error('Assignee must be an active team member')
     }
     const before = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { assignedToId: true } })
     const res = await tx.lead.updateMany({ where: { id: leadId, ...(opts.onlyIfUnassigned ? { assignedToId: null } : {}) }, data: { assignedToId: assigneeId } })
@@ -286,7 +286,7 @@ export async function bulkUpdateLeadsTx(
     if (before.length !== ids.length) throw new Error('Some leads no longer exist')
     if (change.assigneeId) {
       const user = await tx.user.findUnique({ where: { id: change.assigneeId }, select: { role: true } })
-      if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) throw new Error('Assignee must be a SALES or ADMIN user')
+      if (!user?.role) throw new Error('Assignee must be an active team member')
     }
     const logs: Prisma.ActivityLogCreateManyInput[] = []
     if (change.assigneeId !== undefined) {

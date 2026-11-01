@@ -28,6 +28,7 @@ d('agreements: upload and download permissions', async () => {
   let bo = ''
   beforeEach(async () => {
     await prisma.activityLog.deleteMany()
+    await prisma.booking.deleteMany() // another test file may have left meetings that point at users
     await prisma.agreement.deleteMany()
     await prisma.user.deleteMany()
     admin = (await prisma.user.create({ data: { email: 'a@igani.co', role: 'ADMIN' } })).id

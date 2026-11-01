@@ -7,7 +7,7 @@ if (testDb) process.env.DATABASE_URL = testDb
 const d = testDb ? describe : describe.skip
 
 d('admin lead flows', async () => {
-  const { bulkUpdateLeadsTx, reassignUserWork, changeLeadStatus } = await import('@/lib/leads')
+  const { assignLeadManually, bulkUpdateLeadsTx, reassignUserWork, changeLeadStatus } = await import('@/lib/leads')
   const { getSetting } = await import('@/lib/settings')
   const prisma = new PrismaClient()
 
@@ -42,10 +42,16 @@ d('admin lead flows', async () => {
     expect(await prisma.activityLog.count()).toBe(0)
   })
 
-  it('bulk update rejects a non-sales assignee and LOST', async () => {
+  it('any active team member can be assigned a lead (marketing too), but not someone without access; LOST needs a reason', async () => {
     const m = await prisma.user.create({ data: { email: 'm@x.co', role: 'MARKETING' } })
+    const gone = await prisma.user.create({ data: { email: 'gone@x.co', role: null } })
     const l = await lead('1@x.co')
-    await expect(bulkUpdateLeadsTx([l.id], { assigneeId: m.id }, m.id)).rejects.toThrow()
+    await bulkUpdateLeadsTx([l.id], { assigneeId: m.id }, m.id)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).assignedToId).toBe(m.id)
+    await assignLeadManually(l.id, null, m.id)
+    await assignLeadManually(l.id, m.id, m.id)
+    await expect(bulkUpdateLeadsTx([l.id], { assigneeId: gone.id }, m.id)).rejects.toThrow()
+    await expect(assignLeadManually(l.id, gone.id, m.id)).rejects.toThrow()
     await expect(bulkUpdateLeadsTx([l.id], { status: 'LOST' }, m.id)).rejects.toThrow()
   })
 
