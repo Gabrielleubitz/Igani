@@ -13,7 +13,7 @@ export default async function ImportPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-5">
       <Link href="/sales/leads" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
-        ← Contacts
+        ← Leads
       </Link>
       <PageIntro title="Import contacts" hint="Upload a spreadsheet saved as CSV. You'll see a preview (new vs. already in the CRM) before anything is saved." />
       <Card>

@@ -9,6 +9,7 @@ import { BookingInvite } from '@/emails/BookingInvite'
 import { BookingRequested } from '@/emails/BookingRequested'
 import { ContactEmail } from '@/emails/ContactEmail'
 import { MeetingReminder } from '@/emails/MeetingReminder'
+import { LeadsImported, type LeadsImportedProps } from '@/emails/LeadsImported'
 import { NewLeadAlert, type NewLeadAlertProps } from '@/emails/NewLeadAlert'
 import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
 import { PendingBooking } from '@/emails/PendingBooking'
@@ -16,6 +17,7 @@ import { TaskDigest, type TaskDigestProps } from '@/emails/TaskDigest'
 import { TeamInvite } from '@/emails/TeamInvite'
 import { appUrl, env } from './env'
 import { buildIcs } from './ics'
+import { importedLeadsSubject, newLeadSubject } from './lead-alerts'
 import { getSetting } from './settings'
 
 let client: Resend | undefined
@@ -124,13 +126,40 @@ export async function sendBookingConfirmedEmail(b: BookingEmailData & { meetUrl:
   })
 }
 
+/** Sent to teammates added to a meeting: the Meet link and time, nothing to approve. */
+export async function sendTeammateMeetingEmail(b: BookingEmailData & { meetUrl: string; teammateEmail: string; teammateName: string }): Promise<string> {
+  const icsFileName = 'igani-meeting.ics'
+  const ics = buildIcs({
+    uid: `${b.bookingId}-${b.teammateEmail}@app.igani.co`,
+    start: b.startTime,
+    end: b.endTime,
+    title: b.title,
+    description: `Join Google Meet: ${b.meetUrl}`,
+    location: b.meetUrl,
+    url: b.meetUrl,
+    organizerName: b.hostName,
+    organizerEmail: b.hostEmail,
+    attendeeName: b.teammateName,
+    attendeeEmail: b.teammateEmail,
+  })
+  const element = BookingConfirmed({ ...b, guestName: b.teammateName, meetUrl: b.meetUrl, logoUrl: logoUrl(), icsFileName, teammateOf: { guestName: b.guestName }, ...(await brand()) })
+  return send({
+    to: b.teammateEmail,
+    replyTo: b.hostEmail,
+    subject: `You're on the call: ${b.title} with ${b.guestName}`,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+    attachments: [{ filename: icsFileName, content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; method=REQUEST' }],
+  })
+}
+
 /** Branded notice to admins that a public booking awaits approval. */
-export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData): Promise<string | null> {
+export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData, opts: { teamRequest?: boolean } = {}): Promise<string | null> {
   if (to.length === 0) return null
-  const element = PendingBooking({ ...b, reviewUrl: appUrl('/admin/bookings'), logoUrl: logoUrl(), ...(await brand()) })
+  const element = PendingBooking({ ...b, teamRequest: opts.teamRequest, reviewUrl: appUrl(opts.teamRequest ? '/sales' : '/admin/bookings'), logoUrl: logoUrl(), ...(await brand()) })
   return send({
     to,
-    subject: `Approval needed: ${b.title} with ${b.guestName}`,
+    subject: opts.teamRequest ? `Team meeting request from ${b.hostName}: ${b.title}` : `Approval needed: ${b.title} with ${b.guestName}`,
     html: await render(element),
     text: await render(element, { plainText: true }),
   })
@@ -187,7 +216,14 @@ export async function sendMeetingReminderEmail(b: BookingEmailData & { meetUrl: 
 export async function sendNewLeadAlertEmail(to: string[], a: Omit<NewLeadAlertProps, 'logoUrl' | 'brandName' | 'supportEmail'>): Promise<string | null> {
   if (to.length === 0) return null
   const element = NewLeadAlert({ ...a, logoUrl: logoUrl(), ...(await brand()) })
-  return send({ to, subject: `New lead: ${a.leadName}${a.company ? ` (${a.company})` : ''}`, html: await render(element), text: await render(element, { plainText: true }) })
+  return send({ to, subject: newLeadSubject(a), html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** One summary for admins when a teammate imports several leads at once. */
+export async function sendLeadsImportedEmail(to: string[], a: Omit<LeadsImportedProps, 'logoUrl' | 'brandName' | 'supportEmail'>): Promise<string | null> {
+  if (to.length === 0) return null
+  const element = LeadsImported({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to, subject: importedLeadsSubject(a), html: await render(element), text: await render(element, { plainText: true }) })
 }
 
 /** A personal, branded email from a teammate to a contact. Replies go straight to the teammate. */

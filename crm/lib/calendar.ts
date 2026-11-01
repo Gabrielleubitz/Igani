@@ -3,8 +3,11 @@ import { randomUUID } from 'node:crypto'
 import type { calendar_v3 } from '@googleapis/calendar'
 import { GoogleNotConnectedError, calendarForHost } from './google'
 import { prisma } from './prisma'
-import { civilDate, computeSlots, overlaps, windowsForDate, type Interval } from './slots'
+import { computeSlots, overlaps, windowsForDate, type Interval } from './slots'
 import { getSetting } from './settings'
+
+/** Everyone is expected to be reachable 24/7, so every day is one open window. */
+const ALL_DAY = [{ startTime: '00:00', endTime: '24:00' }] as const
 
 /** Minimum lead time before a slot can be booked. */
 export const MIN_NOTICE_MINUTES = 60
@@ -51,7 +54,8 @@ async function getDbBusy(hostId: string, range: Interval, excludeBookingId?: str
 /**
  * Available start times (ISO) for `hostId` on the civil date of `date` (read as UTC Y-M-D,
  * e.g. `new Date('2026-11-02')`), interpreted in the host's time zone.
- * Combines weekly Availability, live Google free/busy and existing PENDING/CONFIRMED bookings.
+ * The team is bookable around the clock, so the only limits are live Google free/busy, existing
+ * PENDING/CONFIRMED bookings, the notice period and the buffer.
  */
 export async function getAvailableSlots(
   hostId: string,
@@ -60,13 +64,7 @@ export async function getAvailableSlots(
   options: { now?: Date; excludeBookingId?: string } = {},
 ): Promise<string[]> {
   const host = await hostOrThrow(hostId)
-  const { dayOfWeek } = civilDate(date)
-  const rules = await prisma.availability.findMany({
-    where: { hostId, dayOfWeek },
-    select: { startTime: true, endTime: true },
-    orderBy: { startTime: 'asc' },
-  })
-  const windows = windowsForDate(date, rules, host.timeZone)
+  const windows = windowsForDate(date, ALL_DAY, host.timeZone)
   const first = windows[0]
   const last = windows[windows.length - 1]
   if (!first || !last) return []
@@ -109,6 +107,8 @@ export interface MeetEventInput {
   guestName: string
   /** Team meetings: invite these people instead of one guest, and let Google email them. */
   attendeeEmails?: string[]
+  /** Teammates added to the event (no RSVP needed to join the Meet). */
+  teammates?: { email: string; name?: string | null }[]
 }
 
 /** Inserts the event on the host's primary calendar with an auto-provisioned Google Meet. */
@@ -123,7 +123,10 @@ export async function createMeetEvent(input: MeetEventInput): Promise<{ eventId:
       description: input.description,
       start: { dateTime: input.start.toISOString() },
       end: { dateTime: input.end.toISOString() },
-      attendees: input.attendeeEmails ? input.attendeeEmails.map((email) => ({ email })) : [{ email: input.guestEmail, displayName: input.guestName }],
+      attendees: input.attendeeEmails ? input.attendeeEmails.map((email) => ({ email })) : [
+        { email: input.guestEmail, displayName: input.guestName },
+        ...(input.teammates ?? []).filter((t) => t.email.toLowerCase() !== input.guestEmail.toLowerCase()).map((t) => ({ email: t.email, displayName: t.name ?? undefined })),
+      ],
       extendedProperties: { private: { iganiBookingId: input.bookingId } },
       conferenceData: {
         createRequest: { requestId: `igani-${input.bookingId}-${randomUUID()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } },
@@ -155,9 +158,13 @@ export async function listMeetEvents(hostId: string, from: Date, to: Date): Prom
   return out
 }
 
-export async function deleteCalendarEvent(hostId: string, eventId: string): Promise<void> {
+/**
+ * Deletes the event from the host's calendar. With `notifyAttendees` Google also cancels it for everyone invited
+ * (the guest and any teammates), so it disappears from their calendars too.
+ */
+export async function deleteCalendarEvent(hostId: string, eventId: string, notifyAttendees = false): Promise<void> {
   const cal = await calendarForHost(hostId)
-  await cal.events.delete({ calendarId: 'primary', eventId, sendUpdates: 'none' })
+  await cal.events.delete({ calendarId: 'primary', eventId, sendUpdates: notifyAttendees ? 'all' : 'none' })
 }
 
 export { GoogleNotConnectedError }

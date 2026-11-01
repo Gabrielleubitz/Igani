@@ -15,6 +15,7 @@ import {
   SquareKanban,
   Sun,
   Upload,
+  TrendingUp,
   UserCog,
   Users,
   Video,
@@ -41,11 +42,12 @@ const ICONS: Record<string, LucideIcon> = {
   teamMeetings: Video,
   pages: LinkIcon,
   team: UserCog,
+  performance: TrendingUp,
   audit: ScrollText,
   settings: Settings,
 }
 
-export type NavItem = { href: string; label: string; icon: keyof typeof ICONS | string; badge?: number }
+export type NavItem = { href: string; label: string; icon: keyof typeof ICONS | string; badge?: number; children?: { href: string; label: string }[] }
 export type NavGroup = { title: string; items: NavItem[] }
 
 function isActive(pathname: string, href: string): boolean {
@@ -53,7 +55,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-export function AppNav({ groups }: { groups: NavGroup[] }): React.ReactElement {
+export function AppNav({ groups, expanded = false }: { groups: NavGroup[]; expanded?: boolean }): React.ReactElement {
   const pathname = usePathname() ?? ''
   return (
     <nav aria-label="Main" className="flex flex-col gap-5">
@@ -64,8 +66,8 @@ export function AppNav({ groups }: { groups: NavGroup[] }): React.ReactElement {
             const active = isActive(pathname, n.href)
             const Icon = ICONS[n.icon]
             return (
+              <div key={n.href} className="group">
               <Link
-                key={n.href}
                 href={n.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
@@ -77,6 +79,22 @@ export function AppNav({ groups }: { groups: NavGroup[] }): React.ReactElement {
                 <span className="flex-1">{n.label}</span>
                 {n.badge ? <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold tabular-nums text-primary-foreground">{n.badge}</span> : null}
               </Link>
+              {n.children?.length ? (
+                // Hover (or keyboard focus) the item to reveal its options; always open in the phone menu and when one is the current page.
+                <div className={cn('ml-6 space-y-0.5 border-l pl-2', expanded || n.children.some((c) => isActive(pathname, c.href)) ? 'block' : 'hidden group-focus-within:block group-hover:block')}>
+                  {n.children.map((c) => (
+                    <Link
+                      key={c.href}
+                      href={c.href}
+                      aria-current={isActive(pathname, c.href) ? 'page' : undefined}
+                      className={cn('block whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors', isActive(pathname, c.href) ? 'bg-primary/15 font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}
+                    >
+                      {c.label}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+              </div>
             )
           })}
         </div>
@@ -103,7 +121,7 @@ export function MobileMenu({ groups }: { groups: NavGroup[] }): React.ReactEleme
       </button>
       {open ? (
         <div id="mobile-menu" className="absolute inset-x-0 top-full z-40 max-h-[calc(100vh-4rem)] overflow-y-auto border-b bg-background p-4 shadow-lg">
-          <AppNav groups={groups} />
+          <AppNav groups={groups} expanded />
         </div>
       ) : null}
     </div>
@@ -126,12 +144,12 @@ export function GlobalSearch(): React.ReactElement {
   return (
     <form action="/sales/leads" role="search" className="relative">
       <label htmlFor="global-search" className="sr-only">
-        Search contacts
+        Search leads
       </label>
       <input
         id="global-search"
         name="q"
-        placeholder="Search contacts…"
+        placeholder="Search leads…"
         className="h-9 w-full rounded-md border border-input bg-background/60 pl-3 pr-8 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
       <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border px-1 text-[10px] text-muted-foreground">/</kbd>

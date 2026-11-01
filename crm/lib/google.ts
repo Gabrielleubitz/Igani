@@ -2,17 +2,14 @@ import 'server-only'
 import { auth, calendar, type calendar_v3 } from '@googleapis/calendar'
 import { gmail, type gmail_v1 } from '@googleapis/gmail'
 import { env } from './env'
+import { DOCS_READ_SCOPE, GMAIL_READ_SCOPE, MEET_READ_SCOPE } from './google-scopes'
 import { prisma } from './prisma'
 
-export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
-/** Read Meet conference records (actual start/end, participants, notes/transcript docs). */
-export const MEET_READ_SCOPE = 'https://www.googleapis.com/auth/meetings.space.readonly'
-/** Read the Gemini notes Google Doc. */
-export const DOCS_READ_SCOPE = 'https://www.googleapis.com/auth/documents.readonly'
+export { GMAIL_READ_SCOPE, MEET_READ_SCOPE, DOCS_READ_SCOPE }
 
 export class GoogleNotConnectedError extends Error {
   constructor(hostId: string) {
-    super(`Host ${hostId} has no Google account with a refresh token — they must sign in again to grant calendar access.`)
+    super(`Host ${hostId} has no Google account with a refresh token — they must connect Google (Send meeting invite → Connect Google).`)
     this.name = 'GoogleNotConnectedError'
   }
 }

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import { splitDue } from '@/components/crm/crm-utils'
 import { logActivity } from '@/lib/audit'
-import { cancelBooking, emailDataFor } from '@/lib/bookings'
+import { cancelBooking, emailDataFor, teamMeetingIds } from '@/lib/bookings'
 import { appUrl } from '@/lib/env'
 import { sendMeetingReminderEmail, sendTaskDigestEmail } from '@/lib/email'
 import { formatDateTime, leadName } from '@/lib/format'
@@ -69,8 +69,11 @@ async function sendMeetingReminders(): Promise<number> {
   const sent = new Set(
     (await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.reminder_sent', entityId: { in: soon.map((b) => b.id) } }, select: { entityId: true } })).map((l) => l.entityId),
   )
+  // Internal team calls have no client to remind.
+  const team = await teamMeetingIds(soon.map((b) => b.id))
   let n = 0
   for (const b of soon) {
+    if (team.has(b.id)) continue
     // Skip meetings booked in the last few hours: the confirmation email is still fresh in their inbox.
     if (sent.has(b.id) || (b.confirmedAt && now - b.confirmedAt.getTime() < 6 * 3600_000)) continue
     try {

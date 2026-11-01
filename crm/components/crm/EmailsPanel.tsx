@@ -1,9 +1,9 @@
 'use client'
 
-import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { markEmailsRead, syncMyEmail } from '@/app/sales/actions'
+import { connectGoogle } from '@/components/ConnectGoogle'
 import { EmailComposer } from '@/components/crm/EmailComposer'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -76,7 +76,7 @@ export function EmailsPanel({
               <strong>Go to igani (unsafe)</strong> → <strong>Allow</strong>, and keep the &ldquo;Read your email&rdquo; box ticked.
             </span>
           </span>
-          <Button size="sm" onClick={() => void signIn('google', { callbackUrl: window.location.pathname })}>
+          <Button size="sm" onClick={() => connectGoogle(window.location.pathname)}>
             Connect Gmail
           </Button>
         </div>

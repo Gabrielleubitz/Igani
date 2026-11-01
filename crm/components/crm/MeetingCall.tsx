@@ -1,5 +1,6 @@
 'use client'
 
+import { GOOGLE_CONNECT_SCOPES } from '@/lib/google-scopes'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
@@ -49,7 +50,7 @@ export function MeetConnectBanner(): React.ReactElement {
       <p className="mt-1 text-muted-foreground">
         On Google&apos;s screen click <strong>Advanced</strong> → <strong>Go to igani (unsafe)</strong> → <strong>Allow</strong>, keeping the Meet and Docs boxes ticked.
       </p>
-      <Button size="sm" className="mt-2" onClick={() => void signIn('google', { callbackUrl: window.location.pathname })}>
+      <Button size="sm" className="mt-2" onClick={() => void signIn('google', { callbackUrl: window.location.pathname }, { scope: GOOGLE_CONNECT_SCOPES, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' })}>
         Reconnect Google
       </Button>
     </div>

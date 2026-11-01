@@ -1,28 +1,18 @@
 import 'server-only'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
-import type { Role } from '@prisma/client'
+import { Prisma, type Role } from '@prisma/client'
 import { getServerSession, type NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GoogleProvider from 'next-auth/providers/google'
 import { redirect } from 'next/navigation'
 import { logActivity } from './audit'
+import { DEFAULT_TIME_ZONE } from './default-time-zone'
 import { env } from './env'
+import { SIGN_IN_SCOPES, grantsWorkspaceAccess } from './google-scopes'
 import { prisma } from './prisma'
 
-/**
- * Google scopes: identity + create events (Meet) + read free/busy + read Gmail (to file client emails under contacts)
- * + read Meet conference records (real start/end) + read Docs (pull the Gemini meeting notes).
- */
-export const GOOGLE_SCOPES = [
-  'openid',
-  'email',
-  'profile',
-  'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/calendar.freebusy',
-  'https://www.googleapis.com/auth/gmail.readonly',
-  'https://www.googleapis.com/auth/meetings.space.readonly',
-  'https://www.googleapis.com/auth/documents.readonly',
-].join(' ')
+// Signing in asks Google for identity only. Calendar and Gmail access (sensitive scopes, which trigger Google's
+// "unverified app" warning) are requested separately, when someone clicks "Connect Google" (see lib/google-scopes.ts).
 
 /** How often the JWT re-checks the whitelist so revoked users lose access. */
 const ROLE_RECHECK_MS = 5 * 60 * 1000
@@ -35,6 +25,19 @@ async function activeRoleFor(email: string | null | undefined): Promise<Role | n
   if (!email) return null
   const allowed = await prisma.allowedUser.findUnique({ where: { email: normalizeEmail(email) } })
   return allowed?.active ? allowed.role : null
+}
+
+/** The time zone an admin chose when adding this person (kept in the audit log), else Jerusalem. */
+export async function timeZoneFor(email: string): Promise<string> {
+  const allowed = await prisma.allowedUser.findUnique({ where: { email: normalizeEmail(email) }, select: { id: true } })
+  if (!allowed) return DEFAULT_TIME_ZONE
+  const row = await prisma.activityLog.findFirst({
+    where: { entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', metadata: { path: ['timeZone'], not: Prisma.AnyNull } },
+    orderBy: { createdAt: 'desc' },
+    select: { metadata: true },
+  })
+  const zone = (row?.metadata as { timeZone?: unknown } | null)?.timeZone
+  return typeof zone === 'string' && zone ? zone : DEFAULT_TIME_ZONE
 }
 
 /** Dev/QA-only email login. Never enabled in production builds, and still requires an active whitelist entry. */
@@ -51,9 +54,7 @@ export function authOptions(): NextAuthOptions {
       GoogleProvider({
         clientId: e.GOOGLE_CLIENT_ID,
         clientSecret: e.GOOGLE_CLIENT_SECRET,
-        authorization: {
-          params: { scope: GOOGLE_SCOPES, access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true' },
-        },
+        authorization: { params: { scope: SIGN_IN_SCOPES } },
       }),
       ...(devLoginEnabled()
         ? [
@@ -64,7 +65,7 @@ export function authOptions(): NextAuthOptions {
                 const email = creds?.email ? normalizeEmail(creds.email) : ''
                 const role = await activeRoleFor(email)
                 if (!role) return null
-                const user = await prisma.user.upsert({ where: { email }, create: { email, name: email, role }, update: { role } })
+                const user = await prisma.user.upsert({ where: { email }, create: { email, name: email, role, timeZone: await timeZoneFor(email) }, update: { role } })
                 return { id: user.id, email: user.email, name: user.name }
               },
             }),
@@ -84,7 +85,9 @@ export function authOptions(): NextAuthOptions {
         // Returning user: sync role and refresh stored Google tokens (the adapter only writes them on first link).
         await prisma.user.updateMany({ where: { email: normalizeEmail(email) }, data: { role } })
         await prisma.allowedUser.updateMany({ where: { email: normalizeEmail(email), invitedAt: { not: null }, inviteAcceptedAt: null }, data: { inviteAcceptedAt: new Date(), inviteToken: null } })
-        if (account?.provider === 'google') {
+        // Only store tokens from a grant that includes Calendar or Gmail (the "Connect Google" step). A plain
+        // sign-in grants identity only; saving it would overwrite a teammate's saved Calendar/Gmail connection.
+        if (account?.provider === 'google' && grantsWorkspaceAccess(account.scope)) {
           await prisma.account.updateMany({
             where: { provider: 'google', providerAccountId: account.providerAccountId },
             data: {
@@ -123,7 +126,7 @@ export function authOptions(): NextAuthOptions {
       async createUser({ user }) {
         const role = await activeRoleFor(user.email)
         if (user.email) {
-          await prisma.user.update({ where: { id: user.id }, data: { role, email: normalizeEmail(user.email) } })
+          await prisma.user.update({ where: { id: user.id }, data: { role, email: normalizeEmail(user.email), timeZone: await timeZoneFor(user.email) } })
         }
         await logActivity({ entityType: 'USER', entityId: user.id, action: 'user.created', actorId: user.id, metadata: { role } })
       },

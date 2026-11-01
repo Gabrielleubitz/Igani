@@ -29,7 +29,8 @@ Pages: `/sales` pipeline (stages, claim / manual / round-robin assignment), `/sa
    to **Internal** (Workspace) to skip Google's sensitive-scope verification.
 3. `npm install && npx prisma migrate deploy`
 4. Whitelist the first admin: `npm run db:seed -- you@igani.co` (nobody can sign in before this).
-5. Each host signs in once (grants calendar access), sets **My hours**, and an admin creates a booking page.
+5. Each host signs in, clicks **Connect Google** on **My availability** (grants Calendar + Gmail), sets their hours, and an admin
+   creates a booking page. Signing in alone asks Google for name and email only.
 
 ## Lead webhook (from igani.co)
 
@@ -69,6 +70,14 @@ client emails show on **Today** and as a badge on the contact; replying from the
 - Google Cloud setup: enable the **Gmail API** in the same project as Calendar, and add the
   `https://www.googleapis.com/auth/gmail.readonly` scope under **OAuth consent screen → Data access**.
 - Status per teammate (connected / last error) is on **Team**.
+
+**Sign-in vs. Connect Google.** Signing in asks Google for identity only (`openid email profile`), which is not a
+sensitive scope, so **sign-in never shows the "Google hasn't verified this app" warning**, even for @gmail.com
+teammates. Calendar and Gmail are asked for separately when someone clicks **Connect Google** (My availability, or the
+Emails panel on a contact); the scopes live in `lib/google-scopes.ts`. Only that step shows the warning (see below).
+The saved connection is only replaced by a grant that includes Calendar or Gmail (`grantsWorkspaceAccess`), so an
+ordinary sign-in never disconnects anyone. Note: moving the project into a Workspace org and choosing **Make
+internal** would block @gmail.com accounts from signing in at all, so only do that if everyone has an @igani.co account.
 
 **Current state of the `igani` Google project:** Gmail API on, `gmail.readonly` saved. The project is not inside a
 Google Workspace organization, so the app is **External · In production · unverified** ("Make internal" is greyed out).

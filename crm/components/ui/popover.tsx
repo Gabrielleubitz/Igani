@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { buttonVariants } from './button'
 
 /**
- * Button + floating panel ("+ Add contact", "+ New page"…). Unlike <details>, it keeps its open state
+ * Button + floating panel ("+ Add lead", "+ New page"…). Unlike <details>, it keeps its open state
  * when the page refreshes after a save, so error messages stay visible. Esc or a click outside closes it.
  */
 export function Popover({ label, children, className, panelClassName }: { label: ReactNode; children: ReactNode; className?: string; panelClassName?: string }): React.ReactElement {

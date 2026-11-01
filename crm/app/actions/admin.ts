@@ -10,16 +10,16 @@ import { sendTeamInviteEmail } from '@/lib/email'
 import { prisma } from '@/lib/prisma'
 import { reassignUserWork } from '@/lib/leads'
 import { SETTING_SCHEMAS, isSettingKey } from '@/lib/settings'
-import { parseHHmm } from '@/lib/slots'
 import { toActionError, type ActionResult } from './result'
 
 const emailSchema = z.string().trim().email().max(254).transform(normalizeEmail)
 
 /** Add or update a whitelisted email. Role is mirrored to the User row immediately. */
-export async function upsertAllowedUser(input: { email: string; role: Role; active: boolean }): Promise<ActionResult> {
+export async function upsertAllowedUser(input: { email: string; role: Role; active: boolean; timeZone?: string }): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
-    const data = z.object({ email: emailSchema, role: z.nativeEnum(Role), active: z.boolean() }).parse(input)
+    const { timeZone, ...base } = z.object({ email: emailSchema, role: z.nativeEnum(Role), active: z.boolean(), timeZone: z.string().refine(validZone, 'Choose a valid time zone').optional() }).parse(input)
+    const data = base
     if (data.email === admin.email && (!data.active || data.role !== 'ADMIN')) {
       throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'You cannot demote or deactivate yourself' }])
     }
@@ -27,14 +27,14 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
     const row = await prisma.$transaction(async (tx) => {
       const allowed = await tx.allowedUser.upsert({ where: { email: data.email }, create: data, update: { role: data.role, active: data.active } })
       const users = await tx.user.findMany({ where: { email: data.email }, select: { id: true } })
-      await tx.user.updateMany({ where: { email: data.email }, data: { role: data.active ? data.role : null } })
+      await tx.user.updateMany({ where: { email: data.email }, data: { role: data.active ? data.role : null, ...(timeZone ? { timeZone } : {}) } })
       // Deactivated (or moved off SALES/ADMIN) users must not keep owning leads.
       if (users[0] && (!data.active || data.role === 'MARKETING')) {
         await reassignUserWork(users[0].id, null, admin.id, tx)
         // They can't host any more, so their public booking pages go offline too.
         await tx.bookingPage.updateMany({ where: { hostId: users[0].id }, data: { active: false } })
       }
-      await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: data }, tx)
+      await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: { ...data, ...(timeZone ? { timeZone } : {}) } }, tx)
       return allowed
     })
     revalidatePath('/admin/users')
@@ -67,42 +67,47 @@ export async function resendInvite(email: string): Promise<ActionResult> {
   }
 }
 
-const hhmm = z.string().refine((v) => {
+const validZone = (tz: string): boolean => {
   try {
-    parseHHmm(v)
+    new Intl.DateTimeFormat('en-US', { timeZone: tz })
     return true
   } catch {
     return false
   }
-}, 'Expected HH:mm')
+}
 
-const availabilitySchema = z.object({
-  timeZone: z.string().refine((tz) => {
-    try {
-      new Intl.DateTimeFormat('en-US', { timeZone: tz })
-      return true
-    } catch {
-      return false
-    }
-  }, 'Unknown time zone'),
-  rules: z
-    .array(z.object({ dayOfWeek: z.number().int().min(0).max(6), startTime: hhmm, endTime: hhmm }))
-    .max(50)
-    .refine((rules) => rules.every((r) => parseHHmm(r.endTime) > parseHHmm(r.startTime)), 'End must be after start'),
-})
-
-/** Replace the signed-in user's weekly working hours. */
-export async function saveMyAvailability(input: z.input<typeof availabilitySchema>): Promise<ActionResult> {
+/** ADMIN: put every teammate (and the default for future sign-ins) on one time zone. */
+export async function setAllTimeZones(timeZone: string): Promise<ActionResult<{ count: number }>> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
-    const data = availabilitySchema.parse(input)
-    await prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: user.id }, data: { timeZone: data.timeZone } })
-      await tx.availability.deleteMany({ where: { hostId: user.id } })
-      if (data.rules.length) await tx.availability.createMany({ data: data.rules.map((r) => ({ ...r, hostId: user.id })) })
-      await logActivity({ entityType: 'AVAILABILITY', entityId: user.id, action: 'availability.updated', actorId: user.id, metadata: data }, tx)
+    const admin = await requireUser(['ADMIN'])
+    const zone = z.string().refine(validZone, 'Unknown time zone').parse(timeZone)
+    const count = await prisma.$transaction(async (tx) => {
+      const res = await tx.user.updateMany({ where: { timeZone: { not: zone } }, data: { timeZone: zone } })
+      await logActivity({ entityType: 'USER', entityId: admin.id, action: 'user.time_zone_bulk_set', actorId: admin.id, metadata: { timeZone: zone, changed: res.count } }, tx)
+      return res.count
     })
-    revalidatePath('/sales/availability')
+    revalidatePath('/admin/team')
+    revalidatePath('/admin/users')
+    return { ok: true, data: { count } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** ADMIN: change a teammate's display name and time zone (the email is their sign-in identity and stays put). */
+export async function updateTeamMember(input: { userId: string; name: string; timeZone: string }): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const data = z.object({ userId: z.string().cuid(), name: z.string().trim().min(1, 'Enter a name').max(120), timeZone: z.string().refine(validZone, 'Unknown time zone') }).parse(input)
+    const before = await prisma.user.findUnique({ where: { id: data.userId }, select: { name: true, timeZone: true } })
+    if (!before) throw new z.ZodError([{ code: 'custom', path: ['userId'], message: 'Teammate not found' }])
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: data.userId }, data: { name: data.name, timeZone: data.timeZone } })
+      await logActivity({ entityType: 'USER', entityId: data.userId, action: 'user.profile_updated', actorId: admin.id, metadata: { from: before, to: { name: data.name, timeZone: data.timeZone } } }, tx)
+    })
+    revalidatePath('/admin/team')
+    revalidatePath(`/admin/team/${data.userId}`)
+    revalidatePath('/admin/users')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)

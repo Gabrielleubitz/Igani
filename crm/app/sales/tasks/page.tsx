@@ -19,11 +19,11 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
   const user = await requireUser()
   const showDone = searchParams.status === 'done'
   const priority = TASK_PRIORITIES.find((x) => x === searchParams.priority)
-  const scope = searchParams.scope === 'all' ? 'all' : 'mine'
+  const scope = searchParams.scope === 'all' && user.role === 'ADMIN' ? 'all' : 'mine'
   const [{ all, mine, leads: byId }, me, people] = await Promise.all([
     tasksForUser(user),
     prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
-    prisma.user.findMany({ where: { role: { not: null } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
+    prisma.user.findMany({ where: { role: { not: null }, ...(user.role === 'ADMIN' ? {} : { OR: [{ id: user.id }, { role: 'ADMIN' }] }) }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
   ])
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
   const teammates = people.map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))
@@ -69,7 +69,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
       <PageIntro title="Tasks" hint="Follow-ups across your contacts. Tick a box to complete it; hover a task to edit or delete it. Add new tasks from a contact page." />
       <div className="flex flex-wrap items-center gap-2">
         {tab('My tasks', { scope: 'mine' }, scope === 'mine')}
-        {tab(user.role === 'ADMIN' ? 'Everyone' : 'All I can see', { scope: 'all' }, scope === 'all')}
+        {user.role === 'ADMIN' ? tab('Everyone', { scope: 'all' }, scope === 'all') : null}
         <span className="mx-1 h-5 w-px bg-border" />
         {tab('Open', { status: undefined }, !showDone)}
         {tab('Completed', { status: 'done' }, showDone)}

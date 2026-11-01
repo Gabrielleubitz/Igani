@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { logActivity } from '@/lib/audit'
-import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, phoneKey } from '@/lib/leads'
+import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, notifyTeamOfNewLead, phoneKey } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
@@ -32,21 +32,14 @@ export async function updateLeadStatus(
   }
 }
 
-/** ADMIN: assign to a specific rep (or null to unassign). SALES: may only claim unassigned leads for themselves. */
+/** ADMIN only: assign to a specific rep (or null to unassign). */
 export async function assignLead(leadId: string, assigneeId: string | null): Promise<ActionResult> {
   try {
-    const user = await requireUser(['ADMIN', 'SALES'])
+    // Only admins assign leads; salespeople see just the leads they were given.
+    const user = await requireUser(['ADMIN'])
     const id = z.string().cuid().parse(leadId)
     const to = assigneeId ? z.string().cuid().parse(assigneeId) : null
-    if (user.role === 'SALES') {
-      const lead = await prisma.lead.findUnique({ where: { id }, select: { assignedToId: true } })
-      if (!lead) throw new BookingError('Lead not found.', 'NOT_FOUND')
-      if (to !== user.id || lead.assignedToId) throw new BookingError('Reps can only claim unassigned leads.', 'FORBIDDEN')
-    }
-    await assignLeadManually(id, to, user.id, { onlyIfUnassigned: user.role === 'SALES' }).catch((err: unknown) => {
-      if (err instanceof Error && err.message === 'ALREADY_CLAIMED') throw new BookingError('A teammate just claimed this contact.', 'INVALID_STATE')
-      throw err
-    })
+    await assignLeadManually(id, to, user.id)
     revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
@@ -147,12 +140,12 @@ export async function createLead(input: { email?: string; firstName?: string; la
       .parse(input)
     if (data.email) {
       const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
-      if (exists) throw new BookingError('A contact with this email already exists.', 'INVALID_STATE')
+      if (exists) throw new BookingError('A lead with this email already exists.', 'INVALID_STATE')
     } else if (data.phone) {
       // Phone-only: same matching rule as the website forms (last 9 digits), so hand-added contacts don't duplicate.
       const key = phoneKey(data.phone)
       const dup = key ? await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) LIMIT 1` : []
-      if (dup.length) throw new BookingError('A contact with this phone number already exists. Search for it in Contacts.', 'INVALID_STATE')
+      if (dup.length) throw new BookingError('A lead with this phone number already exists. Search for it in Leads.', 'INVALID_STATE')
     }
     const lead = await prisma.$transaction(async (tx) => {
       // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.
@@ -161,6 +154,8 @@ export async function createLead(input: { email?: string; firstName?: string; la
       return l
     })
     revalidatePath('/sales', 'layout')
+    // Alert the admins now. Awaited (it never throws and gives up after a few seconds) so the send isn't cut off when this request ends.
+    await notifyTeamOfNewLead(lead.id, { addedBy: { id: admin.id, name: admin.name ?? admin.email, email: admin.email } })
     return { ok: true, data: { id: lead.id } }
   } catch (err) {
     return toActionError(err)

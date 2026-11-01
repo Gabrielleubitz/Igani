@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { MeetingCard, Quote, Shell, Steps } from './Shell'
+import { MeetingCard, Quote, Shell } from './Shell'
 import { formatWhen, googleCalendarUrl, outlookCalendarUrl } from './theme'
 
 export interface BookingConfirmedProps {
@@ -18,19 +18,27 @@ export interface BookingConfirmedProps {
   /** Set when an .ics file is attached to the email; shows the "add to calendar" hint */
   icsFileName?: string
   notes?: string | null
+  /** Set when the email goes to a teammate who was added to someone else's meeting */
+  teammateOf?: { guestName: string }
 }
 
-export function BookingConfirmed({ guestName, hostName, title, startTime, endTime, timeZone, meetUrl, logoUrl, brandName = 'Igani', supportEmail, icsFileName, notes }: BookingConfirmedProps): React.ReactElement {
+export function BookingConfirmed({ guestName, hostName, title, startTime, endTime, timeZone, meetUrl, logoUrl, brandName = 'Igani', supportEmail, icsFileName, notes, teammateOf }: BookingConfirmedProps): React.ReactElement {
   const w = formatWhen(startTime, endTime, timeZone)
   const cal = { title, start: startTime, end: endTime, details: `Join Google Meet: ${meetUrl}`, location: meetUrl }
   return (
     <Shell
       preview={`You're booked: ${title}, ${w.date} at ${w.time}`}
-      eyebrow="Confirmed"
+      eyebrow={teammateOf ? 'You were added' : 'Confirmed'}
       tone="success"
       icon="✓"
-      title="You're all set!"
-      intro={<>Hi {guestName}, your meeting with {hostName} is confirmed. See you there.</>}
+      title={teammateOf ? 'Join the call' : "You're all set!"}
+      intro={
+        teammateOf ? (
+          <>Hi {guestName}, {hostName} added you to the call with {teammateOf.guestName}. No need to reply: just open the link when it starts.</>
+        ) : (
+          <>Hi {guestName}, your meeting with {hostName} is confirmed. See you there.</>
+        )
+      }
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
@@ -44,13 +52,6 @@ export function BookingConfirmed({ guestName, hostName, title, startTime, endTim
     >
       <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="success" rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Where', value: 'Google Meet (link below)' }]} />
       {notes ? <Quote label="Your note">{notes}</Quote> : null}
-      <Steps
-        title="Before the call"
-        steps={[
-          { title: 'Join a minute early', body: 'Open the Meet link from a laptop or phone, no installs needed.' },
-          { title: 'Bring examples', body: 'Sites you like, your current one, and any goals or deadlines.' },
-        ]}
-      />
     </Shell>
   )
 }

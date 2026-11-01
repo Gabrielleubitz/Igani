@@ -22,13 +22,13 @@ export function SlotPicker({
   const day = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: zone })
   const key = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: zone })
   const otherDay = (iso: string): boolean => Boolean(date) && key.format(new Date(iso)) !== date
-  const fmt = { format: (d: Date): string => (otherDay(d.toISOString()) ? `${day.format(d)}, ${time.format(d)}` : time.format(d)) }
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Available times">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2" role="radiogroup" aria-label="Available times">
         {slots.map((s) => (
-          <Button key={s} type="button" role="radio" aria-checked={selected === s} size="sm" variant={selected === s ? 'default' : 'outline'} onClick={() => onSelect(s)}>
-            {fmt.format(new Date(s))}
+          <Button key={s} type="button" role="radio" aria-checked={selected === s} size="sm" variant={selected === s ? 'default' : 'outline'} className="h-auto min-h-9 flex-col gap-0 whitespace-nowrap px-2 py-1.5" onClick={() => onSelect(s)}>
+            {otherDay(s) ? <span className="text-[10px] font-normal leading-tight opacity-80">{day.format(new Date(s))}</span> : null}
+            <span>{time.format(new Date(s))}</span>
           </Button>
         ))}
       </div>

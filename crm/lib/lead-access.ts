@@ -8,15 +8,15 @@ import { prisma } from './prisma'
 /**
  * One rule for every page and action:
  *  - ADMIN sees and edits every contact.
- *  - Everyone else sees their own contacts plus unassigned ones (so they can claim them).
- *  - Changing the pipeline stage needs ownership (SALES must claim first); ADMIN always may.
+ *  - Everyone else sees only the contacts assigned to them (an admin assigns new ones).
+ *  - Changing the pipeline stage needs ownership; ADMIN always may.
  */
 export function leadScope(user: Pick<SessionUser, 'id' | 'role'>): Prisma.LeadWhereInput {
   return visibleLeadsWhere(user.role, user.id)
 }
 
 export function canSeeLead(user: Pick<SessionUser, 'id' | 'role'>, lead: { assignedToId: string | null }): boolean {
-  return user.role === 'ADMIN' || lead.assignedToId === null || lead.assignedToId === user.id
+  return user.role === 'ADMIN' || lead.assignedToId === user.id
 }
 
 /** Throws NOT_FOUND unless the lead exists and the user may see it. Returns the owner id. */
@@ -31,7 +31,7 @@ export async function assertCanMoveLead(leadId: string, user: Pick<SessionUser, 
   const lead = await assertCanSeeLead(leadId, user)
   if (user.role === 'ADMIN') return
   if (lead.assignedToId !== user.id) {
-    throw new BookingError(lead.assignedToId ? 'This contact belongs to another teammate.' : 'Claim this contact before changing its stage.', 'FORBIDDEN')
+    throw new BookingError('This contact belongs to another teammate.', 'FORBIDDEN')
   }
 }
 

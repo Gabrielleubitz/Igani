@@ -4,7 +4,7 @@ import { logActivity } from './audit'
 import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, isSlotStillFree } from './calendar'
 import { getSetting } from './settings'
 import { createAutoTask, deleteAutoTasksForBooking } from './tasks'
-import { sendApprovalRequestEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail, sendBookingRequestedEmail, type BookingEmailData } from './email'
+import { sendApprovalRequestEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail, sendBookingRequestedEmail, sendTeammateMeetingEmail, type BookingEmailData } from './email'
 import { appUrl, env } from './env'
 import { prisma } from './prisma'
 
@@ -32,6 +32,29 @@ export async function assertSlotOffered(hostId: string, start: Date, durationMin
   const host = await prisma.user.findUniqueOrThrow({ where: { id: hostId }, select: { timeZone: true } })
   const slots = await getAvailableSlots(hostId, civilDateInZone(start, host.timeZone), durationMinutes)
   if (!slots.includes(start.toISOString())) throw new BookingError('That time is no longer available.', 'INVALID_SLOT')
+}
+
+/**
+ * Manual scheduling: any time is allowed unless it is in the past or clashes with something the host already has.
+ * Returns a short note describing the clash, or null when the time is free.
+ */
+export async function findTimeConflict(hostId: string, start: Date, durationMinutes: number, excludeBookingId?: string): Promise<string | null> {
+  if (start.getTime() <= Date.now()) return 'That time has already passed.'
+  const end = new Date(start.getTime() + durationMinutes * 60_000)
+  const pad = (await getSetting('booking.bufferMinutes')) * 60_000
+  const clash = await prisma.booking.findFirst({
+    where: {
+      hostId,
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      startTime: { lt: new Date(end.getTime() + pad) },
+      endTime: { gt: new Date(start.getTime() - pad) },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    select: { title: true, guestName: true, status: true },
+  })
+  if (clash) return `A call is already booked at this time (${clash.title} with ${clash.guestName}${clash.status === 'PENDING' ? ', awaiting confirmation' : ''}).`
+  if (!(await isSlotStillFree(hostId, start, end, excludeBookingId))) return 'This time is busy on the Google Calendar.'
+  return null
 }
 
 /** Finds or creates the lead for a guest email (bookings always attach to the pipeline). */
@@ -67,6 +90,8 @@ export interface NewBookingInput {
   leadId?: string | null
   bookingPageId?: string | null
   createdById?: string | null
+  /** Team meetings have no client, so no lead is created for the "guest". */
+  noLead?: boolean
 }
 
 /**
@@ -85,15 +110,16 @@ export async function createPendingBooking(input: NewBookingInput): Promise<Book
     })
     if (clash) throw new BookingError('That time was just taken.', 'SLOT_TAKEN')
 
-    const leadId =
-      input.leadId ??
+    const leadId = input.noLead
+      ? null
+      : (input.leadId ??
       (await upsertLeadForGuest(
         tx,
         { email: input.guestEmail, name: input.guestName },
         input.source === 'PUBLIC_PAGE' ? 'booking-page' : 'sales-invite',
         input.hostId,
         input.createdById ?? null,
-      ))
+      )))
     const booking = await tx.booking.create({
       data: {
         status: 'PENDING',
@@ -143,6 +169,75 @@ export async function emailDataFor(bookingId: string): Promise<BookingEmailData>
   }
 }
 
+/** Teammates who may be added to a call: admins can add anyone on the team, everyone else only admins. */
+export async function allowedTeammates(actor: { id: string; role: 'ADMIN' | 'SALES' | 'MARKETING' | null }, hostId: string): Promise<{ id: string; name: string | null; email: string }[]> {
+  const users = await prisma.user.findMany({
+    where: { role: actor.role === 'ADMIN' ? { in: ['ADMIN', 'SALES', 'MARKETING'] } : 'ADMIN', email: { not: null }, id: { notIn: [actor.id, hostId] } },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: 'asc' },
+  })
+  return users.flatMap((u) => (u.email ? [{ id: u.id, name: u.name, email: u.email }] : []))
+}
+
+/** Which of these bookings are internal team meetings (no client). */
+export async function teamMeetingIds(bookingIds: string[]): Promise<Set<string>> {
+  if (bookingIds.length === 0) return new Set()
+  const rows = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', entityId: { in: bookingIds }, action: 'booking.team_meeting' }, select: { entityId: true } })
+  return new Set(rows.map((r) => r.entityId))
+}
+
+/** Bookings currently marked as done (latest of done / undone wins). Looks back 120 days. */
+export async function doneBookingIds(): Promise<Set<string>> {
+  const rows = await prisma.activityLog.findMany({
+    where: { entityType: 'BOOKING', action: { in: ['booking.done', 'booking.undone'] }, createdAt: { gte: new Date(Date.now() - 120 * 86_400_000) } },
+    orderBy: { createdAt: 'asc' },
+    select: { entityId: true, action: true },
+  })
+  const done = new Set<string>()
+  for (const r of rows) {
+    if (r.action === 'booking.done') done.add(r.entityId)
+    else done.delete(r.entityId)
+  }
+  return done
+}
+
+/** Removes a meeting for good: frees the time, deletes the calendar event and prep task, then the record itself. */
+export async function deleteBooking(bookingId: string, actorId: string): Promise<void> {
+  const booking = await prisma.booking.findUnique({ where: { id: bookingId }, select: { id: true, title: true, guestName: true, startTime: true, status: true } })
+  if (!booking) throw new BookingError('Meeting not found.', 'NOT_FOUND')
+  await cancelBooking(bookingId, actorId, 'deleted', false) // no-op when already cancelled
+  await prisma.booking.delete({ where: { id: bookingId } })
+  await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.deleted', actorId, metadata: { title: booking.title, guest: booking.guestName, start: booking.startTime.toISOString(), wasStatus: booking.status } })
+}
+
+/** Teammates invited to each booking (id → names), for showing who is on a call. */
+export async function teammateNamesByBooking(bookingIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>()
+  if (bookingIds.length === 0) return out
+  const logs = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', entityId: { in: bookingIds }, action: 'booking.teammates' }, orderBy: { createdAt: 'asc' }, select: { entityId: true, metadata: true } })
+  const idsFor = new Map(logs.map((l) => [l.entityId, ((l.metadata as { userIds?: unknown } | null)?.userIds as unknown[] | undefined)?.filter((i): i is string => typeof i === 'string') ?? []]))
+  const people = await prisma.user.findMany({ where: { id: { in: [...new Set([...idsFor.values()].flat())] } }, select: { id: true, name: true, email: true } })
+  const name = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
+  for (const [bookingId, ids] of idsFor) out.set(bookingId, ids.map((i) => name.get(i)).filter((n): n is string => Boolean(n)))
+  return out
+}
+
+/** Bookings a person may see: admins all; everyone else the ones they host or were added to. */
+export async function bookingScope(user: { id: string; role: string }): Promise<Prisma.BookingWhereInput> {
+  if (user.role === 'ADMIN') return {}
+  const added = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.teammates', metadata: { path: ['userIds'], array_contains: user.id } }, select: { entityId: true } })
+  return { OR: [{ hostId: user.id }, { id: { in: added.map((a) => a.entityId) } }] }
+}
+
+/** Teammate ids saved with the invite (kept in the audit log), narrowed to people who still have access. */
+async function teammatesForBooking(bookingId: string, hostId: string): Promise<{ id: string; name: string | null; email: string }[]> {
+  const row = await prisma.activityLog.findFirst({ where: { entityType: 'BOOKING', entityId: bookingId, action: 'booking.teammates' }, orderBy: { createdAt: 'desc' }, select: { metadata: true } })
+  const ids = (row?.metadata as { userIds?: unknown } | null)?.userIds
+  if (!Array.isArray(ids) || ids.length === 0) return []
+  const users = await prisma.user.findMany({ where: { id: { in: ids.filter((i): i is string => typeof i === 'string'), not: hostId }, role: { not: null }, email: { not: null } }, select: { id: true, name: true, email: true } })
+  return users.flatMap((u) => (u.email ? [{ id: u.id, name: u.name, email: u.email }] : []))
+}
+
 /**
  * PENDING → CONFIRMED: re-checks the calendar, creates the Google Calendar event with a Meet
  * link (conferenceDataVersion 1), stores meetUrl, moves the lead to DEMO_SCHEDULED and emails
@@ -169,6 +264,8 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
     throw new BookingError('This booking was cancelled.', 'INVALID_STATE')
   }
 
+  const teammates = await teammatesForBooking(bookingId, booking.hostId)
+  const isTeam = (await teamMeetingIds([bookingId])).has(bookingId)
   let event: Awaited<ReturnType<typeof createMeetEvent>>
   try {
     event = await createMeetEvent({
@@ -182,6 +279,7 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
       end: booking.endTime,
       guestEmail: booking.guestEmail,
       guestName: booking.guestName,
+      teammates,
     })
   } catch (err) {
     // Only roll back if nobody cancelled it meanwhile.
@@ -229,8 +327,22 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
   })
 
   try {
-    const emailId = await sendBookingConfirmedEmail({ ...(await emailDataFor(bookingId)), meetUrl: event.meetUrl })
-    await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.confirmation_sent', actorId, metadata: { emailId } })
+    // Team meetings have no client to confirm to: only the teammates are emailed.
+    if (!isTeam) {
+      const emailId = await sendBookingConfirmedEmail({ ...(await emailDataFor(bookingId)), meetUrl: event.meetUrl })
+      await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.confirmation_sent', actorId, metadata: { emailId } })
+    }
+    if (teammates.length > 0) {
+      const data = { ...(await emailDataFor(bookingId)), ...(isTeam ? { guestName: 'the team' } : {}) }
+      for (const t of teammates) {
+        try {
+          await sendTeammateMeetingEmail({ ...data, meetUrl: event.meetUrl, teammateEmail: t.email, teammateName: t.name ?? t.email })
+        } catch (err) {
+          console.error('[bookings] teammate email failed', bookingId, t.id, err)
+        }
+      }
+      await logActivity({ entityType: 'BOOKING', entityId: bookingId, action: 'booking.teammates_notified', actorId, metadata: { userIds: teammates.map((t) => t.id) } })
+    }
   } catch (err) {
     // The meeting exists; a mail outage must not undo it. Surface it in the audit log instead.
     console.error('[bookings] confirmation email failed', bookingId, err)
@@ -270,7 +382,8 @@ export async function cancelBooking(bookingId: string, actorId: string | null, r
   const fresh = await prisma.booking.findUnique({ where: { id: bookingId }, select: { googleEventId: true } })
   if (fresh?.googleEventId) booking.googleEventId = fresh.googleEventId
   if (booking.googleEventId) {
-    await deleteCalendarEvent(booking.hostId, booking.googleEventId).catch(async (err: unknown) => {
+    // Upcoming meetings are cancelled for everyone invited (guest and teammates); a meeting that is over just disappears quietly.
+    await deleteCalendarEvent(booking.hostId, booking.googleEventId, booking.endTime.getTime() > Date.now()).catch(async (err: unknown) => {
       await logActivity({
         entityType: 'BOOKING',
         entityId: bookingId,

@@ -25,11 +25,11 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
       take: PAGE_SIZE,
       include: { assignedTo: { select: { name: true, email: true } } },
     }),
-    prisma.user.findMany({ where: { role: { in: ['SALES', 'ADMIN'] } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
+    prisma.user.findMany({ where: { role: { in: ['SALES', 'ADMIN'] }, ...(user.role === 'ADMIN' ? {} : { id: user.id }) }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
     prisma.lead.findMany({ where: scope, distinct: ['source'], select: { source: true }, orderBy: { source: 'asc' } }),
     user.role === 'ADMIN'
       ? prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false ORDER BY tag LIMIT 200`
-      : prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false AND ("assignedToId" = ${user.id} OR "assignedToId" IS NULL) ORDER BY tag LIMIT 200`,
+      : prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false AND "assignedToId" = ${user.id} ORDER BY tag LIMIT 200`,
     prisma.lead.groupBy({ by: ['status'], where: { AND: [buildLeadWhere({ ...f, status: undefined }), scope] }, _count: { _all: true } }),
   ])
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -62,14 +62,14 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro
-          title={f.archived ? 'Archived contacts' : 'Contacts'}
-          hint={user.role === 'ADMIN' ? 'Everyone in the CRM. Search, filter, change a stage, or open a name for notes, tasks and meetings.' : 'Your contacts plus unassigned ones you can claim. Open a name for notes, tasks and meetings.'}
+          title={f.archived ? 'Archived leads' : 'Leads'}
+          hint={user.role === 'ADMIN' ? 'Everyone in the CRM. Search, filter, change a stage, or open a name for notes, tasks and meetings.' : 'Your leads. Open a name for notes, tasks and meetings.'}
         />
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/sales/import" className={buttonVariants({ variant: 'outline' })}>
             Import CSV
           </Link>
-          <Popover label="+ Add contact" panelClassName="w-[min(92vw,34rem)]">
+          <Popover label="+ Add lead" panelClassName="w-[min(92vw,34rem)]">
               <NewLeadForm />
             </Popover>
         </div>
@@ -93,15 +93,17 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
         <form className="mt-3 grid grid-cols-2 items-end gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-6" method="get">
           {f.q ? <input type="hidden" name="q" value={f.q} /> : null}
           {f.status ? <input type="hidden" name="status" value={f.status} /> : null}
-          <Select name="assignee" aria-label="Owner" defaultValue={f.assignee ?? ''} className="w-full">
-            <option value="">Any owner</option>
-            <option value="none">Unassigned</option>
-            {(user.role === 'ADMIN' ? reps : reps.filter((r) => r.id === user.id)).map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.id === user.id ? 'Me' : (r.name ?? r.email)}
-              </option>
-            ))}
-          </Select>
+          {user.role === 'ADMIN' ? (
+            <Select name="assignee" aria-label="Owner" defaultValue={f.assignee ?? ''} className="w-full">
+              <option value="">Any owner</option>
+              <option value="none">Unassigned</option>
+              {(user.role === 'ADMIN' ? reps : reps.filter((r) => r.id === user.id)).map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.id === user.id ? 'Me' : (r.name ?? r.email)}
+                </option>
+              ))}
+            </Select>
+          ) : null}
           <Select name="source" aria-label="Source" defaultValue={f.source ?? ''} className="w-full">
             <option value="">Any source</option>
             {sources.map((s) => (

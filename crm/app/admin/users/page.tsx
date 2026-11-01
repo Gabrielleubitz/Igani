@@ -1,15 +1,16 @@
 import { DangerButton } from '../_components/DangerButton'
-import { removeAllowedUser } from '@/app/actions/admin'
+import { removeAllowedUser, setAllTimeZones } from '@/app/actions/admin'
 import { AllowedUserForm, AllowedUserToggle } from '@/components/admin/forms'
 import { PageIntro } from '@/components/PageIntro'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Popover } from '@/components/ui/popover'
+import { DEFAULT_TIME_ZONE } from '@/lib/default-time-zone'
 import { requireUser } from '@/lib/auth'
 import { timeAgo } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 
-export const metadata = { title: 'Team' }
+export const metadata = { title: 'Team access' }
 export const dynamic = 'force-dynamic'
 
 export default async function UsersPage(): Promise<React.ReactElement> {
@@ -21,7 +22,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
         id: true,
         email: true,
         name: true,
-        _count: { select: { assignedLeads: { where: { archived: false, status: { notIn: ['WON', 'LOST'] } } }, availability: true } },
+        _count: { select: { assignedLeads: { where: { archived: false, status: { notIn: ['WON', 'LOST'] } } } } },
         accounts: { select: { refresh_token: true, scope: true } },
         mailboxSync: { select: { lastSyncedAt: true, lastError: true } },
       },
@@ -35,10 +36,14 @@ export default async function UsersPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageIntro title="Team" hint={`Only people listed here can sign in (${active} active). Add a teammate, pick their role, and they get a branded invite email.`} />
+        <PageIntro title="Team access" hint={`Only people listed here can sign in (${active} active). Add a teammate, pick their role, and they get a branded invite email.`} />
         <Popover label="+ Add teammate" panelClassName="w-[min(92vw,36rem)]">
             <AllowedUserForm />
           </Popover>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm">
+        <span className="text-muted-foreground">Times on Today and Meetings use each person&apos;s time zone. Put the whole team on {DEFAULT_TIME_ZONE.replaceAll('_', ' ')} in one click.</span>
+        <DangerButton label={`Set everyone to ${DEFAULT_TIME_ZONE.replaceAll('_', ' ')}`} confirm={`Change every teammate's time zone to ${DEFAULT_TIME_ZONE}?`} action={async () => { 'use server'; const r = await setAllTimeZones(DEFAULT_TIME_ZONE); return r.ok ? { ok: true } : { ok: false, error: r.error } }} />
       </div>
       <div className="divide-y rounded-lg border">
         {allowed.map((a) => {
@@ -70,7 +75,6 @@ export default async function UsersPage(): Promise<React.ReactElement> {
                     {u ? ` · ${u._count.assignedLeads} open contact${u._count.assignedLeads === 1 ? '' : 's'}` : ''}
                     {u && a.role !== 'MARKETING' ? (calendar ? ' · 📅 calendar connected' : ' · ⚠ calendar not connected') : ''}
                     {u ? (gmail ? (u.mailboxSync?.lastError ? ` · ⚠ Gmail sync error: ${u.mailboxSync.lastError.slice(0, 60)}` : ' · 📨 Gmail synced') : ' · Gmail not connected') : ''}
-                    {u && a.role !== 'MARKETING' && u._count.availability === 0 ? ' · no working hours set' : ''}
                     {last ? ` · last active ${timeAgo(last, now)}` : ''}
                   </div>
                 </div>

@@ -18,15 +18,17 @@ Object.assign(process.env, {
 })
 
 const insert = vi.fn()
+const del = vi.fn(async () => ({}))
 const busy: { start: string; end: string }[] = []
 vi.mock('@/lib/google', () => ({
   GoogleNotConnectedError: class extends Error {},
   calendarForHost: async () => ({
     freebusy: { query: async () => ({ data: { calendars: { primary: { busy } } } }) },
-    events: { insert, delete: vi.fn(async () => ({})) },
+    events: { insert, delete: del },
   }),
 }))
 const sentConfirmations: unknown[] = []
+const sentTeammate: unknown[] = []
 vi.mock('@/lib/email', () => ({
   sendBookingConfirmedEmail: async (b: unknown) => {
     sentConfirmations.push(b)
@@ -34,12 +36,16 @@ vi.mock('@/lib/email', () => ({
   },
   sendApprovalRequestEmail: async () => 'email_2',
   sendBookingInviteEmail: async () => 'email_3',
+  sendTeammateMeetingEmail: async (b: unknown) => {
+    sentTeammate.push(b)
+    return 'email_4'
+  },
 }))
 
 const d = testDb ? describe : describe.skip
 
 d('booking confirmation flow', async () => {
-  const { createPendingBooking, confirmBooking, assertSlotOffered, BookingError } = await import('@/lib/bookings')
+  const { cancelBooking, createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
   const prisma = new PrismaClient()
   let hostId = ''
@@ -52,25 +58,29 @@ d('booking confirmation flow', async () => {
     await prisma.lead.deleteMany()
     await prisma.user.deleteMany()
     insert.mockReset()
+    del.mockClear()
     busy.length = 0
     sentConfirmations.length = 0
+    sentTeammate.length = 0
     const host = await prisma.user.create({ data: { email: 'host@igani.co', name: 'Host', role: 'SALES', timeZone: 'Asia/Jerusalem' } })
     hostId = host.id
-    // 2030-01-07 is a Monday (dayOfWeek 1); 09:00–11:00 Jerusalem = 07:00–09:00 UTC
-    await prisma.availability.create({ data: { hostId, dayOfWeek: 1, startTime: '09:00', endTime: '11:00' } })
   })
   afterAll(async () => prisma.$disconnect())
 
-  it('combines working hours, Google busy time and held bookings', async () => {
+  it('is open around the clock, minus Google busy time and held bookings', async () => {
     busy.push({ start: '2030-01-07T07:30:00Z', end: '2030-01-07T08:00:00Z' })
-    expect(await getAvailableSlots(hostId, new Date('2030-01-07'), 30)).toEqual([
-      '2030-01-07T07:00:00.000Z',
-      '2030-01-07T08:00:00.000Z',
-      '2030-01-07T08:30:00.000Z',
-    ])
+    const slots = await getAvailableSlots(hostId, new Date('2030-01-07'), 30)
+    // Jerusalem is UTC+2 in January: the whole local day, 00:00-24:00, in half-hour steps (48), minus the busy slot.
+    expect(slots).toHaveLength(47)
+    expect(slots).toContain('2030-01-06T22:00:00.000Z') // local midnight
+    expect(slots).toContain('2030-01-07T21:30:00.000Z') // local 23:30
+    expect(slots).not.toContain('2030-01-07T07:30:00.000Z')
     await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T08:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'G', guestEmail: 'g@example.com' })
-    expect(await getAvailableSlots(hostId, new Date('2030-01-07'), 30)).toEqual(['2030-01-07T07:00:00.000Z', '2030-01-07T08:30:00.000Z'])
-    expect(await getAvailableSlots(hostId, new Date('2030-01-08'), 30)).toEqual([]) // no hours on Tuesday
+    const after = await getAvailableSlots(hostId, new Date('2030-01-07'), 30)
+    expect(after).toHaveLength(46)
+    expect(after).not.toContain('2030-01-07T08:00:00.000Z')
+    // No weekend or hours rules any more: a Tuesday is as open as a Monday.
+    expect(await getAvailableSlots(hostId, new Date('2030-01-08'), 30)).toHaveLength(48)
     await expect(assertSlotOffered(hostId, new Date('2030-01-07T07:30:00Z'), 30)).rejects.toBeInstanceOf(BookingError)
   })
 
@@ -91,6 +101,85 @@ d('booking confirmation flow', async () => {
     expect(stored.lead).toMatchObject({ status: 'DEMO_SCHEDULED', firstName: 'Dana', lastName: 'Cohen' })
     expect([a.status, b.status]).toEqual(['CONFIRMED', 'CONFIRMED'])
     expect(sentConfirmations).toHaveLength(1)
+  })
+
+  it('lets any future time be chosen by hand, and notes a clash with another call', async () => {
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T03:17:00Z'), 30)).toBeNull() // odd minute, middle of the night
+    expect(await findTimeConflict(hostId, new Date('2020-01-01T10:00:00Z'), 30)).toMatch(/passed/)
+    await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T08:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T08:10:00Z'), 30)).toMatch(/already booked.*Intro with Dana/)
+    busy.push({ start: '2030-01-07T12:00:00Z', end: '2030-01-07T13:00:00Z' })
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T12:15:00Z'), 30)).toMatch(/busy on the Google Calendar/)
+  })
+
+  it('team meetings: no lead, no client email, every teammate emailed, visible only to host, attendees and admins', async () => {
+    const ada = await prisma.user.create({ data: { email: 'ada@igani.co', name: 'Ada', role: 'ADMIN' } })
+    const other = await prisma.user.create({ data: { email: 'other@igani.co', name: 'Other', role: 'SALES' } })
+    insert.mockResolvedValue({ data: { id: 'evt_t', hangoutLink: 'https://meet.google.com/aaa-bbbb-ccc', htmlLink: null } })
+    const booking = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Sync', guestName: 'Ada', guestEmail: 'ada@igani.co', noLead: true })
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: booking.id, action: 'booking.team_meeting' } })
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', metadata: { userIds: [ada.id] } } })
+    await confirmBooking(booking.id, hostId)
+    expect(await prisma.lead.count()).toBe(0)
+    expect(booking.leadId).toBeNull()
+    expect(sentConfirmations).toHaveLength(0) // no client confirmation
+    expect(sentTeammate).toHaveLength(1)
+    expect(sentTeammate[0]).toMatchObject({ teammateEmail: 'ada@igani.co', guestName: 'the team' })
+    expect((await teamMeetingIds([booking.id])).has(booking.id)).toBe(true)
+    const ids = async (u: { id: string; role: 'ADMIN' | 'SALES' }) => (await prisma.booking.findMany({ where: await bookingScope(u) })).map((b) => b.id)
+    expect(await ids({ id: hostId, role: 'SALES' })).toEqual([booking.id])
+    expect(await ids({ id: ada.id, role: 'ADMIN' })).toEqual([booking.id])
+    expect(await ids({ id: other.id, role: 'SALES' })).toEqual([])
+  })
+
+  it('marks a meeting done (and undone), and deletes one for good', async () => {
+    insert.mockResolvedValue({ data: { id: 'evt_d', hangoutLink: 'https://meet.google.com/ddd-eeee-fff', htmlLink: null } })
+    const b = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    await confirmBooking(b.id, hostId)
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: b.id, action: 'booking.done' } })
+    expect((await doneBookingIds()).has(b.id)).toBe(true)
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: b.id, action: 'booking.undone' } })
+    expect((await doneBookingIds()).has(b.id)).toBe(false)
+    await deleteBooking(b.id, hostId)
+    expect(await prisma.booking.findUnique({ where: { id: b.id } })).toBeNull()
+    expect(await prisma.activityLog.count({ where: { entityId: b.id, action: 'booking.deleted' } })).toBe(1)
+    // the time is free again
+    expect(await findTimeConflict(hostId, new Date('2030-01-07T07:00:00Z'), 30)).toBeNull()
+  })
+
+  it('cancelling an upcoming meeting removes it from everyone invited; a finished one is removed quietly', async () => {
+    insert.mockResolvedValue({ data: { id: 'evt_c', hangoutLink: 'https://meet.google.com/ccc-dddd-eee', htmlLink: null } })
+    const b = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    await confirmBooking(b.id, hostId)
+    await cancelBooking(b.id, hostId, 'test', false)
+    expect(del).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'evt_c', sendUpdates: 'all' }))
+
+    const past = await prisma.booking.create({ data: { status: 'CONFIRMED', source: 'SALES_INVITE', startTime: new Date('2020-01-07T07:00:00Z'), endTime: new Date('2020-01-07T07:30:00Z'), title: 'Old', guestName: 'G', guestEmail: 'g@example.com', hostId, googleEventId: 'evt_old' } })
+    del.mockClear()
+    await cancelBooking(past.id, hostId, 'test', false)
+    expect(del).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'evt_old', sendUpdates: 'none' }))
+  })
+
+  it('lets admins add anyone, and everyone else only admins', async () => {
+    const admin = await prisma.user.create({ data: { email: 'admin@igani.co', name: 'Ada', role: 'ADMIN' } })
+    const rep = await prisma.user.create({ data: { email: 'rep@igani.co', name: 'Rex', role: 'SALES' } })
+    await prisma.user.create({ data: { email: 'gone@igani.co', name: 'Gone', role: null } })
+    const forAdmin = (await allowedTeammates({ id: admin.id, role: 'ADMIN' }, hostId)).map((t) => t.email)
+    expect(forAdmin).toEqual(['rep@igani.co'])
+    const forRep = (await allowedTeammates({ id: rep.id, role: 'SALES' }, hostId)).map((t) => t.email)
+    expect(forRep).toEqual(['admin@igani.co'])
+  })
+
+  it('adds saved teammates to the Meet and emails them the link once confirmed', async () => {
+    const admin = await prisma.user.create({ data: { email: 'admin@igani.co', name: 'Ada', role: 'ADMIN' } })
+    insert.mockResolvedValue({ data: { id: 'evt_2', hangoutLink: 'https://meet.google.com/abc-defg-hij', htmlLink: null } })
+    const booking = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', metadata: { userIds: [admin.id] } } })
+    await confirmBooking(booking.id, null)
+    const attendees = (insert.mock.calls[0]?.[0] as { requestBody: { attendees: { email: string }[] } }).requestBody.attendees.map((a) => a.email)
+    expect(attendees).toEqual(['dana@example.com', 'admin@igani.co'])
+    expect(sentTeammate).toHaveLength(1)
+    expect(sentTeammate[0]).toMatchObject({ teammateEmail: 'admin@igani.co', meetUrl: 'https://meet.google.com/abc-defg-hij' })
   })
 
   it('rolls back to PENDING when Google fails, and refuses taken slots', async () => {
