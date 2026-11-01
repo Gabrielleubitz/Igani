@@ -38,3 +38,14 @@ describe('organizeNotes', () => {
     expect(organizedFor({ organizedJson: { bad: 1 }, fullText: NOTES }).ai).toBe(false)
   })
 })
+
+describe('organizedFor with bad stored data', () => {
+  it.each([null, 'junk', 42, [], { overview: 'x' }, { overview: [1] }])('falls back without throwing for %j', (bad) => {
+    const r = organizedFor({ organizedJson: bad, fullText: 'Summary\nHello team.' })
+    expect(r.ai).toBe(false)
+    expect(r.notes?.overview).toEqual(['Hello team.'])
+  })
+  it('returns null notes when there is no text at all', () => {
+    expect(organizedFor({ organizedJson: undefined, fullText: null })).toEqual({ notes: null, ai: false })
+  })
+})
