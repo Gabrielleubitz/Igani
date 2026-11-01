@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { CalendarClock, ExternalLink, FileText, Mail, Phone, Building2, User, Users, Video, RefreshCw } from 'lucide-react'
 import { useMemo, useState, useTransition } from 'react'
 import { createCalendarEntry, deleteCalendarEntry } from '@/app/sales/today/actions'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -28,6 +29,18 @@ export interface CalendarItem {
   href?: string
   meetUrl?: string
   notes?: string
+  details?: ItemDetails
+}
+
+export interface ItemDetails {
+  type: string
+  host?: string
+  guest?: string
+  guestEmail?: string
+  phone?: string
+  company?: string
+  attendees?: string[]
+  synced?: string
 }
 
 type Data = Pick<CalendarItem, 'kind' | 'href' | 'meetUrl' | 'notes'>
@@ -121,7 +134,7 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
         <EventCalendarContent />
       </EventCalendar>
 
-      <Dialog open={form !== null} onClose={() => setForm(null)} title="New event" description="Added to your calendar only. Click any empty time slot or day to start one.">
+      <Dialog className="w-[min(92vw,34rem)]" open={form !== null} onClose={() => setForm(null)} title="New event" description="Added to your calendar and synced to Google Calendar if connected.">
         {form ? (
           <EntryForm
             initial={form}
@@ -134,21 +147,67 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
         ) : null}
       </Dialog>
 
-      <Dialog open={selected !== null} onClose={() => setSelected(null)} title={selected?.title ?? ''} description={selected ? describe(selected, timeZone) : undefined}>
+      <Dialog open={selected !== null} onClose={() => setSelected(null)} title={selected?.title ?? ''} description={selected?.details?.type} className="w-[min(92vw,34rem)]">
         {selected ? (
-          <div className="space-y-3 text-sm">
-            {selected.notes ? <p className="whitespace-pre-wrap text-muted-foreground">{selected.notes}</p> : null}
-            <div className="flex flex-wrap justify-end gap-2">
+          <div className="space-y-4 text-sm">
+            <div className="h-1 rounded-full" style={{ background: selected.color }} />
+            <dl className="space-y-3">
+              <Row icon={CalendarClock} label="When">
+                {when(selected, timeZone)}
+              </Row>
+              {selected.details?.host ? (
+                <Row icon={User} label="Host">
+                  {selected.details.host}
+                </Row>
+              ) : null}
+              {selected.details?.guest ? (
+                <Row icon={User} label={selected.kind === 'task' ? 'Contact' : 'Guest'}>
+                  {selected.details.guest}
+                </Row>
+              ) : null}
+              {selected.details?.company ? (
+                <Row icon={Building2} label="Company">
+                  {selected.details.company}
+                </Row>
+              ) : null}
+              {selected.details?.guestEmail ? (
+                <Row icon={Mail} label="Email">
+                  <a className="underline-offset-2 hover:underline" href={`mailto:${selected.details.guestEmail}`}>
+                    {selected.details.guestEmail}
+                  </a>
+                </Row>
+              ) : null}
+              {selected.details?.phone ? (
+                <Row icon={Phone} label="Phone">
+                  <a className="underline-offset-2 hover:underline" href={`tel:${selected.details.phone}`}>
+                    {selected.details.phone}
+                  </a>
+                </Row>
+              ) : null}
+              {selected.details?.attendees?.length ? (
+                <Row icon={Users} label="Attendees">
+                  {selected.details.attendees.join(', ')}
+                </Row>
+              ) : null}
               {selected.meetUrl ? (
-                <a href={selected.meetUrl} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm', variant: 'outline' })}>
-                  Join
-                </a>
+                <Row icon={Video} label="Video call">
+                  <a className="break-all underline-offset-2 hover:underline" href={selected.meetUrl} target="_blank" rel="noreferrer">
+                    {selected.meetUrl}
+                  </a>
+                </Row>
               ) : null}
-              {selected.href ? (
-                <Link href={selected.href} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
-                  {selected.kind === 'task' ? 'Open contact' : 'Open'}
-                </Link>
+              {selected.details?.synced ? (
+                <Row icon={RefreshCw} label="Google">
+                  {selected.details.synced}
+                </Row>
               ) : null}
+              {selected.notes ? (
+                <Row icon={FileText} label="Notes">
+                  <span className="whitespace-pre-wrap">{selected.notes}</span>
+                </Row>
+              ) : null}
+            </dl>
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t pt-4">
               {selected.kind === 'entry' ? (
                 <DeleteButton
                   id={selected.id}
@@ -158,6 +217,17 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
                     router.refresh()
                   }}
                 />
+              ) : null}
+              <div className="grow" />
+              {selected.meetUrl ? (
+                <a href={selected.meetUrl} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm' })}>
+                  <Video className="size-4" /> Join
+                </a>
+              ) : null}
+              {selected.href ? (
+                <Link href={selected.href} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
+                  <ExternalLink className="size-4" /> Open contact
+                </Link>
               ) : null}
               <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>
                 Close
@@ -170,10 +240,27 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
   )
 }
 
-function describe(i: CalendarItem, timeZone: string): string {
-  const f = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short', month: 'short', day: 'numeric', ...(i.allDay ? {} : { hour: 'numeric', minute: '2-digit' }) })
-  const kind = i.kind === 'task' ? 'Task due' : i.kind === 'booking' ? 'Meeting' : 'Event'
-  return `${kind} · ${f.format(new Date(i.start))}${i.allDay ? ' · all day' : ''}`
+function Row({ icon: Icon, label, children }: { icon: React.ComponentType<{ className?: string }>; label: string; children: React.ReactNode }): React.ReactElement {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="min-w-0">
+        <dt className="text-xs uppercase tracking-wide text-muted-foreground">{label}</dt>
+        <dd className="mt-0.5">{children}</dd>
+      </div>
+    </div>
+  )
+}
+
+function when(i: CalendarItem, timeZone: string): string {
+  const s = new Date(i.start)
+  const e = new Date(i.end)
+  const day = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  if (i.allDay) return `${day.format(s)} · all day`
+  const t = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: '2-digit' })
+  const mins = Math.round((e.getTime() - s.getTime()) / 60000)
+  const dur = mins >= 60 ? `${Math.floor(mins / 60)}h${mins % 60 ? ` ${mins % 60}m` : ''}` : `${mins}m`
+  return `${day.format(s)}, ${t.format(s)} – ${t.format(e)} (${dur})`
 }
 
 function DeleteButton({ id, onDeleted }: { id: string; onDeleted: () => void }): React.ReactElement {
@@ -214,7 +301,7 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
 
   return (
     <form
-      className="space-y-3"
+      className="space-y-4"
       onSubmit={(e) => {
         e.preventDefault()
         setError(null)
@@ -230,10 +317,10 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
         <Label htmlFor="ev-title">Title</Label>
         <Input id="ev-title" required autoFocus maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Call Dana, prep demo…" />
       </div>
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day
+      <label className="flex w-fit cursor-pointer items-center gap-2 text-sm">
+        <input type="checkbox" className="size-4 accent-primary" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day
       </label>
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="ev-start">Starts</Label>
           <DateTimePicker id="ev-start" mode={mode} value={val(start)} onChange={setStart} />
@@ -247,7 +334,8 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
         <Label htmlFor="ev-notes">Notes (optional)</Label>
         <Textarea id="ev-notes" rows={2} maxLength={2000} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </div>
-      <div className="flex items-center gap-2" role="radiogroup" aria-label="Color">
+      <div className="flex items-center gap-3" role="radiogroup" aria-label="Color">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">Color</span>
         {ENTRY_COLORS.map((c) => (
           <button
             key={c}
@@ -256,13 +344,13 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
             aria-checked={color === c}
             aria-label={c}
             onClick={() => setColor(c)}
-            className={cn('size-6 rounded-full ring-offset-2 ring-offset-card', color === c && 'ring-2 ring-foreground')}
+            className={cn('size-6 rounded-full transition-transform hover:scale-110 ring-offset-2 ring-offset-card', color === c && 'ring-2 ring-foreground')}
             style={{ background: entryColorVar(c) }}
           />
         ))}
       </div>
       {error ? <p className="text-sm text-red-400">{error}</p> : null}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 border-t pt-4">
         <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
           Cancel
         </Button>

@@ -69,7 +69,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           where: { status: 'CONFIRMED', startTime: { lt: winEnd }, endTime: { gt: winStart }, ...(await bookingScope(user)) },
           orderBy: { startTime: 'asc' },
           take: 500,
-          select: { id: true, title: true, guestName: true, startTime: true, endTime: true, leadId: true, meetUrl: true, source: true },
+          select: { id: true, title: true, guestName: true, guestEmail: true, startTime: true, endTime: true, leadId: true, meetUrl: true, source: true, notes: true, attendees: true, host: { select: { name: true } }, lead: { select: { company: true, phone: true } } },
         }),
     prisma.calendarEntry.findMany({ where: { ownerId: user.id, startTime: { lt: winEnd }, endTime: { gt: winStart } }, orderBy: { startTime: 'asc' }, take: 500 }),
   ])
@@ -84,6 +84,16 @@ export default async function TodayPage(): Promise<React.ReactElement> {
       kind: 'booking',
       href: b.leadId ? `/sales/leads/${b.leadId}` : undefined,
       meetUrl: b.meetUrl ?? undefined,
+      notes: b.notes ?? undefined,
+      details: {
+        type: b.source === 'TEAM_MEETING' ? 'Team meeting' : b.source === 'PUBLIC_PAGE' ? 'Meeting · booked via booking page' : 'Meeting · sales invite',
+        host: b.host.name ?? undefined,
+        guest: b.source === 'TEAM_MEETING' ? undefined : b.guestName,
+        guestEmail: b.source === 'TEAM_MEETING' ? undefined : b.guestEmail,
+        phone: b.lead?.phone ?? undefined,
+        company: b.lead?.company ?? undefined,
+        attendees: Array.isArray(b.attendees) ? b.attendees.filter((a): a is string => typeof a === 'string') : undefined,
+      },
     })),
     ...mine
       .filter((t) => !t.done && t.dueAt && t.dueAt >= winStart && t.dueAt < winEnd)
@@ -96,6 +106,13 @@ export default async function TodayPage(): Promise<React.ReactElement> {
         color: entryColorVar('amber'),
         kind: 'task',
         href: byId.get(t.leadId) ? `/sales/leads/${t.leadId}` : undefined,
+        details: {
+          type: 'Task due',
+          guest: byId.get(t.leadId) ? [byId.get(t.leadId)!.firstName, byId.get(t.leadId)!.lastName].filter(Boolean).join(' ') || undefined : undefined,
+          guestEmail: byId.get(t.leadId)?.email ?? undefined,
+          phone: byId.get(t.leadId)?.phone ?? undefined,
+          company: byId.get(t.leadId)?.company ?? undefined,
+        },
       })),
     ...calEntries.map((e): CalendarItem => ({
       id: e.id,
@@ -106,6 +123,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
       color: entryColorVar(e.color),
       kind: 'entry',
       notes: e.notes ?? undefined,
+      details: { type: 'Personal event', synced: e.googleEventId ? 'On your Google Calendar' : 'Not on Google Calendar' },
     })),
   ]
 
