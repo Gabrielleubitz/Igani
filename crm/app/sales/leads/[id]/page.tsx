@@ -112,7 +112,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   // Keep a former owner (left the team / role changed) selectable so the owner menu shows the truth.
   if (lead.assignedToId && !reps.some((r) => r.id === lead.assignedToId)) reps.unshift({ id: lead.assignedToId, label: `${lead.assignedTo?.name ?? lead.assignedTo?.email ?? 'Former teammate'} (no access)` })
   // Tasks: admins can hand work to anyone; everyone else to themselves or an admin.
-  const teammates = people.filter((p) => isAdmin || p.id === user.id || p.role === 'ADMIN').map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))
+  const teammates = people.filter((p) => p.role === 'ADMIN' || p.id === lead.assignedToId).map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))
 
   const { tasks, titles } = foldTasksFromLogs(logs)
   const now = new Date()
@@ -311,7 +311,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               </Link>
             ) : null}
           </div>
-          <LeadControls leadId={lead.id} status={lead.status} quotedPrice={isAdmin ? lead.quotedPrice : null} assignedToId={lead.assignedToId} currentUserId={user.id} isAdmin={isAdmin} canClaim={false} reps={reps} />
+          <LeadControls leadId={lead.id} status={lead.status} quotedPrice={isAdmin ? lead.quotedPrice : null} assignedToId={lead.assignedToId} currentUserId={user.id} isAdmin={isAdmin} canClaim={false} reps={reps} wonCommission={isAdmin && lead.status === 'WON' ? lead.commissionTotal : null} commissionPaidOut={lead.finalPaidAt !== null} />
         </div>
       </div>
 
@@ -360,6 +360,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                   <EditContactForm
                     key={lead.updatedAt.toISOString()}
                     leadId={lead.id}
+                    canEditEmail={isAdmin}
                     initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }}
                   />
                 </div>

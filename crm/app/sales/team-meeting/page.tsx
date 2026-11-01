@@ -13,10 +13,11 @@ export const dynamic = 'force-dynamic'
 
 export default async function TeamMeetingPage(): Promise<React.ReactElement> {
   const user = await requireUser(['ADMIN', 'SALES'])
-  const [teammates, googleConnected, defaultDuration] = await Promise.all([
+  const [teammates, googleConnected, defaultDuration, me] = await Promise.all([
     allowedTeammates(user, user.id),
     prisma.account.findFirst({ where: { userId: user.id, provider: 'google', refresh_token: { not: null } }, select: { id: true } }),
     getSetting('booking.defaultDurationMinutes'),
+    prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
   ])
   return (
     <div className="space-y-5">
@@ -35,7 +36,7 @@ export default async function TeamMeetingPage(): Promise<React.ReactElement> {
       ) : (
         <Card>
           <CardContent className="pt-6">
-            <TeamMeetingForm teammates={teammates.map((t) => ({ id: t.id, label: t.name ?? t.email }))} adminsOnly={user.role !== 'ADMIN'} defaultDuration={defaultDuration} />
+            <TeamMeetingForm teammates={teammates.map((t) => ({ id: t.id, label: t.name ?? t.email }))} adminsOnly={user.role !== 'ADMIN'} defaultDuration={defaultDuration} timeZone={me.timeZone} />
           </CardContent>
         </Card>
       )}

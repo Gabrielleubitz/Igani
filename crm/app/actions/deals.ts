@@ -75,8 +75,9 @@ export async function recalculateWonCommission(id: string): Promise<ActionResult
   try {
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
-    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true } })
+    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, finalPaidAt: true } })
     if (!lead || lead.status !== 'WON') throw new BookingError('Only a won deal has a frozen commission.', 'INVALID_STATE')
+    if (lead.finalPaidAt) throw new BookingError('This commission was already paid out. Undo the payout first if it really has to change.', 'INVALID_STATE')
     if (!lead.quotedPrice) throw new BookingError('Enter the quoted price first.', 'INVALID_STATE')
     await prisma.$transaction(async (tx) => {
       await snapshotWonCommission(lid, tx, { force: true })

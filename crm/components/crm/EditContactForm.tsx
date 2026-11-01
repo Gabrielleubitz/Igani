@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 
 interface Props {
   leadId: string
+  /** The email decides whose mail is filed under the lead, so only admins can change it */
+  canEditEmail?: boolean
   initial: {
     email: string | null
     firstName: string | null
@@ -28,7 +30,7 @@ function Field({ label, children, wide = false }: { label: string; children: Rea
 }
 
 /** Editable contact details for the contact page; open to every role that can see the contact. */
-export function EditContactForm({ leadId, initial }: Props): React.ReactElement {
+export function EditContactForm({ leadId, initial, canEditEmail = false }: Props): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -41,7 +43,7 @@ export function EditContactForm({ leadId, initial }: Props): React.ReactElement 
         const s = (k: string): string => String(fd.get(k) ?? '')
         start(async () => {
           const res = await updateLead(leadId, {
-            email: s('email'),
+            ...(canEditEmail ? { email: s('email') } : {}),
             firstName: s('firstName'),
             lastName: s('lastName'),
             phone: s('phone'),
@@ -64,7 +66,7 @@ export function EditContactForm({ leadId, initial }: Props): React.ReactElement 
         <Input name="lastName" defaultValue={initial.lastName ?? ''} />
       </Field>
       <Field label="Email" wide>
-        <Input name="email" type="email" defaultValue={initial.email ?? ''} placeholder="name@company.com" />
+        <Input name="email" type="email" defaultValue={initial.email ?? ''} placeholder="name@company.com" disabled={!canEditEmail} title={canEditEmail ? undefined : 'Only an admin can change the email address'} />
       </Field>
       <Field label="Phone">
         <Input name="phone" type="tel" defaultValue={initial.phone ?? ''} />

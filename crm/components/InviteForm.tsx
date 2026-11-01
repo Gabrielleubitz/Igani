@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from 'react'
 import { checkInviteTime, createSalesInvite } from '@/app/actions/bookings'
 import { DateTimeField } from '@/components/DateTimeField'
+import { zonedInputToDate } from '@/lib/time'
 import { TeammatePicker } from '@/components/TeammatePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
@@ -14,7 +15,7 @@ interface LeadOption {
   company?: string | null
 }
 
-export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts = [], currentUserId, teammates = [], teammatesAreAdminsOnly = false }: { leads: LeadOption[]; initialLeadId?: string; defaultDuration?: number; hosts?: { id: string; label: string }[]; currentUserId?: string; teammates?: { id: string; label: string }[]; teammatesAreAdminsOnly?: boolean }): React.ReactElement {
+export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts = [], currentUserId, teammates = [], teammatesAreAdminsOnly = false, timeZone }: { timeZone: string; leads: LeadOption[]; initialLeadId?: string; defaultDuration?: number; hosts?: { id: string; label: string }[]; currentUserId?: string; teammates?: { id: string; label: string }[]; teammatesAreAdminsOnly?: boolean }): React.ReactElement {
   const initial = leads.find((l) => l.id === initialLeadId)
   const [leadId, setLeadId] = useState(initial?.id ?? '')
   const [guestName, setGuestName] = useState(initial?.name ?? '')
@@ -32,7 +33,8 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
   const [teammateIds, setTeammateIds] = useState<string[]>([])
   const [sending, startSend] = useTransition()
 
-  const startIso = when && !Number.isNaN(new Date(when).getTime()) ? new Date(when).toISOString() : null
+  const startDate = when ? zonedInputToDate(when, timeZone) : null
+  const startIso = startDate && !Number.isNaN(startDate.getTime()) ? startDate.toISOString() : null
 
   // Tell the user right away if the time clashes with another call.
   useEffect(() => {
@@ -142,7 +144,8 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts =
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-2">
             <Label htmlFor="when-day">Date and time</Label>
-            <DateTimeField key={fieldKey} idPrefix="when" onChange={setWhen} />
+            <DateTimeField key={fieldKey} idPrefix="when" onChange={setWhen} timeZone={timeZone} />
+            <p className="text-xs text-muted-foreground">Times are in your time zone ({timeZone.replaceAll('_', ' ')}).</p>
           </div>
           <div className="col-span-2 space-y-2 sm:col-span-1">
             <Label htmlFor="duration">Length</Label>

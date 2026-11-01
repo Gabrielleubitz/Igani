@@ -6,6 +6,9 @@ export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; e
 
 /** Maps known domain errors to user-safe messages; logs everything else. */
 export function toActionError(err: unknown): { ok: false; error: string } {
+  // A sign-in redirect or a not-found raised inside an action must reach Next.js, not be reported as a vague failure.
+  const digest = typeof err === 'object' && err !== null ? (err as { digest?: unknown }).digest : undefined
+  if (typeof digest === 'string' && (digest.startsWith('NEXT_REDIRECT') || digest === 'NEXT_NOT_FOUND')) throw err
   if (err instanceof BookingError) return { ok: false, error: err.message }
   if (err instanceof GoogleNotConnectedError) return { ok: false, error: 'The host must connect Google Calendar first (Send meeting invite → Connect Google).' }
   // Unique-constraint race (two people saving the same email at once)

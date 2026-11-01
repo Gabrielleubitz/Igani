@@ -35,7 +35,7 @@ vi.mock('resend', () => ({
 const d = testDb ? describe : describe.skip
 
 d('new-lead alerts', async () => {
-  const { notifyTeamOfNewLead, notifyTeamOfImportedLeads } = await import('@/lib/leads')
+  const { notifyTeamOfNewLead } = await import('@/lib/leads')
   const prisma = new PrismaClient()
 
   beforeEach(async () => {
@@ -110,14 +110,5 @@ d('new-lead alerts', async () => {
     const l = await lead('noa@acme.com')
     await expect(notifyTeamOfNewLead(l.id)).resolves.toBeUndefined()
     expect(JSON.stringify((await alertLog('lead.alert_failed'))[0]?.metadata)).toContain('domain is not verified')
-  })
-
-  it('sends one summary for an import, not one email per lead', async () => {
-    await allow('ann@igani.co', 'ADMIN')
-    const dana = await rep('dana@igani.co', 'Dana Cohen')
-    const ls = await Promise.all([lead('a@x.co'), lead('b@x.co'), lead('c@x.co')])
-    await notifyTeamOfImportedLeads(ls.map((x) => x.id), { id: dana.id, name: 'Dana Cohen', email: 'dana@igani.co' })
-    expect(sent).toHaveLength(1)
-    expect(sent[0]!.subject).toBe('3 new leads from Dana Cohen')
   })
 })

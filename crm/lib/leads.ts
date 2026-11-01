@@ -2,11 +2,12 @@ import 'server-only'
 import type { LeadStatus, Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
-import { sendLeadAssignedEmail, sendLeadsImportedEmail, sendNewLeadAlertEmail } from './email'
+import { sendLeadAssignedEmail, sendNewLeadAlertEmail } from './email'
 import { newLeadRecipients } from './lead-alerts'
 import { getSetting } from './settings'
 import { appUrl } from './env'
 import { snapshotWonCommission } from './deals'
+import { moveOpenTasks } from './tasks'
 import { prisma } from './prisma'
 
 const optionalText = (max: number) =>
@@ -238,6 +239,7 @@ export async function assignLeadManually(leadId: string, assigneeId: string | nu
     const before = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { assignedToId: true } })
     const res = await tx.lead.updateMany({ where: { id: leadId, ...(opts.onlyIfUnassigned ? { assignedToId: null } : {}) }, data: { assignedToId: assigneeId } })
     if (res.count === 0) throw new Error('ALREADY_CLAIMED')
+    await moveOpenTasks(leadId, before.assignedToId, assigneeId, actorId, tx)
     await logActivity(
       { entityType: 'LEAD', entityId: leadId, action: 'lead.assigned', actorId, metadata: { from: before.assignedToId, to: assigneeId, strategy: 'manual' } },
       tx,
@@ -279,10 +281,11 @@ export async function bulkUpdateLeadsTx(
   ids: string[],
   change: { assigneeId?: string | null; status?: LeadStatus },
   actorId: string,
-): Promise<void> {
+): Promise<{ skippedNoPrice: string[] }> {
   if (change.status === 'LOST') throw new Error('A reason is required when marking a lead as lost')
+  const skippedNoPrice: string[] = []
   await prisma.$transaction(async (tx) => {
-    const before = await tx.lead.findMany({ where: { id: { in: ids } }, select: { id: true, status: true, assignedToId: true } })
+    const before = await tx.lead.findMany({ where: { id: { in: ids } }, select: { id: true, status: true, assignedToId: true, quotedPrice: true } })
     if (before.length !== ids.length) throw new Error('Some leads no longer exist')
     if (change.assigneeId) {
       const user = await tx.user.findUnique({ where: { id: change.assigneeId }, select: { role: true } })
@@ -291,26 +294,38 @@ export async function bulkUpdateLeadsTx(
     const logs: Prisma.ActivityLogCreateManyInput[] = []
     if (change.assigneeId !== undefined) {
       await tx.lead.updateMany({ where: { id: { in: ids } }, data: { assignedToId: change.assigneeId } })
-      for (const l of before)
+      for (const l of before) {
         logs.push({ entityType: 'LEAD', entityId: l.id, action: 'lead.assigned', actorId, metadata: { from: l.assignedToId, to: change.assigneeId, strategy: 'bulk' } })
+        await moveOpenTasks(l.id, l.assignedToId, change.assigneeId, actorId, tx)
+      }
     }
     if (change.status) {
-      const changing = before.filter((l) => l.status !== change.status)
+      // Winning a deal needs its quoted price (the commission is frozen from it): leads without one are left as they are.
+      const eligible = change.status === 'WON' ? before.filter((l) => l.quotedPrice && l.quotedPrice > 0) : before
+      if (change.status === 'WON') skippedNoPrice.push(...before.filter((l) => !(l.quotedPrice && l.quotedPrice > 0) && l.status !== 'WON').map((l) => l.id))
+      const changing = eligible.filter((l) => l.status !== change.status)
       if (changing.length) {
         await tx.lead.updateMany({ where: { id: { in: changing.map((l) => l.id) } }, data: { status: change.status, lostReason: null } })
-        for (const l of changing)
+        for (const l of changing) {
           logs.push({ entityType: 'LEAD', entityId: l.id, action: 'lead.status_changed', actorId, metadata: { from: l.status, to: change.status } })
+          if (change.status === 'WON') await snapshotWonCommission(l.id, tx)
+        }
       }
     }
     if (logs.length) await tx.activityLog.createMany({ data: logs })
   })
+  return { skippedNoPrice }
 }
 
 /** Move every open lead and future booking from one user to another (or unassign leads when toId is null). */
 export async function reassignUserWork(fromId: string, toId: string | null, actorId: string, tx: Prisma.TransactionClient): Promise<number> {
-  const leads = await tx.lead.findMany({ where: { assignedToId: fromId }, select: { id: true } })
+  // A won deal whose commission has not been paid out yet stays with the rep who won it, even if they are deactivated,
+  // so the commission still belongs to the right person.
+  const leads = await tx.lead.findMany({ where: { assignedToId: fromId, NOT: { status: 'WON', commissionTotal: { not: null }, finalPaidAt: null } }, select: { id: true } })
   if (leads.length === 0) return 0
-  await tx.lead.updateMany({ where: { assignedToId: fromId }, data: { assignedToId: toId } })
+  const ids = leads.map((l) => l.id)
+  await tx.lead.updateMany({ where: { id: { in: ids } }, data: { assignedToId: toId } })
+  for (const id of ids) await moveOpenTasks(id, fromId, toId, actorId, tx)
   await tx.activityLog.createMany({
     data: leads.map((l) => ({
       entityType: 'LEAD' as const,
@@ -389,27 +404,3 @@ export async function notifyTeamOfNewLead(leadId: string, opts: { addedBy?: Lead
   }
 }
 
-/** One summary alert for leads a teammate imported in bulk (a single lead gets the normal alert). Never throws. */
-export async function notifyTeamOfImportedLeads(leadIds: string[], addedBy: LeadAdder): Promise<void> {
-  const [first] = leadIds
-  if (!first) return
-  if (leadIds.length === 1) return notifyTeamOfNewLead(first, { addedBy })
-  try {
-    if (!(await getSetting('notifications.newLead'))) return await logAlert(first, 'lead.alert_skipped', { reason: 'new-lead alerts are switched off in Settings', imported: leadIds.length }, addedBy.id)
-    const to = await alertRecipients()
-    if (to.length === 0) return await logAlert(first, 'lead.alert_skipped', { reason: 'no active admins and no notification emails to send to', imported: leadIds.length }, addedBy.id)
-    const sample = await prisma.lead.findMany({ where: { id: { in: leadIds.slice(0, 6) } }, select: { firstName: true, lastName: true, email: true, phone: true, company: true } })
-    await withTimeout(
-      sendLeadsImportedEmail(to, {
-        addedBy: addedBy.name,
-        count: leadIds.length,
-        sample: sample.map((l) => ({ name: [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || l.phone || 'New lead', detail: l.company ?? l.email })),
-        leadsUrl: appUrl('/sales/leads'),
-      }),
-    )
-    await logAlert(first, 'lead.alert_sent', { to: to.length, imported: leadIds.length }, addedBy.id)
-  } catch (err) {
-    console.error('[leads] imported-leads alert failed', err)
-    await logAlert(first, 'lead.alert_failed', { error: err instanceof Error ? err.message : String(err), imported: leadIds.length }, addedBy.id)
-  }
-}

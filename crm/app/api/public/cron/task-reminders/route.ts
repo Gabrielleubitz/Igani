@@ -7,7 +7,7 @@ import { sendMeetingReminderEmail, sendTaskDigestEmail } from '@/lib/email'
 import { formatDateTime, leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
-import { createAutoTask, loadTasks, taskOwner } from '@/lib/tasks'
+import { canOpenLeadTask, createAutoTask, loadTasks, taskOwner } from '@/lib/tasks'
 import { localHour } from '@/lib/time'
 import { syncAllMailboxes } from '@/lib/mail-sync'
 import { backfillMeetingTasks } from '@/lib/meeting-tasks'
@@ -145,7 +145,7 @@ async function run(): Promise<Record<string, number>> {
     if (!owner || reminded.has(`${t.id}|${t.dueAt!.toISOString()}`)) continue
     byUser.set(owner, [...(byUser.get(owner) ?? []), t])
   }
-  const users = await prisma.user.findMany({ where: { id: { in: [...byUser.keys()] }, role: { not: null } }, select: { id: true, email: true, name: true, timeZone: true } })
+  const users = await prisma.user.findMany({ where: { id: { in: [...byUser.keys()] }, role: { not: null } }, select: { id: true, email: true, name: true, timeZone: true, role: true } })
   const now = new Date()
   let sent = 0
   let checked = 0
@@ -153,7 +153,9 @@ async function run(): Promise<Record<string, number>> {
     if (!u.email) continue
     const hour = localHour(now, u.timeZone)
     if (hour < DIGEST_HOURS.from || hour >= DIGEST_HOURS.to) continue
-    const { overdue, today } = splitDue(byUser.get(u.id) ?? [], now, u.timeZone)
+    // Only tasks on leads this person can still open: an admin, or the lead's current owner.
+    const reachable = (byUser.get(u.id) ?? []).filter((t) => canOpenLeadTask(u, leadById.get(t.leadId)))
+    const { overdue, today } = splitDue(reachable, now, u.timeZone)
     const list = [...overdue, ...today]
     checked += list.length
     if (list.length === 0) continue

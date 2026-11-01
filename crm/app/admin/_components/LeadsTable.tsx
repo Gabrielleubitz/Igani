@@ -52,6 +52,16 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
       if (res.ok) setSel(new Set())
       router.refresh()
     })
+  // Winning in bulk only works for leads that already have a quoted price (the commission is frozen from it).
+  const bulkStatus = (status: LeadStatus): void =>
+    start(async () => {
+      const res = await bulkUpdateLeads(ids, { status })
+      if (res.ok) {
+        setMsg(res.data.skippedNoPrice > 0 ? `Moved ${res.data.count}. ${res.data.skippedNoPrice} skipped because they have no quoted price: win those one at a time from the lead.` : 'Status updated.')
+        setSel(new Set())
+      } else setMsg(res.error)
+      router.refresh()
+    })
   const toggle = (id: string): void =>
     setSel((s) => {
       const n = new Set(s)
@@ -202,7 +212,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
         ) : null}
         {role !== 'MARKETING' ? (
         <>
-        <Select aria-label="Bulk status" className="h-8 w-44" disabled={pending || !sel.size} value="" onChange={(e) => e.target.value && run(() => bulkUpdateLeads(ids, { status: e.target.value as LeadStatus }), 'Status updated.')}>
+        <Select aria-label="Bulk status" className="h-8 w-44" disabled={pending || !sel.size} value="" onChange={(e) => e.target.value && bulkStatus(e.target.value as LeadStatus)}>
           <option value="">Move to…</option>
           {stagesFor(isAdmin ? 'ADMIN' : 'SALES', LEAD_STATUSES).filter((s) => s !== 'LOST').map((s) => (
             <option key={s} value={s}>

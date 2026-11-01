@@ -56,10 +56,17 @@ export async function logTouch(leadId: string, kind: (typeof TOUCH_KINDS)[number
   }
 }
 
-async function assertAssignable(assigneeId: string | null): Promise<void> {
+/**
+ * A task can go to an admin or to the lead's own owner: those are the only people who can open the lead. Anyone else
+ * could not see the task, and the reminder email would name a client they cannot open.
+ */
+async function assertAssignable(assigneeId: string | null, leadId: string): Promise<void> {
   if (!assigneeId) return
   const u = await prisma.user.findUnique({ where: { id: assigneeId }, select: { role: true } })
   if (!u?.role) throw new BookingError('That teammate no longer has access.', 'INVALID_STATE')
+  if (u.role === 'ADMIN') return
+  const lead = await prisma.lead.findUnique({ where: { id: leadId }, select: { assignedToId: true } })
+  if (lead?.assignedToId !== assigneeId) throw new BookingError('You can give a task to an admin or to the lead’s owner.', 'FORBIDDEN')
 }
 
 export async function createTask(
@@ -77,7 +84,7 @@ export async function createTask(
     const due = dueAt ? z.coerce.date().parse(dueAt).toISOString() : null
     const assignee = assigneeId === undefined ? user.id : assigneeId === null ? null : z.string().cuid().parse(assigneeId)
     await assertCanSeeLead(id, user)
-    await assertAssignable(assignee)
+    await assertAssignable(assignee, id)
     await logActivity({
       entityType: 'LEAD',
       entityId: id,
@@ -150,7 +157,7 @@ export async function updateTask(leadId: string, taskId: string, input: z.input<
     const user = await requireUser()
     const { id, tid } = await taskFor(leadId, taskId, user)
     const ch = taskEditSchema.parse(input)
-    if (ch.assigneeId !== undefined) await assertAssignable(ch.assigneeId)
+    if (ch.assigneeId !== undefined) await assertAssignable(ch.assigneeId, id)
     await logActivity({ entityType: 'LEAD', entityId: id, actorId: user.id, action: 'task.updated', metadata: { taskId: tid, ...ch } })
     refresh(id)
     return { ok: true, data: undefined }

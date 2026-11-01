@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export default async function InvitePage({ searchParams }: { searchParams: { leadId?: string } }): Promise<React.ReactElement> {
   const user = await requireUser(['ADMIN', 'SALES'])
   const select = { id: true, email: true, firstName: true, lastName: true, company: true } as const
-  const [leads, preselected, hosts, googleConnected, defaultDuration] = await Promise.all([
+  const [leads, preselected, hosts, googleConnected, defaultDuration, me] = await Promise.all([
     prisma.lead.findMany({
       where: { AND: [leadScope(user), { archived: false, email: { not: null }, status: { notIn: ['WON', 'LOST'] } }] },
       orderBy: { updatedAt: 'desc' },
@@ -26,6 +26,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
     user.role === 'ADMIN' ? prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
     prisma.account.findFirst({ where: { userId: user.id, provider: 'google', refresh_token: { not: null } }, select: { id: true } }),
     getSetting('booking.defaultDurationMinutes'),
+    prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
   ])
   const teammates = await allowedTeammates(user, user.id)
   const all = preselected && !leads.some((l) => l.id === preselected.id) ? [preselected, ...leads] : leads
@@ -54,6 +55,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
             currentUserId={user.id}
             teammates={teammates.map((t) => ({ id: t.id, label: t.name ?? t.email }))}
             teammatesAreAdminsOnly={user.role !== 'ADMIN'}
+            timeZone={me.timeZone}
           />
         </CardContent>
       </Card>

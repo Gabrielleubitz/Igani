@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { LEAD_STATUSES, STATUS_LABEL } from '@/lib/format'
+import { parseShekels } from '@/lib/money'
 import { type CommissionTerms, calculateCommission, formatIls } from '@/lib/commission'
 import { canEditAtStage, stagesFor } from '@/lib/stage-rules'
 import { cn } from '@/lib/utils'
@@ -60,6 +61,8 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
   }
 
   const close = (): void => setAsk(null)
+  const priceParsed = ask?.to === 'WON' ? parseShekels(ask.value) : null
+  const priceNow = priceParsed && priceParsed.ok ? (priceParsed.value ?? 0) : 0
   const dialog = (
     <Dialog
       open={ask !== null}
@@ -73,8 +76,9 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
           e.preventDefault()
           if (!ask) return
           if (ask.to === 'WON') {
-            const v = ask.value.replace(/[^\d]/g, '')
-            commit(ask.leadId, 'WON', v ? { quotedPrice: Number(v) } : {})
+            const parsed = parseShekels(ask.value)
+            if (!parsed.ok) return setError(parsed.error)
+            commit(ask.leadId, 'WON', parsed.value ? { quotedPrice: parsed.value } : {})
           } else {
             const text = reason === 'Other' ? detail.trim() || 'Other' : detail.trim() ? `${reason}: ${detail.trim()}` : reason
             commit(ask.leadId, 'LOST', { lostReason: text })
@@ -86,9 +90,9 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
           <div className="space-y-2">
             <Label htmlFor="deal-value">Quoted price (₪)</Label>
             <Input id="deal-value" inputMode="numeric" autoFocus placeholder="e.g. 17000" value={ask.value} onChange={(e) => setAsk({ ...ask, value: e.target.value })} />
-            {dealTerms && ask.value.replace(/[^\d]/g, '') ? (
+            {dealTerms && priceNow ? (
               <p className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" aria-live="polite">
-                {dealTerms.salesperson ?? 'Commission'}: <strong>{formatIls(calculateCommission(Number(ask.value.replace(/[^\d]/g, '')), dealTerms.terms).total)}</strong>
+                {dealTerms.salesperson ?? 'Commission'}: <strong>{formatIls(calculateCommission(priceNow, dealTerms.terms).total)}</strong>
               </p>
             ) : null}
           </div>

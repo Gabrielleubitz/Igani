@@ -20,8 +20,3 @@ export function newLeadRecipients(args: { adminEmails: string[]; extraEmails: st
 export function newLeadSubject(a: { addedBy?: string | null; leadName: string; company?: string | null }): string {
   return a.addedBy ? `New lead from ${a.addedBy}` : `New lead: ${a.leadName}${a.company ? ` (${a.company})` : ''}`
 }
-
-/** Subject when a teammate imports several leads at once: one email, not one per lead. */
-export function importedLeadsSubject(a: { addedBy: string; count: number }): string {
-  return a.count === 1 ? `New lead from ${a.addedBy}` : `${a.count} new leads from ${a.addedBy}`
-}

@@ -3,11 +3,12 @@
 import { useEffect, useState, useTransition } from 'react'
 import { checkInviteTime, createTeamMeeting } from '@/app/actions/bookings'
 import { DateTimeField } from '@/components/DateTimeField'
+import { zonedInputToDate } from '@/lib/time'
 import { TeammatePicker } from '@/components/TeammatePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 
-export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }: { teammates: { id: string; label: string }[]; adminsOnly: boolean; defaultDuration?: number }): React.ReactElement {
+export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30, timeZone }: { timeZone: string; teammates: { id: string; label: string }[]; adminsOnly: boolean; defaultDuration?: number }): React.ReactElement {
   const [title, setTitle] = useState('Team call')
   const [notes, setNotes] = useState('')
   const [ids, setIds] = useState<string[]>([])
@@ -18,7 +19,8 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
   const [checking, setChecking] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string; link?: string | null } | null>(null)
   const [sending, startSend] = useTransition()
-  const startIso = when && !Number.isNaN(new Date(when).getTime()) ? new Date(when).toISOString() : null
+  const startDate = when ? zonedInputToDate(when, timeZone) : null
+  const startIso = startDate && !Number.isNaN(startDate.getTime()) ? startDate.toISOString() : null
 
   useEffect(() => {
     setNote(null)
@@ -72,7 +74,8 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
         <div className="grid grid-cols-2 gap-3">
           <div className="col-span-2 space-y-2">
             <Label htmlFor="tm-when-day">Date and time</Label>
-            <DateTimeField key={fieldKey} idPrefix="tm-when" onChange={setWhen} />
+            <DateTimeField key={fieldKey} idPrefix="tm-when" onChange={setWhen} timeZone={timeZone} />
+            <p className="text-xs text-muted-foreground">Times are in your time zone ({timeZone.replaceAll('_', ' ')}).</p>
           </div>
           <div className="col-span-2 space-y-2 sm:col-span-1">
             <Label htmlFor="tm-duration">Length</Label>

@@ -1,9 +1,8 @@
 import { render } from '@react-email/render'
 import * as React from 'react'
 import { describe, expect, it } from 'vitest'
-import { LeadsImported } from '@/emails/LeadsImported'
 import { NewLeadAlert } from '@/emails/NewLeadAlert'
-import { importedLeadsSubject, newLeadRecipients, newLeadSubject } from '../lib/lead-alerts'
+import { newLeadRecipients, newLeadSubject } from '../lib/lead-alerts'
 
 describe('new-lead alert recipients', () => {
   it('alerts every admin plus the Settings list, de-duplicated and case-insensitive', () => {
@@ -29,11 +28,6 @@ describe('new-lead alert subjects', () => {
     expect(newLeadSubject({ leadName: 'Noa Levi', company: 'Acme' })).toBe('New lead: Noa Levi (Acme)')
     expect(newLeadSubject({ leadName: 'Noa Levi' })).toBe('New lead: Noa Levi')
   })
-
-  it('summarises an import in one subject', () => {
-    expect(importedLeadsSubject({ addedBy: 'Dana', count: 1 })).toBe('New lead from Dana')
-    expect(importedLeadsSubject({ addedBy: 'Dana', count: 48 })).toBe('48 new leads from Dana')
-  })
 })
 
 describe('alert emails', () => {
@@ -50,13 +44,5 @@ describe('alert emails', () => {
     const html = await render(React.createElement(NewLeadAlert, { ...base, leadName: 'Noa Levi', source: 'igani.co/contact', leadUrl: 'https://x/l' }))
     expect(html).toContain('A new lead just came in')
     expect(html).not.toContain('Added by')
-  })
-
-  it('summarises an import with the first few names and a count of the rest', async () => {
-    const sample = Array.from({ length: 6 }, (_, i) => ({ name: `Lead ${i + 1}`, detail: 'Acme' }))
-    const html = await render(React.createElement(LeadsImported, { ...base, addedBy: 'Dana', count: 40, sample, leadsUrl: 'https://x/leads' }))
-    expect(html).toContain('Dana imported 40 new leads')
-    expect(html).toContain('Lead 1')
-    expect(html).toContain('and 34 more')
   })
 })

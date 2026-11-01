@@ -78,3 +78,27 @@ export async function deleteAutoTasksForBooking(bookingId: string, leadId: strin
     await logActivity({ entityType: 'LEAD', entityId: leadId, actorId, action: 'task.deleted', metadata: { taskId: t.id, reason: 'meeting-cancelled' } }, db)
   }
 }
+
+/**
+ * When a lead changes hands, the previous owner's open tasks on it follow it (to the new owner, or to nobody when the lead
+ * is unassigned). Otherwise those tasks would be invisible to everyone and keep emailing someone who can no longer open the lead.
+ */
+export async function moveOpenTasks(leadId: string, fromUserId: string | null, toUserId: string | null, actorId: string | null, db: Prisma.TransactionClient): Promise<number> {
+  if (!fromUserId || fromUserId === toUserId) return 0
+  const logs = await db.activityLog.findMany({
+    where: { entityType: 'LEAD', entityId: leadId, action: { in: [...TASK_ACTIONS] } },
+    select: { entityId: true, action: true, createdAt: true, metadata: true },
+    orderBy: { createdAt: 'asc' },
+  })
+  const mine = foldTasks(logs).filter((t) => !t.done && t.assigneeId === fromUserId)
+  for (const t of mine) {
+    await logActivity({ entityType: 'LEAD', entityId: leadId, actorId, action: 'task.updated', metadata: { taskId: t.id, assigneeId: toUserId, reason: 'lead-reassigned' } }, db)
+  }
+  return mine.length
+}
+
+/** Can this person open the lead a task is on? Admins can open any; everyone else only the leads they own. */
+export function canOpenLeadTask(user: { id: string; role: string | null }, lead: { assignedToId: string | null } | undefined): boolean {
+  if (!lead) return false
+  return user.role === 'ADMIN' || lead.assignedToId === user.id
+}

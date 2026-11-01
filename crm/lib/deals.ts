@@ -60,3 +60,21 @@ export async function snapshotWonCommission(leadId: string, db: Db = prisma, opt
     },
   })
 }
+
+/**
+ * After an admin reassigns a won deal: recalculate its commission with the NEW rep's terms, or set a custom amount.
+ * (Keeping the old amount needs no change.) Never touches a commission that was already paid out.
+ */
+export async function applyCommissionChoice(leadId: string, mode: 'recalculate' | 'custom', amount: number | undefined, actorId: string): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { commissionSnapshot: true, finalPaidAt: true } })
+    if (lead.finalPaidAt) throw new Error('commission already paid out')
+    if (mode === 'recalculate') {
+      await snapshotWonCommission(leadId, tx, { force: true })
+    } else {
+      const snap = (lead.commissionSnapshot ?? {}) as Record<string, unknown>
+      await tx.lead.update({ where: { id: leadId }, data: { commissionTotal: amount ?? 0, commissionSnapshot: { ...snap, custom: true, customTotal: amount ?? 0, snapshotAt: new Date().toISOString() } } })
+    }
+    await tx.activityLog.create({ data: { entityType: 'LEAD', entityId: leadId, action: 'lead.commission_changed_on_reassign', actorId, metadata: { mode, ...(mode === 'custom' ? { amount } : {}) } } })
+  })
+}

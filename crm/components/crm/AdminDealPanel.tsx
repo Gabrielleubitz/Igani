@@ -7,6 +7,7 @@ import { recalculateWonCommission, saveCommissionOverrides, saveQuotedPrice, set
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select } from '@/components/ui/input'
+import { parseShekels } from '@/lib/money'
 import { type CommissionBreakdown, type CommissionTerms, calculateCommission, commissionStatus, formatIls } from '@/lib/commission'
 
 export interface DealPanelProps {
@@ -72,9 +73,23 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
       router.refresh()
     })
 
-  const amount = Number(price.replace(/[^\d]/g, ''))
+  const parsedPrice = parseShekels(price)
+  const priceError = parsedPrice.ok ? null : parsedPrice.error
+  const amount = parsedPrice.ok ? (parsedPrice.value ?? 0) : 0
+  // Each override field must be a plain number (percentages 0-100); a typo is shown, never silently replaced by the old value.
+  const termsProblem = useMemo<string | null>(() => {
+    for (const [k, label] of [['baseRatePct', 'Base rate'], ['threshold', 'Threshold'], ['incrementSize', 'Increment size'], ['bonusPerIncrement', 'Bonus per increment']] as const) {
+      const v = ov[k].replace(/[₪\s,]/g, '')
+      if (v === '' || !/^\d+(\.\d+)?$/.test(v)) return `${label}: use a plain number.`
+      if (k === 'baseRatePct' && Number(v) > 100) return 'Base rate: a percentage from 0 to 100.'
+    }
+    return null
+  }, [ov])
   const workingTerms = useMemo<CommissionTerms>(() => {
-    const n = (v: string, d: number): number => (v.trim() !== '' && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : d)
+    const n = (v: string, d: number): number => {
+      const t = v.replace(/[₪\s,]/g, '')
+      return /^\d+(\.\d+)?$/.test(t) ? Number(t) : d
+    }
     return {
       baseRatePct: Math.min(100, n(ov.baseRatePct, p.terms.baseRatePct)),
       threshold: n(ov.threshold, p.terms.threshold),
@@ -150,7 +165,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
           <div className="flex gap-2">
             <Input id="quoted-price" inputMode="numeric" placeholder="e.g. 17000" value={price} onChange={(e) => setPrice(e.target.value)} />
             <Button
-              disabled={pending || (price.trim() === '' ? p.quotedPrice === null : amount === p.quotedPrice)}
+              disabled={pending || !parsedPrice.ok || (price.trim() === '' ? p.quotedPrice === null : amount === p.quotedPrice)}
               onClick={() =>
                 start(async () => {
                   const res = await saveQuotedPrice(p.leadId, price.trim() === '' ? null : amount)
@@ -162,6 +177,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
               Save
             </Button>
           </div>
+          {priceError ? <p className="text-xs text-red-400">{priceError}</p> : null}
           <p className="text-xs text-muted-foreground">The price agreed with the client after the call. Saving a price moves the lead to Proposal sent. Salespeople never see it.</p>
         </div>
 
@@ -242,7 +258,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
                 ))}
               </div>
               <div className="flex flex-wrap gap-2 pt-3">
-                <Button size="sm" disabled={pending} onClick={() => run(() => saveCommissionOverrides(p.leadId, workingTerms), 'Terms for this deal saved.')}>
+                <Button size="sm" disabled={pending || termsProblem !== null} onClick={() => run(() => saveCommissionOverrides(p.leadId, workingTerms), 'Terms for this deal saved.')}>
                   Save for this deal
                 </Button>
                 {p.overridden ? (
@@ -251,6 +267,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
                   </Button>
                 ) : null}
               </div>
+              {termsProblem ? <p className="pt-2 text-xs text-red-400">{termsProblem}</p> : null}
               <p className="pt-2 text-xs text-muted-foreground">This never changes the salesperson’s saved terms.</p>
             </details>
           </section>
