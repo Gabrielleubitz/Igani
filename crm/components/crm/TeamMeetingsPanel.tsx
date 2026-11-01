@@ -1,4 +1,5 @@
 import { aiTidyEnabled } from '@/lib/meeting-ai'
+import { dedupeCalls } from '@/lib/meet-notes'
 import { organizedFor } from '@/lib/organize-notes'
 import { ConnectGoogleButton, UnverifiedAppHint } from '@/components/ConnectGoogle'
 import { MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
@@ -15,7 +16,7 @@ async function load(adminId: string) {
     prisma.user.findUniqueOrThrow({ where: { id: adminId }, select: { timeZone: true } }),
     prisma.booking.findMany({ where: { OR: [{ source: 'TEAM_MEETING' }, { id: { in: tagged.map((t) => t.entityId) } }], status: { not: 'CANCELLED' } }, orderBy: { startTime: 'desc' }, take: 100, include: { host: { select: { name: true, email: true } }, meeting: true } }),
   ])
-  return { grants, me, rows }
+  return { grants, me, rows: dedupeCalls(rows) }
 }
 
 /** Admin-only block under the booking form: Google status, import, and every team call with its real times and Gemini notes. */

@@ -39,9 +39,10 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
       continue
     }
     found++
-    const existing = await prisma.booking.findFirst({ where: { googleEventId: ev.id, hostId }, select: { id: true } })
+    const existing = await prisma.booking.findFirst({ where: { googleEventId: ev.id }, select: { id: true, hostId: true } })
     if (existing) {
       ids.push(existing.id)
+      if (existing.hostId !== hostId) foreign.add(existing.id)
       continue
     }
     const row = await prisma.booking.create({
