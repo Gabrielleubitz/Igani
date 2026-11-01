@@ -4,6 +4,7 @@ import { db } from '@/lib/firebase'
 import { sendAdminNotification } from '@/lib/mailjet'
 import { buildLeadNotificationEmail } from '@/lib/email-templates'
 import { appendLeadToSheet } from '@/lib/googleSheet'
+import { crmLeadFromSiteLead, forwardLeadToCrm } from '@/lib/crm'
 
 interface Lead {
   id: string
@@ -147,7 +148,8 @@ export async function POST(request: Request) {
       message: leadData.message,
       sourceDetails: leadData.sourceDetails
     })
-    await Promise.all([
+    // allSettled: a mail/sheet/CRM hiccup must not turn a saved lead into an error for the visitor.
+    await Promise.allSettled([
       sendAdminNotification(
         `[IGANI] New lead: ${leadData.name}`,
         html,
@@ -163,6 +165,8 @@ export async function POST(request: Request) {
         campaign: leadData.sourceDetails?.campaign,
         message: leadData.message,
       }),
+      // Forward to the Igani CRM with the page/form/campaign it came from (best effort)
+      forwardLeadToCrm({ ...crmLeadFromSiteLead(leadData as unknown as Record<string, unknown>), submittedAt: undefined }),
     ])
 
     return NextResponse.json({ success: true, lead: { ...leadData, id: leadId } }, {

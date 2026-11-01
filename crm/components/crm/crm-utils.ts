@@ -1,9 +1,11 @@
+import { endOfLocalDay } from '@/lib/time'
 import type { LeadStatus } from '@prisma/client'
 
 /** Escape one CSV cell; also neutralises spreadsheet formula injection (=, +, -, @). */
 export function csvCell(v: unknown): string {
   let s = v == null ? '' : v instanceof Date ? v.toISOString() : String(v)
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  // Phone numbers like +972… are only digits and punctuation, so they can't be formulas and stay untouched.
+  if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d\s().-]+$/.test(s)) s = `'${s}`
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
@@ -29,9 +31,20 @@ export interface CrmTask {
   assigneeId: string | null
   done: boolean
   priority: TaskPriority
+  /** 'prep' / 'follow-up' for tasks the system created around meetings */
+  auto: string | null
+  createdAt: Date
+  completedAt: Date | null
 }
 
-/** Tasks live in the activity log (`task.created` / `task.completed`); fold them into current state. */
+export const TASK_ACTIONS = ['task.created', 'task.completed', 'task.reopened', 'task.updated', 'task.deleted'] as const
+
+const isPriority = (v: unknown): v is TaskPriority => (TASK_PRIORITIES as readonly unknown[]).includes(v)
+
+/**
+ * Tasks live in the activity log as events (`task.created`, `.updated`, `.completed`, `.reopened`, `.deleted`),
+ * so every change keeps its history. Fold the events (oldest first) into each task's current state.
+ */
 export function foldTasks(logs: TaskLog[]): CrmTask[] {
   const tasks = new Map<string, CrmTask>()
   const sorted = [...logs].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
@@ -47,11 +60,28 @@ export function foldTasks(logs: TaskLog[]): CrmTask[] {
         dueAt: typeof m.dueAt === 'string' ? new Date(m.dueAt) : null,
         assigneeId: typeof m.assigneeId === 'string' ? m.assigneeId : null,
         done: false,
-        priority: (TASK_PRIORITIES as readonly unknown[]).includes(m.priority) ? (m.priority as TaskPriority) : 'MEDIUM',
+        priority: isPriority(m.priority) ? m.priority : 'MEDIUM',
+        auto: typeof m.auto === 'string' ? m.auto : null,
+        createdAt: l.createdAt,
+        completedAt: null,
       })
-    } else if (l.action === 'task.completed') {
-      const t = tasks.get(taskId)
-      if (t) t.done = true
+      continue
+    }
+    const t = tasks.get(taskId)
+    if (!t) continue
+    if (l.action === 'task.completed') {
+      t.done = true
+      t.completedAt = l.createdAt
+    } else if (l.action === 'task.reopened') {
+      t.done = false
+      t.completedAt = null
+    } else if (l.action === 'task.deleted') {
+      tasks.delete(taskId)
+    } else if (l.action === 'task.updated') {
+      if (typeof m.title === 'string' && m.title) t.title = m.title
+      if ('dueAt' in m) t.dueAt = typeof m.dueAt === 'string' ? new Date(m.dueAt) : null
+      if ('assigneeId' in m) t.assigneeId = typeof m.assigneeId === 'string' ? m.assigneeId : null
+      if (isPriority(m.priority)) t.priority = m.priority
     }
   }
   return [...tasks.values()]
@@ -64,7 +94,7 @@ export interface LeadFilter {
   owner?: string // user id, 'none' for unassigned
 }
 
-export function filterLeads<T extends { email: string; firstName: string | null; lastName: string | null; company: string | null; phone: string | null; status: string; source: string; assignedToId: string | null }>(
+export function filterLeads<T extends { email: string | null; firstName: string | null; lastName: string | null; company: string | null; phone: string | null; status: string; source: string; assignedToId: string | null }>(
   leads: T[],
   f: LeadFilter,
 ): T[] {
@@ -75,7 +105,7 @@ export function filterLeads<T extends { email: string; firstName: string | null;
     if (f.owner === 'none' ? l.assignedToId !== null : f.owner && l.assignedToId !== f.owner) return false
     if (q) {
       const hay = [l.email, l.firstName, l.lastName, l.company, l.phone].filter(Boolean).join(' ').toLowerCase()
-      if (!hay.includes(q)) return false
+      if (!q.split(/\s+/).every((w) => hay.includes(w))) return false
     }
     return true
   })
@@ -95,6 +125,8 @@ export function buildReport(
   ownerName: (id: string | null) => string,
   now: Date = new Date(),
   days = 30,
+  /** Calendar-day key for a date (YYYY-MM-DD), e.g. in the viewer's time zone. Defaults to UTC. */
+  dayKey: (d: Date) => string = (d) => d.toISOString().slice(0, 10),
 ): Report {
   const byStatus: Record<string, number> = {}
   const src = new Map<string, { total: number; won: number }>()
@@ -106,12 +138,12 @@ export function buildReport(
     m.set(k, e)
   }
   const perDay = new Map<string, number>()
-  for (let i = days - 1; i >= 0; i--) perDay.set(new Date(now.getTime() - i * 864e5).toISOString().slice(0, 10), 0)
+  for (let i = days - 1; i >= 0; i--) perDay.set(dayKey(new Date(now.getTime() - i * 864e5)), 0)
   for (const l of leads) {
     byStatus[l.status] = (byStatus[l.status] ?? 0) + 1
     bump(src, l.source, l.status === 'WON')
     bump(own, ownerName(l.assignedToId), l.status === 'WON')
-    const d = l.createdAt.toISOString().slice(0, 10)
+    const d = dayKey(l.createdAt)
     if (perDay.has(d)) perDay.set(d, (perDay.get(d) ?? 0) + 1)
   }
   const won = byStatus.WON ?? 0
@@ -164,11 +196,12 @@ const HEADER_MAP: Record<string, string> = {
   'first name': 'firstName', firstname: 'firstName', first: 'firstName',
   'last name': 'lastName', lastname: 'lastName', last: 'lastName',
   phone: 'phone', company: 'company', website: 'website', message: 'message',
-  budget: 'budget', source: 'source', 'utm campaign': 'utmCampaign',
+  budget: 'budget', source: 'source', 'lead source': 'source', 'came from': 'source',
+  'source detail': 'sourceDetail', 'source details': 'sourceDetail', 'utm campaign': 'utmCampaign',
 }
 
 export interface ImportRow {
-  email: string
+  email?: string
   firstName?: string
   lastName?: string
   phone?: string
@@ -177,28 +210,35 @@ export interface ImportRow {
   message?: string
   budget?: string
   source?: string
+  sourceDetail?: string
 }
 
-/** Turn parsed CSV (first row = headers) into lead rows; bad/duplicate-in-file rows reported in `errors`. */
+/** Turn parsed CSV (first row = headers) into lead rows. Each row needs a valid email or a phone; bad or repeated rows go to `errors`. */
 export function csvToLeadRows(rows: string[][]): { leads: ImportRow[]; errors: { line: number; reason: string }[] } {
   const errors: { line: number; reason: string }[] = []
   if (rows.length === 0) return { leads: [], errors: [{ line: 1, reason: 'Empty file' }] }
   const cols = (rows[0] ?? []).map((h) => HEADER_MAP[h.trim().toLowerCase()])
-  if (!cols.includes('email')) return { leads: [], errors: [{ line: 1, reason: 'No "email" column found' }] }
+  if (!cols.includes('email') && !cols.includes('phone')) return { leads: [], errors: [{ line: 1, reason: 'No "email" or "phone" column found' }] }
   const seen = new Set<string>()
   const leads: ImportRow[] = []
   rows.slice(1).forEach((r, idx) => {
     const line = idx + 2
     const o: Record<string, string> = {}
     cols.forEach((k, i) => {
-      const v = r[i]?.trim()
+      // Undo the apostrophe our own CSV export adds to protect against spreadsheet formulas.
+      const v = r[i]?.trim().replace(/^'(?=[=+\-@])/, '')
       if (k && v) o[k] = v
     })
     const email = o.email?.toLowerCase()
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) return void errors.push({ line, reason: `Invalid email "${o.email ?? ''}"` })
-    if (seen.has(email)) return void errors.push({ line, reason: `Duplicate of an earlier row (${email})` })
-    seen.add(email)
-    leads.push({ ...o, email })
+    const emailOk = Boolean(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254)
+    const phoneDigits = (o.phone ?? '').replace(/\D/g, '')
+    if (!emailOk && phoneDigits.length < 7) return void errors.push({ line, reason: email ? `Invalid email "${o.email}"` : 'Needs an email or a phone number' })
+    const key = emailOk ? email! : `tel:${phoneDigits.slice(-9)}`
+    if (seen.has(key)) return void errors.push({ line, reason: `Duplicate of an earlier row (${emailOk ? email : o.phone})` })
+    seen.add(key)
+    const { email: _drop, ...rest } = o
+    void _drop
+    leads.push(emailOk ? { ...rest, email } : rest)
   })
   return { leads, errors }
 }
@@ -209,8 +249,9 @@ export interface DueSplit {
 }
 
 /** Open tasks that are past due, or due before the end of `now`'s UTC day. */
-export function splitDue(tasks: CrmTask[], now: Date = new Date()): DueSplit {
-  const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
+/** Open tasks that are past due, or due later today. "Today" ends at local midnight in `timeZone` (default UTC). */
+export function splitDue(tasks: CrmTask[], now: Date = new Date(), timeZone = 'UTC'): DueSplit {
+  const endOfDay = endOfLocalDay(now, timeZone)
   const open = tasks.filter((t) => !t.done && t.dueAt)
   return {
     overdue: open.filter((t) => t.dueAt!.getTime() < now.getTime()),
@@ -218,21 +259,22 @@ export function splitDue(tasks: CrmTask[], now: Date = new Date()): DueSplit {
   }
 }
 
-const OPEN_STATUSES: readonly string[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT']
-const STAGE_POINTS: Record<string, number> = { NEW: 10, CONTACTED: 25, DEMO_SCHEDULED: 45, PROPOSAL_SENT: 60 }
+const OPEN_STATUSES: readonly string[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT']
+const STAGE_POINTS: Record<string, number> = { NEW: 10, CONTACTED: 25, DEMO_SCHEDULED: 45, DEMO_SENT: 52, PROPOSAL_SENT: 60 }
 
 /** Days since the last touch (activity or creation) before an open lead counts as stale. */
 export const STALE_DAYS = 7
 
 export interface ScoreInput {
   status: string
-  email: string
+  email: string | null
   phone: string | null
   company: string | null
   website: string | null
   budget: string | null
   message: string | null
-  dealValue: number | null
+  /** unused: prices are admin-only and no longer feed the score */
+  dealValue?: number | null
 }
 
 /** 0–100 heat score: pipeline stage plus how complete/qualified the contact is. Closed leads score 0. */
@@ -244,8 +286,7 @@ export function leadScore(l: ScoreInput): number {
   if (l.website) n += 4
   if (l.budget) n += 10
   if (l.message) n += 5
-  if (l.dealValue && l.dealValue > 0) n += 10
-  if (!/@(gmail|yahoo|hotmail|outlook|icloud)\./i.test(l.email)) n += 5
+  if (l.email && !/@(gmail|yahoo|hotmail|outlook|icloud)\./i.test(l.email)) n += 5
   return Math.min(100, n)
 }
 
@@ -254,13 +295,13 @@ export function scoreLabel(score: number): 'Hot' | 'Warm' | 'Cold' {
 }
 
 /** Whole days an open lead has gone untouched, or null if it is closed or touched within STALE_DAYS. */
-export function staleDays(status: string, lastTouch: Date, now: Date = new Date()): number | null {
+export function staleDays(status: string, lastTouch: Date, now: Date = new Date(), threshold: number = STALE_DAYS): number | null {
   if (!OPEN_STATUSES.includes(status)) return null
   const d = Math.floor((now.getTime() - lastTouch.getTime()) / 864e5)
-  return d >= STALE_DAYS ? d : null
+  return d >= threshold ? d : null
 }
 
-/** Prisma `where` for leads a user may see: admins all; others their own plus unassigned (matches the lead page). */
-export function visibleLeadsWhere(role: string, userId: string): { OR?: ({ assignedToId: string } | { assignedToId: null })[] } {
-  return role === 'ADMIN' ? {} : { OR: [{ assignedToId: userId }, { assignedToId: null }] }
+/** Prisma `where` for leads a user may see: admins all; everyone else only the leads assigned to them. */
+export function visibleLeadsWhere(role: string, userId: string): { assignedToId?: string } {
+  return role === 'ADMIN' ? {} : { assignedToId: userId }
 }

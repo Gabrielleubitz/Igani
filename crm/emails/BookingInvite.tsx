@@ -1,6 +1,5 @@
 import * as React from 'react'
-import { Text } from '@react-email/components'
-import { DetailCard, p, Shell } from './Shell'
+import { MeetingCard, Quote, Shell } from './Shell'
 import { formatWhen } from './theme'
 
 export interface BookingInviteProps {
@@ -18,21 +17,23 @@ export interface BookingInviteProps {
 }
 
 export function BookingInvite({ guestName, hostName, title, startTime, endTime, timeZone, acceptUrl, logoUrl, brandName = 'Igani', supportEmail, notes }: BookingInviteProps): React.ReactElement {
-  const when = formatWhen(startTime, endTime, timeZone)
+  const w = formatWhen(startTime, endTime, timeZone)
   return (
     <Shell
-      preview={`${hostName} invited you: ${title}`}
+      preview={`${hostName} invited you to ${title} on ${w.date}. One click to confirm.`}
       eyebrow="Meeting invitation"
-      title={title}
+      title={`${hostName} would like to meet`}
+      intro={<>Hi {guestName}, here&apos;s a time that works for us. If it suits you too, confirm with one click.</>}
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
       cta={{ href: acceptUrl, label: 'Confirm this time' }}
-      ctaHint="A Google Meet link is created as soon as you confirm."
+      ctaHint="A Google Meet link and calendar invite arrive the moment you confirm. Need a different time? Just reply to this email."
+      signature={{ name: hostName, detail: brandName }}
+      footerNote={`${hostName} at ${brandName} invited you to this meeting.`}
     >
-      <Text style={p}>Hi {guestName}, {hostName} from {brandName} would like to meet with you.</Text>
-      <DetailCard rows={[{ label: 'Date', value: when.date }, { label: 'Time', value: when.time }, { label: 'Host', value: hostName }]} />
-      {notes ? <Text style={{ ...p, fontSize: 14, lineHeight: '22px' }}>{notes}</Text> : null}
+      <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Where', value: 'Google Meet (video call)' }]} />
+      {notes ? <Quote label={`A note from ${hostName.split(' ')[0]}`}>{notes}</Quote> : null}
     </Shell>
   )
 }

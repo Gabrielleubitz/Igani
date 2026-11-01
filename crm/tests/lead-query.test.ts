@@ -24,3 +24,13 @@ describe('lead filters', () => {
     expect(toCsv(['a', 'b'], [['=cmd()', 'x,"y"']])).toBe('a,b\r\n\'=cmd(),"x,""y"""')
   })
 })
+
+describe('multi-word search', () => {
+  it('requires every word to match some field (full-name search works)', () => {
+    const w = buildLeadWhere(parseLeadFilters({ q: 'Dana  Levi' }))
+    const and = (w.AND as object[]).slice(1)
+    expect(and).toHaveLength(2)
+    expect(JSON.stringify(and[0])).toContain('"contains":"Dana"')
+    expect(JSON.stringify(and[1])).toContain('"contains":"Levi"')
+  })
+})

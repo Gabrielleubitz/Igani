@@ -7,7 +7,7 @@ if (testDb) process.env.DATABASE_URL = testDb
 const d = testDb ? describe : describe.skip
 
 d('admin lead flows', async () => {
-  const { bulkUpdateLeadsTx, reassignUserWork, changeLeadStatus } = await import('@/lib/leads')
+  const { assignLeadManually, bulkUpdateLeadsTx, reassignUserWork, changeLeadStatus } = await import('@/lib/leads')
   const { getSetting } = await import('@/lib/settings')
   const prisma = new PrismaClient()
 
@@ -42,10 +42,16 @@ d('admin lead flows', async () => {
     expect(await prisma.activityLog.count()).toBe(0)
   })
 
-  it('bulk update rejects a non-sales assignee and LOST', async () => {
+  it('any active team member can be assigned a lead (marketing too), but not someone without access; LOST needs a reason', async () => {
     const m = await prisma.user.create({ data: { email: 'm@x.co', role: 'MARKETING' } })
+    const gone = await prisma.user.create({ data: { email: 'gone@x.co', role: null } })
     const l = await lead('1@x.co')
-    await expect(bulkUpdateLeadsTx([l.id], { assigneeId: m.id }, m.id)).rejects.toThrow()
+    await bulkUpdateLeadsTx([l.id], { assigneeId: m.id }, m.id)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).assignedToId).toBe(m.id)
+    await assignLeadManually(l.id, null, m.id)
+    await assignLeadManually(l.id, m.id, m.id)
+    await expect(bulkUpdateLeadsTx([l.id], { assigneeId: gone.id }, m.id)).rejects.toThrow()
+    await expect(assignLeadManually(l.id, gone.id, m.id)).rejects.toThrow()
     await expect(bulkUpdateLeadsTx([l.id], { status: 'LOST' }, m.id)).rejects.toThrow()
   })
 
@@ -66,9 +72,15 @@ d('admin lead flows', async () => {
     await expect(changeLeadStatus(l.id, 'LOST', null)).rejects.toThrow()
     await changeLeadStatus(l.id, 'LOST', null, { lostReason: 'no budget' })
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).lostReason).toBe('no budget')
-    await changeLeadStatus(l.id, 'WON', null, { dealValue: 5000 })
+    await changeLeadStatus(l.id, 'WON', null, { quotedPrice: 5000 })
     const won = await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })
-    expect(won).toMatchObject({ status: 'WON', lostReason: null, dealValue: 5000 })
+    expect(won).toMatchObject({ status: 'WON', lostReason: null, quotedPrice: 5000 })
+  })
+
+  it('can be set to Demo sent (once the DEMO_SENT migration is applied)', async () => {
+    const l = await lead('2@x.co')
+    await changeLeadStatus(l.id, 'DEMO_SENT', null)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).status).toBe('DEMO_SENT')
   })
 
   it('settings read stored values and fall back to defaults', async () => {

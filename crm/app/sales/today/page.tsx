@@ -1,41 +1,111 @@
 import Link from 'next/link'
+import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
-import { foldTasks, leadScore, scoreLabel, staleDays, visibleLeadsWhere } from '@/components/crm/crm-utils'
+import { MailSyncTrigger } from '@/components/crm/MailSyncTrigger'
+import { MeetingSyncTrigger } from '@/components/crm/MeetingCall'
+import { TodayCalendar, type CalendarItem } from '@/components/crm/TodayCalendar'
+import { StagePill } from '@/components/crm/StagePill'
 import { Badge } from '@/components/ui/badge'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
-import { formatDateTime, leadName } from '@/lib/format'
+import { bookingScope } from '@/lib/bookings'
+import { commissionStatus, formatIls, salespersonCommissionView } from '@/lib/commission'
+import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
+import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
-import { PageIntro } from '@/components/PageIntro'
+import { getSetting } from '@/lib/settings'
+import { tasksForUser } from '@/lib/tasks'
+import { entryColorVar } from '@/lib/calendar-entries'
+import { endOfLocalDay, startOfLocalDay } from '@/lib/time'
 
 export const metadata = { title: 'Today' }
+export const dynamic = 'force-dynamic'
+
+const OPEN = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT'] as const
+
+function greeting(tz: string): string {
+  const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(new Date()))
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+}
 
 export default async function TodayPage(): Promise<React.ReactElement> {
   const user = await requireUser()
+  const isAdmin = user.role === 'ADMIN'
   const now = new Date()
   const endOfDay = new Date(now.getTime() + 864e5)
-  const mine = user.role === 'ADMIN' ? {} : { assignedToId: user.id }
-  const visible = await prisma.lead.findMany({ where: visibleLeadsWhere(user.role, user.id), select: { id: true } })
-  const visibleIds = visible.map((l) => l.id)
-  const [me, taskLogs, meetings, openLeads] = await Promise.all([
-    prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
-    prisma.activityLog.findMany({ where: { entityType: 'LEAD', entityId: { in: visibleIds }, action: { in: ['task.created', 'task.completed'] } } }),
-    prisma.booking.findMany({
-      where: { status: 'CONFIRMED', startTime: { gte: now, lt: endOfDay }, ...(user.role === 'ADMIN' ? {} : { hostId: user.id }) },
-      orderBy: { startTime: 'asc' },
-      take: 20,
-    }),
-    prisma.lead.findMany({ where: { archived: false, status: { in: ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT'] }, ...mine }, take: 500 }),
+  const mineWhere = isAdmin ? {} : { assignedToId: user.id }
+  const [me, threshold, meetings, openLeads, unclaimed, newThisWeek] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true, name: true } }),
+    getSetting('leads.staleDays'),
+    user.role === 'MARKETING'
+      ? Promise.resolve([])
+      : prisma.booking.findMany({
+          where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, endTime: { gte: now }, startTime: { lt: endOfDay }, ...(await bookingScope(user)) },
+          orderBy: { startTime: 'asc' },
+          take: 20,
+          include: { host: { select: { name: true } }, meeting: { select: { status: true } } },
+        }),
+    prisma.lead.findMany({ where: { archived: false, status: { in: [...OPEN] }, ...mineWhere }, take: 1000 }),
+    user.role !== 'ADMIN' ? Promise.resolve([]) : prisma.lead.findMany({ where: { archived: false, assignedToId: null, status: { in: [...OPEN] } }, orderBy: { createdAt: 'desc' }, take: 6 }),
+    prisma.lead.count({ where: { AND: [leadScope(user), { archived: false, createdAt: { gte: new Date(now.getTime() - 7 * 864e5) } }] } }),
   ])
   const tz = me.timeZone
-  const tasks = foldTasks(taskLogs)
-    .filter((t) => !t.done && t.dueAt && t.dueAt < endOfDay && (user.role === 'ADMIN' || t.assigneeId === user.id || t.assigneeId === null))
-    .sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())
-  const taskLeads = await prisma.lead.findMany({
-    where: { id: { in: [...new Set(tasks.map((t) => t.leadId))] } },
-    select: { id: true, email: true, firstName: true, lastName: true },
-  })
-  const byId = new Map(taskLeads.map((l) => [l.id, l]))
+
+  // Same task rules as the banner and Tasks page: my tasks, on contacts that exist and aren't archived, due before local midnight.
+  const { mine, leads: byId } = await tasksForUser(user)
+  const endOfToday = endOfLocalDay(now, tz)
+  const due = mine.filter((t) => !t.done && t.dueAt && t.dueAt < endOfToday).sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())
+
+  // Calendar: my meetings, due tasks and personal entries around today (the grid itself is client-side).
+  const winStart = new Date(startOfLocalDay(now, tz).getTime() - 62 * 864e5)
+  const winEnd = new Date(startOfLocalDay(now, tz).getTime() + 186 * 864e5)
+  const [calBookings, calEntries] = await Promise.all([
+    user.role === 'MARKETING'
+      ? Promise.resolve([])
+      : prisma.booking.findMany({
+          where: { status: 'CONFIRMED', startTime: { lt: winEnd }, endTime: { gt: winStart }, ...(await bookingScope(user)) },
+          orderBy: { startTime: 'asc' },
+          take: 500,
+          select: { id: true, title: true, guestName: true, startTime: true, endTime: true, leadId: true, meetUrl: true, source: true },
+        }),
+    prisma.calendarEntry.findMany({ where: { ownerId: user.id, startTime: { lt: winEnd }, endTime: { gt: winStart } }, orderBy: { startTime: 'asc' }, take: 500 }),
+  ])
+  const calendarItems: CalendarItem[] = [
+    ...calBookings.map((b): CalendarItem => ({
+      id: `b-${b.id}`,
+      title: b.source === 'TEAM_MEETING' ? b.title : `${b.title} · ${b.guestName}`,
+      start: b.startTime.toISOString(),
+      end: b.endTime.toISOString(),
+      allDay: false,
+      color: entryColorVar(b.source === 'TEAM_MEETING' ? 'violet' : 'emerald'),
+      kind: 'booking',
+      href: b.leadId ? `/sales/leads/${b.leadId}` : undefined,
+      meetUrl: b.meetUrl ?? undefined,
+    })),
+    ...mine
+      .filter((t) => !t.done && t.dueAt && t.dueAt >= winStart && t.dueAt < winEnd)
+      .map((t): CalendarItem => ({
+        id: `t-${t.id}`,
+        title: `Task: ${t.title}`,
+        start: t.dueAt!.toISOString(),
+        end: new Date(t.dueAt!.getTime() + 30 * 60_000).toISOString(),
+        allDay: false,
+        color: entryColorVar('amber'),
+        kind: 'task',
+        href: byId.get(t.leadId) ? `/sales/leads/${t.leadId}` : undefined,
+      })),
+    ...calEntries.map((e): CalendarItem => ({
+      id: e.id,
+      title: e.title,
+      start: e.startTime.toISOString(),
+      end: e.endTime.toISOString(),
+      allDay: e.allDay,
+      color: entryColorVar(e.color),
+      kind: 'entry',
+      notes: e.notes ?? undefined,
+    })),
+  ]
 
   const touches = await prisma.activityLog.groupBy({
     by: ['entityId'],
@@ -44,84 +114,204 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   })
   const lastTouch = new Map(touches.map((t) => [t.entityId, t._max.createdAt]))
   const stale = openLeads
-    .map((l) => ({ lead: l, days: staleDays(l.status, lastTouch.get(l.id) ?? l.createdAt, now), score: leadScore(l) }))
+    .map((l) => ({ lead: l, days: staleDays(l.status, lastTouch.get(l.id) ?? l.createdAt, now, threshold), score: leadScore(l) }))
     .filter((x): x is { lead: (typeof openLeads)[number]; days: number; score: number } => x.days !== null)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 15)
+    .sort((a, b) => b.score - a.score || b.days - a.days)
   const hot = openLeads
     .map((l) => ({ lead: l, score: leadScore(l) }))
     .filter((x) => x.score >= 65)
     .sort((a, b) => b.score - a.score)
     .slice(0, 8)
+  // Client emails nobody has looked at yet, on my contacts (admins also see unassigned ones).
+  const newEmails = await prisma.emailMessage.findMany({
+    where: { direction: 'INBOUND', readAt: null, sentAt: { gte: new Date(now.getTime() - 30 * 864e5) }, lead: { archived: false, ...(isAdmin ? { OR: [{ assignedToId: user.id }, { assignedToId: null }] } : { assignedToId: user.id }) } },
+    orderBy: { sentAt: 'desc' },
+    take: 8,
+    include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } } },
+  })
+  // Admins: pipeline value from the quoted price. Salespeople never see a price: they see their own commission instead.
+  const pipelineValue = isAdmin ? openLeads.reduce((n, l) => n + (l.quotedPrice ?? 0), 0) : 0
+  const myCommissionRows = isAdmin || user.role === 'MARKETING'
+    ? []
+    : await prisma.lead.findMany({
+        where: { archived: false, status: 'WON', assignedToId: user.id, commissionTotal: { not: null } },
+        select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true },
+      })
+  const myCommission = salespersonCommissionView(
+    myCommissionRows.reduce((t, r) => {
+      const s = commissionStatus(r)
+      return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
+    }, { total: 0, paid: 0, payable: 0, pending: 0 }),
+  )
+  const overdueCount = due.filter((t) => t.dueAt! < now).length
+
+  const stats: { label: string; value: string | number; href: string; tone?: string }[] = [
+    { label: isAdmin ? 'Open deals' : 'My open deals', value: openLeads.length, href: '/sales/board' },
+    isAdmin
+      ? { label: 'Pipeline value', value: `₪${formatMoney(pipelineValue)}`, href: '/sales/reports' }
+      : { label: 'My commission (pending)', value: formatIls(myCommission.pending), href: '/sales/reports' },
+    { label: 'Tasks due today', value: due.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
+    { label: 'New leads (7 days)', value: newThisWeek, href: '/sales/leads' },
+  ]
 
   return (
-    <div>
-      <PageIntro title="Today" hint="Your daily starting point: what is due, who to call next, and which leads are hottest." className="mb-4" />
-      <div className="grid gap-6 lg:grid-cols-2">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">{new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long', month: 'long', day: 'numeric' }).format(now)}</p>
+          <h1 className="text-2xl font-semibold">
+            {greeting(tz)}
+            {me.name ? `, ${me.name.split(' ')[0]}` : ''} 👋
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">Your daily starting point: what is due, who to call next, and which deals are hottest.</p>
+        </div>
+        {user.role !== 'MARKETING' ? (
+          <div className="flex gap-2">
+            <Link href="/sales/invite" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              📅 Send invite
+            </Link>
+            <Link href="/sales/leads" className={buttonVariants({ size: 'sm' })}>
+              + Add lead
+            </Link>
+          </div>
+        ) : null}
+      </div>
+
+      <MailSyncTrigger />
+      {meetings.length ? <MeetingSyncTrigger everyMs={meetings.some((b) => b.startTime.getTime() - now.getTime() < 15 * 60_000) ? 60_000 : 0} /> : null}
+      {newEmails.length ? (
+        <Card className="border-emerald-500/30">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>📨 New emails from contacts</span>
+              <span className="text-sm font-normal text-muted-foreground">{newEmails.length}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y">
+            {newEmails.map((e) => (
+              <Link key={e.id} href={`/sales/leads/${e.lead.id}#emails`} className="flex items-start justify-between gap-3 py-2.5 text-sm hover:bg-muted/20">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium">
+                    {leadName(e.lead)} · <span className="font-normal">{e.subject}</span>
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">{e.snippet}</span>
+                </span>
+                <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(e.sentAt, now)}</span>
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <TodayCalendar items={calendarItems} timeZone={tz} />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {stats.map((s) => (
+          <Link key={s.label} href={s.href} className="rounded-lg border bg-card p-4 transition-colors hover:bg-muted/40">
+            <div className={`text-2xl font-semibold tabular-nums ${s.tone ?? ''}`}>{s.value}</div>
+            <div className="text-xs text-muted-foreground">{s.label}</div>
+          </Link>
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card>
-          <CardHeader>
-            <CardTitle>Tasks due &amp; overdue ({tasks.length})</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>Due today &amp; overdue</span>
+              <span className="text-sm font-normal text-muted-foreground">{due.length}</span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {tasks.length === 0 ? <p className="text-sm text-muted-foreground">Nothing due. Nice.</p> : null}
-            {tasks.map((t) => {
+            {due.length === 0 ? <p className="text-sm text-muted-foreground">Nothing due. Nice work! ✨</p> : null}
+            {due.slice(0, 10).map((t) => {
               const l = byId.get(t.leadId)
               return (
                 <div key={t.id} className="flex items-center justify-between gap-2 text-sm">
-                  <div>
-                    {t.title}{' '}
-                    {t.dueAt! < now ? <Badge variant="outline">overdue</Badge> : null}
-                    <div className="text-xs text-muted-foreground">
-                      {l ? <Link href={`/sales/leads/${l.id}`} className="underline underline-offset-4">{leadName(l)}</Link> : null} · due {formatDateTime(t.dueAt!, tz)}
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">
+                      {t.title} {t.dueAt! < now ? <Badge variant="destructive" className="ml-1 align-middle">overdue</Badge> : null}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {l ? (
+                        <Link href={`/sales/leads/${l.id}`} className="underline-offset-4 hover:underline">
+                          {leadName(l)}
+                        </Link>
+                      ) : null}{' '}
+                      · {formatDateTime(t.dueAt!, tz)}
                     </div>
                   </div>
                   <CompleteTaskButton leadId={t.leadId} taskId={t.id} />
                 </div>
               )
             })}
+            {due.length > 10 ? (
+              <Link href="/sales/tasks" className="text-sm text-primary underline-offset-4 hover:underline">
+                See all {due.length} →
+              </Link>
+            ) : null}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Meetings next 24h ({meetings.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {meetings.length === 0 ? <p className="text-sm text-muted-foreground">No meetings coming up.</p> : null}
-            {meetings.map((b) => (
-              <div key={b.id} className="text-sm">
-                {b.title} · {b.guestName}
-                <div className="text-xs text-muted-foreground">
-                  {formatDateTime(b.startTime, tz)}
-                  {b.leadId ? (
-                    <>
-                      {' · '}
-                      <Link href={`/sales/leads/${b.leadId}`} className="underline underline-offset-4">lead</Link>
-                    </>
-                  ) : null}
+        {user.role !== 'MARKETING' ? (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-base">
+                <span>Meetings in the next 24h</span>
+                <span className="text-sm font-normal text-muted-foreground">{meetings.length}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {meetings.length === 0 ? <p className="text-sm text-muted-foreground">No meetings coming up.</p> : null}
+              {meetings.map((b) => (
+                <div key={b.id} className="flex items-center justify-between gap-2 text-sm">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">
+                      {b.title} · {b.guestName}
+                      {b.meeting?.status === 'LIVE' ? <Badge variant="success" className="ml-2 align-middle">Live now</Badge> : null}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {formatDateTime(b.startTime, tz)}
+                      {isAdmin ? ` · ${b.host.name ?? 'host'}` : ''}
+                      {b.leadId ? (
+                        <>
+                          {' · '}
+                          <Link href={`/sales/leads/${b.leadId}`} className="underline-offset-4 hover:underline">
+                            contact
+                          </Link>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
                   {b.meetUrl ? (
-                    <>
-                      {' · '}
-                      <a href={b.meetUrl} target="_blank" rel="noreferrer" className="underline underline-offset-4">join</a>
-                    </>
+                    <a href={b.meetUrl} target="_blank" rel="noreferrer" className={buttonVariants({ size: 'sm', variant: 'outline' })}>
+                      Join
+                    </a>
                   ) : null}
                 </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
-          <CardHeader>
-            <CardTitle>Needs follow-up ({stale.length})</CardTitle>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center justify-between text-base">
+              <span>Needs follow-up</span>
+              <span className="text-sm font-normal text-muted-foreground">{stale.length}</span>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">Open deals nobody has touched for {threshold}+ days, hottest first.</p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {stale.length === 0 ? <p className="text-sm text-muted-foreground">Every open lead was touched recently.</p> : null}
-            {stale.map(({ lead, days, score }) => (
+          <CardContent className="space-y-2.5">
+            {stale.length === 0 ? <p className="text-sm text-muted-foreground">Every open deal was touched recently. 👏</p> : null}
+            {stale.slice(0, 10).map(({ lead, days, score }) => (
               <div key={lead.id} className="flex items-center justify-between gap-2 text-sm">
-                <Link href={`/sales/leads/${lead.id}`} className="underline underline-offset-4">{leadName(lead)}</Link>
-                <span className="text-xs text-muted-foreground">
-                  {lead.status.replace('_', ' ').toLowerCase()} · {days}d quiet · {scoreLabel(score)}
+                <Link href={`/sales/leads/${lead.id}`} className="min-w-0 truncate font-medium underline-offset-4 hover:underline">
+                  {leadName(lead)}
+                </Link>
+                <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+                  <StagePill status={lead.status} />
+                  {days}d quiet · {scoreLabel(score)}
                 </span>
               </div>
             ))}
@@ -129,20 +319,46 @@ export default async function TodayPage(): Promise<React.ReactElement> {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Hottest leads</CardTitle>
-            <p className="text-xs text-muted-foreground">Score out of 100: how far along the deal is and how complete the contact details are.</p>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Hottest deals</CardTitle>
+            <p className="text-xs text-muted-foreground">Score out of 100: how far along the deal is plus how complete the contact details are.</p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {hot.length === 0 ? <p className="text-sm text-muted-foreground">No hot leads right now.</p> : null}
+          <CardContent className="space-y-2.5">
+            {hot.length === 0 ? <p className="text-sm text-muted-foreground">No hot deals right now. Move a few forward!</p> : null}
             {hot.map(({ lead, score }) => (
               <div key={lead.id} className="flex items-center justify-between gap-2 text-sm">
-                <Link href={`/sales/leads/${lead.id}`} className="underline underline-offset-4">{leadName(lead)}</Link>
+                <Link href={`/sales/leads/${lead.id}`} className="min-w-0 truncate font-medium underline-offset-4 hover:underline">
+                  {leadName(lead)}
+                  {lead.company ? <span className="font-normal text-muted-foreground"> · {lead.company}</span> : null}
+                </Link>
                 <Badge>{score}</Badge>
               </div>
             ))}
           </CardContent>
         </Card>
+
+        {unclaimed.length ? (
+          <Card className="lg:col-span-2">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-base">
+                <span>New leads waiting for an owner</span>
+                <Link href="/sales/leads?assignee=none" className="text-sm font-normal text-primary underline-offset-4 hover:underline">
+                  See all →
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {unclaimed.map((l) => (
+                <Link key={l.id} href={`/sales/leads/${l.id}`} className="rounded-md border p-3 text-sm transition-colors hover:bg-muted/40">
+                  <div className="truncate font-medium">{leadName(l)}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {l.company ?? l.email} · {timeAgo(l.createdAt, now)}
+                  </div>
+                </Link>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </div>
   )

@@ -57,7 +57,7 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ ...formData, page: window.location.pathname, utm: Object.fromEntries(Array.from(new URLSearchParams(window.location.search)).filter(([k]) => k.startsWith('utm_')).map(([k, v]) => [k.slice(4), v])) }),
       })
       await res.json().catch(() => ({}))
       if (!res.ok) {

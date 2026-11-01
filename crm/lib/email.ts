@@ -1,14 +1,23 @@
 import 'server-only'
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { BookingCancelled } from '@/emails/BookingCancelled'
 import { BookingConfirmed } from '@/emails/BookingConfirmed'
 import { BookingInvite } from '@/emails/BookingInvite'
+import { BookingRequested } from '@/emails/BookingRequested'
+import { ContactEmail } from '@/emails/ContactEmail'
+import { MeetingReminder } from '@/emails/MeetingReminder'
+import { LeadsImported, type LeadsImportedProps } from '@/emails/LeadsImported'
+import { NewLeadAlert, type NewLeadAlertProps } from '@/emails/NewLeadAlert'
 import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
 import { PendingBooking } from '@/emails/PendingBooking'
 import { TaskDigest, type TaskDigestProps } from '@/emails/TaskDigest'
 import { TeamInvite } from '@/emails/TeamInvite'
 import { appUrl, env } from './env'
 import { buildIcs } from './ics'
+import { importedLeadsSubject, newLeadSubject } from './lead-alerts'
 import { getSetting } from './settings'
 
 let client: Resend | undefined
@@ -17,6 +26,12 @@ function resend(): Resend {
   return client
 }
 
+/**
+ * Dev/QA only: with EMAIL_DRY_RUN=1 (ignored in production) emails are written to .email-outbox/
+ * as HTML instead of being sent, so every flow can be clicked through without a Resend key.
+ */
+const dryRun = (): boolean => process.env.NODE_ENV !== 'production' && process.env.EMAIL_DRY_RUN === '1'
+
 async function send(args: {
   to: string | string[]
   subject: string
@@ -24,7 +39,17 @@ async function send(args: {
   text: string
   replyTo?: string
   attachments?: { filename: string; content: Buffer; contentType?: string }[]
+  headers?: Record<string, string>
 }): Promise<string> {
+  if (dryRun()) {
+    const id = `dry_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    const dir = join(process.cwd(), '.email-outbox')
+    mkdirSync(dir, { recursive: true })
+    const meta = `<!-- to: ${[args.to].flat().join(', ')} | subject: ${args.subject} | replyTo: ${args.replyTo ?? ''} | attachments: ${(args.attachments ?? []).map((a) => a.filename).join(', ')} -->\n`
+    writeFileSync(join(dir, `${id}.html`), meta + args.html)
+    console.info(`[email:dry-run] ${args.subject} → ${[args.to].flat().join(', ')} (${id})`)
+    return id
+  }
   const { data, error } = await resend().emails.send({
     from: env().EMAIL_FROM,
     to: args.to,
@@ -33,6 +58,7 @@ async function send(args: {
     text: args.text,
     replyTo: args.replyTo,
     attachments: args.attachments,
+    headers: args.headers,
   })
   if (error || !data) throw new Error(`Resend failed: ${error?.message ?? 'no response'}`)
   return data.id
@@ -100,13 +126,40 @@ export async function sendBookingConfirmedEmail(b: BookingEmailData & { meetUrl:
   })
 }
 
+/** Sent to teammates added to a meeting: the Meet link and time, nothing to approve. */
+export async function sendTeammateMeetingEmail(b: BookingEmailData & { meetUrl: string; teammateEmail: string; teammateName: string }): Promise<string> {
+  const icsFileName = 'igani-meeting.ics'
+  const ics = buildIcs({
+    uid: `${b.bookingId}-${b.teammateEmail}@app.igani.co`,
+    start: b.startTime,
+    end: b.endTime,
+    title: b.title,
+    description: `Join Google Meet: ${b.meetUrl}`,
+    location: b.meetUrl,
+    url: b.meetUrl,
+    organizerName: b.hostName,
+    organizerEmail: b.hostEmail,
+    attendeeName: b.teammateName,
+    attendeeEmail: b.teammateEmail,
+  })
+  const element = BookingConfirmed({ ...b, guestName: b.teammateName, meetUrl: b.meetUrl, logoUrl: logoUrl(), icsFileName, teammateOf: { guestName: b.guestName }, ...(await brand()) })
+  return send({
+    to: b.teammateEmail,
+    replyTo: b.hostEmail,
+    subject: `You're on the call: ${b.title} with ${b.guestName}`,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+    attachments: [{ filename: icsFileName, content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; method=REQUEST' }],
+  })
+}
+
 /** Branded notice to admins that a public booking awaits approval. */
-export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData): Promise<string | null> {
+export async function sendApprovalRequestEmail(to: string[], b: BookingEmailData, opts: { teamRequest?: boolean } = {}): Promise<string | null> {
   if (to.length === 0) return null
-  const element = PendingBooking({ ...b, reviewUrl: appUrl('/admin/bookings'), logoUrl: logoUrl(), ...(await brand()) })
+  const element = PendingBooking({ ...b, teamRequest: opts.teamRequest, reviewUrl: appUrl(opts.teamRequest ? '/sales' : '/admin/bookings'), logoUrl: logoUrl(), ...(await brand()) })
   return send({
     to,
-    subject: `Approval needed: ${b.title} with ${b.guestName}`,
+    subject: opts.teamRequest ? `Team meeting request from ${b.hostName}: ${b.title}` : `Approval needed: ${b.title} with ${b.guestName}`,
     html: await render(element),
     text: await render(element, { plainText: true }),
   })
@@ -128,4 +181,73 @@ export async function sendTaskDigestEmail(to: string, a: Omit<TaskDigestProps, '
   const element = TaskDigest({ ...a, logoUrl: logoUrl(), ...(await brand()) })
   const n = a.tasks.length
   return send({ to, subject: `${n} CRM task${n === 1 ? '' : 's'} need attention`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** Guest notice that a meeting was cancelled, or that an approval request was declined. */
+export async function sendBookingCancelledEmail(b: BookingEmailData & { kind: 'cancelled' | 'declined'; rebookUrl?: string | null; removeFromCalendar?: boolean }): Promise<string> {
+  const element = BookingCancelled({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  // A confirmed meeting was sent with an .ics invite: a METHOD:CANCEL file with the same UID removes it from their calendar.
+  const ics = b.removeFromCalendar
+    ? buildIcs({ uid: `${b.bookingId}@app.igani.co`, start: b.startTime, end: b.endTime, title: b.title, organizerName: b.hostName, organizerEmail: b.hostEmail, attendeeName: b.guestName, attendeeEmail: b.guestEmail, method: 'CANCEL' })
+    : null
+  return send({
+    attachments: ics ? [{ filename: 'igani-meeting-cancelled.ics', content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; method=CANCEL' }] : undefined,
+    to: b.guestEmail,
+    replyTo: b.hostEmail,
+    subject: b.kind === 'declined' ? `Update on your request: ${b.title}` : `Cancelled: ${b.title}`,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+  })
+}
+
+/** Guest receipt for a booking that waits for approval. */
+export async function sendBookingRequestedEmail(b: BookingEmailData): Promise<string> {
+  const element = BookingRequested({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Request received: ${b.title}`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** Guest reminder ~24h before a confirmed meeting (sent by the hourly cron). */
+export async function sendMeetingReminderEmail(b: BookingEmailData & { meetUrl: string | null }): Promise<string> {
+  const element = MeetingReminder({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Reminder: ${b.title} is coming up`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** Team alert for a brand-new inbound lead. */
+export async function sendNewLeadAlertEmail(to: string[], a: Omit<NewLeadAlertProps, 'logoUrl' | 'brandName' | 'supportEmail'>): Promise<string | null> {
+  if (to.length === 0) return null
+  const element = NewLeadAlert({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to, subject: newLeadSubject(a), html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** One summary for admins when a teammate imports several leads at once. */
+export async function sendLeadsImportedEmail(to: string[], a: Omit<LeadsImportedProps, 'logoUrl' | 'brandName' | 'supportEmail'>): Promise<string | null> {
+  if (to.length === 0) return null
+  const element = LeadsImported({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to, subject: importedLeadsSubject(a), html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** A personal, branded email from a teammate to a contact. Replies go straight to the teammate. */
+export async function sendContactEmail(a: {
+  to: string
+  subject: string
+  body: string
+  firstName: string | null
+  senderName: string
+  senderEmail: string
+  cta?: { label: string; href: string }
+  /** Email language (default English) */
+  lang?: 'en' | 'he'
+  /** When replying: the original email, quoted under the message and threaded via In-Reply-To/References */
+  inReplyTo?: { messageIdHeader: string | null; quote: { from: string; sentAt: string; text: string } }
+}): Promise<string> {
+  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, cta: a.cta, quote: a.inReplyTo?.quote, lang: a.lang, logoUrl: logoUrl(), ...(await brand()) })
+  const mid = a.inReplyTo?.messageIdHeader
+  return send({
+    to: a.to,
+    replyTo: a.senderEmail,
+    subject: a.subject,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+    headers: mid ? { 'In-Reply-To': mid, References: mid } : undefined,
+  })
 }

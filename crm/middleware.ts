@@ -26,7 +26,10 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (!token) return deny(req, 401, 'signed-out')
   const role = isRole(token.role) ? token.role : null
   if (!role) return deny(req, 403, 'not-whitelisted')
-  if (!canAccess(role, pathname)) return deny(req, 403, 'forbidden')
+  // The role inside the cookie can be stale (it only refreshes when the session is re-read), so for pages the
+  // real role check happens in each layout/server action against the database (requireUser). Here we only gate
+  // APIs by the cookie role, and let pages through so a just-promoted teammate isn't wrongly blocked.
+  if (pathname.startsWith('/api/') && !canAccess(role, pathname)) return deny(req, 403, 'forbidden')
 
   const res = NextResponse.next()
   res.headers.set('X-Frame-Options', 'DENY')

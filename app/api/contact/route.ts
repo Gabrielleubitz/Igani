@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { saveContactSubmission } from '@/lib/firestore'
 import { sendAdminNotification } from '@/lib/mailjet'
 import { buildContactNotificationEmail } from '@/lib/email-templates'
+import { crmLeadFromContactSubmission, forwardLeadToCrm } from '@/lib/crm'
+
+const utmFrom = (body: Record<string, unknown>) => {
+  const u = (body.utm ?? {}) as Record<string, unknown>
+  const pick = (k: string) => (typeof u[k] === 'string' ? (u[k] as string) : typeof body[`utm_${k}`] === 'string' ? (body[`utm_${k}`] as string) : undefined)
+  return { source: pick('source'), medium: pick('medium'), campaign: pick('campaign'), term: pick('term'), content: pick('content') }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,36 +33,20 @@ export async function POST(request: NextRequest) {
 
     await saveContactSubmission(submissionData)
 
-    // Forward to the Igani CRM (best effort: never block the visitor's form)
-    const crmUrl = process.env.CRM_LEAD_WEBHOOK_URL
-    const crmKey = process.env.CRM_LEAD_WEBHOOK_SECRET
-    if (crmUrl && crmKey) {
-      try {
-        const res = await fetch(crmUrl, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', 'x-api-key': crmKey },
-          body: JSON.stringify({
-            email: submissionData.email,
-            firstName: submissionData.firstName,
-            lastName: submissionData.lastName,
-            phone: submissionData.phone,
-            message: `${submissionData.projectType}: ${submissionData.message}`,
-            source: 'igani.co contact form',
-          }),
-          signal: AbortSignal.timeout(8000),
-        })
-        if (!res.ok) console.error('CRM lead webhook failed:', res.status)
-      } catch (err) {
-        console.error('CRM lead webhook error:', err)
-      }
-    }
+    // Forward to the Igani CRM in parallel with the admin email; neither can fail the visitor's form.
+    const crm = forwardLeadToCrm({
+      ...crmLeadFromContactSubmission({ ...submissionData, page: typeof body.page === 'string' ? body.page.slice(0, 100) : undefined }),
+      utm: utmFrom(body),
+    })
 
     const html = buildContactNotificationEmail(submissionData)
-    await sendAdminNotification(
+    const mail = sendAdminNotification(
       `[IGANI] New contact: ${submissionData.firstName} ${submissionData.lastName}`,
       html,
       `New contact from ${submissionData.email}: ${submissionData.message}`
     )
+
+    await Promise.allSettled([crm, mail])
 
     return NextResponse.json(
       { success: true, message: 'Thank you. We will get back to you soon.' },

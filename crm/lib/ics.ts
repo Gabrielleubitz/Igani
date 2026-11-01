@@ -12,7 +12,7 @@ export interface IcsEvent {
   organizerEmail: string
   attendeeName: string
   attendeeEmail: string
-  method?: 'REQUEST' | 'PUBLISH'
+  method?: 'REQUEST' | 'PUBLISH' | 'CANCEL'
 }
 
 function stamp(d: Date): string {
@@ -20,7 +20,7 @@ function stamp(d: Date): string {
 }
 
 function escapeText(value: string): string {
-  return value.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
+  return value.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n')
 }
 
 /** Fold lines at 75 octets as required by RFC 5545 §3.1. */
@@ -67,8 +67,8 @@ export function buildIcs(e: IcsEvent, now: Date = new Date()): string {
     ...(e.url ? [`URL:${e.url}`] : []),
     `ORGANIZER;CN=${cn(e.organizerName)}:mailto:${e.organizerEmail}`,
     `ATTENDEE;CN=${cn(e.attendeeName)};ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=FALSE:mailto:${e.attendeeEmail}`,
-    'STATUS:CONFIRMED',
-    'SEQUENCE:0',
+    e.method === 'CANCEL' ? 'STATUS:CANCELLED' : 'STATUS:CONFIRMED',
+    e.method === 'CANCEL' ? 'SEQUENCE:1' : 'SEQUENCE:0',
     'END:VEVENT',
     'END:VCALENDAR',
   ]

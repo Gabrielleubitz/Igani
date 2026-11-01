@@ -19,10 +19,11 @@ export default async function BookPage({ params }: { params: { slug: string } })
   const page = await load(params.slug)
   if (!page) notFound()
   return (
-    <main className="flex min-h-screen items-start justify-center p-6 md:pt-20">
-      <Card className="w-full max-w-xl">
+    <main className="relative flex min-h-screen flex-col items-center justify-start p-4 sm:p-6 md:pt-20">
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(216_74%_58%/0.18),transparent_60%)]" />
+      <Card className="relative w-full max-w-xl">
         <CardHeader>
-          <Logo height={24} className="mb-4 self-start" />
+          <Logo height={28} className="mb-4 self-start" />
           <CardTitle className="text-2xl">{page.title}</CardTitle>
           <CardDescription>
             {page.durationMinutes} min · Google Meet{page.host.name ? ` · with ${page.host.name}` : ''}
@@ -34,6 +35,9 @@ export default async function BookPage({ params }: { params: { slug: string } })
           <PublicBookingWidget slug={page.slug} requiresApproval={page.requiresApproval} />
         </CardContent>
       </Card>
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        Scheduling by <a href="https://igani.co" className="underline-offset-4 hover:underline">Igani</a>
+      </p>
     </main>
   )
 }

@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { createSalesInvite, getHostSlots } from '@/app/actions/bookings'
-import { SlotPicker, todayIso } from '@/components/SlotPicker'
+import { checkInviteTime, createSalesInvite } from '@/app/actions/bookings'
+import { DateTimeField } from '@/components/DateTimeField'
+import { TeammatePicker } from '@/components/TeammatePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 
@@ -10,34 +11,47 @@ interface LeadOption {
   id: string
   name: string
   email: string
+  company?: string | null
 }
 
-export function InviteForm({ leads, initialLeadId, defaultDuration = 30 }: { leads: LeadOption[]; initialLeadId?: string; defaultDuration?: number }): React.ReactElement {
+export function InviteForm({ leads, initialLeadId, defaultDuration = 30, hosts = [], currentUserId, teammates = [], teammatesAreAdminsOnly = false }: { leads: LeadOption[]; initialLeadId?: string; defaultDuration?: number; hosts?: { id: string; label: string }[]; currentUserId?: string; teammates?: { id: string; label: string }[]; teammatesAreAdminsOnly?: boolean }): React.ReactElement {
   const initial = leads.find((l) => l.id === initialLeadId)
   const [leadId, setLeadId] = useState(initial?.id ?? '')
   const [guestName, setGuestName] = useState(initial?.name ?? '')
   const [guestEmail, setGuestEmail] = useState(initial?.email ?? '')
   const [title, setTitle] = useState('Igani intro call')
   const [notes, setNotes] = useState('')
-  const [date, setDate] = useState(todayIso())
+  // Typed by hand: any date and time (browser's local zone).
+  const [when, setWhen] = useState('')
+  const [fieldKey, setFieldKey] = useState(0)
   const [duration, setDuration] = useState(defaultDuration)
-  const [slots, setSlots] = useState<string[]>([])
-  const [slot, setSlot] = useState<string | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const [checking, setChecking] = useState(false)
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null)
-  const [loadingSlots, startSlots] = useTransition()
+  const [hostId, setHostId] = useState(currentUserId ?? '')
+  const [teammateIds, setTeammateIds] = useState<string[]>([])
   const [sending, startSend] = useTransition()
 
+  const startIso = when && !Number.isNaN(new Date(when).getTime()) ? new Date(when).toISOString() : null
+
+  // Tell the user right away if the time clashes with another call.
   useEffect(() => {
-    setSlot(null)
-    startSlots(async () => {
-      const res = await getHostSlots({ date, durationMinutes: duration })
-      if (res.ok) setSlots(res.data)
-      else {
-        setSlots([])
-        setMessage({ kind: 'error', text: res.error })
-      }
-    })
-  }, [date, duration])
+    setNote(null)
+    if (!startIso) return
+    setChecking(true)
+    let stale = false
+    const t = setTimeout(async () => {
+      const res = await checkInviteTime({ startTime: startIso, durationMinutes: duration, hostId: hostId || undefined })
+      if (stale) return
+      setChecking(false)
+      if (res.ok) setNote(res.data.note)
+      else setNote(res.error)
+    }, 350)
+    return () => {
+      stale = true
+      clearTimeout(t)
+    }
+  }, [startIso, duration, hostId])
 
   function pickLead(id: string): void {
     setLeadId(id)
@@ -50,7 +64,7 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30 }: { lea
 
   function submit(e: React.FormEvent): void {
     e.preventDefault()
-    if (!slot) return setMessage({ kind: 'error', text: 'Pick a time first.' })
+    if (!startIso) return setMessage({ kind: 'error', text: 'Choose a date and time first.' })
     startSend(async () => {
       const res = await createSalesInvite({
         leadId: leadId || undefined,
@@ -58,13 +72,15 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30 }: { lea
         guestEmail,
         title,
         notes: notes || undefined,
-        startTime: slot,
+        startTime: startIso,
         durationMinutes: duration,
+        hostId: hostId || undefined,
+        teammateIds: teammateIds.filter((id) => id !== hostId),
       })
       if (res.ok) {
-        setMessage({ kind: 'ok', text: `Invite sent to ${guestEmail}. The slot is held until they confirm.` })
-        setSlots((s) => s.filter((x) => x !== slot))
-        setSlot(null)
+        setMessage({ kind: 'ok', text: `✓ Invite sent to ${guestEmail}. The slot is held until they confirm; you'll see it under Meetings.` })
+        setWhen('')
+        setFieldKey((k) => k + 1)
       } else setMessage({ kind: 'error', text: res.error })
     })
   }
@@ -73,12 +89,13 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30 }: { lea
     <form onSubmit={submit} className="grid gap-5 md:grid-cols-2">
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="lead">Lead</Label>
+          <Label htmlFor="lead">Contact</Label>
           <Select id="lead" value={leadId} onChange={(e) => pickLead(e.target.value)}>
-            <option value="">— New contact —</option>
+            <option value="">New person (not in the CRM yet)</option>
             {leads.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.name} ({l.email})
+                {l.name}
+                {l.company ? ` · ${l.company}` : ''} ({l.email})
               </option>
             ))}
           </Select>
@@ -99,17 +116,38 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30 }: { lea
           <Label htmlFor="notes">Note to guest (optional)</Label>
           <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
         </div>
+        {teammates.length > 0 ? (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium">Add teammates to the call (optional)</legend>
+            <p className="text-xs text-muted-foreground">
+              {teammatesAreAdminsOnly ? 'You can add admins.' : 'Anyone on the team.'} They get the Meet link by email and can join the moment it starts, with nothing to approve.
+            </p>
+            <TeammatePicker teammates={teammates} value={teammateIds} onChange={setTeammateIds} exclude={hostId} />
+          </fieldset>
+        ) : null}
       </div>
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+        {hosts.length > 1 ? (
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input id="date" type="date" min={todayIso()} value={date} onChange={(e) => setDate(e.target.value)} />
+            <Label htmlFor="host">Host (whose calendar)</Label>
+            <Select id="host" value={hostId} onChange={(e) => setHostId(e.target.value)}>
+              {hosts.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.label}
+                </option>
+              ))}
+            </Select>
           </div>
-          <div className="space-y-2">
+        ) : null}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 space-y-2">
+            <Label htmlFor="when-day">Date and time</Label>
+            <DateTimeField key={fieldKey} idPrefix="when" onChange={setWhen} />
+          </div>
+          <div className="col-span-2 space-y-2 sm:col-span-1">
             <Label htmlFor="duration">Length</Label>
             <Select id="duration" value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
-              {[15, 30, 45, 60, 90].map((m) => (
+              {[...new Set([15, 30, 45, 60, 90, defaultDuration])].sort((a, b) => a - b).map((m) => (
                 <option key={m} value={m}>
                   {m} min
                 </option>
@@ -117,9 +155,9 @@ export function InviteForm({ leads, initialLeadId, defaultDuration = 30 }: { lea
             </Select>
           </div>
         </div>
-        {loadingSlots ? <p className="text-sm text-muted-foreground">Checking your calendar…</p> : <SlotPicker slots={slots} selected={slot} onSelect={setSlot} />}
-        <Button type="submit" className="w-full" disabled={sending || !slot}>
-          {sending ? 'Sending…' : 'Send invite'}
+        {note ? <p className="text-xs text-amber-300">{note}</p> : startIso && !checking ? <p className="text-xs text-muted-foreground">✓ You are free at this time.</p> : null}
+        <Button type="submit" className="w-full" disabled={sending || !startIso || checking || Boolean(note)}>
+          {sending ? 'Sending…' : startIso ? 'Send invite' : 'Choose a time to continue'}
         </Button>
         {message ? <p className={message.kind === 'ok' ? 'text-sm text-green-400' : 'text-sm text-red-400'}>{message.text}</p> : null}
       </div>

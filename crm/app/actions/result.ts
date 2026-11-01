@@ -7,10 +7,18 @@ export type ActionResult<T = undefined> = { ok: true; data: T } | { ok: false; e
 /** Maps known domain errors to user-safe messages; logs everything else. */
 export function toActionError(err: unknown): { ok: false; error: string } {
   if (err instanceof BookingError) return { ok: false, error: err.message }
-  if (err instanceof GoogleNotConnectedError) return { ok: false, error: 'The host must reconnect Google Calendar (sign out and back in).' }
+  if (err instanceof GoogleNotConnectedError) return { ok: false, error: 'The host must connect Google Calendar first (Send meeting invite → Connect Google).' }
+  // Unique-constraint race (two people saving the same email at once)
+  if (typeof err === 'object' && err !== null && (err as { code?: unknown }).code === 'P2002') return { ok: false, error: 'That already exists (for example, another contact with this email). Refresh and try again.' }
   if (err instanceof ZodError) return { ok: false, error: err.issues.map((i) => `${i.path.join('.') || 'input'}: ${i.message}`).join('; ') }
   console.error('[action] unexpected error', err)
-  return { ok: false, error: 'Something went wrong. Please try again.' }
+  // A database that has not had the latest migration applied: say so plainly instead of a vague failure.
+  const message = err instanceof Error ? err.message : ''
+  if (/invalid input value for enum|does not exist in the current database|The column .* does not exist|The table .* does not exist|Unknown argument|Invalid value for argument/i.test(message)) {
+    return { ok: false, error: 'The database has not been updated for this yet. An admin needs to apply the latest database migration (see the SQL in the release notes), then try again.' }
+  }
+  const code = typeof err === 'object' && err !== null ? (err as { code?: unknown }).code : undefined
+  return { ok: false, error: typeof code === 'string' ? `Something went wrong (database error ${code}). Please try again.` : 'Something went wrong. Please try again.' }
 }
 
 /** For guest-facing actions: never reveal internal setup problems to visitors. */

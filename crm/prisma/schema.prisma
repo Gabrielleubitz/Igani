@@ -17,10 +17,17 @@ enum Role {
   MARKETING
 }
 
+enum LeadSourceType {
+  COLD_CALL
+  ADS
+  OTHER
+}
+
 enum LeadStatus {
   NEW
   CONTACTED
   DEMO_SCHEDULED
+  DEMO_SENT
   PROPOSAL_SENT
   WON
   LOST
@@ -35,6 +42,8 @@ enum BookingStatus {
 enum BookingSource {
   SALES_INVITE
   PUBLIC_PAGE
+  /// internal team call (admins only), not tied to a contact
+  TEAM_MEETING
 }
 
 enum EntityType {
@@ -51,16 +60,18 @@ enum EntityType {
 
 /// Whitelist: only these emails may sign in. Role here is the source of truth.
 model AllowedUser {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  role      Role
-  active    Boolean  @default(true)
+  id               String    @id @default(cuid())
+  email            String    @unique
+  role             Role
+  active           Boolean   @default(true)
   /// Onboarding token emailed on invite (random, single-use)
   inviteToken      String?   @unique
   invitedAt        DateTime?
   inviteAcceptedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// This salesperson's agreed commission terms (null = the defaults). Admin-only.
+  commissionTerms  Json?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   @@index([role, active])
 }
@@ -88,8 +99,12 @@ model User {
   createdBookings Booking[]      @relation("BookingCreator")
   availability    Availability[]
   bookingPages    BookingPage[]
+  calendarEntries CalendarEntry[]
   activityLogs    ActivityLog[]
+  agreements      Agreement[]
   leadNotes       LeadNote[]
+  mailboxEmails   EmailMessage[]
+  mailboxSync     MailboxSync?
 
   @@index([role])
 }
@@ -137,7 +152,8 @@ model VerificationToken {
 
 model Lead {
   id           String     @id @default(cuid())
-  email        String     @unique
+  /// Null for phone-only leads (e.g. funnel forms that only ask for a phone number)
+  email        String?    @unique
   firstName    String?
   lastName     String?
   phone        String?
@@ -145,6 +161,8 @@ model Lead {
   website      String?
   message      String?    @db.Text
   source       String     @default("igani.co")
+  /// Free text: which page/form/campaign/person the lead came from
+  sourceDetail String?
   utmSource    String?
   utmMedium    String?
   utmCampaign  String?
@@ -154,8 +172,23 @@ model Lead {
   status       LeadStatus @default(NEW)
   /// Why a lead was LOST (required when moving to LOST)
   lostReason   String?
-  /// Deal value in whole currency units, set on WON/proposal
+  /// Legacy deal value (no longer read; copied into quotedPrice by the 20261103 migration)
   dealValue    Int?
+  /// The price agreed with the client after the sales call, whole currency units. Admin-only.
+  quotedPrice  Int?
+  currency     String     @default("ILS")
+  /// Where the lead came from, for commission terms (admin-edited)
+  sourceType   LeadSourceType @default(OTHER)
+  /// Per-deal commission overrides set by an admin before the deal is won (null = use the salesperson's terms)
+  commissionOverrides Json?
+  /// Terms + breakdown used when the deal was won. Never changes when the salesperson's terms change later. Admin-only.
+  commissionSnapshot  Json?
+  /// The salesperson's commission in whole shekels. This, with the two payment dates, is all a salesperson ever sees.
+  commissionTotal       Int?
+  /// The client paid us (admin enters the date): the commission is only payable from here
+  finalPaymentReceivedAt DateTime?
+  /// The commission was paid out to the salesperson
+  finalPaidAt            DateTime?
   /// Soft-delete: hidden from pipelines, restorable by admin
   archived     Boolean    @default(false)
   tags         String[]   @default([])
@@ -163,12 +196,15 @@ model Lead {
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
-  assignedTo User?     @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  assignedTo User?          @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   bookings   Booking[]
   notes      LeadNote[]
+  emails     EmailMessage[]
+  documents  LeadDocument[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
+  @@index([phone])
 }
 
 // ─── Scheduling ──────────────────────────────────────────────────────────────
@@ -221,6 +257,8 @@ model Booking {
   notes         String?       @db.Text
   guestName     String
   guestEmail    String
+  /// team meetings: invited teammates' emails
+  attendees     Json?
   hostId        String
   leadId        String?
   bookingPageId String?
@@ -234,10 +272,51 @@ model Booking {
   lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
   bookingPage BookingPage? @relation(fields: [bookingPageId], references: [id], onDelete: SetNull)
   createdBy   User?        @relation("BookingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  meeting     MeetingSession?
 
   @@index([hostId, status, startTime])
   @@index([leadId])
   @@index([status, createdAt])
+}
+
+// ─── Agreements ──────────────────────────────────────────────────────────────
+
+/// A document (contract, commission terms…) an admin uploaded for one salesperson. The salesperson can read their own.
+model Agreement {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  fileName     String
+  mimeType     String
+  size         Int
+  /// The file itself. Always select columns explicitly in lists: this can be several MB.
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+// ─── Client documents ────────────────────────────────────────────────────────
+
+/// A file attached to one lead (contract, brief, screenshot…). Everyone who can see the lead can read and add.
+model LeadDocument {
+  id           String   @id @default(cuid())
+  leadId       String
+  title        String
+  fileName     String
+  mimeType     String
+  size         Int
+  /// The file itself. Always select columns explicitly in lists: this can be several MB.
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
 }
 
 // ─── Audit ───────────────────────────────────────────────────────────────────
@@ -277,4 +356,130 @@ model SiteSetting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// ─── Email (Gmail sync + emails sent from the CRM) ───────────────────────────
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+/// One email exchanged with a contact. Only messages involving a known contact address are ever stored.
+model EmailMessage {
+  id              String         @id @default(cuid())
+  leadId          String
+  /// Whose mailbox it was found in / who sent it from the CRM
+  mailboxUserId   String?
+  /// "gmail:<id>" or "resend:<id>"
+  externalId      String
+  /// RFC 5322 Message-ID (used to thread replies sent from the CRM, and to de-duplicate across teammates' mailboxes)
+  messageIdHeader String?
+  /// Message-ID if present, else externalId: the same email seen in two mailboxes is stored once per contact
+  dedupeKey       String
+  threadId        String?
+  direction       EmailDirection
+  fromEmail       String
+  fromName        String?
+  toEmails        String[]       @default([])
+  ccEmails        String[]       @default([])
+  subject         String
+  snippet         String
+  /// Plain text, quoted history removed, capped at 20k chars
+  bodyText        String         @db.Text
+  sentAt          DateTime
+  /// When the contact's owner first saw an inbound email in the CRM
+  readAt          DateTime?
+  createdAt       DateTime       @default(now())
+
+  lead        Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  mailboxUser User? @relation(fields: [mailboxUserId], references: [id], onDelete: SetNull)
+
+  @@unique([leadId, dedupeKey])
+  @@index([leadId, sentAt])
+  @@index([direction, readAt])
+}
+
+/// Gmail sync bookmark per teammate.
+model MailboxSync {
+  userId       String    @id
+  lastSyncedAt DateTime?
+  lastError    String?
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Google Meet tracking + Gemini notes ─────────────────────────────────────
+
+enum MeetingStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  NOT_HELD
+}
+
+enum NotesStatus {
+  /// meeting over, looking for the Gemini notes (retried with backoff)
+  WAITING
+  /// notes text pulled into the CRM
+  READY
+  /// the notes Doc was found but could not be read (link only, retried)
+  LINK_ONLY
+  /// nothing appeared within 24 h
+  NONE
+  /// host is not on the Gemini-enabled domain
+  NOT_AVAILABLE
+}
+
+/// What really happened on a CRM-scheduled Google Meet call (one per booking).
+model MeetingSession {
+  id               String        @id @default(cuid())
+  bookingId        String        @unique
+  meetingCode      String
+  conferenceRecord String?
+  status           MeetingStatus @default(SCHEDULED)
+  actualStart      DateTime?
+  actualEnd        DateTime?
+  /// [{ name, joinedAt, leftAt, seconds }]
+  participants     Json?
+  notesStatus      NotesStatus?
+  notesSource      String?
+  docId            String?
+  docUrl           String?
+  docTitle         String?
+  summaryText      String?       @db.Text
+  nextStepsText    String?       @db.Text
+  fullText         String?       @db.Text
+  /// AI-tidied notes (OrganizedNotes JSON); null = use the free parser on fullText
+  organizedJson    Json?
+  notesAttempts    Int           @default(0)
+  nextCheckAt      DateTime?
+  notesFetchedAt   DateTime?
+  lastCheckedAt    DateTime?
+  lastError        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([notesStatus, nextCheckAt])
+}
+
+/// Personal calendar entries added from the Today page (reminders, calls, blocks of time).
+model CalendarEntry {
+  id        String   @id @default(cuid())
+  ownerId   String
+  title     String
+  notes     String?  @db.Text
+  startTime DateTime
+  endTime   DateTime
+  allDay    Boolean  @default(false)
+  color     String?
+  createdAt DateTime @default(now())
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, startTime])
 }

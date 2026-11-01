@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { saveContactSubmission } from '@/lib/firestore'
 import { sendAdminNotification } from '@/lib/mailjet'
 import { buildFunnelNotificationEmail } from '@/lib/email-templates'
+import { forwardLeadToCrm } from '@/lib/crm'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,12 +33,24 @@ export async function POST(request: NextRequest) {
 
     await saveContactSubmission(submissionData)
 
+    // Forward to the Igani CRM (best effort, alongside the admin email below)
+    const crm = forwardLeadToCrm({
+      email,
+      firstName,
+      lastName,
+      phone,
+      message: `${businessType}: ${message}`,
+      source: 'Landing page',
+      sourceDetail: [typeof body.page === 'string' ? body.page : 'Funnel form', businessType].filter(Boolean).join(' · '),
+    })
+
     const html = buildFunnelNotificationEmail(submissionData)
-    await sendAdminNotification(
+    const mail = sendAdminNotification(
       `[IGANI] New funnel lead: ${firstName} ${lastName}`,
       html,
       `Funnel lead from ${email}: ${message}`
     )
+    await Promise.allSettled([crm, mail])
 
     return NextResponse.json(
       { success: true, message: 'Form submitted successfully' },

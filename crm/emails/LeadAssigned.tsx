@@ -1,31 +1,45 @@
-import { Text } from '@react-email/components'
 import * as React from 'react'
-import { DetailCard, p, Shell } from './Shell'
+import { DetailCard, PersonHeader, Quote, Shell } from './Shell'
 
 export interface LeadAssignedProps {
   repName: string
   leadName: string
-  leadEmail: string
+  leadEmail?: string | null
   company?: string | null
   source: string
+  phone?: string | null
+  message?: string | null
   leadUrl: string
   logoUrl: string
   brandName?: string
   supportEmail?: string
 }
 
-export function LeadAssigned({ repName, leadName, leadEmail, company, source, leadUrl, logoUrl, brandName, supportEmail }: LeadAssignedProps): React.ReactElement {
+export function LeadAssigned({ repName, leadName, leadEmail, company, source, phone, message, leadUrl, logoUrl, brandName, supportEmail }: LeadAssignedProps): React.ReactElement {
   return (
-    <Shell preview={`New lead assigned: ${leadName}`} eyebrow="New lead" title={`${leadName} is yours`} logoUrl={logoUrl} brandName={brandName} supportEmail={supportEmail} cta={{ href: leadUrl, label: 'Open contact' }}>
-      <Text style={p}>Hi {repName}, a new lead was assigned to you. Reach out soon.</Text>
+    <Shell
+      preview={`${leadName}${company ? ` (${company})` : ''} is yours. Reach out while they're warm.`}
+      eyebrow="New lead"
+      tone="success"
+      title={`You have a new lead, ${repName.split(' ')[0]}`}
+      intro="They were just assigned to you. Leads contacted within the first hour are far more likely to convert."
+      logoUrl={logoUrl}
+      brandName={brandName}
+      supportEmail={supportEmail}
+      cta={{ href: leadUrl, label: 'Open contact' }}
+      links={[...(leadEmail ? [{ href: `mailto:${leadEmail}`, label: 'Email them' }] : []), ...(phone ? [{ href: `tel:${phone.replace(/[^\d+]/g, '')}`, label: 'Call them' }] : [])]}
+      footerNote={`You're on the ${brandName ?? 'Igani'} sales team, so new leads are routed to you.`}
+    >
+      <PersonHeader name={leadName} sub={company ?? leadEmail ?? phone ?? undefined} />
       <DetailCard
         rows={[
-          { label: 'Name', value: leadName },
-          { label: 'Email', value: leadEmail },
+          ...(leadEmail ? [{ label: 'Email', value: leadEmail }] : []),
+          ...(phone ? [{ label: 'Phone', value: phone }] : []),
           ...(company ? [{ label: 'Company', value: company }] : []),
           { label: 'Source', value: source },
         ]}
       />
+      {message ? <Quote label="Their message">{message.length > 600 ? `${message.slice(0, 600)}…` : message}</Quote> : null}
     </Shell>
   )
 }

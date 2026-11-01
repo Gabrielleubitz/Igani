@@ -2,8 +2,11 @@ import 'server-only'
 import type { LeadStatus, Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
-import { sendLeadAssignedEmail } from './email'
+import { sendLeadAssignedEmail, sendLeadsImportedEmail, sendNewLeadAlertEmail } from './email'
+import { newLeadRecipients } from './lead-alerts'
+import { getSetting } from './settings'
 import { appUrl } from './env'
+import { snapshotWonCommission } from './deals'
 import { prisma } from './prisma'
 
 const optionalText = (max: number) =>
@@ -14,9 +17,22 @@ const optionalText = (max: number) =>
     .optional()
     .transform((v) => (v ? v : undefined))
 
-/** Payload accepted from igani.co form submissions. */
+/** Digits-only phone used to match phone-only leads (keeps a leading + country code as digits). */
+export function phoneKey(phone: string | null | undefined): string | null {
+  const d = (phone ?? '').replace(/\D/g, '')
+  return d.length >= 7 ? d : null
+}
+
+/** Payload accepted from igani.co forms (contact page, landing pages, funnels). Needs an email or a phone. */
 export const leadPayloadSchema = z.object({
-  email: z.string().trim().toLowerCase().email().max(254),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(254)
+    .optional()
+    // A typo'd email (e.g. "a@b.com.") is dropped rather than rejecting the whole lead; the phone may still be valid.
+    .transform((v) => (v && z.string().email().safeParse(v.replace(/\.+$/, '')).success ? v.replace(/\.+$/, '') : undefined)),
   firstName: optionalText(100),
   lastName: optionalText(100),
   phone: optionalText(40),
@@ -25,6 +41,12 @@ export const leadPayloadSchema = z.object({
   message: optionalText(5000),
   budget: optionalText(100),
   source: optionalText(100),
+  /** Page, form, campaign or person the lead came from, e.g. "/realestate · hero form" */
+  sourceDetail: optionalText(300),
+  /** When the visitor originally submitted (ISO). Used by backfills so old leads keep their real date. */
+  submittedAt: z.string().datetime({ offset: true }).optional(),
+  /** Historical import: no alerts, no auto-assignment. */
+  backfill: z.boolean().optional(),
   utm: z
     .object({
       source: optionalText(200),
@@ -35,13 +57,16 @@ export const leadPayloadSchema = z.object({
     })
     .partial()
     .optional(),
-})
+}).refine((p) => Boolean(p.email || phoneKey(p.phone)), { message: 'An email or a phone number is required', path: ['email'] })
 
 export type LeadPayload = z.infer<typeof leadPayloadSchema>
 
 export type IngestResult = { leadId: string; created: true } | { leadId: string; created: false; needsAssignment: boolean }
 
-/** Dedupe by email: create a new lead, or fill blanks on the existing one. */
+/**
+ * Dedupe by email (or, for phone-only leads, by phone number): create a new lead, or fill blanks on the existing one.
+ * A phone-only lead that later comes back with an email gets the email filled in.
+ */
 export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
   const data = {
     firstName: payload.firstName,
@@ -56,27 +81,38 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
     utmCampaign: payload.utm?.campaign,
     utmTerm: payload.utm?.term,
     utmContent: payload.utm?.content,
+    sourceDetail: payload.sourceDetail,
+    email: payload.email,
   } satisfies Prisma.LeadUpdateInput
 
   return prisma.$transaction<IngestResult>(async (tx) => {
-    const existing = await tx.lead.findUnique({ where: { email: payload.email } })
+    const existing = await findExistingLead(tx, payload.email, payload.phone)
     if (existing) {
       const fill: Prisma.LeadUpdateInput = {}
       for (const [key, value] of Object.entries(data) as [keyof typeof data, string | undefined][]) {
         if (value !== undefined && existing[key] == null) fill[key] = value
       }
+      // Never overwrite another contact's email via a phone match.
+      if (fill.email && (await tx.lead.findUnique({ where: { email: String(fill.email) }, select: { id: true } }))) delete fill.email
       // A returning lead's new message must reach reps: append it (dated) to the stored message.
-      if (payload.message && existing.message && payload.message !== existing.message) {
-        const stamp = new Date().toISOString().slice(0, 10)
-        fill.message = `${existing.message}\n\n--- resubmitted ${stamp} ---\n${payload.message}`.slice(0, 20000)
+      // Backfills only append when that exact text isn't stored yet, so re-running stays a no-op.
+      if (payload.message && existing.message && payload.message !== existing.message && !existing.message.includes(payload.message)) {
+        const stamp = (payload.submittedAt ?? new Date().toISOString()).slice(0, 10)
+        fill.message = `${existing.message}\n\n--- ${payload.backfill ? 'also submitted' : 'resubmitted'} ${stamp}${payload.sourceDetail ? ` via ${payload.sourceDetail}` : ''} ---\n${payload.message}`.slice(0, 20000)
       }
+      // Someone archived this contact, but they just reached out again: bring them back so the team sees it.
+      if (!payload.backfill && existing.archived) fill.archived = false
       if (Object.keys(fill).length > 0) await tx.lead.update({ where: { id: existing.id }, data: fill })
+      // Re-running a backfill must be a no-op: don't re-log or re-append the same historical submission.
+      if (payload.backfill) {
+        return { leadId: existing.id, created: false as const, needsAssignment: false }
+      }
       await logActivity(
         {
           entityType: 'LEAD',
           entityId: existing.id,
           action: 'lead.resubmitted',
-          metadata: { source: payload.source ?? 'igani.co', filled: Object.keys(fill), message: payload.message ?? null },
+          metadata: { source: payload.source ?? 'igani.co', sourceDetail: payload.sourceDetail ?? null, filled: Object.keys(fill), message: payload.message ?? null, ...(existing.archived ? { unarchived: true } : {}) },
         },
         tx,
       )
@@ -84,20 +120,37 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
     }
     const source = payload.source ?? 'igani.co'
     const tags = ['inbound', ...(source === 'igani.co' ? [] : [source.toLowerCase().slice(0, 40)]), ...(payload.utm?.campaign ? [`utm:${payload.utm.campaign.toLowerCase().slice(0, 40)}`] : [])]
-    const lead = await tx.lead.create({ data: { ...data, email: payload.email, source, tags } })
+    const submitted = payload.submittedAt ? new Date(payload.submittedAt) : null
+    const createdAt = submitted && submitted.getTime() < Date.now() ? submitted : undefined
+    const lead = await tx.lead.create({ data: { ...data, email: payload.email ?? null, source, tags: payload.backfill ? [...tags, 'imported'] : tags, ...(createdAt ? { createdAt } : {}) } })
     await logActivity(
-      { entityType: 'LEAD', entityId: lead.id, action: 'lead.created', metadata: { source: lead.source, utmSource: lead.utmSource } },
+      { entityType: 'LEAD', entityId: lead.id, action: 'lead.created', metadata: { source: lead.source, sourceDetail: lead.sourceDetail, utmSource: lead.utmSource, ...(payload.backfill ? { backfill: true } : {}) } },
       tx,
     )
     return { leadId: lead.id, created: true as const }
   }).catch(async (err: unknown): Promise<IngestResult> => {
     // Two concurrent submissions with the same email: the loser hits the unique index — treat as a duplicate.
     if (isUniqueViolation(err)) {
-      const lead = await prisma.lead.findUniqueOrThrow({ where: { email: payload.email } })
+      const lead = await findExistingLead(prisma, payload.email, payload.phone)
+      if (!lead) throw err
       return { leadId: lead.id, created: false, needsAssignment: lead.assignedToId === null }
     }
     throw err
   })
+}
+
+/** Match by email first; otherwise by the last 9 digits of the phone (so 058-447… and +97258447… match). */
+export async function findExistingLead(db: Prisma.TransactionClient | typeof prisma, email: string | undefined, phone: string | undefined) {
+  if (email) {
+    const byEmail = await db.lead.findUnique({ where: { email } })
+    if (byEmail) return byEmail
+  }
+  const key = phoneKey(phone)
+  if (!key) return null
+  const rows = await db.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) ORDER BY "createdAt" ASC LIMIT 1`
+  // Only reuse a phone match when it doesn't belong to someone with a different email.
+  const match = rows[0] ? await db.lead.findUnique({ where: { id: rows[0].id } }) : null
+  return match && (!email || !match.email) ? match : null
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -126,9 +179,11 @@ export async function notifyLeadAssigned(leadId: string, repId: string): Promise
     if (!lead || !rep?.email) return
     await sendLeadAssignedEmail(rep.email, {
       repName: rep.name ?? rep.email,
-      leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email,
+      leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email || lead.phone || 'New lead',
       leadEmail: lead.email,
       company: lead.company,
+      phone: lead.phone,
+      message: lead.message,
       source: lead.source,
       leadUrl: appUrl(`/sales/leads/${lead.id}`),
     })
@@ -173,15 +228,16 @@ async function roundRobinTx(leadId: string, opts: { force?: boolean }): Promise<
   })
 }
 
-/** Manual (re)assignment by an ADMIN or SALES user. */
-export async function assignLeadManually(leadId: string, assigneeId: string | null, actorId: string): Promise<void> {
+/** Manual (re)assignment. `onlyIfUnassigned` makes it an atomic claim: two reps clicking Claim at once can't both win. */
+export async function assignLeadManually(leadId: string, assigneeId: string | null, actorId: string, opts: { onlyIfUnassigned?: boolean } = {}): Promise<void> {
   await prisma.$transaction(async (tx) => {
     if (assigneeId) {
       const user = await tx.user.findUnique({ where: { id: assigneeId }, select: { role: true } })
-      if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) throw new Error('Assignee must be a SALES or ADMIN user')
+      if (!user?.role) throw new Error('Assignee must be an active team member')
     }
     const before = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { assignedToId: true } })
-    await tx.lead.update({ where: { id: leadId }, data: { assignedToId: assigneeId } })
+    const res = await tx.lead.updateMany({ where: { id: leadId, ...(opts.onlyIfUnassigned ? { assignedToId: null } : {}) }, data: { assignedToId: assigneeId } })
+    if (res.count === 0) throw new Error('ALREADY_CLAIMED')
     await logActivity(
       { entityType: 'LEAD', entityId: leadId, action: 'lead.assigned', actorId, metadata: { from: before.assignedToId, to: assigneeId, strategy: 'manual' } },
       tx,
@@ -192,7 +248,8 @@ export async function assignLeadManually(leadId: string, assigneeId: string | nu
 
 export interface StatusExtras {
   lostReason?: string
-  dealValue?: number
+  /** The price agreed with the client (admins only; whole ₪) */
+  quotedPrice?: number
 }
 
 export async function changeLeadStatus(leadId: string, status: LeadStatus, actorId: string | null, extras: StatusExtras = {}): Promise<void> {
@@ -205,9 +262,11 @@ export async function changeLeadStatus(leadId: string, status: LeadStatus, actor
       data: {
         status,
         lostReason: status === 'LOST' ? extras.lostReason!.trim() : null,
-        ...(extras.dealValue !== undefined ? { dealValue: extras.dealValue } : {}),
+        ...(extras.quotedPrice !== undefined ? { quotedPrice: extras.quotedPrice } : {}),
       },
     })
+    // Winning a deal freezes the salesperson's commission as it stands today.
+    if (status === 'WON') await snapshotWonCommission(leadId, tx)
     await logActivity(
       { entityType: 'LEAD', entityId: leadId, action: 'lead.status_changed', actorId, metadata: { from: before.status, to: status, ...extras } },
       tx,
@@ -227,7 +286,7 @@ export async function bulkUpdateLeadsTx(
     if (before.length !== ids.length) throw new Error('Some leads no longer exist')
     if (change.assigneeId) {
       const user = await tx.user.findUnique({ where: { id: change.assigneeId }, select: { role: true } })
-      if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) throw new Error('Assignee must be a SALES or ADMIN user')
+      if (!user?.role) throw new Error('Assignee must be an active team member')
     }
     const logs: Prisma.ActivityLogCreateManyInput[] = []
     if (change.assigneeId !== undefined) {
@@ -262,4 +321,95 @@ export async function reassignUserWork(fromId: string, toId: string | null, acto
     })),
   })
   return leads.length
+}
+
+/** A teammate who added leads by hand or by import (as opposed to a website form). */
+export interface LeadAdder {
+  id: string
+  name: string
+  email: string
+}
+
+/** Every active admin plus the extra addresses in Settings → Notifications. */
+async function alertRecipients(): Promise<string[]> {
+  const [extraEmails, admins] = await Promise.all([
+    getSetting('notifications.emails'),
+    prisma.allowedUser.findMany({ where: { role: 'ADMIN', active: true }, select: { email: true } }),
+  ])
+  return newLeadRecipients({ adminEmails: admins.map((a) => a.email), extraEmails })
+}
+
+const ALERT_TIMEOUT_MS = 8000
+
+/** Runs an email send but gives up after a while, so a slow provider can't hang the page that added the lead. */
+function withTimeout<T>(work: Promise<T>): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error('the email service took too long to answer')), ALERT_TIMEOUT_MS)
+  })
+  return Promise.race([work, timeout]).finally(() => clearTimeout(timer))
+}
+
+/** Writes what the alert did to the audit log (Admin → Audit, search "alert"), so a missing email can be traced. */
+async function logAlert(leadId: string, action: 'lead.alert_sent' | 'lead.alert_skipped' | 'lead.alert_failed', metadata: Record<string, string | number>, actorId?: string): Promise<void> {
+  await logActivity({ entityType: 'LEAD', entityId: leadId, action, actorId: actorId ?? null, metadata }).catch((err: unknown) => console.error('[leads] could not log alert outcome', leadId, err))
+}
+
+/**
+ * Best-effort alert the moment a lead is added: emails every admin (and the Settings → Notifications list).
+ * Pass `addedBy` for leads a teammate added by hand, so the email reads "New lead from <teammate>".
+ * Honors the "new lead alerts" switch in Settings. Records its outcome in the audit log. Never throws.
+ */
+export async function notifyTeamOfNewLead(leadId: string, opts: { addedBy?: LeadAdder } = {}): Promise<void> {
+  try {
+    if (!(await getSetting('notifications.newLead'))) return await logAlert(leadId, 'lead.alert_skipped', { reason: 'new-lead alerts are switched off in Settings' }, opts.addedBy?.id)
+    const to = await alertRecipients()
+    if (to.length === 0) return await logAlert(leadId, 'lead.alert_skipped', { reason: 'no active admins and no notification emails to send to' }, opts.addedBy?.id)
+    const lead = await prisma.lead.findUnique({ where: { id: leadId }, include: { assignedTo: { select: { name: true, email: true } } } })
+    if (!lead) return
+    await withTimeout(
+      sendNewLeadAlertEmail(to, {
+        leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email || lead.phone || 'New lead',
+        leadEmail: lead.email,
+        phone: lead.phone,
+        company: lead.company,
+        budget: lead.budget,
+        source: lead.sourceDetail ? `${lead.source} · ${lead.sourceDetail}` : lead.source,
+        campaign: lead.utmCampaign,
+        message: lead.message,
+        owner: lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : null,
+        addedBy: opts.addedBy?.name ?? null,
+        leadUrl: appUrl(`/sales/leads/${lead.id}`),
+      }),
+    )
+    await logAlert(leadId, 'lead.alert_sent', { to: to.length }, opts.addedBy?.id)
+  } catch (err) {
+    console.error('[leads] new-lead alert failed', leadId, err)
+    await logAlert(leadId, 'lead.alert_failed', { error: err instanceof Error ? err.message : String(err) }, opts.addedBy?.id)
+  }
+}
+
+/** One summary alert for leads a teammate imported in bulk (a single lead gets the normal alert). Never throws. */
+export async function notifyTeamOfImportedLeads(leadIds: string[], addedBy: LeadAdder): Promise<void> {
+  const [first] = leadIds
+  if (!first) return
+  if (leadIds.length === 1) return notifyTeamOfNewLead(first, { addedBy })
+  try {
+    if (!(await getSetting('notifications.newLead'))) return await logAlert(first, 'lead.alert_skipped', { reason: 'new-lead alerts are switched off in Settings', imported: leadIds.length }, addedBy.id)
+    const to = await alertRecipients()
+    if (to.length === 0) return await logAlert(first, 'lead.alert_skipped', { reason: 'no active admins and no notification emails to send to', imported: leadIds.length }, addedBy.id)
+    const sample = await prisma.lead.findMany({ where: { id: { in: leadIds.slice(0, 6) } }, select: { firstName: true, lastName: true, email: true, phone: true, company: true } })
+    await withTimeout(
+      sendLeadsImportedEmail(to, {
+        addedBy: addedBy.name,
+        count: leadIds.length,
+        sample: sample.map((l) => ({ name: [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || l.phone || 'New lead', detail: l.company ?? l.email })),
+        leadsUrl: appUrl('/sales/leads'),
+      }),
+    )
+    await logAlert(first, 'lead.alert_sent', { to: to.length, imported: leadIds.length }, addedBy.id)
+  } catch (err) {
+    console.error('[leads] imported-leads alert failed', err)
+    await logAlert(first, 'lead.alert_failed', { error: err instanceof Error ? err.message : String(err), imported: leadIds.length }, addedBy.id)
+  }
 }

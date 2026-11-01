@@ -1,7 +1,7 @@
 import type { LeadStatus, Prisma } from '@prisma/client'
 
 export const PAGE_SIZE = 25
-const STATUSES: readonly string[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON', 'LOST']
+const STATUSES: readonly string[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST']
 
 export interface LeadFilters {
   q?: string
@@ -35,8 +35,11 @@ export function parseLeadFilters(params: Params): LeadFilters {
 export function buildLeadWhere(f: LeadFilters): Prisma.LeadWhereInput {
   const and: Prisma.LeadWhereInput[] = [{ archived: f.archived ?? false }]
   if (f.q) {
-    const c = { contains: f.q, mode: 'insensitive' as const }
-    and.push({ OR: [{ email: c }, { firstName: c }, { lastName: c }, { company: c }, { phone: c }] })
+    // Every word must match some field, so "Dana Levi" or "levi acme" find the right person.
+    for (const word of f.q.split(/\s+/).filter(Boolean).slice(0, 5)) {
+      const c = { contains: word, mode: 'insensitive' as const }
+      and.push({ OR: [{ email: c }, { firstName: c }, { lastName: c }, { company: c }, { phone: c }] })
+    }
   }
   if (f.status) and.push({ status: f.status })
   if (f.assignee === 'none') and.push({ assignedToId: null })
@@ -54,7 +57,8 @@ export function conversionRate(won: number, total: number): number {
 const csvCell = (v: unknown): string => {
   let s = v == null ? '' : v instanceof Date ? v.toISOString() : String(v)
   // Neutralise spreadsheet formula injection
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+  // Phone numbers like +972… are only digits and punctuation, so they can't be formulas and stay untouched.
+  if (/^[=+\-@\t\r]/.test(s) && !/^[+-]?[\d\s().-]+$/.test(s)) s = `'${s}`
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 

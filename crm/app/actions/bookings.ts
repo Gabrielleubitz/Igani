@@ -5,14 +5,20 @@ import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import {
   BookingError,
+  allowedTeammates,
   assertSlotOffered,
   cancelBooking as cancelBookingCore,
   confirmBooking,
   createPendingBooking,
+  deleteBooking as deleteBookingCore,
+  emailDataFor,
+  findTimeConflict,
+  teamMeetingIds,
   notifyAdminsOfPendingBooking,
+  notifyGuestOfPendingBooking,
 } from '@/lib/bookings'
 import { getAvailableSlots } from '@/lib/calendar'
-import { sendBookingInviteEmail } from '@/lib/email'
+import { sendApprovalRequestEmail, sendBookingInviteEmail } from '@/lib/email'
 import { appUrl } from '@/lib/env'
 import { logActivity } from '@/lib/audit'
 import { prisma } from '@/lib/prisma'
@@ -31,6 +37,8 @@ const salesInviteSchema = z.object({
   notes: z.string().trim().max(2000).optional(),
   /** ADMINs may book on behalf of another host; reps always book for themselves. */
   hostId: z.string().cuid().optional(),
+  /** Teammates to add to the call (admins: anyone; others: admins only). */
+  teammateIds: z.array(z.string().cuid()).max(20).optional(),
 })
 
 export type SalesInviteInput = z.input<typeof salesInviteSchema>
@@ -40,8 +48,89 @@ export async function getHostSlots(input: { date: string; durationMinutes: numbe
   try {
     const user = await requireUser(['ADMIN', 'SALES'])
     const { date, durationMinutes } = z.object({ date: isoDate, durationMinutes: z.number().int().min(15).max(240) }).parse(input)
-    const hostId = user.role === 'ADMIN' && input.hostId ? input.hostId : user.id
+    const hostId = user.role === 'ADMIN' && input.hostId ? z.string().cuid().parse(input.hostId) : user.id
+    if (hostId !== user.id) await assertActiveHost(hostId)
     return { ok: true, data: await getAvailableSlots(hostId, new Date(`${date}T00:00:00Z`), durationMinutes) }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Live note under the time field: is the chosen time free? (`note` is null when it is.) */
+export async function checkInviteTime(input: { startTime: string; durationMinutes: number; hostId?: string }): Promise<ActionResult<{ note: string | null }>> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const data = z.object({ startTime: z.string().datetime(), durationMinutes: z.coerce.number().int().min(15).max(240), hostId: z.string().cuid().optional() }).parse(input)
+    const hostId = user.role === 'ADMIN' && data.hostId ? data.hostId : user.id
+    await assertActiveHost(hostId)
+    return { ok: true, data: { note: await findTimeConflict(hostId, new Date(data.startTime), data.durationMinutes) } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const teamMeetingSchema = z.object({
+  title: z.string().trim().min(1).max(200).default('Team call'),
+  notes: z.string().trim().max(2000).optional(),
+  startTime: z.string().datetime(),
+  durationMinutes: z.coerce.number().int().min(15).max(240),
+  teammateIds: z.array(z.string().cuid()).min(1, 'Select at least one teammate').max(20),
+})
+
+/**
+ * Internal call with teammates (no client). Admins can add anyone and book straight away: the Meet is created and
+ * everyone is emailed the link. Everyone else can only REQUEST a call with admins: the time is held, the admins are
+ * emailed, and the Meet is created when an admin approves it on the Meetings page.
+ */
+export async function createTeamMeeting(input: z.input<typeof teamMeetingSchema>): Promise<ActionResult<{ bookingId: string; meetUrl: string | null; requested: boolean }>> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const data = teamMeetingSchema.parse(input)
+    await assertActiveHost(user.id)
+    const allowed = await allowedTeammates(user, user.id)
+    const picked = [...new Set(data.teammateIds)].map((id) => allowed.find((t) => t.id === id))
+    if (picked.some((p) => !p)) throw new BookingError(user.role === 'ADMIN' ? 'One of those teammates cannot be added.' : 'You can only add admins to a call.', 'FORBIDDEN')
+    const people = picked.filter((p): p is NonNullable<typeof p> => Boolean(p))
+    const first = people[0]
+    if (!first) throw new BookingError('Select at least one teammate.', 'INVALID_STATE')
+    const start = new Date(data.startTime)
+    const conflict = await findTimeConflict(user.id, start, data.durationMinutes)
+    if (conflict) throw new BookingError(conflict, 'SLOT_TAKEN')
+
+    const booking = await createPendingBooking({
+      hostId: user.id,
+      source: 'SALES_INVITE',
+      start,
+      durationMinutes: data.durationMinutes,
+      title: data.title,
+      guestName: first.name ?? first.email,
+      guestEmail: first.email,
+      notes: data.notes ?? null,
+      createdById: user.id,
+      noLead: true,
+    })
+    await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.team_meeting', actorId: user.id })
+    await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', actorId: user.id, metadata: { userIds: people.map((p) => p.id) } })
+    if (user.role !== 'ADMIN') {
+      try {
+        const base = await emailDataFor(booking.id)
+        const emailId = await sendApprovalRequestEmail(people.map((p) => p.email), { ...base, hostName: user.name ?? user.email, hostEmail: user.email, guestName: user.name ?? user.email, guestEmail: user.email }, { teamRequest: true })
+        await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.team_request_sent', actorId: user.id, metadata: { emailId, to: people.map((p) => p.id) } })
+      } catch (err) {
+        await cancelBookingCore(booking.id, user.id, 'request-email-failed').catch(() => undefined) // release the held time so they can retry
+        throw new BookingError(`Could not email the admins: ${err instanceof Error ? err.message : 'unknown error'}`, 'INVALID_STATE')
+      }
+      revalidatePath('/sales', 'layout')
+      return { ok: true, data: { bookingId: booking.id, meetUrl: null, requested: true } }
+    }
+    try {
+      const confirmed = await confirmBooking(booking.id, user.id)
+      revalidatePath('/sales', 'layout')
+      return { ok: true, data: { bookingId: booking.id, meetUrl: confirmed.meetUrl, requested: false } }
+    } catch (err) {
+      await cancelBookingCore(booking.id, user.id, 'team-meeting-failed').catch(() => undefined) // release the held time
+      throw err
+    }
   } catch (err) {
     return toActionError(err)
   }
@@ -53,16 +142,26 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
     const user = await requireUser(['ADMIN', 'SALES'])
     const data = salesInviteSchema.parse(input)
     const hostId = user.role === 'ADMIN' && data.hostId ? data.hostId : user.id
+    await assertActiveHost(hostId)
     const start = new Date(data.startTime)
 
-    if (data.leadId) {
-      const lead = await prisma.lead.findUnique({ where: { id: data.leadId }, select: { assignedToId: true } })
-      if (!lead) throw new BookingError('Lead not found.', 'NOT_FOUND')
-      if (user.role === 'SALES' && lead.assignedToId && lead.assignedToId !== user.id) {
-        throw new BookingError('This lead is assigned to another rep.', 'FORBIDDEN')
-      }
+    // The guest may already be someone's contact even when "New person" was picked: check by email too.
+    const lead = data.leadId
+      ? await prisma.lead.findUnique({ where: { id: data.leadId }, select: { id: true, assignedToId: true } })
+      : await prisma.lead.findUnique({ where: { email: data.guestEmail }, select: { id: true, assignedToId: true } })
+    if (data.leadId && !lead) throw new BookingError('Contact not found.', 'NOT_FOUND')
+    // Salespeople can only invite their own leads; an admin has to assign the lead first.
+    if (lead && user.role === 'SALES' && lead.assignedToId !== user.id) {
+      throw new BookingError('This contact is not assigned to you. Ask an admin to assign it, then send the invite.', 'FORBIDDEN')
     }
-    await assertSlotOffered(hostId, start, data.durationMinutes)
+    const teammateIds = [...new Set(data.teammateIds ?? [])]
+    if (teammateIds.length > 0) {
+      const allowed = new Set((await allowedTeammates(user, hostId)).map((t) => t.id))
+      if (teammateIds.some((id) => !allowed.has(id))) throw new BookingError(user.role === 'ADMIN' ? 'One of those teammates cannot be added.' : 'You can only add admins to a call.', 'FORBIDDEN')
+    }
+    // Any time is fine as long as it is in the future and the host has nothing else then.
+    const conflict = await findTimeConflict(hostId, start, data.durationMinutes)
+    if (conflict) throw new BookingError(conflict, 'SLOT_TAKEN')
 
     const booking = await createPendingBooking({
       hostId,
@@ -73,11 +172,12 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
       guestName: data.guestName,
       guestEmail: data.guestEmail,
       notes: data.notes ?? null,
-      leadId: data.leadId ?? null,
+      leadId: lead?.id ?? null,
       createdById: user.id,
     })
 
     // The pending booking holds the slot, so the invite stays valid until the meeting starts.
+    if (teammateIds.length > 0) await logActivity({ entityType: 'BOOKING', entityId: booking.id, action: 'booking.teammates', actorId: user.id, metadata: { userIds: teammateIds } })
     const token = createInviteToken(booking.id, booking.startTime)
     await prisma.booking.update({ where: { id: booking.id }, data: { inviteToken: token } })
 
@@ -133,8 +233,8 @@ export async function confirmInvite(token: string): Promise<ActionResult<{ meetU
 export async function getPublicSlots(slug: string, date: string): Promise<ActionResult<string[]>> {
   try {
     isoDate.parse(date)
-    const page = await prisma.bookingPage.findUnique({ where: { slug }, select: { active: true, hostId: true, durationMinutes: true } })
-    if (!page?.active) throw new BookingError('Booking page not found.', 'NOT_FOUND')
+    const page = await prisma.bookingPage.findUnique({ where: { slug }, select: { active: true, hostId: true, durationMinutes: true, host: { select: { role: true } } } })
+    if (!page?.active || !page.host.role) throw new BookingError('Booking page not found.', 'NOT_FOUND')
     return { ok: true, data: await getAvailableSlots(page.hostId, new Date(`${date}T00:00:00Z`), page.durationMinutes) }
   } catch (err) {
     return publicActionError(err)
@@ -159,8 +259,8 @@ export async function createPublicBooking(
 ): Promise<ActionResult<{ status: 'CONFIRMED' | 'PENDING'; meetUrl: string | null }>> {
   try {
     const data = publicBookingSchema.parse(input)
-    const page = await prisma.bookingPage.findUnique({ where: { slug: data.slug } })
-    if (!page?.active) throw new BookingError('Booking page not found.', 'NOT_FOUND')
+    const page = await prisma.bookingPage.findUnique({ where: { slug: data.slug }, include: { host: { select: { role: true } } } })
+    if (!page?.active || !page.host.role) throw new BookingError('Booking page not found.', 'NOT_FOUND')
     const start = new Date(data.startTime)
     await assertSlotOffered(page.hostId, start, page.durationMinutes)
 
@@ -178,6 +278,7 @@ export async function createPublicBooking(
 
     if (page.requiresApproval) {
       await notifyAdminsOfPendingBooking(booking.id).catch((err: unknown) => console.error('[bookings] approval notice failed', err))
+      await notifyGuestOfPendingBooking(booking.id)
       return { ok: true, data: { status: 'PENDING', meetUrl: null } }
     }
     try {
@@ -192,6 +293,13 @@ export async function createPublicBooking(
   }
 }
 
+/** The host must still be on the team as ADMIN or SALES (deactivated / marketing users can't host). */
+async function assertActiveHost(hostId: string): Promise<void> {
+  const host = await prisma.user.findUnique({ where: { id: hostId }, select: { role: true, email: true } })
+  const allowed = host?.email ? await prisma.allowedUser.findUnique({ where: { email: host.email }, select: { active: true, role: true } }) : null
+  if (!host || !allowed?.active || (allowed.role !== 'ADMIN' && allowed.role !== 'SALES')) throw new BookingError('That host is no longer an active sales or admin teammate.', 'INVALID_STATE')
+}
+
 export async function approveBooking(bookingId: string): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN'])
@@ -203,16 +311,55 @@ export async function approveBooking(bookingId: string): Promise<ActionResult> {
   }
 }
 
-export async function cancelBooking(bookingId: string, reason = 'cancelled-by-staff'): Promise<ActionResult> {
+/** Staff cancel (or, for a pending approval request, decline). The guest is emailed unless `notifyGuest` is false. */
+/** Host or admin: mark a meeting as done (or undo it). Done meetings move to "Past & cancelled". */
+export async function markBookingDone(bookingId: string, done: boolean): Promise<ActionResult> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const id = z.string().cuid().parse(bookingId)
+    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, status: true } })
+    if (!booking) throw new BookingError('Meeting not found.', 'NOT_FOUND')
+    if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can do that.', 'FORBIDDEN')
+    if (booking.status === 'CANCELLED') throw new BookingError('This meeting was cancelled.', 'INVALID_STATE')
+    await logActivity({ entityType: 'BOOKING', entityId: id, action: done ? 'booking.done' : 'booking.undone', actorId: user.id })
+    revalidatePath('/sales', 'layout')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Host or admin: delete a meeting for good (upcoming ones are also removed from every invitee's calendar). */
+export async function deleteBooking(bookingId: string): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN', 'SALES'])
     const id = z.string().cuid().parse(bookingId)
     const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true } })
+    if (!booking) throw new BookingError('Meeting not found.', 'NOT_FOUND')
+    if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can delete a meeting.', 'FORBIDDEN')
+    await deleteBookingCore(id, user.id)
+    revalidatePath('/admin/bookings')
+    revalidatePath('/sales', 'layout')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+export async function cancelBooking(bookingId: string, reason = 'cancelled-by-staff', notifyGuest = true): Promise<ActionResult> {
+  try {
+    const user = await requireUser(['ADMIN', 'SALES'])
+    const id = z.string().cuid().parse(bookingId)
+    const booking = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, status: true, source: true, startTime: true } })
     if (!booking) throw new BookingError('Booking not found.', 'NOT_FOUND')
     if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can cancel.', 'FORBIDDEN')
-    await cancelBookingCore(id, user.id, z.string().max(200).parse(reason))
+    if (booking.startTime.getTime() <= Date.now()) throw new BookingError('This meeting has already started, so it can’t be cancelled.', 'INVALID_STATE')
+    // A team meeting has no client to notify.
+    if ((await teamMeetingIds([id])).has(id)) notifyGuest = false
+    const kind = booking.status === 'PENDING' && booking.source === 'PUBLIC_PAGE' ? 'declined' : 'cancelled'
+    await cancelBookingCore(id, user.id, z.string().max(200).parse(reason), notifyGuest ? kind : false)
     revalidatePath('/admin/bookings')
-    revalidatePath('/sales')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)

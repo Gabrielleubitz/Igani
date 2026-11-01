@@ -21,7 +21,12 @@ export default function UnauthorizedPage({ searchParams }: { searchParams: Recor
           <CardTitle>Access denied</CardTitle>
           <CardDescription>{MESSAGES[reason] ?? 'You are not allowed to use Igani CRM with this account.'}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex flex-wrap gap-4">
+          {reason === 'forbidden' ? (
+            <Link href="/" className="text-sm font-medium text-primary underline-offset-4 hover:underline">
+              ← Back to the CRM
+            </Link>
+          ) : null}
           <Link href="/login" className="text-sm underline underline-offset-4">
             Try a different account
           </Link>

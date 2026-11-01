@@ -1,0 +1,308 @@
+- generic [active] [ref=f8e1]:
+  - generic [ref=f8e2]:
+    - complementary [ref=f8e3]:
+      - generic [ref=f8e4]:
+        - link "Igani home" [ref=f8e5] [cursor=pointer]:
+          - /url: /
+          - img "Igani" [ref=f8e6]
+        - navigation "Main" [ref=f8e8]:
+          - generic [ref=f8e9]:
+            - generic [ref=f8e10]: Workspace
+            - link "Today" [ref=f8e11] [cursor=pointer]:
+              - /url: /sales/today
+            - link "Contacts" [ref=f8e12] [cursor=pointer]:
+              - /url: /sales/leads
+            - link "Board" [ref=f8e13] [cursor=pointer]:
+              - /url: /sales/board
+            - link "Tasks" [ref=f8e14] [cursor=pointer]:
+              - /url: /sales/tasks
+            - link "Reports" [ref=f8e15] [cursor=pointer]:
+              - /url: /sales/reports
+          - generic [ref=f8e16]:
+            - generic [ref=f8e17]: Sales
+            - link "Pipeline & meetings" [ref=f8e18] [cursor=pointer]:
+              - /url: /sales
+            - link "Send invite" [ref=f8e19] [cursor=pointer]:
+              - /url: /sales/invite
+            - link "My hours" [ref=f8e20] [cursor=pointer]:
+              - /url: /sales/availability
+            - link "Marketing" [ref=f8e21] [cursor=pointer]:
+              - /url: /marketing
+          - generic [ref=f8e22]:
+            - generic [ref=f8e23]: Admin
+            - link "Overview" [ref=f8e24] [cursor=pointer]:
+              - /url: /admin/dashboard
+            - link "Bookings" [ref=f8e25] [cursor=pointer]:
+              - /url: /admin/bookings
+            - link "Booking pages" [ref=f8e26] [cursor=pointer]:
+              - /url: /admin/booking-pages
+            - link "Team" [ref=f8e27] [cursor=pointer]:
+              - /url: /admin/users
+            - link "Audit log" [ref=f8e28] [cursor=pointer]:
+              - /url: /admin/audit
+            - link "Settings" [ref=f8e29] [cursor=pointer]:
+              - /url: /admin/settings
+      - generic [ref=f8e30]:
+        - generic [ref=f8e31]: gabrielleubitz@igani.co
+        - generic [ref=f8e32]: admin
+        - button "Sign out" [ref=f8e33] [cursor=pointer]
+    - main [ref=f8e34]:
+      - generic [ref=f8e36]:
+        - heading "Pipeline & meetings" [level=1] [ref=f8e37]
+        - generic [ref=f8e38]:
+          - heading "Upcoming meetings" [level=3] [ref=f8e40]
+          - generic [ref=f8e42]:
+            - generic [ref=f8e43]:
+              - generic [ref=f8e44]:
+                - text: Igani intro call — Dana
+                - generic [ref=f8e45]: (dana@acme.com)
+              - generic [ref=f8e46]: Nov 1, 2026, 9:02 PM GMT+2 · host Gabriel
+            - generic [ref=f8e47]:
+              - generic [ref=f8e48]: PENDING
+              - button "Cancel" [ref=f8e50] [cursor=pointer]
+        - group [ref=f8e51]:
+          - generic "NEW (3)" [ref=f8e52] [cursor=pointer]:
+            - text: NEW
+            - generic [ref=f8e53]: (3)
+          - generic [ref=f8e54]:
+            - generic [ref=f8e55]:
+              - generic [ref=f8e56]:
+                - generic [ref=f8e57]:
+                  - text: Test8 Lead
+                  - generic [ref=f8e58]: · Co 8
+                - generic [ref=f8e59]: qa8@example.com · igani.co · unassigned
+              - generic [ref=f8e60]:
+                - generic [ref=f8e61]:
+                  - combobox "Stage" [ref=f8e62]:
+                    - option "NEW" [selected]
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e63]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e64] [cursor=pointer]
+                - link "Invite" [ref=f8e65] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa8
+            - generic [ref=f8e66]:
+              - generic [ref=f8e67]:
+                - generic [ref=f8e68]:
+                  - text: Test4 Lead
+                  - generic [ref=f8e69]: · Co 4
+                - generic [ref=f8e70]: qa4@example.com · igani.co · unassigned
+              - generic [ref=f8e71]:
+                - generic [ref=f8e72]:
+                  - combobox "Stage" [ref=f8e73]:
+                    - option "NEW" [selected]
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e74]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e75] [cursor=pointer]
+                - link "Invite" [ref=f8e76] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa4
+            - generic [ref=f8e77]:
+              - generic [ref=f8e78]:
+                - generic [ref=f8e79]: qa-atlas@example.com
+                - generic [ref=f8e80]: qa-atlas@example.com · manual · unassigned
+              - generic [ref=f8e81]:
+                - generic [ref=f8e82]:
+                  - combobox "Stage" [ref=f8e83]:
+                    - option "NEW" [selected]
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e84]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e85] [cursor=pointer]
+                - link "Invite" [ref=f8e86] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=cmvvjznvb0004m8one0m2q9le
+        - group [ref=f8e87]:
+          - generic "CONTACTED (2)" [ref=f8e88] [cursor=pointer]:
+            - text: CONTACTED
+            - generic [ref=f8e89]: (2)
+          - generic [ref=f8e90]:
+            - generic [ref=f8e91]:
+              - generic [ref=f8e92]:
+                - generic [ref=f8e93]:
+                  - text: Test1 Lead
+                  - generic [ref=f8e94]: · Co 1
+                - generic [ref=f8e95]: qa1@example.com · igani.co · unassigned
+              - generic [ref=f8e96]:
+                - generic [ref=f8e97]:
+                  - combobox "Stage" [ref=f8e98]:
+                    - option "NEW"
+                    - option "CONTACTED" [selected]
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e99]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e100] [cursor=pointer]
+                - link "Invite" [ref=f8e101] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa1
+            - generic [ref=f8e102]:
+              - generic [ref=f8e103]:
+                - generic [ref=f8e104]:
+                  - text: Test5 Lead
+                  - generic [ref=f8e105]: · Co 5
+                - generic [ref=f8e106]: qa5@example.com · igani.co · unassigned
+              - generic [ref=f8e107]:
+                - generic [ref=f8e108]:
+                  - combobox "Stage" [ref=f8e109]:
+                    - option "NEW"
+                    - option "CONTACTED" [selected]
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e110]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e111] [cursor=pointer]
+                - link "Invite" [ref=f8e112] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa5
+        - group [ref=f8e113]:
+          - generic "DEMO SCHEDULED (2)" [ref=f8e114] [cursor=pointer]:
+            - text: DEMO SCHEDULED
+            - generic [ref=f8e115]: (2)
+          - generic [ref=f8e116]:
+            - generic [ref=f8e117]:
+              - generic [ref=f8e118]:
+                - generic [ref=f8e119]:
+                  - text: Test2 Lead
+                  - generic [ref=f8e120]: · Co 2
+                - generic [ref=f8e121]: qa2@example.com · igani.co · unassigned
+              - generic [ref=f8e122]:
+                - generic [ref=f8e123]:
+                  - combobox "Stage" [ref=f8e124]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED" [selected]
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e125]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e126] [cursor=pointer]
+                - link "Invite" [ref=f8e127] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa2
+            - generic [ref=f8e128]:
+              - generic [ref=f8e129]:
+                - generic [ref=f8e130]:
+                  - text: Test6 Lead
+                  - generic [ref=f8e131]: · Co 6
+                - generic [ref=f8e132]: qa6@example.com · igani.co · unassigned
+              - generic [ref=f8e133]:
+                - generic [ref=f8e134]:
+                  - combobox "Stage" [ref=f8e135]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED" [selected]
+                    - option "PROPOSAL SENT"
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e136]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e137] [cursor=pointer]
+                - link "Invite" [ref=f8e138] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa6
+        - group [ref=f8e139]:
+          - generic "PROPOSAL SENT (2)" [ref=f8e140] [cursor=pointer]:
+            - text: PROPOSAL SENT
+            - generic [ref=f8e141]: (2)
+          - generic [ref=f8e142]:
+            - generic [ref=f8e143]:
+              - generic [ref=f8e144]:
+                - generic [ref=f8e145]:
+                  - text: Test7 Lead
+                  - generic [ref=f8e146]: · Co 7
+                - generic [ref=f8e147]: qa7@example.com · igani.co · unassigned
+              - generic [ref=f8e148]:
+                - generic [ref=f8e149]:
+                  - combobox "Stage" [ref=f8e150]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT" [selected]
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e151]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e152] [cursor=pointer]
+                - link "Invite" [ref=f8e153] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa7
+            - generic [ref=f8e154]:
+              - generic [ref=f8e155]:
+                - generic [ref=f8e156]:
+                  - text: Test3 Lead
+                  - generic [ref=f8e157]: · Co 3
+                - generic [ref=f8e158]: qa3@example.com · igani.co · unassigned
+              - generic [ref=f8e159]:
+                - generic [ref=f8e160]:
+                  - combobox "Stage" [ref=f8e161]:
+                    - option "NEW"
+                    - option "CONTACTED"
+                    - option "DEMO SCHEDULED"
+                    - option "PROPOSAL SENT" [selected]
+                    - option "WON"
+                    - option "LOST"
+                  - combobox "Assignee" [ref=f8e162]:
+                    - option "Unassigned" [selected]
+                    - option "Gabriel"
+                    - option "Rita Rep"
+                  - button "Round-robin" [ref=f8e163] [cursor=pointer]
+                - link "Invite" [ref=f8e164] [cursor=pointer]:
+                  - /url: /sales/invite?leadId=qa3
+        - group [ref=f8e165]:
+          - generic "WON (1)" [ref=f8e166] [cursor=pointer]:
+            - text: WON
+            - generic [ref=f8e167]: (1)
+          - generic [ref=f8e169]:
+            - generic [ref=f8e170]:
+              - generic [ref=f8e171]:
+                - text: Dana
+                - generic [ref=f8e172]: · Acme
+              - generic [ref=f8e173]: dana@acme.com · igani.co · fall · budget $5k · owner Rita Rep
+            - generic [ref=f8e174]:
+              - generic [ref=f8e175]:
+                - combobox "Stage" [ref=f8e176]:
+                  - option "NEW"
+                  - option "CONTACTED"
+                  - option "DEMO SCHEDULED"
+                  - option "PROPOSAL SENT"
+                  - option "WON" [selected]
+                  - option "LOST"
+                - combobox "Assignee" [ref=f8e177]:
+                  - option "Unassigned"
+                  - option "Gabriel"
+                  - option "Rita Rep" [selected]
+              - link "Invite" [ref=f8e178] [cursor=pointer]:
+                - /url: /sales/invite?leadId=cmvv7xg5t0001wc1s0lrt3qfd
+        - group [ref=f8e179]:
+          - generic "LOST (0)" [ref=f8e180] [cursor=pointer]:
+            - text: LOST
+            - generic [ref=f8e181]: (0)
+  - alert [ref=f8e182]
