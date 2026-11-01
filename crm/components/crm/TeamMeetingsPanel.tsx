@@ -39,21 +39,27 @@ export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promi
   const view = (b: (typeof rows)[number]): MeetingCallView | null => {
     const m = b.meeting
     if (!m) return null
-    return {
-      bookingId: b.id,
-      status: m.status,
-      started: m.actualStart ? timeOnly(m.actualStart) : null,
-      ended: m.actualEnd ? timeOnly(m.actualEnd) : null,
-      minutes: m.actualStart && m.actualEnd ? Math.round((m.actualEnd.getTime() - m.actualStart.getTime()) / 60_000) : null,
-      people: Array.isArray(m.participants) ? (m.participants as { name?: string }[]).map((p) => p.name ?? 'Guest') : [],
-      notesStatus: m.notesStatus,
-      docUrl: m.docUrl,
-      summary: m.summaryText,
-      nextSteps: m.nextStepsText,
-      fullText: m.fullText,
-      ...organizedFor(m),
-      canTidy: aiTidyEnabled(),
-      timesUnknown: m.lastError === 'meet-scope-missing',
+    try {
+      return {
+        bookingId: b.id,
+        status: m.status,
+        started: m.actualStart ? timeOnly(m.actualStart) : null,
+        ended: m.actualEnd ? timeOnly(m.actualEnd) : null,
+        minutes: m.actualStart && m.actualEnd ? Math.round((m.actualEnd.getTime() - m.actualStart.getTime()) / 60_000) : null,
+        people: Array.isArray(m.participants) ? (m.participants as { name?: string }[]).map((p) => p.name ?? 'Guest') : [],
+        notesStatus: m.notesStatus,
+        docUrl: m.docUrl,
+        summary: m.summaryText,
+        nextSteps: m.nextStepsText,
+        fullText: m.fullText,
+        ...organizedFor(m),
+        canTidy: aiTidyEnabled(),
+        timesUnknown: m.lastError === 'meet-scope-missing',
+      }
+    } catch (err) {
+      // One malformed meeting row must not take the page down: show the call without its notes.
+      console.error('[team-meetings] bad meeting row', b.id, err instanceof Error ? err.message : err)
+      return null
     }
   }
   return (
