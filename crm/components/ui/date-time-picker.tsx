@@ -103,15 +103,15 @@ export function DateTimePicker({
       </button>
       {open ? (
         <div id={panelId} role="dialog" aria-label="Choose date and time" className="flex max-w-full flex-wrap overflow-hidden rounded-xl border bg-card shadow-lg">
-          <div className="flex flex-1 justify-center p-2">
-            <Calendar className="bg-transparent" mode="single" selected={selected} onSelect={pickDay} defaultMonth={selected ?? minDay} disabled={minDay ? { before: minDay } : undefined} />
+          <div className="[container-type:inline-size] flex w-full min-w-0 flex-1 basis-full justify-center p-1">
+            <Calendar className="w-full bg-transparent p-1 [--cell-size:min(2.25rem,calc((100cqw-1rem)/7))]" mode="single" selected={selected} onSelect={pickDay} defaultMonth={selected ?? minDay} disabled={minDay ? { before: minDay } : undefined} />
           </div>
           {mode === 'datetime' ? (
-            <div className="min-w-[8.5rem] flex-1 border-t">
+            <div className="w-full min-w-0 flex-1 basis-full border-t">
               <div className="flex items-center gap-1.5 px-3 pt-3 text-xs font-medium text-muted-foreground">
                 <Clock className="size-3.5" aria-hidden /> Time
               </div>
-              <div role="listbox" aria-label="Time" className="grid max-h-64 grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1 overflow-y-auto p-2">
+              <div role="listbox" aria-label="Time" className="grid max-h-64 grid-cols-3 gap-1 overflow-y-auto p-2">
                 {slots.map((t) => (
                   <button
                     key={t}
