@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { matchPerson, planMeetingTasks, splitAction } from '@/lib/meeting-tasks'
+import { classifyActions, matchPerson, planMeetingTasks, splitAction } from '@/lib/meeting-tasks'
 
 const people = [
   { id: 'u1', name: 'Dana Cohen', email: 'dana@igani.co' },
@@ -10,6 +10,7 @@ const people = [
 describe('meeting action items -> tasks', () => {
   it('splits "Who: task"', () => {
     expect(splitAction('Gabriel: send the proposal')).toEqual({ who: 'Gabriel', title: 'send the proposal' })
+    expect(splitAction('[Ilan Leubitz] Run ads: now')).toEqual({ who: 'Ilan Leubitz', title: 'Run ads: now' })
     expect(splitAction('Send the proposal')).toEqual({ who: null, title: 'Send the proposal' })
     expect(splitAction('Note that the plan is: wait').who).toBeNull()
   })
@@ -37,5 +38,14 @@ describe('follow-ups for people outside the team', () => {
       { assigneeId: 'u1', title: 'Call back' },
     ])
     expect(r.followUps).toEqual([{ who: 'Sarah', title: 'Sign contract' }])
+  })
+})
+
+describe('bracketed Gemini lines', () => {
+  const ppl = [{ id: 'h', name: 'Gabriel Leubitz', email: 'g@x.co' }, { id: 'i', name: 'Ilan Leubitz', email: 'i@x.co' }]
+  it('routes [Name] lines to that user and drops footer boilerplate', () => {
+    const r = classifyActions(['[Ilan Leubitz] Run ads: trial', '[ariel tzadok] Send email', '[The group] Do thing', 'Want to see more? View the full notes'], ppl, 'h')
+    expect(r.tasks).toEqual([{ assigneeId: 'i', title: 'Run ads: trial' }])
+    expect(r.followUps.map((f) => f.who)).toEqual(['ariel tzadok', 'The group'])
   })
 })

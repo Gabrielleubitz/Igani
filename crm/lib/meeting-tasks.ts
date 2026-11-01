@@ -13,6 +13,8 @@ export interface Person {
 
 /** "Dana: send the proposal" -> { who: "Dana", title: "send the proposal" }; no owner -> who null. */
 export function splitAction(line: string): { who: string | null; title: string } {
+  const b = line.match(/^\s*\[([^\]]{1,40})\]\s*(.+)$/) // "[Dana] send the proposal" (Gemini import format)
+  if (b && b[1]!.trim().split(/\s+/).length <= 3) return { who: b[1]!.trim(), title: b[2]!.trim() }
   const m = line.match(/^\s*([^:：]{1,40})[:：]\s+(.+)$/)
   if (m && m[1]!.trim().split(/\s+/).length <= 3) return { who: m[1]!.trim(), title: m[2]!.trim() }
   return { who: null, title: line.trim() }
@@ -35,6 +37,9 @@ function isAmbiguous(who: string, people: Person[]): boolean {
   return people.filter((p) => (p.name ?? '').toLowerCase().split(/\s+/)[0] === w || (p.email ?? '').toLowerCase().split('@')[0] === w).length > 1
 }
 
+/** Gemini footer lines that the notes parser sometimes picks up as "actions". */
+export const isBoilerplate = (t: string): boolean => /^(want to see more\?|you should review gemini)/i.test(t.trim())
+
 export interface FollowUp {
   who: string
   title: string
@@ -49,7 +54,7 @@ const cap = (t: string): string => (t.charAt(0).toUpperCase() + t.slice(1)).slic
 export function classifyActions(actions: string[], people: Person[], hostId: string): { tasks: { assigneeId: string; title: string }[]; followUps: FollowUp[] } {
   const tasks: { assigneeId: string; title: string }[] = []
   const followUps: FollowUp[] = []
-  for (const a of actions.map(splitAction).filter((x) => x.title.length > 1)) {
+  for (const a of actions.map(splitAction).filter((x) => x.title.length > 1 && !isBoilerplate(x.title))) {
     const hit = matchPerson(a.who, people)
     if (hit) tasks.push({ assigneeId: hit.id, title: cap(a.title) })
     else if (a.who && !isAmbiguous(a.who, people)) followUps.push({ who: a.who, title: cap(a.title) })
