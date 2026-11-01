@@ -10,6 +10,7 @@ import { EmailsPanel, type EmailView } from '@/components/crm/EmailsPanel'
 import { googleGrants } from '@/lib/google'
 import { MeetConnectBanner, MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
 import { LeadActions } from '@/components/crm/LeadActions'
+import { LeadDocuments } from '@/components/crm/LeadDocuments'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
 import { AdminDealPanel, MyCommissionCard } from '@/components/crm/AdminDealPanel'
@@ -107,7 +108,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   }
   const anyPage = myPage ?? (await prisma.bookingPage.findFirst({ where: { active: true }, select: { slug: true }, orderBy: { createdAt: 'asc' } }))
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
-  const reps = people.filter((p) => (p.role === 'SALES' || p.role === 'ADMIN') && (isAdmin || p.id === user.id)).map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))
+  const reps = people.filter((p) => p.role !== null && (isAdmin || p.id === user.id)).map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))
   // Keep a former owner (left the team / role changed) selectable so the owner menu shows the truth.
   if (lead.assignedToId && !reps.some((r) => r.id === lead.assignedToId)) reps.unshift({ id: lead.assignedToId, label: `${lead.assignedTo?.name ?? lead.assignedTo?.email ?? 'Former teammate'} (no access)` })
   // Tasks: admins can hand work to anyone; everyone else to themselves or an admin.
@@ -193,6 +194,10 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         return { title: `Task edited: ${titles.get(s(m.taskId)) ?? 'task'}` }
       case 'task.deleted':
         return { title: `Task deleted: ${titles.get(s(m.taskId)) ?? 'task'}` }
+      case 'document.added':
+        return { title: `Document added: ${s(m.title)}` }
+      case 'document.removed':
+        return { title: `Document removed: ${s(m.title)}` }
       case 'lead.price_changed':
         return { title: `Quoted price: ${m.from != null ? `₪${formatMoney(Number(m.from))}` : 'none'} → ${m.to != null ? `₪${formatMoney(Number(m.to))}` : 'none'}` }
       case 'lead.commission_payment':
@@ -217,6 +222,11 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
     unread: e.direction === 'INBOUND' && !e.readAt,
     via: e.externalId.startsWith('resend:') ? 'crm' : 'gmail',
   }))
+
+  // Client documents: file bytes are never selected here, only the list.
+  const docRows = await prisma.leadDocument.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true, uploadedById: true } })
+  const uploaderNames = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
+  const documents = docRows.map((d) => ({ id: d.id, title: d.title, fileName: d.fileName, size: d.size, createdAt: d.createdAt.toISOString(), by: d.uploadedById ? (uploaderNames.get(d.uploadedById) ?? 'Former teammate') : 'Unknown', canDelete: isAdmin || d.uploadedById === user.id }))
 
   // Money: admins get the full picture; the assigned salesperson gets only the commission amount, paid and pending.
   const adminDeal = isAdmin
@@ -354,6 +364,15 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                   />
                 </div>
               </details>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Documents {documents.length ? <span className="text-sm font-normal text-muted-foreground">({documents.length})</span> : null}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <LeadDocuments leadId={lead.id} documents={documents} />
             </CardContent>
           </Card>
 

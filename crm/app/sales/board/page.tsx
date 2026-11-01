@@ -25,7 +25,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
   const where: Prisma.LeadWhereInput = { AND: [scope, buildLeadWhere(parseLeadFilters({ q: f.q, status: f.status, source: f.source, assignee: f.owner }))] }
   const [leads, reps, sourceRows] = await Promise.all([
     prisma.lead.findMany({ where, orderBy: { createdAt: 'desc' }, take: 3000, include: { assignedTo: { select: { name: true, email: true } } } }),
-    prisma.user.findMany({ where: { role: { in: ['SALES', 'ADMIN'] }, ...(isAdmin ? {} : { id: user.id }) }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
+    prisma.user.findMany({ where: isAdmin ? { role: { not: null } } : { id: user.id }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
     prisma.lead.findMany({ where: scope, distinct: ['source'], select: { source: true }, orderBy: { source: 'asc' } }),
   ])
   const sources = sourceRows.map((r) => r.source)

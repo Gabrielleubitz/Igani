@@ -200,6 +200,7 @@ model Lead {
   bookings   Booking[]
   notes      LeadNote[]
   emails     EmailMessage[]
+  documents  LeadDocument[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -296,6 +297,26 @@ model Agreement {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// ─── Client documents ────────────────────────────────────────────────────────
+
+/// A file attached to one lead (contract, brief, screenshot…). Everyone who can see the lead can read and add.
+model LeadDocument {
+  id           String   @id @default(cuid())
+  leadId       String
+  title        String
+  fileName     String
+  mimeType     String
+  size         Int
+  /// The file itself. Always select columns explicitly in lists: this can be several MB.
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
 }
 
 // ─── Audit ───────────────────────────────────────────────────────────────────

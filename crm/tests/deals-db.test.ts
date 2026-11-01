@@ -17,7 +17,7 @@ const d = testDb ? describe : describe.skip
 
 d('quoted price, commission snapshot and milestones', async () => {
   const { changeLeadStatus } = await import('@/lib/leads')
-  const { snapshotWonCommission } = await import('@/lib/deals')
+  const { snapshotWonCommission, setQuotedPrice } = await import('@/lib/deals')
   const { commissionStatus, salespersonCommissionView } = await import('@/lib/commission')
   const prisma = new PrismaClient()
   let repId = ''
@@ -78,5 +78,28 @@ d('quoted price, commission snapshot and milestones', async () => {
     await prisma.lead.update({ where: { id: l.id }, data: { finalPaymentReceivedAt: new Date() } })
     const row = await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })
     expect(salespersonCommissionView(commissionStatus(row))).toEqual({ total: 6_500, paid: 0, pending: 6_500 })
+  })
+
+  it('quoting a price moves a lead that is earlier in the pipeline to Proposal sent', async () => {
+    const admin = (await prisma.user.create({ data: { email: 'admin@igani.co', role: 'ADMIN' } })).id
+    for (const status of ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT'] as const) {
+      const l = await prisma.lead.create({ data: { email: `${status}@x.com`, assignedToId: repId, status } })
+      expect(await prisma.$transaction((tx) => setQuotedPrice(l.id, 17_000, admin, tx))).toEqual({ changed: true, movedToProposal: true })
+      expect(await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).toMatchObject({ status: 'PROPOSAL_SENT', quotedPrice: 17_000 })
+      expect(await prisma.activityLog.count({ where: { entityId: l.id, action: 'lead.status_changed' } })).toBe(1)
+    }
+  })
+
+  it('leads already at Proposal sent, Won or Lost stay put; clearing or repeating a price changes nothing', async () => {
+    const admin = (await prisma.user.create({ data: { email: 'admin2@igani.co', role: 'ADMIN' } })).id
+    for (const status of ['PROPOSAL_SENT', 'WON', 'LOST'] as const) {
+      const l = await prisma.lead.create({ data: { email: `${status}@y.com`, assignedToId: repId, status } })
+      expect((await prisma.$transaction((tx) => setQuotedPrice(l.id, 9_000, admin, tx))).movedToProposal).toBe(false)
+      expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).status).toBe(status)
+    }
+    const l = await prisma.lead.create({ data: { email: 'c@y.com', assignedToId: repId, status: 'CONTACTED' } })
+    expect(await prisma.$transaction((tx) => setQuotedPrice(l.id, null, admin, tx))).toEqual({ changed: false, movedToProposal: false })
+    expect(await prisma.$transaction((tx) => setQuotedPrice(l.id, 0, admin, tx))).toEqual({ changed: true, movedToProposal: false })
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).status).toBe('CONTACTED')
   })
 })

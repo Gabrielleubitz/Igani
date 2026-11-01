@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { CommissionPayRow } from '@/components/admin/CommissionPayRow'
 import { commissionStatus } from '@/lib/commission'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -38,7 +39,8 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     prisma.lead.aggregate({ where: open, _sum: { quotedPrice: true } }),
     prisma.lead.findMany({
       where: { archived: false, status: 'WON', commissionTotal: { not: null } },
-      select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true },
+      select: { id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, assignedTo: { select: { name: true, email: true } } },
+      orderBy: { updatedAt: 'desc' },
     }),
     prisma.lead.findMany({ where: { archived: false }, orderBy: { createdAt: 'desc' }, take: 6, include: { assignedTo: { select: { name: true, email: true } } } }),
     prisma.user.findMany({
@@ -61,6 +63,8 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   const openTasks = [...byPerson.entries()]
     .map(([id, v]) => ({ id, name: id === 'none' ? 'Unassigned' : (nameById.get(id) ?? 'Former teammate'), ...v, total: v.lead + v.meeting.length }))
     .sort((a, b) => b.total - a.total)
+  // Payable first (the client paid, the salesperson has not been paid), then waiting on the client, then paid.
+  const rank = (r: { finalPaymentReceivedAt: Date | null; finalPaidAt: Date | null }): number => (r.finalPaidAt ? 2 : r.finalPaymentReceivedAt ? 0 : 1)
   const owed = commissionRows.reduce((t, r) => {
     const s = commissionStatus(r)
     return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
@@ -116,6 +120,24 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
               </div>
             ))}
           </div>
+          {commissionRows.length > 0 ? (
+            <div className="mt-4 divide-y rounded-lg border">
+              {[...commissionRows]
+                .sort((a, b) => rank(a) - rank(b))
+                .slice(0, 40)
+                .map((r) => (
+                  <CommissionPayRow
+                    key={r.id}
+                    leadId={r.id}
+                    lead={leadName(r)}
+                    salesperson={r.assignedTo ? (r.assignedTo.name ?? r.assignedTo.email ?? 'Teammate') : 'Unassigned'}
+                    amount={r.commissionTotal ?? 0}
+                    clientPaid={r.finalPaymentReceivedAt !== null}
+                    paidOut={r.finalPaidAt !== null}
+                  />
+                ))}
+            </div>
+          ) : null}
         </CardContent>
       </Card>
       <Card>
