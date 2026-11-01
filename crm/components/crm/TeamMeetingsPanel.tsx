@@ -2,7 +2,7 @@ import { aiTidyEnabled } from '@/lib/meeting-ai'
 import { dedupeCalls } from '@/lib/meet-notes'
 import { organizedFor } from '@/lib/organize-notes'
 import { ConnectGoogleButton, UnverifiedAppHint } from '@/components/ConnectGoogle'
-import { MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
+import { MeetingCall, MeetingSyncTrigger, TeamCallActions, type MeetingCallView } from '@/components/crm/MeetingCall'
 import { ImportTeamCalls } from '@/components/crm/ImportTeamCalls'
 import { formatDateTime } from '@/lib/format'
 import { googleGrants } from '@/lib/google'
@@ -105,6 +105,7 @@ export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promi
                 ) : null}
               </div>
               {call ? <MeetingCall m={call} /> : null}
+              <TeamCallActions bookingId={b.id} canDelete={b.source === 'TEAM_MEETING'} />
               {items && (items.team.length || items.followUps.length) ? (
                 <div className="mt-3 grid gap-3 border-t pt-3 text-sm sm:grid-cols-2">
                   <div className="space-y-2">

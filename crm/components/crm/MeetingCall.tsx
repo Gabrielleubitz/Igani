@@ -4,7 +4,7 @@ import { GOOGLE_CONNECT_SCOPES } from '@/lib/google-scopes'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
-import { recheckMeetingNotes, syncMeetings, tidyMeetingNotes } from '@/app/sales/actions'
+import { deleteTeamMeeting, recheckMeetingNotes, syncMeetings, tidyMeetingNotes } from '@/app/sales/actions'
 import { Button } from '@/components/ui/button'
 import type { OrganizedNotes } from '@/lib/organize-notes'
 
@@ -197,6 +197,40 @@ export function MeetingCall({ m }: { m: MeetingCallView }): React.ReactElement |
           {msg ? <p className="text-muted-foreground">{msg}</p> : null}
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/** Admin buttons on a team call: re-read its Gemini notes (and action items) now, or delete it so it can be imported again. */
+export function TeamCallActions({ bookingId, canDelete }: { bookingId: string; canDelete: boolean }): React.ReactElement {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [msg, setMsg] = useState<string | null>(null)
+  const pull = (): void =>
+    start(async () => {
+      const r = await recheckMeetingNotes(bookingId)
+      setMsg(r.ok ? (r.data.status === 'READY' ? 'Action items refreshed from the notes.' : 'No Gemini notes yet. We keep checking.') : r.error)
+      if (r.ok) router.refresh()
+    })
+  const del = (): void => {
+    if (!window.confirm('Delete this call? You can import it again from Google Calendar.')) return
+    start(async () => {
+      const r = await deleteTeamMeeting(bookingId)
+      if (!r.ok) return setMsg(r.error)
+      router.refresh()
+    })
+  }
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+      <Button size="sm" variant="outline" onClick={pull} disabled={pending}>
+        {pending ? 'Working…' : 'Pull action items'}
+      </Button>
+      {canDelete ? (
+        <Button size="sm" variant="ghost" className="text-destructive" onClick={del} disabled={pending}>
+          Delete
+        </Button>
+      ) : null}
+      {msg ? <span className="text-muted-foreground">{msg}</span> : null}
     </div>
   )
 }

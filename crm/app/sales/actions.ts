@@ -314,6 +314,23 @@ export async function recheckMeetingNotes(bookingId: string): Promise<ActionResu
   }
 }
 
+/** Admin: remove an imported team call so it can be imported again from Google Calendar. */
+export async function deleteTeamMeeting(bookingId: string): Promise<ActionResult> {
+  try {
+    const user = await requireUser()
+    if (user.role !== 'ADMIN') return { ok: false, error: 'Only admins can delete team meetings.' }
+    const id = z.string().cuid().parse(bookingId)
+    const b = await prisma.booking.findUnique({ where: { id }, select: { source: true, title: true } })
+    if (!b || b.source !== 'TEAM_MEETING') return { ok: false, error: 'Only imported team meetings can be deleted.' }
+    await prisma.booking.delete({ where: { id } })
+    await logActivity({ entityType: 'BOOKING', entityId: id, action: 'team_meeting.deleted', actorId: user.id })
+    refresh()
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
 /** Tick / untick a meeting action item on someone's task list. */
 export async function setMeetingTask(ownerId: string, taskId: string, done: boolean): Promise<ActionResult> {
   try {
