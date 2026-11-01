@@ -207,3 +207,32 @@ export function teamEventSkipReason(
   if (!teamEventAttendees(ev, hostEmail)) return 'no other guests on the event'
   return null
 }
+
+export interface DedupeRow {
+  id: string
+  meetUrl: string | null
+  startTime: Date
+  meeting: { docId: string | null; notesStatus: string | null; summaryText: string | null } | null
+}
+
+/**
+ * One call can exist as several bookings (same Calendar event imported by two admins, or event + Meet discovery),
+ * each showing the same Gemini summary. Rows sharing a notes Doc, or the same Meet room within 3h, are one call:
+ * keep the one that has the notes (rows must be in the order you want ties broken).
+ */
+export function dedupeCalls<T extends DedupeRow>(rows: T[]): T[] {
+  const score = (r: T): number => (r.meeting?.notesStatus === 'READY' ? 2 : 0) + (r.meeting?.summaryText ? 1 : 0)
+  const kept: T[] = []
+  for (const r of rows) {
+    const code = meetingCodeFromUrl(r.meetUrl)
+    const i = kept.findIndex((k) => {
+      const kd = k.meeting?.docId
+      if (kd && kd === r.meeting?.docId) return true
+      const kc = meetingCodeFromUrl(k.meetUrl)
+      return Boolean(code && kc === code && Math.abs(k.startTime.getTime() - r.startTime.getTime()) < 3 * 3600_000)
+    })
+    if (i < 0) kept.push(r)
+    else if (score(r) > score(kept[i]!)) kept[i] = r
+  }
+  return kept
+}

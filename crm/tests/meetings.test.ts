@@ -214,3 +214,15 @@ d('syncMeeting', async () => {
     expect(r.checked).toBe(0)
   })
 })
+
+import { dedupeCalls } from '@/lib/meet-notes'
+describe('dedupeCalls', () => {
+  const mk = (id: string, url: string, t: string, docId: string | null, ready: boolean) => ({ id, meetUrl: url, startTime: new Date(t), meeting: { docId, notesStatus: ready ? 'READY' : null, summaryText: ready ? 's' : null } })
+  it('collapses same room/doc into one, keeping the one with notes', () => {
+    const r = dedupeCalls([mk('a', 'https://meet.google.com/abc-defg-hij', '2026-01-01T10:00:00Z', null, false), mk('b', 'https://meet.google.com/abc-defg-hij', '2026-01-01T10:05:00Z', 'd1', true), mk('c', 'https://meet.google.com/xxx-yyyy-zzz', '2026-01-01T10:00:00Z', 'd1', true)])
+    expect(r.map((x) => x.id)).toEqual(['b'])
+  })
+  it('keeps same room on different days', () => {
+    expect(dedupeCalls([mk('a', 'https://meet.google.com/abc-defg-hij', '2026-01-01T10:00:00Z', null, true), mk('b', 'https://meet.google.com/abc-defg-hij', '2026-01-08T10:00:00Z', null, true)])).toHaveLength(2)
+  })
+})
