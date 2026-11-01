@@ -57,6 +57,25 @@ export async function findTimeConflict(hostId: string, start: Date, durationMinu
   return null
 }
 
+/** Bookings in the window where `userId` was added as a teammate (they are not the host, but are in the meeting). */
+async function addedBookingClash(userId: string, from: Date, to: Date, excludeBookingId?: string): Promise<boolean> {
+  const logs = await prisma.activityLog.findMany({
+    where: { entityType: 'BOOKING', action: 'booking.teammates', metadata: { path: ['userIds'], array_contains: userId } },
+    select: { entityId: true },
+  })
+  if (logs.length === 0) return false
+  const hit = await prisma.booking.findFirst({
+    where: {
+      id: { in: logs.map((l) => l.entityId), ...(excludeBookingId ? { not: excludeBookingId } : {}) },
+      status: { in: ['PENDING', 'CONFIRMED'] },
+      startTime: { lt: to },
+      endTime: { gt: from },
+    },
+    select: { id: true },
+  })
+  return Boolean(hit)
+}
+
 /**
  * Checks every added teammate's availability for [start, start+duration): their bookings in the CRM and their own
  * Google Calendar (when connected). Returns a message naming each person who is not free, or null when all are.
@@ -81,7 +100,7 @@ export async function findParticipantConflicts(userIds: string[], start: Date, d
         },
         select: { id: true },
       })
-      if (clash) return void busy.push(who)
+      if (clash || (await addedBookingClash(u.id, new Date(start.getTime() - pad), new Date(end.getTime() + pad), excludeBookingId))) return void busy.push(who)
       try {
         if (!(await isSlotStillFree(u.id, start, end, excludeBookingId))) busy.push(who)
       } catch {

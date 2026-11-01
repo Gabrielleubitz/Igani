@@ -20,10 +20,11 @@ Object.assign(process.env, {
 const insert = vi.fn()
 const del = vi.fn(async () => ({}))
 const busy: { start: string; end: string }[] = []
+const busyByHost = new Map<string, { start: string; end: string }[]>()
 vi.mock('@/lib/google', () => ({
   GoogleNotConnectedError: class extends Error {},
-  calendarForHost: async () => ({
-    freebusy: { query: async () => ({ data: { calendars: { primary: { busy } } } }) },
+  calendarForHost: async (hostId: string) => ({
+    freebusy: { query: async () => ({ data: { calendars: { primary: { busy: busyByHost.get(hostId) ?? busy } } } }) },
     events: { insert, delete: del },
   }),
 }))
@@ -141,6 +142,25 @@ d('booking confirmation flow', async () => {
     expect(await findParticipantConflicts([a.id, b.id], start, 30)).toBe('Avi is not free at this time.')
     await createPendingBooking({ hostId: b.id, source: 'SALES_INVITE', start, durationMinutes: 30, title: 'Y', guestName: 'H', guestEmail: 'h@example.com' })
     expect(await findParticipantConflicts([a.id, b.id], start, 30)).toBe('Avi and Bea are not free at this time.')
+  })
+
+  it('reports a participant who has a 5 PM Google event or is already in another meeting at 5 PM', async () => {
+    const host = await prisma.user.create({ data: { email: 'h5@igani.co', name: 'Hana', role: 'SALES' } })
+    const g = await prisma.user.create({ data: { email: 'g5@igani.co', name: 'Gil', role: 'SALES' } })
+    const m = await prisma.user.create({ data: { email: 'm5@igani.co', name: 'Maya', role: 'SALES' } })
+    const start = new Date('2030-01-08T17:00:00Z')
+    busyByHost.set(g.id, [{ start: '2030-01-08T17:00:00Z', end: '2030-01-08T17:30:00Z' }])
+    busyByHost.set(host.id, [])
+    busyByHost.set(m.id, [])
+    try {
+      expect(await findParticipantConflicts([host.id, g.id, m.id], start, 30)).toBe('Gil is not free at this time.')
+      busyByHost.set(g.id, [])
+      const other = await createPendingBooking({ hostId: host.id, source: 'SALES_INVITE', start: new Date('2030-01-08T16:45:00Z'), durationMinutes: 30, title: 'Z', guestName: 'K', guestEmail: 'k@example.com' })
+      await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: other.id, action: 'booking.teammates', metadata: { userIds: [m.id] } } })
+      expect(await findParticipantConflicts([g.id, m.id], start, 30)).toBe('Maya is not free at this time.')
+    } finally {
+      busyByHost.clear()
+    }
   })
 
   it('marks a meeting done (and undone), and deletes one for good', async () => {
