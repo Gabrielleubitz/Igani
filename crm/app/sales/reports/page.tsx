@@ -1,3 +1,4 @@
+import { commissionStatus, formatIls } from '@/lib/commission'
 import { buildReport } from '@/components/crm/crm-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -18,8 +19,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   const now = Date.now()
   const d30 = new Date(now - 30 * 864e5)
   const d60 = new Date(now - 60 * 864e5)
-  const [allLeads, users, bookings, closeLogs, me] = await Promise.all([
-    prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, dealValue: true, lostReason: true } }),
+  const [allLeads, commissionRows, users, bookings, closeLogs, me] = await Promise.all([
+    prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, quotedPrice: true, lostReason: true } }),
+    // Commission on my own won deals. These columns are all a salesperson ever gets; no prices, no terms.
+    prisma.lead.findMany({
+      where: { archived: false, status: 'WON', commissionTotal: { not: null }, ...(user.role === 'ADMIN' ? (mine ? { assignedToId: user.id } : {}) : { assignedToId: user.id }) },
+      select: { commissionTotal: true, commissionDownpayment: true, commissionFinal: true, downpaymentReceivedAt: true, finalPaymentReceivedAt: true, downpaymentPaidAt: true, finalPaidAt: true },
+    }),
     prisma.user.findMany({ where: user.role === 'SALES' ? { id: user.id } : {}, select: { id: true, name: true, email: true } }),
     prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, leadId: { not: null }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),
     // When deals were actually won or lost (from the stage-change history, not "last edited").
@@ -36,7 +42,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   const leads = allLeads.map((l) => {
     const c = closedAt.get(l.id)
     const at = c && c.to === l.status ? c.at : null
-    return { ...l, wonAt: l.status === 'WON' ? at : null, lostAt: l.status === 'LOST' ? at : null }
+    return { ...l, quotedPrice: user.role === 'ADMIN' ? l.quotedPrice : null, wonAt: l.status === 'WON' ? at : null, lostAt: l.status === 'LOST' ? at : null }
   })
   // Each metric for the window [from, to). Comparing two windows is fair: both measure what happened inside them.
   const window = (from: Date, to: Date): { added: number; won: number; winRate: number | null; kept: number | null } => {
@@ -45,15 +51,19 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
     const lostL = leads.filter((l) => inW(l.lostAt))
     const bk = bookings.filter((b) => b.endTime >= from && b.endTime < to && b.status !== 'PENDING')
     return {
-      added: leads.filter((l) => inW(l.createdAt)).reduce((n, l) => n + (l.dealValue ?? 0), 0),
-      won: wonL.reduce((n, l) => n + (l.dealValue ?? 0), 0),
+      added: leads.filter((l) => inW(l.createdAt)).reduce((n, l) => n + (l.quotedPrice ?? 0), 0),
+      won: wonL.reduce((n, l) => n + (l.quotedPrice ?? 0), 0),
       winRate: wonL.length + lostL.length ? Math.round((wonL.length / (wonL.length + lostL.length)) * 100) : null,
       kept: bk.length ? Math.round((bk.filter((b) => b.status === 'CONFIRMED').length / bk.length) * 100) : null,
     }
   }
   const cur = window(d30, new Date(now + 1))
   const prev = window(d60, d30)
-  const totalPipeline = leads.filter((l) => l.status !== 'WON' && l.status !== 'LOST').reduce((n, l) => n + (l.dealValue ?? 0), 0)
+  const totalPipeline = leads.filter((l) => l.status !== 'WON' && l.status !== 'LOST').reduce((n, l) => n + (l.quotedPrice ?? 0), 0)
+  const commission = commissionRows.reduce((t, r) => {
+    const s = commissionStatus(r)
+    return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
+  }, { total: 0, paid: 0, payable: 0, pending: 0 })
   /** Change in an amount, as a percentage of the previous period. */
   const delta = (a: number, b: number): string => (b === 0 ? (a === 0 ? 'same as prev 30d' : 'new vs prev 30d') : `${a >= b ? '▲' : '▼'} ${Math.abs(Math.round(((a - b) / b) * 100))}% vs prev 30d`)
   /** Change in a rate, in percentage points (2% → 3% is +1 pt, not +50%). */
@@ -99,8 +109,17 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Tile label="Open pipeline value" value={formatMoney(totalPipeline)} sub={`Deal value added (30d): ${formatMoney(cur.added)} · ${delta(cur.added, prev.added)}`} />
-        <Tile label="Won revenue (30d)" value={formatMoney(cur.won)} sub={delta(cur.won, prev.won)} />
+        {user.role === 'ADMIN' ? (
+          <>
+            <Tile label="Pipeline value" value={`₪${formatMoney(totalPipeline)}`} sub={`Quoted price added (30d): ₪${formatMoney(cur.added)} · ${delta(cur.added, prev.added)}`} />
+            <Tile label="Revenue, won deals (30d)" value={`₪${formatMoney(cur.won)}`} sub={delta(cur.won, prev.won)} />
+          </>
+        ) : (
+          <>
+            <Tile label="My commission (total)" value={formatIls(commission.total)} sub={`${commissionRows.length} won deal${commissionRows.length === 1 ? '' : 's'}`} />
+            <Tile label="Paid / pending" value={`${formatIls(commission.paid)} / ${formatIls(commission.total - commission.paid)}`} sub="Paid so far / still to come" />
+          </>
+        )}
         <Tile label="Win rate (closed in 30d)" value={cur.winRate === null ? '—' : `${cur.winRate}%`} sub={`${deltaPts(cur.winRate, prev.winRate)} · won ÷ (won + lost)`} />
         <Tile label="Meetings kept (30d)" value={cur.kept === null ? '—' : `${cur.kept}%`} sub={`${deltaPts(cur.kept, prev.kept)} · past meetings not cancelled`} />
       </div>

@@ -25,7 +25,7 @@ export interface LeadRow {
   assignedToId: string | null
   tags: string[]
   createdAt: string
-  dealValue: number | null
+  quotedPrice: number | null
   lostReason: string | null
 }
 
@@ -106,7 +106,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search])
   const [sorting, setSorting] = useState<SortingState>([])
-  const [visibility, setVisibility] = useState<VisibilityState>({ dealValue: false })
+  const [visibility, setVisibility] = useState<VisibilityState>({ quotedPrice: false })
   const columns = useMemo<ColumnDef<LeadRow>[]>(
     () => [
       { id: 'select', header: () => <input type="checkbox" aria-label="Select all on this page" checked={rows.length > 0 && sel.size === rows.length} onChange={(e) => setSel(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())} />, enableHiding: false, enableSorting: false, cell: ({ row }) => <input type="checkbox" aria-label={`Select ${row.original.name}`} checked={sel.has(row.original.id)} onChange={() => toggle(row.original.id)} /> },
@@ -131,7 +131,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
           <StageSelect
             leadId={row.original.id}
             status={row.original.status}
-            dealValue={row.original.dealValue}
+            quotedPrice={row.original.quotedPrice}
             isAdmin={isAdmin}
             disabled={!canMove}
             className="h-8 w-40"
@@ -141,7 +141,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
       } },
       { accessorKey: 'owner', header: 'Owner', cell: ({ row }) => row.original.owner ?? <Badge variant="secondary">unassigned</Badge> },
       { accessorKey: 'source', header: 'Came from', cell: ({ row }) => <span title={row.original.sourceDetail ?? undefined} className="text-xs text-muted-foreground">{row.original.source}{row.original.sourceDetail ? <span className="block max-w-[12rem] truncate text-[11px] opacity-70">{row.original.sourceDetail}</span> : null}</span> },
-      { accessorKey: 'dealValue', header: 'Value', cell: ({ row }) => (row.original.dealValue != null ? formatMoney(row.original.dealValue) : '') },
+      ...(isAdmin ? [{ accessorKey: 'quotedPrice', header: 'Quoted price', cell: ({ row }: { row: { original: LeadRow } }) => (row.original.quotedPrice != null ? formatMoney(row.original.quotedPrice) : '') }] : []),
       { accessorKey: 'createdAt', header: 'Created', cell: ({ row }) => row.original.createdAt.slice(0, 10) },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps

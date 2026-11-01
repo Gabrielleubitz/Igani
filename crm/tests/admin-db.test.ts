@@ -66,9 +66,9 @@ d('admin lead flows', async () => {
     await expect(changeLeadStatus(l.id, 'LOST', null)).rejects.toThrow()
     await changeLeadStatus(l.id, 'LOST', null, { lostReason: 'no budget' })
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).lostReason).toBe('no budget')
-    await changeLeadStatus(l.id, 'WON', null, { dealValue: 5000 })
+    await changeLeadStatus(l.id, 'WON', null, { quotedPrice: 5000 })
     const won = await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })
-    expect(won).toMatchObject({ status: 'WON', lostReason: null, dealValue: 5000 })
+    expect(won).toMatchObject({ status: 'WON', lostReason: null, quotedPrice: 5000 })
   })
 
   it('can be set to Demo sent (once the DEMO_SENT migration is applied)', async () => {

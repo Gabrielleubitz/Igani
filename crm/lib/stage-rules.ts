@@ -25,11 +25,6 @@ export function canEditAtStage(role: string | null | undefined, current: LeadSta
   return isAdmin(role) || SALES_EDITABLE_FROM.includes(current)
 }
 
-/** May this role change the deal value of a lead at `current`? Same early stages. */
-export function canEditValueAtStage(role: string | null | undefined, current: LeadStatus): boolean {
-  return isAdmin(role) || SALES_STAGES.includes(current)
-}
-
 /** Why a stage change is refused, or null when it is allowed. */
 export function stageChangeProblem(role: string | null | undefined, current: LeadStatus, to: LeadStatus): string | null {
   if (!canEditAtStage(role, current)) return `This lead is at "${LABEL[current]}", which an admin set. Only an admin can change its stage now.`

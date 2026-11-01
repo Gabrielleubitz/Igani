@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { commissionStatus } from '@/lib/commission'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -19,7 +20,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   const stale = new Date(now.getTime() - staleDays * 86_400_000)
   const dayEnd = new Date(now.getTime() + 86_400_000)
   const open = { archived: false, status: { notIn: ['WON', 'LOST'] as ('WON' | 'LOST')[] } }
-  const [total, won, lost, unassigned, staleCount, newWeek, today, pendingApprovals, wonValue, openValue, recentLeads, reps] = await Promise.all([
+  const [total, won, lost, unassigned, staleCount, newWeek, today, pendingApprovals, wonValue, openValue, commissionRows, recentLeads, reps] = await Promise.all([
     prisma.lead.count({ where: { archived: false } }),
     prisma.lead.count({ where: { archived: false, status: 'WON' } }),
     prisma.lead.count({ where: { archived: false, status: 'LOST' } }),
@@ -32,12 +33,17 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     prisma.lead.count({ where: { archived: false, createdAt: { gte: new Date(now.getTime() - 7 * 86_400_000) } } }),
     prisma.booking.count({ where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, endTime: { gte: now }, startTime: { lt: dayEnd } } }),
     prisma.booking.count({ where: { status: 'PENDING', source: 'PUBLIC_PAGE', startTime: { gt: now } } }),
-    prisma.lead.aggregate({ where: { archived: false, status: 'WON' }, _sum: { dealValue: true } }),
-    prisma.lead.aggregate({ where: open, _sum: { dealValue: true } }),
+    // Company revenue = the quoted price of won deals. Pipeline = the quoted price of open deals that have one.
+    prisma.lead.aggregate({ where: { archived: false, status: 'WON' }, _sum: { quotedPrice: true } }),
+    prisma.lead.aggregate({ where: open, _sum: { quotedPrice: true } }),
+    prisma.lead.findMany({
+      where: { archived: false, status: 'WON', commissionTotal: { not: null } },
+      select: { commissionTotal: true, commissionDownpayment: true, commissionFinal: true, downpaymentReceivedAt: true, finalPaymentReceivedAt: true, downpaymentPaidAt: true, finalPaidAt: true },
+    }),
     prisma.lead.findMany({ where: { archived: false }, orderBy: { createdAt: 'desc' }, take: 6, include: { assignedTo: { select: { name: true, email: true } } } }),
     prisma.user.findMany({
       where: { role: { in: ['SALES', 'ADMIN'] } },
-      select: { id: true, name: true, email: true, assignedLeads: { where: { archived: false }, select: { status: true, dealValue: true } } },
+      select: { id: true, name: true, email: true, assignedLeads: { where: { archived: false }, select: { status: true, quotedPrice: true } } },
     }),
   ])
   const closed = won + lost
@@ -55,14 +61,19 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   const openTasks = [...byPerson.entries()]
     .map(([id, v]) => ({ id, name: id === 'none' ? 'Unassigned' : (nameById.get(id) ?? 'Former teammate'), ...v, total: v.lead + v.meeting.length }))
     .sort((a, b) => b.total - a.total)
+  const owed = commissionRows.reduce((t, r) => {
+    const s = commissionStatus(r)
+    return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
+  }, { total: 0, paid: 0, payable: 0, pending: 0 })
   const tiles: { label: string; value: string | number; href: string; hint?: string; tone?: string }[] = [
+    { label: 'Open deals', value: total - won - lost, href: '/sales/board' },
+    { label: 'Pipeline value', value: `₪${formatMoney(openValue._sum.quotedPrice ?? 0)}`, href: '/sales/board' },
     { label: 'Leads', value: total, href: '/sales/leads' },
     { label: 'New this week', value: newWeek, href: '/sales/leads' },
     { label: 'Waiting for an owner', value: unassigned, href: '/sales/leads?assignee=none', tone: unassigned ? 'text-amber-300' : undefined },
     { label: `Quiet > ${staleDays} days`, value: staleCount, href: '/sales/today', tone: staleCount ? 'text-amber-300' : undefined },
-    { label: 'Open pipeline value', value: formatMoney(openValue._sum.dealValue ?? 0), href: '/sales/board' },
     { label: 'Won', value: won, href: '/sales/leads?status=WON' },
-    { label: 'Won value', value: formatMoney(wonValue._sum.dealValue ?? 0), href: '/sales/leads?status=WON' },
+    { label: 'Revenue (won deals)', value: `₪${formatMoney(wonValue._sum.quotedPrice ?? 0)}`, href: '/sales/leads?status=WON' },
     { label: 'Win rate (closed deals)', value: closed ? `${Math.round((won / closed) * 100)}%` : '—', href: '/sales/reports' },
     { label: 'Meetings next 24h', value: today, href: '/sales' },
     { label: 'Awaiting approval', value: pendingApprovals, href: '/admin/bookings', tone: pendingApprovals ? 'text-amber-300' : undefined },
@@ -72,7 +83,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       name: r.name ?? r.email ?? 'Teammate',
       open: r.assignedLeads.filter((l) => l.status !== 'WON' && l.status !== 'LOST').length,
       won: r.assignedLeads.filter((l) => l.status === 'WON').length,
-      value: r.assignedLeads.filter((l) => l.status === 'WON').reduce((n, l) => n + (l.dealValue ?? 0), 0),
+      value: r.assignedLeads.filter((l) => l.status === 'WON').reduce((n, l) => n + (l.quotedPrice ?? 0), 0),
     }))
     .sort((a, b) => b.value - a.value || b.won - a.won)
 
@@ -87,6 +98,26 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           </Link>
         ))}
       </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Commission owed to salespeople</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              { label: 'Total owed', value: owed.total, tone: '' },
+              { label: 'Paid', value: owed.paid, tone: 'text-emerald-400' },
+              { label: 'Payable now', value: owed.payable, tone: owed.payable ? 'text-amber-300' : '' },
+              { label: 'Pending (client has not paid yet)', value: owed.pending, tone: '' },
+            ].map((t) => (
+              <div key={t.label} className="rounded-lg border p-3">
+                <div className={`text-xl font-semibold tabular-nums ${t.tone}`}>₪{formatMoney(t.value)}</div>
+                <div className="text-xs text-muted-foreground">{t.label}</div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Open tasks by teammate</CardTitle>

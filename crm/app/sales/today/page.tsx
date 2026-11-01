@@ -10,6 +10,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { bookingScope } from '@/lib/bookings'
+import { commissionStatus, formatIls, salespersonCommissionView } from '@/lib/commission'
 import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
 import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
@@ -128,12 +129,27 @@ export default async function TodayPage(): Promise<React.ReactElement> {
     take: 8,
     include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } } },
   })
-  const pipelineValue = openLeads.reduce((n, l) => n + (l.dealValue ?? 0), 0)
+  // Admins: pipeline value from the quoted price. Salespeople never see a price: they see their own commission instead.
+  const pipelineValue = isAdmin ? openLeads.reduce((n, l) => n + (l.quotedPrice ?? 0), 0) : 0
+  const myCommissionRows = isAdmin || user.role === 'MARKETING'
+    ? []
+    : await prisma.lead.findMany({
+        where: { archived: false, status: 'WON', assignedToId: user.id, commissionTotal: { not: null } },
+        select: { commissionTotal: true, commissionDownpayment: true, commissionFinal: true, downpaymentReceivedAt: true, finalPaymentReceivedAt: true, downpaymentPaidAt: true, finalPaidAt: true },
+      })
+  const myCommission = salespersonCommissionView(
+    myCommissionRows.reduce((t, r) => {
+      const s = commissionStatus(r)
+      return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
+    }, { total: 0, paid: 0, payable: 0, pending: 0 }),
+  )
   const overdueCount = due.filter((t) => t.dueAt! < now).length
 
   const stats: { label: string; value: string | number; href: string; tone?: string }[] = [
     { label: isAdmin ? 'Open deals' : 'My open deals', value: openLeads.length, href: '/sales/board' },
-    { label: 'Pipeline value', value: formatMoney(pipelineValue), href: '/sales/reports' },
+    isAdmin
+      ? { label: 'Pipeline value', value: `₪${formatMoney(pipelineValue)}`, href: '/sales/reports' }
+      : { label: 'My commission (pending)', value: formatIls(myCommission.pending), href: '/sales/reports' },
     { label: 'Tasks due today', value: due.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
     { label: 'New leads (7 days)', value: newThisWeek, href: '/sales/leads' },
   ]

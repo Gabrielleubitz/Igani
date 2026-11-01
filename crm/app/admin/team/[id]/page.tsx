@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { CommissionTermsForm } from '@/components/admin/CommissionTermsForm'
 import { TeamMemberForm } from '@/components/admin/TeamMemberForm'
 import { PageIntro } from '@/components/PageIntro'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
+import { termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
 import { isOpenTask } from '@/lib/team-metrics'
 import { loadRepStats } from '@/lib/team-stats'
@@ -27,7 +29,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
       where: { archived: false, assignedToId: user.id, status: { notIn: ['WON', 'LOST'] } },
       orderBy: { updatedAt: 'desc' },
       take: 12,
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, status: true, dealValue: true, updatedAt: true },
+      select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, status: true, quotedPrice: true, updatedAt: true },
     }),
     prisma.booking.findMany({ where: { hostId: user.id, status: 'CONFIRMED', startTime: { gt: now } }, orderBy: { startTime: 'asc' }, take: 8, select: { id: true, title: true, guestName: true, startTime: true } }),
   ])
@@ -126,6 +128,16 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
           ))}
         </CardContent>
       </Card>
+      {user.role === 'SALES' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Commission terms</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CommissionTermsForm userId={user.id} terms={await termsForAssignee(user.id)} usingDefaults={!(await prisma.allowedUser.findUnique({ where: { email: user.email ?? '' }, select: { commissionTerms: true } }))?.commissionTerms} />
+          </CardContent>
+        </Card>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle>Personal details</CardTitle>

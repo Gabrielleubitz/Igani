@@ -17,6 +17,12 @@ enum Role {
   MARKETING
 }
 
+enum LeadSourceType {
+  COLD_CALL
+  ADS
+  OTHER
+}
+
 enum LeadStatus {
   NEW
   CONTACTED
@@ -62,6 +68,8 @@ model AllowedUser {
   inviteToken      String?   @unique
   invitedAt        DateTime?
   inviteAcceptedAt DateTime?
+  /// This salesperson's agreed commission terms (null = the defaults). Admin-only.
+  commissionTerms  Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -163,8 +171,27 @@ model Lead {
   status       LeadStatus @default(NEW)
   /// Why a lead was LOST (required when moving to LOST)
   lostReason   String?
-  /// Deal value in whole currency units, set on WON/proposal
+  /// Legacy deal value (no longer read; copied into quotedPrice by the 20261103 migration)
   dealValue    Int?
+  /// The price agreed with the client after the sales call, whole currency units. Admin-only.
+  quotedPrice  Int?
+  currency     String     @default("ILS")
+  /// Where the lead came from, for commission terms (admin-edited)
+  sourceType   LeadSourceType @default(OTHER)
+  /// Per-deal commission overrides set by an admin before the deal is won (null = use the salesperson's terms)
+  commissionOverrides Json?
+  /// Terms + breakdown used when the deal was won. Never changes when the salesperson's terms change later. Admin-only.
+  commissionSnapshot  Json?
+  /// Commission in whole shekels, split into the two milestones. These three are all a salesperson ever sees.
+  commissionTotal       Int?
+  commissionDownpayment Int?
+  commissionFinal       Int?
+  /// Client money collected (admin enters the date) - commission for a milestone is only payable after this
+  downpaymentReceivedAt  DateTime?
+  finalPaymentReceivedAt DateTime?
+  /// Commission actually paid out to the salesperson
+  downpaymentPaidAt DateTime?
+  finalPaidAt       DateTime?
   /// Soft-delete: hidden from pipelines, restorable by admin
   archived     Boolean    @default(false)
   tags         String[]   @default([])

@@ -22,8 +22,8 @@ export async function GET(req: Request): Promise<Response> {
     include: { assignedTo: { select: { name: true, email: true } } },
   })
   const csv = toCsv(
-    ['Email', 'First name', 'Last name', 'Phone', 'Company', 'Website', 'Stage', 'Lead source', 'Source detail', 'UTM campaign', 'Budget', 'Deal value', 'Tags', 'Owner', 'Message', 'Created'],
-    leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.source, l.sourceDetail, l.utmCampaign, l.budget, l.dealValue, l.tags.join(';'), l.assignedTo?.name ?? l.assignedTo?.email, l.message, l.createdAt]),
+    ['Email', 'First name', 'Last name', 'Phone', 'Company', 'Website', 'Stage', 'Lead source', 'Source detail', 'UTM campaign', 'Budget', ...(user.role === 'ADMIN' ? ['Quoted price'] : []), 'Tags', 'Owner', 'Message', 'Created'],
+    leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.source, l.sourceDetail, l.utmCampaign, l.budget, ...(user.role === 'ADMIN' ? [l.quotedPrice] : []), l.tags.join(';'), l.assignedTo?.name ?? l.assignedTo?.email, l.message, l.createdAt]),
   )
   await logActivity({ entityType: 'LEAD', entityId: 'export', actorId: user.id, action: 'leads.exported', metadata: { count: leads.length } })
   return new NextResponse(csv, {

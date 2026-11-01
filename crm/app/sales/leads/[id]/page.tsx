@@ -12,6 +12,7 @@ import { MeetConnectBanner, MeetingCall, MeetingSyncTrigger, type MeetingCallVie
 import { LeadActions } from '@/components/crm/LeadActions'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
+import { AdminDealPanel, MyCommissionCard } from '@/components/crm/AdminDealPanel'
 import { LeadControls } from '@/components/LeadControls'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -20,7 +21,8 @@ import { requireUser } from '@/lib/auth'
 import { appUrl } from '@/lib/env'
 import { formatDateTime, formatMoney, leadName, statusLabel, timeAgo } from '@/lib/format'
 import { canSeeLead } from '@/lib/lead-access'
-import { canEditValueAtStage } from '@/lib/stage-rules'
+import { dealTerms, parseTerms, commissionStatus, salespersonCommissionView, type CommissionBreakdown, type CommissionTerms } from '@/lib/commission'
+import { termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { foldTasksFromLogs } from '@/lib/task-view'
@@ -53,6 +55,7 @@ const ICON: Record<string, string> = {
 }
 const TOUCH: Record<string, string> = { call: 'Call', email: 'Email', meeting: 'Meeting', whatsapp: 'WhatsApp' }
 const HIDDEN = new Set(['task.reminded'])
+const MONEY_EVENTS = ['lead.price_changed', 'lead.commission_overridden', 'lead.commission_recalculated', 'lead.commission_milestone', 'lead.source_type_changed'] as const
 
 export default async function LeadPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
   const user = await requireUser()
@@ -65,7 +68,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
 
   const [logs, people, me, threshold, myPage, emailRows, grants] = await Promise.all([
     prisma.activityLog.findMany({
-      where: { entityType: 'LEAD', entityId: lead.id },
+      // Prices and commission are admin matters: those events never reach a salesperson's timeline.
+      where: { entityType: 'LEAD', entityId: lead.id, ...(isAdmin ? {} : { action: { notIn: [...MONEY_EVENTS] } }) },
       orderBy: { createdAt: 'desc' },
       take: 300,
       include: { actor: { select: { name: true, email: true } } },
@@ -149,7 +153,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       case 'lead.status_changed':
         return {
           title: `Stage: ${statusLabel(s(m.from))} → ${statusLabel(s(m.to))}`,
-          body: [m.lostReason ? `Reason: ${s(m.lostReason)}` : '', m.dealValue != null ? `Deal value: ${formatMoney(Number(m.dealValue))}` : '', m.bookingId ? 'Meeting booked' : ''].filter(Boolean).join(' · ') || undefined,
+          body: [m.lostReason ? `Reason: ${s(m.lostReason)}` : '', isAdmin && (m.quotedPrice ?? m.dealValue) != null ? `Quoted price: ₪${formatMoney(Number(m.quotedPrice ?? m.dealValue))}` : '', m.bookingId ? 'Meeting booked' : ''].filter(Boolean).join(' · ') || undefined,
         }
       case 'lead.assigned': {
         const to = m.to ?? m.assignedToId
@@ -189,6 +193,10 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         return { title: `Task edited: ${titles.get(s(m.taskId)) ?? 'task'}` }
       case 'task.deleted':
         return { title: `Task deleted: ${titles.get(s(m.taskId)) ?? 'task'}` }
+      case 'lead.price_changed':
+        return { title: `Quoted price: ${m.from != null ? `₪${formatMoney(Number(m.from))}` : 'none'} → ${m.to != null ? `₪${formatMoney(Number(m.to))}` : 'none'}` }
+      case 'lead.commission_milestone':
+        return { title: `${s(m.milestone) === 'DOWNPAYMENT' ? 'Downpayment' : 'Final payment'} ${s(m.kind) === 'received' ? 'received from the client' : 'commission paid out'}${m.date ? ` (${s(m.date)})` : ' (undone)'}` }
       default:
         return { title: l.action.replace(/[._]/g, ' ') }
     }
@@ -210,6 +218,21 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
     via: e.externalId.startsWith('resend:') ? 'crm' : 'gmail',
   }))
 
+  // Money: admins get the full picture; the assigned salesperson gets only the commission amount, paid and pending.
+  const adminDeal = isAdmin
+    ? await (async () => {
+        const saved = await termsForAssignee(lead.assignedToId)
+        const snap = lead.commissionSnapshot as { terms?: unknown; breakdown?: CommissionBreakdown; snapshotAt?: string; overridden?: boolean } | null
+        return {
+          saved,
+          terms: dealTerms(saved, lead.commissionOverrides),
+          snapshot: snap?.breakdown ? { terms: parseTerms(snap.terms) as CommissionTerms, breakdown: snap.breakdown, at: snap.snapshotAt ?? null, overridden: Boolean(snap.overridden) } : null,
+        }
+      })()
+    : null
+  const myCommission =
+    !isAdmin && lead.status === 'WON' && lead.commissionTotal !== null && lead.assignedToId === user.id ? salespersonCommissionView(commissionStatus(lead)) : null
+
   const facts: [string, React.ReactNode][] = (
     [
       ['Email', lead.email ? <a key="e" href={`mailto:${lead.email}`} className="break-all underline-offset-4 hover:underline">{lead.email}</a> : <span key="e" className="text-muted-foreground">No email yet</span>],
@@ -218,7 +241,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       ['Website', lead.website ? <a key="w" href={/^https?:\/\//.test(lead.website) ? lead.website : `https://${lead.website}`} target="_blank" rel="noreferrer" className="break-all underline-offset-4 hover:underline">{lead.website.replace(/^https?:\/\//, '')}</a> : null],
       ['Owner', lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : 'Unassigned'],
       ['Budget', lead.budget],
-      ['Deal value', lead.dealValue != null ? formatMoney(lead.dealValue) : null],
+      ['Quoted price', isAdmin && lead.quotedPrice != null ? `₪${formatMoney(lead.quotedPrice)}` : null],
       ['Lost reason', lead.status === 'LOST' ? lead.lostReason : null],
       ['Came from', lead.source],
       ['Source detail', lead.sourceDetail],
@@ -278,12 +301,34 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               </Link>
             ) : null}
           </div>
-          <LeadControls leadId={lead.id} status={lead.status} dealValue={lead.dealValue} assignedToId={lead.assignedToId} currentUserId={user.id} isAdmin={isAdmin} canClaim={false} reps={reps} />
+          <LeadControls leadId={lead.id} status={lead.status} quotedPrice={isAdmin ? lead.quotedPrice : null} assignedToId={lead.assignedToId} currentUserId={user.id} isAdmin={isAdmin} canClaim={false} reps={reps} />
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
         <div className="space-y-6 lg:col-span-1">
+          {adminDeal ? (
+            <AdminDealPanel
+              key={`${lead.updatedAt.toISOString()}-${lead.commissionTotal ?? 0}`}
+              leadId={lead.id}
+              isWon={lead.status === 'WON'}
+              quotedPrice={lead.quotedPrice}
+              sourceType={lead.sourceType}
+              salesperson={lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : null}
+              terms={adminDeal.terms}
+              savedTerms={adminDeal.saved}
+              overridden={lead.commissionOverrides !== null}
+              snapshot={adminDeal.snapshot}
+              milestones={{
+                downpaymentReceivedAt: lead.downpaymentReceivedAt?.toISOString() ?? null,
+                finalPaymentReceivedAt: lead.finalPaymentReceivedAt?.toISOString() ?? null,
+                downpaymentPaidAt: lead.downpaymentPaidAt?.toISOString() ?? null,
+                finalPaidAt: lead.finalPaidAt?.toISOString() ?? null,
+              }}
+            />
+          ) : null}
+          {myCommission ? <MyCommissionCard {...myCommission} /> : null}
+
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Details</CardTitle>
@@ -307,8 +352,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                   <EditContactForm
                     key={lead.updatedAt.toISOString()}
                     leadId={lead.id}
-                    dealValueLocked={!canEditValueAtStage(user.role, lead.status)}
-                    initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, dealValue: lead.dealValue, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }}
+                    initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }}
                   />
                 </div>
               </details>

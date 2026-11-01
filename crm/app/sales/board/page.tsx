@@ -52,7 +52,7 @@ export default async function BoardPage({ searchParams }: { searchParams: SP }):
           email: l.email,
           owner: l.assignedTo ? (l.assignedTo.name ?? l.assignedTo.email) : null,
           budget: l.budget,
-          dealValue: l.dealValue,
+          quotedPrice: isAdmin ? l.quotedPrice : null,
           score: leadScore(l),
           status: l.status,
           canMove: isAdmin || (l.assignedToId === user.id && canEditAtStage(user.role, l.status)),

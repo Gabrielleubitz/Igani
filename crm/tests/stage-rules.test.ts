@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { canEditAtStage, canEditValueAtStage, canSetStage, stageChangeProblem, stagesFor } from '../lib/stage-rules'
+import { canEditAtStage, canSetStage, stageChangeProblem, stagesFor } from '../lib/stage-rules'
 
 const ALL7 = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST'] as const
 
@@ -30,12 +30,6 @@ describe('pipeline permissions', () => {
       expect(stageChangeProblem('MARKETING', from, 'CONTACTED')).toMatch(/Only an admin/)
       expect(stageChangeProblem('ADMIN', from, 'NEW')).toBeNull()
     }
-  })
-
-  it('the deal value follows the same early stages', () => {
-    for (const at of ['NEW', 'CONTACTED', 'DEMO_SCHEDULED'] as const) expect(canEditValueAtStage('SALES', at)).toBe(true)
-    for (const at of ['DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST'] as const) expect(canEditValueAtStage('SALES', at)).toBe(false)
-    expect(canEditValueAtStage('ADMIN', 'WON')).toBe(true)
   })
 })
 

@@ -273,7 +273,8 @@ export interface ScoreInput {
   website: string | null
   budget: string | null
   message: string | null
-  dealValue: number | null
+  /** unused: prices are admin-only and no longer feed the score */
+  dealValue?: number | null
 }
 
 /** 0–100 heat score: pipeline stage plus how complete/qualified the contact is. Closed leads score 0. */
@@ -285,7 +286,6 @@ export function leadScore(l: ScoreInput): number {
   if (l.website) n += 4
   if (l.budget) n += 10
   if (l.message) n += 5
-  if (l.dealValue && l.dealValue > 0) n += 10
   if (l.email && !/@(gmail|yahoo|hotmail|outlook|icloud)\./i.test(l.email)) n += 5
   return Math.min(100, n)
 }

@@ -11,7 +11,7 @@ import { Select } from '@/components/ui/input'
 interface Props {
   leadId: string
   status: LeadStatus
-  dealValue?: number | null
+  quotedPrice?: number | null
   assignedToId: string | null
   currentUserId: string
   isAdmin: boolean
@@ -20,7 +20,7 @@ interface Props {
 }
 
 /** Stage + owner controls for one contact (pipeline rows and the contact page). */
-export function LeadControls({ leadId, status, dealValue, assignedToId, currentUserId, isAdmin, canClaim = true, reps }: Props): React.ReactElement {
+export function LeadControls({ leadId, status, quotedPrice, assignedToId, currentUserId, isAdmin, canClaim = true, reps }: Props): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -37,7 +37,7 @@ export function LeadControls({ leadId, status, dealValue, assignedToId, currentU
       <StageSelect
         leadId={leadId}
         status={status}
-        dealValue={dealValue}
+        quotedPrice={quotedPrice}
         isAdmin={isAdmin}
         disabled={!canMove}
         title={canMove ? 'Change stage' : assignedToId ? 'Only the owner can change the stage' : 'Claim this contact to change its stage'}
