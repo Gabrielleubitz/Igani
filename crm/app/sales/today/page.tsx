@@ -13,6 +13,7 @@ import { bookingScope } from '@/lib/bookings'
 import { commissionStatus, formatIls, salespersonCommissionView } from '@/lib/commission'
 import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
 import { leadScope } from '@/lib/lead-access'
+import { pushPendingEntries } from '@/lib/calendar-entry-sync'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { tasksForUser } from '@/lib/tasks'
@@ -60,6 +61,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   // Calendar: my meetings, due tasks and personal entries around today (the grid itself is client-side).
   const winStart = new Date(startOfLocalDay(now, tz).getTime() - 62 * 864e5)
   const winEnd = new Date(startOfLocalDay(now, tz).getTime() + 186 * 864e5)
+  await pushPendingEntries(user.id).catch(() => undefined) // entries made before Google was connected
   const [calBookings, calEntries] = await Promise.all([
     user.role === 'MARKETING'
       ? Promise.resolve([])

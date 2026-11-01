@@ -477,6 +477,7 @@ model CalendarEntry {
   endTime   DateTime
   allDay    Boolean  @default(false)
   color     String?
+  googleEventId String?
   createdAt DateTime @default(now())
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)

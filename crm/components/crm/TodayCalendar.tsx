@@ -221,6 +221,7 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
         startTransition(async () => {
           const r = await createCalendarEntry({ title, notes: notes || undefined, allDay, start: val(start), end: val(end), color })
           if (!r.ok) return setError(r.error)
+          if (!r.data.googleSynced) window.alert('Saved in the CRM, but it could not be added to your Google Calendar. Open Connect Google and reconnect, then reload this page to retry.')
           onDone()
         })
       }}
