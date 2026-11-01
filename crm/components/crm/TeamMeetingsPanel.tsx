@@ -6,6 +6,7 @@ import { MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/compone
 import { ImportTeamCalls } from '@/components/crm/ImportTeamCalls'
 import { formatDateTime } from '@/lib/format'
 import { googleGrants } from '@/lib/google'
+import { getMeetingActionItems } from '@/lib/meeting-tasks'
 import { prisma } from '@/lib/prisma'
 
 async function load(adminId: string) {
@@ -63,6 +64,7 @@ export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promi
       return null
     }
   }
+  const itemsById = new Map((await Promise.all(rows.map((b) => (b.meeting ? getMeetingActionItems(b.id).catch(() => null) : null)))).flatMap((i) => (i ? [[i.bookingId, i] as const] : [])))
   return (
     <section className="space-y-4 border-t pt-6">
       <MeetingSyncTrigger everyMs={120_000} />
@@ -84,6 +86,7 @@ export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promi
       <div className="space-y-3">
         {rows.map((b) => {
           const call = view(b)
+          const items = itemsById.get(b.id) ?? null
           const invited = Array.isArray(b.attendees) ? (b.attendees as string[]) : []
           return (
             <div key={b.id} className="rounded-lg border bg-card p-4">
@@ -102,6 +105,39 @@ export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promi
                 ) : null}
               </div>
               {call ? <MeetingCall m={call} /> : null}
+              {items && (items.team.length || items.followUps.length) ? (
+                <div className="mt-3 grid gap-3 border-t pt-3 text-sm sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Action items by teammate</div>
+                    {items.team.length ? (
+                      items.team.map((p) => (
+                        <div key={p.personId}>
+                          <div className="font-medium">{p.name}</div>
+                          <ul className="list-disc pl-5 text-muted-foreground">
+                            {p.items.map((i, n) => (
+                              <li key={n} className={i.done ? 'line-through' : ''}>{i.title}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">None for the team.</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Follow-ups (not on the team)</div>
+                    {items.followUps.length ? (
+                      <ul className="list-disc pl-5 text-muted-foreground">
+                        {items.followUps.map((f, n) => (
+                          <li key={n}><span className="font-medium text-foreground">{f.who}:</span> {f.title}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground">None.</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
           )
         })}

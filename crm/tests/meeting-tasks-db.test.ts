@@ -8,7 +8,7 @@ const d = testDb ? describe : describe.skip
 
 d('meeting tasks', async () => {
   const prisma = new PrismaClient()
-  const { createMeetingTasks, loadMeetingTasks, setMeetingTaskDone, backfillMeetingTasks } = await import('@/lib/meeting-tasks')
+  const { getMeetingActionItems, createMeetingTasks, loadMeetingTasks, setMeetingTaskDone, backfillMeetingTasks } = await import('@/lib/meeting-tasks')
   beforeEach(async () => {
     await prisma.meetingSession.deleteMany()
     await prisma.activityLog.deleteMany()
@@ -51,5 +51,14 @@ d('meeting tasks', async () => {
     expect(await backfillMeetingTasks()).toBe(2)
     expect(await backfillMeetingTasks()).toBe(0)
     expect(await createMeetingTasks(bk.id)).toBe(0)
+  })
+
+  it('fetches items per teammate plus follow-ups for outsiders', async () => {
+    const { a, b, bk } = await seed()
+    await prisma.meetingSession.update({ where: { bookingId: bk.id }, data: { fullText: 'Next steps\n- Gabriel: send the proposal\n- Review the deck\n- Sarah: sign the contract\n' } })
+    expect(await createMeetingTasks(bk.id)).toBe(2)
+    const r = await getMeetingActionItems(bk.id)
+    expect(r!.team.map((t) => [t.personId, t.items.map((i) => i.title)]).sort()).toEqual([[a.id, ['Review the deck']], [b.id, ['Send the proposal']]].sort())
+    expect(r!.followUps).toEqual([{ who: 'Sarah', title: 'Sign the contract' }])
   })
 })

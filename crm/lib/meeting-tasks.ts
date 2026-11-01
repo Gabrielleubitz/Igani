@@ -29,12 +29,66 @@ export function matchPerson(who: string | null, people: Person[]): Person | null
   return hits.length === 1 ? hits[0]! : null
 }
 
-/** One task per action item; unmatched owners fall to the host. Returns the planned tasks (pure). */
+/** True when a name fits more than one teammate (so we can't say it is an outsider). */
+function isAmbiguous(who: string, people: Person[]): boolean {
+  const w = who.toLowerCase()
+  return people.filter((p) => (p.name ?? '').toLowerCase().split(/\s+/)[0] === w || (p.email ?? '').toLowerCase().split('@')[0] === w).length > 1
+}
+
+export interface FollowUp {
+  who: string
+  title: string
+}
+
+const cap = (t: string): string => (t.charAt(0).toUpperCase() + t.slice(1)).slice(0, 200)
+
+/**
+ * Splits a call's action items (pure): team tasks (named teammate, or nobody named -> host)
+ * and follow-ups owned by a named person who is NOT on the team (client, partner...).
+ */
+export function classifyActions(actions: string[], people: Person[], hostId: string): { tasks: { assigneeId: string; title: string }[]; followUps: FollowUp[] } {
+  const tasks: { assigneeId: string; title: string }[] = []
+  const followUps: FollowUp[] = []
+  for (const a of actions.map(splitAction).filter((x) => x.title.length > 1)) {
+    const hit = matchPerson(a.who, people)
+    if (hit) tasks.push({ assigneeId: hit.id, title: cap(a.title) })
+    else if (a.who && !isAmbiguous(a.who, people)) followUps.push({ who: a.who, title: cap(a.title) })
+    else tasks.push({ assigneeId: hostId, title: cap(a.title) })
+  }
+  return { tasks, followUps }
+}
+
+/** Team tasks only (one per action item; unnamed/ambiguous owners fall to the host). */
 export function planMeetingTasks(actions: string[], people: Person[], hostId: string): { assigneeId: string; title: string }[] {
-  return actions
-    .map(splitAction)
-    .filter((a) => a.title.length > 1)
-    .map((a) => ({ assigneeId: matchPerson(a.who, people)?.id ?? hostId, title: (a.title.charAt(0).toUpperCase() + a.title.slice(1)).slice(0, 200) }))
+  return classifyActions(actions, people, hostId).tasks
+}
+
+export interface MeetingActionItems {
+  bookingId: string
+  title: string
+  /** Per teammate: their action items (with done state when a task exists). */
+  team: { personId: string; name: string; items: { title: string; done: boolean | null }[] }[]
+  /** Items owned by people outside the team. */
+  followUps: FollowUp[]
+}
+
+/** Fetches a call's action items grouped per team member, plus follow-ups for people who aren't on the team. */
+export async function getMeetingActionItems(bookingId: string): Promise<MeetingActionItems | null> {
+  const b = await prisma.booking.findUnique({ where: { id: bookingId }, include: { meeting: true } })
+  if (!b?.meeting) return null
+  const notes = organizedFor(b.meeting).notes
+  const people = await prisma.user.findMany({ where: { role: { not: null } }, select: { id: true, name: true, email: true } })
+  const { tasks, followUps } = classifyActions(notes?.actions ?? [], people, b.hostId)
+  const done = new Map<string, boolean>()
+  for (const t of await loadMeetingTasks()) done.set(`${t.assigneeId}|${t.title}`, t.done)
+  const byId = new Map(people.map((p) => [p.id, p]))
+  const team = new Map<string, MeetingActionItems['team'][number]>()
+  for (const t of tasks) {
+    const p = byId.get(t.assigneeId)
+    const e = team.get(t.assigneeId) ?? team.set(t.assigneeId, { personId: t.assigneeId, name: p?.name ?? p?.email ?? 'Teammate', items: [] }).get(t.assigneeId)!
+    e.items.push({ title: t.title, done: done.get(`${t.assigneeId}|${t.title}`) ?? null })
+  }
+  return { bookingId, title: b.title, team: [...team.values()], followUps }
 }
 
 /** Turns a call's action items into tasks on each person's list. Safe to call twice: does nothing if already created. */
@@ -47,7 +101,8 @@ export async function createMeetingTasks(bookingId: string): Promise<number> {
   if (!notes?.actions.length) return 0
   const emails = (Array.isArray(b.attendees) ? b.attendees : []).filter((e): e is string => typeof e === 'string').map((e) => e.toLowerCase())
   const people = await prisma.user.findMany({ where: { role: { not: null }, OR: [{ email: { in: emails, mode: 'insensitive' } }, { id: b.hostId }] }, select: { id: true, name: true, email: true } })
-  const plan = planMeetingTasks(notes.actions, people.length ? people : [b.host], b.hostId)
+  const everyone = await prisma.user.findMany({ where: { role: { not: null } }, select: { id: true, name: true, email: true } })
+  const plan = planMeetingTasks(notes.actions, everyone.length ? everyone : people.length ? people : [b.host], b.hostId)
   for (const t of plan) {
     await logActivity({ entityType: 'USER', entityId: t.assigneeId, action: 'task.created', metadata: { taskId: randomUUID(), title: t.title, dueAt: null, assigneeId: t.assigneeId, priority: 'MEDIUM', auto: 'meeting', bookingId, meetingTitle: b.title } })
   }

@@ -26,3 +26,16 @@ describe('meeting action items -> tasks', () => {
     ])
   })
 })
+
+describe('follow-ups for people outside the team', () => {
+  it('named non-teammates become follow-ups, not host tasks', async () => {
+    const { classifyActions } = await import('@/lib/meeting-tasks')
+    const r = classifyActions(['Gabriel: ship it', 'Sarah: sign contract', 'Review deck', 'Dana: call back'], people, 'u1')
+    expect(r.tasks).toEqual([
+      { assigneeId: 'u2', title: 'Ship it' },
+      { assigneeId: 'u1', title: 'Review deck' },
+      { assigneeId: 'u1', title: 'Call back' },
+    ])
+    expect(r.followUps).toEqual([{ who: 'Sarah', title: 'Sign contract' }])
+  })
+})
