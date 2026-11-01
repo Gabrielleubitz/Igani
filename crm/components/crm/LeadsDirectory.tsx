@@ -66,7 +66,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
           hint={user.role === 'ADMIN' ? 'Everyone in the CRM. Search, filter, change a stage, or open a name for notes, tasks and meetings.' : 'Your leads. Open a name for notes, tasks and meetings.'}
         />
         <div className="flex flex-wrap items-center gap-2">
-          <Popover label="+ Add lead" panelClassName="w-[min(92vw,34rem)]">
+          <Popover label="+ Add lead" panelClassName="sm:w-[min(92vw,34rem)]">
               <NewLeadForm />
             </Popover>
         </div>

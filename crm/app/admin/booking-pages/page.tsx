@@ -28,7 +28,7 @@ export default async function BookingPagesPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro title="Booking pages" hint="Public links where anyone can book a meeting, e.g. on your website or email signature. Each booking lands in the CRM as a contact." />
-        <Popover label="+ New page" panelClassName="w-[min(92vw,40rem)]">
+        <Popover label="+ New page" panelClassName="sm:w-[min(92vw,40rem)]">
             {hostOptions.length ? <BookingPageForm hosts={hostOptions} defaultDuration={defaultDuration} /> : <p className="text-sm text-muted-foreground">A sales or admin teammate must sign in once before they can host a page.</p>}
           </Popover>
       </div>

@@ -31,7 +31,11 @@ export function Popover({ label, children, className, panelClassName }: { label:
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className={buttonVariants()}>
         {label}
       </button>
-      {open ? <div className={cn('absolute right-0 z-30 mt-2 w-[min(92vw,36rem)] rounded-xl border bg-card p-4 shadow-2xl', panelClassName)}>{children}</div> : null}
+      {open ? (
+        // On a phone the panel is a sheet pinned to the screen edges (it used to hang off the button's right edge and slid off-screen
+        // when the button sat on the left); from sm up it floats under the button as before.
+        <div className={cn('fixed inset-x-3 top-20 z-30 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-xl border bg-card p-4 shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-auto sm:mt-2 sm:max-h-none sm:w-[min(92vw,36rem)] sm:overflow-visible', panelClassName)}>{children}</div>
+      ) : null}
     </div>
   )
 }

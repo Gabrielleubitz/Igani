@@ -79,7 +79,7 @@ export function AllowedUserForm(): React.ReactElement {
 export function AllowedUserToggle({ email, role, active, showResend = true }: { email: string; role: Role; active: boolean; showResend?: boolean }): React.ReactElement {
   const [pending, msg, run] = useAction()
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Select aria-label={`Role for ${email}`} title={ROLE_HELP[role]} className="h-8 w-36" disabled={pending} value={role} onChange={(e) => run(() => upsertAllowedUser({ email, role: e.target.value as Role, active }), 'Role updated.')}>
         <option value="SALES">Sales</option>
         <option value="MARKETING">Marketing</option>

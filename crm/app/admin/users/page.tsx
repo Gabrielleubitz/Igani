@@ -37,7 +37,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro title="Team access" hint={`Only people listed here can sign in (${active} active). Add a teammate, pick their role, and they get a branded invite email.`} />
-        <Popover label="+ Add teammate" panelClassName="w-[min(92vw,36rem)]">
+        <Popover label="+ Add teammate" panelClassName="sm:w-[min(92vw,36rem)]">
             <AllowedUserForm />
           </Popover>
       </div>
