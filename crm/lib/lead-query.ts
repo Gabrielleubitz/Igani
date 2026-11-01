@@ -1,4 +1,5 @@
 import type { LeadStatus, Prisma } from '@prisma/client'
+import { archivedBy, notArchivedBy } from './lead-archive'
 
 export const PAGE_SIZE = 25
 const STATUSES: readonly string[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST']
@@ -32,8 +33,9 @@ export function parseLeadFilters(params: Params): LeadFilters {
   }
 }
 
-export function buildLeadWhere(f: LeadFilters): Prisma.LeadWhereInput {
-  const and: Prisma.LeadWhereInput[] = [{ archived: f.archived ?? false }]
+/** `viewerId` is whose lists these are: "archived" means archived BY THEM. */
+export function buildLeadWhere(f: LeadFilters, viewerId: string): Prisma.LeadWhereInput {
+  const and: Prisma.LeadWhereInput[] = [f.archived ? archivedBy(viewerId) : notArchivedBy(viewerId)]
   if (f.q) {
     // Every word must match some field, so "Dana Levi" or "levi acme" find the right person.
     for (const word of f.q.split(/\s+/).filter(Boolean).slice(0, 5)) {

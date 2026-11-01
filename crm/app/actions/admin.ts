@@ -8,6 +8,7 @@ import { logActivity } from '@/lib/audit'
 import { normalizeEmail, requireUser } from '@/lib/auth'
 import { sendTeamInviteEmail } from '@/lib/email'
 import { prisma } from '@/lib/prisma'
+import { cancelUpcomingMeetingsOfHost } from '@/lib/bookings'
 import { reassignUserWork } from '@/lib/leads'
 import { SETTING_SCHEMAS, isSettingKey } from '@/lib/settings'
 import { toActionError, type ActionResult } from './result'
@@ -37,6 +38,11 @@ export async function upsertAllowedUser(input: { email: string; role: Role; acti
       await logActivity({ entityType: 'ALLOWED_USER', entityId: allowed.id, action: 'whitelist.upserted', actorId: admin.id, metadata: { ...data, ...(timeZone ? { timeZone } : {}) } }, tx)
       return allowed
     })
+    // Someone who can no longer host has their upcoming meetings cancelled (guests are told).
+    if (!data.active || data.role === 'MARKETING') {
+      const person = await prisma.user.findUnique({ where: { email: data.email }, select: { id: true } })
+      if (person) await cancelUpcomingMeetingsOfHost(person.id, admin.id)
+    }
     revalidatePath('/admin/users')
     if (isNew && data.active) await issueInvite(data.email, data.role, admin.name ?? admin.email).catch((err: unknown) => console.error('[invite] email failed', data.email, err))
     return row ? { ok: true, data: undefined } : { ok: false, error: 'Not saved' }
@@ -152,6 +158,8 @@ export async function removeAllowedUser(email: string): Promise<ActionResult<{ u
     const admin = await requireUser(['ADMIN'])
     const e = emailSchema.parse(email)
     if (e === admin.email) throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'You cannot remove yourself' }])
+    const leaving = await prisma.user.findUnique({ where: { email: e }, select: { id: true } })
+    if (leaving) await cancelUpcomingMeetingsOfHost(leaving.id, admin.id)
     const unassignedLeads = await prisma.$transaction(async (tx) => {
       const allowed = await tx.allowedUser.findUnique({ where: { email: e } })
       if (!allowed) throw new z.ZodError([{ code: 'custom', path: ['email'], message: 'Not on the whitelist' }])

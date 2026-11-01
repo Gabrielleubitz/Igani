@@ -19,6 +19,7 @@ import { getSetting } from '@/lib/settings'
 import { tasksForUser } from '@/lib/tasks'
 import { entryColorVar } from '@/lib/calendar-entries'
 import { endOfLocalDay, startOfLocalDay } from '@/lib/time'
+import { notArchivedBy } from '@/lib/lead-archive'
 
 export const metadata = { title: 'Today' }
 export const dynamic = 'force-dynamic'
@@ -47,9 +48,9 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           take: 20,
           include: { host: { select: { name: true } }, meeting: { select: { status: true } } },
         }),
-    prisma.lead.findMany({ where: { archived: false, status: { in: [...OPEN] }, ...mineWhere }, take: 1000 }),
-    user.role !== 'ADMIN' ? Promise.resolve([]) : prisma.lead.findMany({ where: { archived: false, assignedToId: null, status: { in: [...OPEN] } }, orderBy: { createdAt: 'desc' }, take: 6 }),
-    prisma.lead.count({ where: { AND: [leadScope(user), { archived: false, createdAt: { gte: new Date(now.getTime() - 7 * 864e5) } }] } }),
+    prisma.lead.findMany({ where: { ...notArchivedBy(user.id), status: { in: [...OPEN] }, ...mineWhere }, take: 1000 }),
+    user.role !== 'ADMIN' ? Promise.resolve([]) : prisma.lead.findMany({ where: { ...notArchivedBy(user.id), assignedToId: null, status: { in: [...OPEN] } }, orderBy: { createdAt: 'desc' }, take: 6 }),
+    prisma.lead.count({ where: { AND: [leadScope(user), { ...notArchivedBy(user.id), createdAt: { gte: new Date(now.getTime() - 7 * 864e5) } }] } }),
   ])
   const tz = me.timeZone
 
@@ -144,7 +145,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
     .slice(0, 8)
   // Client emails nobody has looked at yet, on my contacts (admins also see unassigned ones).
   const newEmails = await prisma.emailMessage.findMany({
-    where: { direction: 'INBOUND', readAt: null, sentAt: { gte: new Date(now.getTime() - 30 * 864e5) }, lead: { archived: false, ...(isAdmin ? { OR: [{ assignedToId: user.id }, { assignedToId: null }] } : { assignedToId: user.id }) } },
+    where: { direction: 'INBOUND', readAt: null, sentAt: { gte: new Date(now.getTime() - 30 * 864e5) }, lead: { ...notArchivedBy(user.id), ...(isAdmin ? { OR: [{ assignedToId: user.id }, { assignedToId: null }] } : { assignedToId: user.id }) } },
     orderBy: { sentAt: 'desc' },
     take: 8,
     include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } } },
@@ -154,7 +155,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const myCommissionRows = isAdmin || user.role === 'MARKETING'
     ? []
     : await prisma.lead.findMany({
-        where: { archived: false, status: 'WON', assignedToId: user.id, commissionTotal: { not: null } },
+        where: { status: 'WON', assignedToId: user.id, commissionTotal: { not: null } },
         select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true },
       })
   const myCommission = salespersonCommissionView(

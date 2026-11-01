@@ -3,6 +3,7 @@ import { KanbanBoard } from '@/components/crm/KanbanBoard'
 import { LeadFilters } from '@/components/crm/LeadFilters'
 import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
+import { notArchivedBy } from '@/lib/lead-archive'
 import { leadScope } from '@/lib/lead-access'
 import { canEditAtStage } from '@/lib/stage-rules'
 import { prisma } from '@/lib/prisma'
@@ -18,11 +19,11 @@ const one = (v: string | string[] | undefined): string | undefined => (Array.isA
 export default async function BoardPage({ searchParams }: { searchParams: SP }): Promise<React.ReactElement> {
   const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
-  const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), { archived: false }] }
+  const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), notArchivedBy(user.id)] }
   const f = { q: one(searchParams.q), status: one(searchParams.status), source: one(searchParams.source), owner: one(searchParams.owner) }
 
   // Filters run in the database, so older contacts are found no matter how many there are.
-  const where: Prisma.LeadWhereInput = { AND: [scope, buildLeadWhere(parseLeadFilters({ q: f.q, status: f.status, source: f.source, assignee: f.owner }))] }
+  const where: Prisma.LeadWhereInput = { AND: [scope, buildLeadWhere(parseLeadFilters({ q: f.q, status: f.status, source: f.source, assignee: f.owner }), user.id)] }
   const [leads, reps, sourceRows] = await Promise.all([
     prisma.lead.findMany({ where, orderBy: { createdAt: 'desc' }, take: 3000, include: { assignedTo: { select: { name: true, email: true } } } }),
     prisma.user.findMany({ where: isAdmin ? { role: { not: null } } : { id: user.id }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),

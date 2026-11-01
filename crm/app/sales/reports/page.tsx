@@ -20,10 +20,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   const d30 = new Date(now - 30 * 864e5)
   const d60 = new Date(now - 60 * 864e5)
   const [allLeads, commissionRows, users, bookings, closeLogs, me] = await Promise.all([
-    prisma.lead.findMany({ where: { archived: false, ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, quotedPrice: true, lostReason: true } }),
+    prisma.lead.findMany({ where: { ...(mine ? { assignedToId: user.id } : {}) }, select: { id: true, status: true, source: true, assignedToId: true, createdAt: true, quotedPrice: true, lostReason: true } }),
     // Commission on my own won deals. These columns are all a salesperson ever gets; no prices, no terms.
     prisma.lead.findMany({
-      where: { archived: false, status: 'WON', commissionTotal: { not: null }, ...(user.role === 'ADMIN' ? (mine ? { assignedToId: user.id } : {}) : { assignedToId: user.id }) },
+      where: { status: 'WON', commissionTotal: { not: null }, ...(user.role === 'ADMIN' ? (mine ? { assignedToId: user.id } : {}) : { assignedToId: user.id }) },
       select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true },
     }),
     prisma.user.findMany({ where: user.role === 'SALES' ? { id: user.id } : {}, select: { id: true, name: true, email: true } }),

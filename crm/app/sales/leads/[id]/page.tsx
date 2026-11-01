@@ -225,6 +225,9 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
     via: e.externalId.startsWith('resend:') ? 'crm' : 'gmail',
   }))
 
+  // Archiving is personal: only whether *I* archived this lead matters here.
+  const archivedByMe = (await prisma.leadArchive.findUnique({ where: { leadId_userId: { leadId: lead.id, userId: user.id } }, select: { leadId: true } })) !== null
+
   // Client documents: file bytes are never selected here, only the list.
   const docRows = await prisma.leadDocument.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true, uploadedById: true } })
   const uploaderNames = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
@@ -289,7 +292,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               </Badge>
             ) : null}
             {stale !== null ? <Badge variant="warning">No contact for {stale} days</Badge> : null}
-            {lead.archived ? <Badge variant="outline">Archived</Badge> : null}
+            {archivedByMe ? <Badge variant="outline">Archived (only for you)</Badge> : null}
             {unreadEmails ? <Badge variant="success">📨 {unreadEmails} new email{unreadEmails === 1 ? '' : 's'}</Badge> : null}
             {openTasks ? <Badge variant="outline">{openTasks} open task{openTasks === 1 ? '' : 's'}</Badge> : null}
             {lead.tags.map((t) => (
@@ -441,7 +444,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
 
           <Card>
             <CardContent className="pt-6">
-              <LeadActions leadId={lead.id} archived={lead.archived} canArchive={canArchive && user.role !== 'MARKETING'} isAdmin={isAdmin} name={leadName(lead)} />
+              <LeadActions leadId={lead.id} archived={archivedByMe} canArchive={canArchive && user.role !== 'MARKETING'} isAdmin={isAdmin} name={leadName(lead)} />
             </CardContent>
           </Card>
         </div>

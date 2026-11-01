@@ -36,6 +36,7 @@ vi.mock('@/lib/email', () => ({
     return 'email_1'
   },
   sendApprovalRequestEmail: async () => 'email_2',
+  sendBookingCancelledEmail: async () => 'email_cancel',
   sendBookingInviteEmail: async () => 'email_3',
   sendTeammateMeetingEmail: async (b: unknown) => {
     sentTeammate.push(b)
@@ -46,7 +47,7 @@ vi.mock('@/lib/email', () => ({
 const d = testDb ? describe : describe.skip
 
 d('booking confirmation flow', async () => {
-  const { cancelBooking, createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, findParticipantConflicts, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
+  const { cancelUpcomingMeetingsOfHost, cancelBooking, createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, findParticipantConflicts, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
   const { syncCalendarChanges } = await import('@/lib/calendar-sync')
   const prisma = new PrismaClient()
@@ -213,6 +214,17 @@ d('booking confirmation flow', async () => {
     del.mockClear()
     await cancelBooking(past.id, hostId, 'test', false)
     expect(del).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'evt_old', sendUpdates: 'none' }))
+  })
+
+  it('deactivating a host cancels their upcoming meetings (and removes the calendar event)', async () => {
+    insert.mockResolvedValue({ data: { id: 'evt_h', hangoutLink: 'https://meet.google.com/hhh-iiii-jjj', htmlLink: null } })
+    const b = await createPendingBooking({ hostId, source: 'SALES_INVITE', start: new Date('2030-01-07T07:00:00Z'), durationMinutes: 30, title: 'Intro', guestName: 'Dana', guestEmail: 'dana@example.com' })
+    await confirmBooking(b.id, hostId)
+    const admin = await prisma.user.create({ data: { email: 'adm@igani.co', role: 'ADMIN' } })
+    expect(await cancelUpcomingMeetingsOfHost(hostId, admin.id)).toBe(1)
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: b.id } })).status).toBe('CANCELLED')
+    expect(del).toHaveBeenCalledWith(expect.objectContaining({ eventId: 'evt_h', sendUpdates: 'all' }))
+    expect(await cancelUpcomingMeetingsOfHost(hostId, admin.id)).toBe(0) // nothing left to cancel
   })
 
   it('lets admins add anyone, and everyone else only admins', async () => {

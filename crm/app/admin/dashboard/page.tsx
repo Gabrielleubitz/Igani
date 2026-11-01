@@ -20,32 +20,32 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   const now = new Date()
   const stale = new Date(now.getTime() - staleDays * 86_400_000)
   const dayEnd = new Date(now.getTime() + 86_400_000)
-  const open = { archived: false, status: { notIn: ['WON', 'LOST'] as ('WON' | 'LOST')[] } }
+  const open = { status: { notIn: ['WON', 'LOST'] as ('WON' | 'LOST')[] } }
   const [total, won, lost, unassigned, staleCount, newWeek, today, pendingApprovals, wonValue, openValue, commissionRows, recentLeads, reps] = await Promise.all([
-    prisma.lead.count({ where: { archived: false } }),
-    prisma.lead.count({ where: { archived: false, status: 'WON' } }),
-    prisma.lead.count({ where: { archived: false, status: 'LOST' } }),
+    prisma.lead.count(),
+    prisma.lead.count({ where: { status: 'WON' } }),
+    prisma.lead.count({ where: { status: 'LOST' } }),
     prisma.lead.count({ where: { ...open, assignedToId: null } }),
     // "Quiet" = no note/call/email/stage change by a teammate for N days: the same rule as Today's "Needs follow-up".
     prisma.$queryRaw<{ n: bigint }[]>`
       SELECT count(*)::bigint AS n FROM "Lead" l
-      WHERE l.archived = false AND l.status NOT IN ('WON', 'LOST')
+      WHERE l.status NOT IN ('WON', 'LOST')
         AND COALESCE((SELECT max(a."createdAt") FROM "ActivityLog" a WHERE a."entityType" = 'LEAD' AND a."entityId" = l.id AND a."actorId" IS NOT NULL), l."createdAt") < ${stale}`.then((r) => Number(r[0]?.n ?? 0)),
-    prisma.lead.count({ where: { archived: false, createdAt: { gte: new Date(now.getTime() - 7 * 86_400_000) } } }),
+    prisma.lead.count({ where: { createdAt: { gte: new Date(now.getTime() - 7 * 86_400_000) } } }),
     prisma.booking.count({ where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, endTime: { gte: now }, startTime: { lt: dayEnd } } }),
     prisma.booking.count({ where: { status: 'PENDING', source: 'PUBLIC_PAGE', startTime: { gt: now } } }),
     // Company revenue = the quoted price of won deals. Pipeline = the quoted price of open deals that have one.
-    prisma.lead.aggregate({ where: { archived: false, status: 'WON' }, _sum: { quotedPrice: true } }),
+    prisma.lead.aggregate({ where: { status: 'WON' }, _sum: { quotedPrice: true } }),
     prisma.lead.aggregate({ where: open, _sum: { quotedPrice: true } }),
     prisma.lead.findMany({
-      where: { archived: false, status: 'WON', commissionTotal: { not: null } },
+      where: { status: 'WON', commissionTotal: { not: null } },
       select: { id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, assignedTo: { select: { name: true, email: true } } },
       orderBy: { updatedAt: 'desc' },
     }),
-    prisma.lead.findMany({ where: { archived: false }, orderBy: { createdAt: 'desc' }, take: 6, include: { assignedTo: { select: { name: true, email: true } } } }),
+    prisma.lead.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { assignedTo: { select: { name: true, email: true } } } }),
     prisma.user.findMany({
       where: { role: { in: ['SALES', 'ADMIN'] } },
-      select: { id: true, name: true, email: true, assignedLeads: { where: { archived: false }, select: { status: true, quotedPrice: true } } },
+      select: { id: true, name: true, email: true, assignedLeads: { select: { status: true, quotedPrice: true } } },
     }),
   ])
   const closed = won + lost
@@ -93,6 +93,11 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
 
   return (
     <div className="space-y-6">
+      {!process.env.CRON_SECRET ? (
+        <div role="alert" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <strong>Reminders and email sync are off.</strong> The hourly job needs a <code>CRON_SECRET</code> (at least 16 characters) in Vercel → Settings → Environment Variables, then a redeploy. Until then task reminders, follow-up tasks, meeting reminders, Gmail sync and Meet notes don’t run.
+        </div>
+      ) : null}
       <PageIntro title="Overview" hint="A snapshot of the whole business: leads, pipeline, meetings and how each teammate is doing. Click any number to dig in." />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {tiles.map((t) => (

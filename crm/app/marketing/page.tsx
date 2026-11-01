@@ -14,7 +14,7 @@ export default async function MarketingPage({ searchParams }: { searchParams: { 
   await requireUser(['ADMIN', 'MARKETING'])
   const days = RANGES.find((d) => String(d) === searchParams.days) ?? 30
   const since = new Date(Date.now() - days * 864e5)
-  const rows = await prisma.lead.findMany({ where: { archived: false, createdAt: { gte: since } }, select: { id: true, utmSource: true, utmMedium: true, utmCampaign: true, source: true, status: true } })
+  const rows = await prisma.lead.findMany({ where: { createdAt: { gte: since } }, select: { id: true, utmSource: true, utmMedium: true, utmCampaign: true, source: true, status: true } })
   // "Reached a meeting" counts leads that EVER got to demo/proposal/won (a demo that ended in Lost still counts), or had a booking.
   const ids = rows.map((r) => r.id)
   const [progressed, booked] = await Promise.all([

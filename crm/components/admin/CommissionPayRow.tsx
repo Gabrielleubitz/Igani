@@ -6,13 +6,15 @@ import { useState, useTransition } from 'react'
 import { setCommissionPayment } from '@/app/actions/deals'
 import { Button } from '@/components/ui/button'
 import { formatIls } from '@/lib/commission'
+import { DEFAULT_TIME_ZONE } from '@/lib/default-time-zone'
+import { localDateKey } from '@/lib/time'
 
 /** One won deal's commission on the admin overview, with the two steps to settle it: client paid, then paid out. */
 export function CommissionPayRow({ leadId, lead, salesperson, amount, clientPaid, paidOut }: { leadId: string; lead: string; salesperson: string; amount: number; clientPaid: boolean; paidOut: boolean }): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey(new Date(), DEFAULT_TIME_ZONE) // the team works on Israel time
   const run = (kind: 'received' | 'paid', date: string | null): void =>
     start(async () => {
       const res = await setCommissionPayment(leadId, { kind, date })

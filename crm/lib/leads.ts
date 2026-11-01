@@ -101,8 +101,8 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
         const stamp = (payload.submittedAt ?? new Date().toISOString()).slice(0, 10)
         fill.message = `${existing.message}\n\n--- ${payload.backfill ? 'also submitted' : 'resubmitted'} ${stamp}${payload.sourceDetail ? ` via ${payload.sourceDetail}` : ''} ---\n${payload.message}`.slice(0, 20000)
       }
-      // Someone archived this contact, but they just reached out again: bring them back so the team sees it.
-      if (!payload.backfill && existing.archived) fill.archived = false
+      // Someone archived this contact (for themselves), but they just reached out again: bring them back for everyone.
+      if (!payload.backfill) await tx.leadArchive.deleteMany({ where: { leadId: existing.id } })
       if (Object.keys(fill).length > 0) await tx.lead.update({ where: { id: existing.id }, data: fill })
       // Re-running a backfill must be a no-op: don't re-log or re-append the same historical submission.
       if (payload.backfill) {

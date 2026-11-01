@@ -22,6 +22,13 @@ describe('calculateCommission (default terms: 30%, ₪15,000 threshold, ₪5,000
     expect(Object.keys(calculateCommission(25_000)).sort()).toEqual(['amount', 'baseAmount', 'baseCommission', 'bonusTotal', 'completedIncrements', 'total'])
   })
 
+  it('never pays more than the deal itself, and always fits the database column', () => {
+    const silly = { baseRatePct: 100, threshold: 1, incrementSize: 1, bonusPerIncrement: 1_000_000_000, downpaymentSharePct: 30 } as never
+    const c = calculateCommission(5_000_000, silly)
+    expect(c.total).toBeLessThanOrEqual(5_000_000)
+    expect(c.total).toBeLessThanOrEqual(2_000_000_000)
+  })
+
   it('rounds to whole shekels', () => {
     expect(calculateCommission(333).total).toBe(100) // 99.9
     expect(Number.isInteger(calculateCommission(12_345.67).total)).toBe(true)

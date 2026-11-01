@@ -4,6 +4,7 @@ import { toCsv } from '@/components/crm/crm-utils'
 import { buildLeadWhere, parseLeadFilters } from '@/lib/lead-query'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
+import { notArchivedBy } from '@/lib/lead-archive'
 import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 
@@ -14,9 +15,9 @@ export async function GET(req: Request): Promise<Response> {
   const user = await requireUser()
   const p = new URL(req.url).searchParams
   const f = { q: p.get('q') ?? undefined, status: p.get('status') ?? undefined, source: p.get('source') ?? undefined, owner: p.get('owner') ?? undefined }
-  const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), { archived: false }] }
+  const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), notArchivedBy(user.id)] }
   const leads = await prisma.lead.findMany({
-    where: { AND: [scope, buildLeadWhere(parseLeadFilters({ q: f.q, status: f.status, source: f.source, assignee: f.owner }))] },
+    where: { AND: [scope, buildLeadWhere(parseLeadFilters({ q: f.q, status: f.status, source: f.source, assignee: f.owner }), user.id)] },
     orderBy: { createdAt: 'desc' },
     take: 50_000,
     include: { assignedTo: { select: { name: true, email: true } } },

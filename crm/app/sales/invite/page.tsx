@@ -8,6 +8,7 @@ import { allowedTeammates } from '@/lib/bookings'
 import { leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
+import { notArchivedBy } from '@/lib/lead-archive'
 
 export const metadata = { title: 'Send meeting invite' }
 export const dynamic = 'force-dynamic'
@@ -17,7 +18,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
   const select = { id: true, email: true, firstName: true, lastName: true, company: true } as const
   const [leads, preselected, hosts, googleConnected, defaultDuration, me] = await Promise.all([
     prisma.lead.findMany({
-      where: { AND: [leadScope(user), { archived: false, email: { not: null }, status: { notIn: ['WON', 'LOST'] } }] },
+      where: { AND: [leadScope(user), { ...notArchivedBy(user.id), email: { not: null }, status: { notIn: ['WON', 'LOST'] } }] },
       orderBy: { updatedAt: 'desc' },
       take: 300,
       select,

@@ -29,7 +29,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
     loadRepStats(me).then((all) => all.find((r) => r.id === user.id) ?? null),
     tasksForUser(me),
     prisma.lead.findMany({
-      where: { archived: false, assignedToId: user.id, status: { notIn: ['WON', 'LOST'] } },
+      where: { assignedToId: user.id, status: { notIn: ['WON', 'LOST'] } },
       orderBy: { updatedAt: 'desc' },
       take: 12,
       select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, status: true, quotedPrice: true, updatedAt: true },

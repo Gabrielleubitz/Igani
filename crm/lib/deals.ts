@@ -1,5 +1,5 @@
 import 'server-only'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { calculateCommission, dealTerms, parseTerms, type CommissionTerms } from './commission'
 import { prisma } from './prisma'
 
@@ -25,7 +25,13 @@ export async function setQuotedPrice(leadId: string, price: number | null, actor
   const before = await db.lead.findUniqueOrThrow({ where: { id: leadId }, select: { quotedPrice: true, status: true } })
   if (before.quotedPrice === price) return { changed: false, movedToProposal: false }
   const move = price !== null && price > 0 && (BEFORE_PROPOSAL as readonly string[]).includes(before.status)
-  await db.lead.update({ where: { id: leadId }, data: { quotedPrice: price, ...(move ? { status: 'PROPOSAL_SENT' } : {}) } })
+  // Clearing the price of a won deal clears its commission too (no stale amount left owing); the caller has already refused
+  // this once client money or a payout is recorded.
+  const clearsCommission = before.status === 'WON' && (price === null || price <= 0)
+  await db.lead.update({
+    where: { id: leadId },
+    data: { quotedPrice: price, ...(move ? { status: 'PROPOSAL_SENT' } : {}), ...(clearsCommission ? { commissionTotal: null, commissionSnapshot: Prisma.DbNull } : {}) },
+  })
   await db.activityLog.create({ data: { entityType: 'LEAD', entityId: leadId, action: 'lead.price_changed', actorId, metadata: { from: before.quotedPrice, to: price } } })
   if (move) {
     await db.activityLog.create({ data: { entityType: 'LEAD', entityId: leadId, action: 'lead.status_changed', actorId, metadata: { from: before.status, to: 'PROPOSAL_SENT', quotedPrice: price, auto: 'quoted-price' } } })

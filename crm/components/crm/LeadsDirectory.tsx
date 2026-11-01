@@ -15,7 +15,7 @@ import { prisma } from '@/lib/prisma'
 export async function LeadsDirectory({ searchParams, basePath, user }: { searchParams: Record<string, string | string[] | undefined>; basePath: string; user: SessionUser }): Promise<React.ReactElement> {
   const f = parseLeadFilters(searchParams)
   const scope = leadScope(user)
-  const where = { AND: [buildLeadWhere(f), scope] }
+  const where = { AND: [buildLeadWhere(f, user.id), scope] }
   const [total, leads, reps, sources, tagRows, stageCounts] = await Promise.all([
     prisma.lead.count({ where }),
     prisma.lead.findMany({
@@ -28,9 +28,9 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
     prisma.user.findMany({ where: user.role === 'ADMIN' ? { role: { not: null } } : { id: user.id }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
     prisma.lead.findMany({ where: scope, distinct: ['source'], select: { source: true }, orderBy: { source: 'asc' } }),
     user.role === 'ADMIN'
-      ? prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false ORDER BY tag LIMIT 200`
-      : prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE archived = false AND "assignedToId" = ${user.id} ORDER BY tag LIMIT 200`,
-    prisma.lead.groupBy({ by: ['status'], where: { AND: [buildLeadWhere({ ...f, status: undefined }), scope] }, _count: { _all: true } }),
+      ? prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE NOT EXISTS (SELECT 1 FROM "LeadArchive" a WHERE a."leadId" = "Lead".id AND a."userId" = ${user.id}) ORDER BY tag LIMIT 200`
+      : prisma.$queryRaw<{ tag: string }[]>`SELECT DISTINCT unnest(tags) AS tag FROM "Lead" WHERE NOT EXISTS (SELECT 1 FROM "LeadArchive" a WHERE a."leadId" = "Lead".id AND a."userId" = ${user.id}) AND "assignedToId" = ${user.id} ORDER BY tag LIMIT 200`,
+    prisma.lead.groupBy({ by: ['status'], where: { AND: [buildLeadWhere({ ...f, status: undefined }, user.id), scope] }, _count: { _all: true } }),
   ])
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const query: Record<string, string | undefined> = { q: f.q, status: f.status, assignee: f.assignee, source: f.source, tag: f.tag, archived: f.archived ? '1' : undefined }

@@ -22,7 +22,7 @@ export default async function UsersPage(): Promise<React.ReactElement> {
         id: true,
         email: true,
         name: true,
-        _count: { select: { assignedLeads: { where: { archived: false, status: { notIn: ['WON', 'LOST'] } } } } },
+        _count: { select: { assignedLeads: { where: { status: { notIn: ['WON', 'LOST'] } } } } },
         accounts: { select: { refresh_token: true, scope: true } },
         mailboxSync: { select: { lastSyncedAt: true, lastError: true } },
       },

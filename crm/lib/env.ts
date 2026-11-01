@@ -14,6 +14,8 @@ const schema = z.object({
   INVITE_TOKEN_SECRET: z.string().min(16).optional(),
   /** Optional: comma-separated extra recipients for approval requests */
   ADMIN_NOTIFY_EMAIL: z.string().optional(),
+  /** Needed in production for reminders, follow-ups and email sync: without it the hourly job refuses every call */
+  CRON_SECRET: z.string().optional(),
 })
 
 export type Env = z.infer<typeof schema>

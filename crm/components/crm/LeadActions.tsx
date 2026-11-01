@@ -18,6 +18,7 @@ export function LeadActions({ leadId, archived, canArchive, isAdmin, name }: { l
           size="sm"
           variant="outline"
           disabled={pending}
+          title={archived ? 'Show this lead in your lists again' : 'Hide this lead from your lists. Nobody else is affected and no numbers change.'}
           onClick={() =>
             start(async () => {
               const res = await archiveLeads([leadId], !archived)

@@ -220,7 +220,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
             </option>
           ))}
         </Select>
-        <Button size="sm" variant="outline" disabled={pending || !sel.size} onClick={() => run(() => archiveLeads(ids, !archivedView), archivedView ? 'Restored.' : 'Archived.')}>
+        <Button size="sm" variant="outline" disabled={pending || !sel.size} title="Hides the selected leads from your lists only. Nobody else is affected and no numbers change." onClick={() => run(() => archiveLeads(ids, !archivedView), archivedView ? 'Restored.' : 'Archived.')}>
           {archivedView ? 'Restore' : 'Archive'}
         </Button>
         </>

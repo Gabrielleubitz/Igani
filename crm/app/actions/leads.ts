@@ -191,20 +191,23 @@ export async function createLead(input: { email?: string; firstName?: string; la
   }
 }
 
-/** Archive (soft-delete) or restore leads: admins any, reps only their own. */
+/**
+ * Archive or restore leads FOR THE PERSON DOING IT: the lead leaves their lists, and nobody else's. Statistics never change.
+ * Admins may archive any lead for themselves; reps only their own.
+ */
 export async function archiveLeads(leadIds: string[], archived: boolean): Promise<ActionResult<{ count: number }>> {
   try {
-    const admin = await requireUser()
+    const user = await requireUser()
     const ids = z.array(z.string().cuid()).min(1).max(500).parse(leadIds)
-    if (admin.role === 'MARKETING') throw new BookingError('Only sales and admins can archive contacts.', 'FORBIDDEN')
-    await assertCanSeeLeads(ids, admin, true)
-    const res = await prisma.$transaction(async (tx) => {
-      const r = await tx.lead.updateMany({ where: { id: { in: ids } }, data: { archived } })
-      await tx.activityLog.createMany({ data: ids.map((id) => ({ entityType: 'LEAD' as const, entityId: id, action: archived ? 'lead.archived' : 'lead.restored', actorId: admin.id })) })
-      return r
+    if (user.role === 'MARKETING') throw new BookingError('Only sales and admins can archive contacts.', 'FORBIDDEN')
+    await assertCanSeeLeads(ids, user, true)
+    await prisma.$transaction(async (tx) => {
+      if (archived) await tx.leadArchive.createMany({ data: ids.map((leadId) => ({ leadId, userId: user.id })), skipDuplicates: true })
+      else await tx.leadArchive.deleteMany({ where: { leadId: { in: ids }, userId: user.id } })
+      await tx.activityLog.createMany({ data: ids.map((id) => ({ entityType: 'LEAD' as const, entityId: id, action: archived ? 'lead.archived' : 'lead.restored', actorId: user.id })) })
     })
     revalidatePath('/sales', 'layout')
-    return { ok: true, data: { count: res.count } }
+    return { ok: true, data: { count: ids.length } }
   } catch (err) {
     return toActionError(err)
   }
@@ -261,7 +264,7 @@ export async function exportLeadsCsv(params: Record<string, string | undefined> 
   try {
     const user = await requireUser()
     const leads = await prisma.lead.findMany({
-      where: { AND: [buildLeadWhere(parseLeadFilters(params)), leadScope(user)] },
+      where: { AND: [buildLeadWhere(parseLeadFilters(params), user.id), leadScope(user)] },
       orderBy: { createdAt: 'desc' },
       take: 50_000,
       include: { assignedTo: { select: { email: true } } },

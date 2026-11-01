@@ -8,13 +8,16 @@ describe('lead filters', () => {
     expect(parseLeadFilters({ status: 'WON', page: '4', archived: '1' })).toMatchObject({ status: 'WON', page: 4, archived: true })
   })
   it('builds where clause', () => {
-    const w = buildLeadWhere(parseLeadFilters({ q: 'x', assignee: 'none', status: 'NEW' }))
+    const w = buildLeadWhere(parseLeadFilters({ q: 'x', assignee: 'none', status: 'NEW' }), 'u1')
     expect(JSON.stringify(w)).toContain('"assignedToId":null')
-    expect(JSON.stringify(w)).toContain('"archived":false')
+    expect(JSON.stringify(w)).toContain('"archives":{"none":{"userId":"u1"}}') // hides only what THIS person archived
     expect(JSON.stringify(w)).toContain('"status":"NEW"')
   })
+  it('the archived view shows what this person archived', () => {
+    expect(JSON.stringify(buildLeadWhere(parseLeadFilters({ archived: '1' }), 'u1'))).toContain('"archives":{"some":{"userId":"u1"}}')
+  })
   it('filters by tag', () => {
-    expect(JSON.stringify(buildLeadWhere(parseLeadFilters({ tag: ' VIP ' })))).toContain('"tags":{"has":"vip"}')
+    expect(JSON.stringify(buildLeadWhere(parseLeadFilters({ tag: ' VIP ' }), 'u1'))).toContain('"tags":{"has":"vip"}')
   })
   it('computes conversion', () => {
     expect(conversionRate(1, 3)).toBe(33.3)
@@ -27,7 +30,7 @@ describe('lead filters', () => {
 
 describe('multi-word search', () => {
   it('requires every word to match some field (full-name search works)', () => {
-    const w = buildLeadWhere(parseLeadFilters({ q: 'Dana  Levi' }))
+    const w = buildLeadWhere(parseLeadFilters({ q: 'Dana  Levi' }), 'u1')
     const and = (w.AND as object[]).slice(1)
     expect(and).toHaveLength(2)
     expect(JSON.stringify(and[0])).toContain('"contains":"Dana"')

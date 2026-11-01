@@ -44,6 +44,12 @@ export async function saveQuotedPrice(id: string, price: number | null): Promise
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
     const value = price === null ? null : money.parse(price)
+    if (value === null || value <= 0) {
+      const cur = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
+      if (cur?.status === 'WON' && (cur.finalPaymentReceivedAt || cur.finalPaidAt)) {
+        throw new BookingError('The client’s payment or the commission payout is already recorded for this deal, so its price can’t be cleared.', 'INVALID_STATE')
+      }
+    }
     const result = await prisma.$transaction((tx) => setQuotedPrice(lid, value, admin.id, tx))
     refresh(lid)
     return { ok: true, data: { movedToProposal: result.movedToProposal } }
@@ -106,6 +112,9 @@ export async function setCommissionPayment(id: string, input: z.input<typeof pay
     const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
     if (!lead || lead.status !== 'WON' || lead.commissionTotal === null) throw new BookingError('Win the deal and enter its price first: that is when the commission is set.', 'INVALID_STATE')
     const date = m.date ? new Date(`${m.date}T12:00:00Z`) : null
+    // "2026-02-31" passes a pattern check but is not a day: reject it instead of letting the database throw.
+    if (m.date && (!date || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== m.date)) throw new BookingError('That date does not exist. Pick a real date.', 'INVALID_STATE')
+    if (m.kind === 'paid' && date && lead.finalPaymentReceivedAt && date < lead.finalPaymentReceivedAt) throw new BookingError('The payout date can’t be before the day the client paid.', 'INVALID_STATE')
     if (m.kind === 'paid' && date && !lead.finalPaymentReceivedAt) {
       throw new BookingError('Nothing is payable before the client’s money is collected. Mark the payment as received first.', 'INVALID_STATE')
     }

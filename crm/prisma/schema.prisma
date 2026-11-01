@@ -102,6 +102,7 @@ model User {
   calendarEntries CalendarEntry[]
   activityLogs    ActivityLog[]
   agreements      Agreement[]
+  leadArchives    LeadArchive[]
   leadNotes       LeadNote[]
   mailboxEmails   EmailMessage[]
   mailboxSync     MailboxSync?
@@ -189,7 +190,7 @@ model Lead {
   finalPaymentReceivedAt DateTime?
   /// The commission was paid out to the salesperson
   finalPaidAt            DateTime?
-  /// Soft-delete: hidden from pipelines, restorable by admin
+  /// Legacy global flag. Archiving is per person now (LeadArchive); the migration moved existing archives over and this is unused.
   archived     Boolean    @default(false)
   tags         String[]   @default([])
   assignedToId String?
@@ -201,6 +202,7 @@ model Lead {
   notes      LeadNote[]
   emails     EmailMessage[]
   documents  LeadDocument[]
+  archives   LeadArchive[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -297,6 +299,21 @@ model Agreement {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+// ─── Archiving ───────────────────────────────────────────────────────────────
+
+/// "I'm done with this lead": hides it from ONE person's lists. Everyone else, and every number in the stats, is unaffected.
+model LeadArchive {
+  leadId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([leadId, userId])
+  @@index([userId])
 }
 
 // ─── Client documents ────────────────────────────────────────────────────────

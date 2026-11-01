@@ -481,3 +481,26 @@ export async function notifyAdminsOfPendingBooking(bookingId: string): Promise<v
   const to = Array.from(new Set([...admins.map((a) => a.email), ...extra, ...configured]))
   await sendApprovalRequestEmail(to, await emailDataFor(bookingId))
 }
+
+/**
+ * A host who is deactivated or removed can no longer run their meetings: cancel everything upcoming they host (guests of client
+ * meetings get the usual cancellation notice, and the Google event is removed for everyone invited). Returns how many.
+ * One failure never stops the rest; it is recorded in the audit log instead.
+ */
+export async function cancelUpcomingMeetingsOfHost(hostId: string, actorId: string): Promise<number> {
+  const upcoming = await prisma.booking.findMany({ where: { hostId, status: { in: ['PENDING', 'CONFIRMED'] }, startTime: { gt: new Date() } }, select: { id: true, status: true, source: true } })
+  if (upcoming.length === 0) return 0
+  const team = await teamMeetingIds(upcoming.map((b) => b.id))
+  let n = 0
+  for (const b of upcoming) {
+    try {
+      const notice = team.has(b.id) ? false : b.status === 'PENDING' && b.source === 'PUBLIC_PAGE' ? 'declined' : 'cancelled'
+      await cancelBooking(b.id, actorId, 'host-deactivated', notice)
+      n++
+    } catch (err) {
+      console.error('[bookings] could not cancel a meeting of a deactivated host', b.id, err)
+      await logActivity({ entityType: 'BOOKING', entityId: b.id, action: 'booking.cancel_on_deactivate_failed', actorId, metadata: { error: err instanceof Error ? err.message : String(err) } })
+    }
+  }
+  return n
+}

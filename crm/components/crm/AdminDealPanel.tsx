@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select } from '@/components/ui/input'
 import { parseShekels } from '@/lib/money'
 import { type CommissionBreakdown, type CommissionTerms, calculateCommission, commissionStatus, formatIls } from '@/lib/commission'
+import { DEFAULT_TIME_ZONE } from '@/lib/default-time-zone'
+import { localDateKey } from '@/lib/time'
 
 export interface DealPanelProps {
   leadId: string
@@ -28,7 +30,7 @@ export interface DealPanelProps {
 }
 
 const SOURCE_LABEL: Record<LeadSourceType, string> = { COLD_CALL: 'Salesperson cold call', ADS: 'Ads', OTHER: 'Other' }
-const today = (): string => new Date().toISOString().slice(0, 10)
+const today = (): string => localDateKey(new Date(), DEFAULT_TIME_ZONE) // the team works on Israel time
 const day = (iso: string | null): string => (iso ? new Date(iso).toLocaleDateString('en-GB') : '')
 
 function Row({ label, value, strong = false }: { label: string; value: React.ReactNode; strong?: boolean }): React.ReactElement {

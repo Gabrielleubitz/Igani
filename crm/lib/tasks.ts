@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { TASK_ACTIONS, foldTasks, type CrmTask, type TaskPriority } from '@/components/crm/crm-utils'
 import { logActivity } from './audit'
 import { prisma } from './prisma'
+import { notArchivedBy } from './lead-archive'
 
 /** System-created task (same activity-log shape the UI folds into task state). */
 export async function createAutoTask(
@@ -47,12 +48,12 @@ export interface TaskLead {
 
 /**
  * Tasks a user can act on, in one place so the banner, Today, Tasks page and reminders always agree:
- * only tasks on contacts that still exist, are not archived, and the user can see (admins: all contacts).
+ * only tasks on contacts that still exist, are not archived by this user, and the user can see (admins: all contacts).
  * `mine` = assigned to the user, or unassigned on a contact the user owns.
  */
 export async function tasksForUser(user: { id: string; role: string }): Promise<{ all: CrmTask[]; mine: CrmTask[]; leads: Map<string, TaskLead> }> {
   const leadRows = await prisma.lead.findMany({
-    where: { archived: false, ...(user.role === 'ADMIN' ? {} : { assignedToId: user.id }) },
+    where: { ...notArchivedBy(user.id), ...(user.role === 'ADMIN' ? {} : { assignedToId: user.id }) },
     select: { id: true, assignedToId: true, email: true, phone: true, firstName: true, lastName: true, company: true },
   })
   const leads = new Map(leadRows.map((l) => [l.id, l]))

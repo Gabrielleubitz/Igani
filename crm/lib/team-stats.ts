@@ -26,14 +26,17 @@ export interface RepStats {
 export async function loadRepStats(adminForTasks: { id: string; role: string }): Promise<RepStats[]> {
   const since = new Date(Date.now() - 30 * 86_400_000)
   const now = new Date()
-  const [users, allowed, leads, meetings, tasks, seen] = await Promise.all([
+  const [users, allowed, leads, meetings, tasks, seen, winLogs] = await Promise.all([
     prisma.user.findMany({ where: { role: 'SALES' }, select: { id: true, name: true, email: true, timeZone: true } }),
     prisma.allowedUser.findMany({ select: { email: true, active: true } }),
-    prisma.lead.findMany({ where: { archived: false, assignedToId: { not: null } }, select: { assignedToId: true, status: true, quotedPrice: true, updatedAt: true } }),
+    prisma.lead.findMany({ where: { assignedToId: { not: null } }, select: { id: true, assignedToId: true, status: true, quotedPrice: true, updatedAt: true } }),
     prisma.booking.groupBy({ by: ['hostId'], where: { status: 'CONFIRMED', startTime: { gt: now } }, _count: true }),
     tasksForUser(adminForTasks),
     prisma.activityLog.groupBy({ by: ['actorId'], where: { actorId: { not: null } }, _max: { createdAt: true } }),
+    // When a deal was actually won (the stage change), not when the lead was last edited.
+    prisma.activityLog.findMany({ where: { entityType: 'LEAD', action: 'lead.status_changed', metadata: { path: ['to'], equals: 'WON' } }, select: { entityId: true, createdAt: true }, orderBy: { createdAt: 'asc' } }),
   ])
+  const wonAt = new Map(winLogs.map((l) => [l.entityId, l.createdAt]))
   const active = new Map(allowed.map((a) => [a.email, a.active]))
   const meet = new Map(meetings.map((m) => [m.hostId, m._count]))
   const last = new Map(seen.map((s) => [s.actorId, s._max.createdAt]))
@@ -41,7 +44,7 @@ export async function loadRepStats(adminForTasks: { id: string; role: string }):
     const mine = leads.filter((l) => l.assignedToId === u.id)
     const won = mine.filter((l) => l.status === 'WON')
     const lost = mine.filter((l) => l.status === 'LOST').length
-    const won30 = won.filter((l) => l.updatedAt >= since)
+    const won30 = won.filter((l) => (wonAt.get(l.id) ?? l.updatedAt) >= since)
     const open = tasks.all.filter((t) => isOpenTask(t, u.id, tasks.leads.get(t.leadId)?.assignedToId))
     return {
       id: u.id,

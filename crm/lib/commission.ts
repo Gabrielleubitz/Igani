@@ -46,7 +46,8 @@ export function calculateCommission(dealAmount: number, terms: CommissionTerms =
   const baseCommission = baseAmount * rate
   const completedIncrements = amount > terms.threshold && terms.incrementSize > 0 ? Math.floor((amount - terms.threshold) / terms.incrementSize) : 0
   const bonusTotal = completedIncrements * Math.max(0, terms.bonusPerIncrement)
-  const total = whole(baseCommission + bonusTotal)
+  // A commission can never exceed the deal itself, and always fits the database column (Int4).
+  const total = Math.min(whole(baseCommission + bonusTotal), amount, 2_000_000_000)
   return { amount, baseAmount, baseCommission: whole(baseCommission), completedIncrements, bonusTotal: whole(bonusTotal), total }
 }
 

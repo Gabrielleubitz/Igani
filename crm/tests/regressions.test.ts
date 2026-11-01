@@ -57,12 +57,13 @@ d('review regressions', async () => {
 
   it('brings an archived contact back when they reach out again (but not on backfill)', async () => {
     const { leadId } = await ingestLead(leadPayloadSchema.parse({ email: 'back@x.com', message: 'first' }))
-    await prisma.lead.update({ where: { id: leadId }, data: { archived: true } })
+    const rep1 = await rep('arch1@igani.co')
+    await prisma.leadArchive.create({ data: { leadId, userId: rep1.id } }) // archived by one person, for themselves
     await ingestLead(leadPayloadSchema.parse({ email: 'back@x.com', message: 'old', backfill: true }))
-    expect((await prisma.lead.findUniqueOrThrow({ where: { id: leadId } })).archived).toBe(true)
+    expect(await prisma.leadArchive.count({ where: { leadId } })).toBe(1)
     await ingestLead(leadPayloadSchema.parse({ email: 'back@x.com', message: 'hello again' }))
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } })
-    expect(lead.archived).toBe(false)
+    expect(await prisma.leadArchive.count({ where: { leadId } })).toBe(0) // back for everyone
     expect(lead.message).toContain('hello again')
   })
 
@@ -110,12 +111,13 @@ d('review regressions', async () => {
     for (const leadId of [owned, archived, deleted, others]) {
       await prisma.activityLog.create({ data: { entityType: 'LEAD', entityId: leadId, action: 'task.created', metadata: { taskId: crypto.randomUUID(), title: 't', dueAt: new Date().toISOString(), assigneeId: null, priority: 'MEDIUM' } } })
     }
-    await prisma.lead.update({ where: { id: archived }, data: { archived: true } })
+    await prisma.leadArchive.create({ data: { leadId: archived, userId: a.id } }) // A archived it for themselves
     await prisma.lead.delete({ where: { id: deleted } })
     const forA = await tasksForUser({ id: a.id, role: 'SALES' })
     expect(forA.mine.map((t) => t.leadId)).toEqual([owned])
     const admin = await tasksForUser({ id: 'admin-x', role: 'ADMIN' })
     expect(admin.mine).toHaveLength(0) // unassigned tasks on other people's contacts are not the admin's
-    expect(admin.all.map((t) => t.leadId).sort()).toEqual([owned, others].sort())
+    // Archiving is personal: the admin still sees A's archived lead's tasks; only the deleted contact is gone.
+    expect(admin.all.map((t) => t.leadId).sort()).toEqual([owned, archived, others].sort())
   })
 })

@@ -19,7 +19,10 @@ export const maxDuration = 300
 
 function authorised(req: Request): boolean {
   const secret = process.env.CRON_SECRET
-  if (!secret) return false
+  if (!secret) {
+    console.error('[cron] CRON_SECRET is not set: every call is refused, so reminders, follow-ups, meeting reminders and email sync are OFF. Set it in Vercel → Settings → Environment Variables.')
+    return false
+  }
   const got = Buffer.from(req.headers.get('authorization') ?? '')
   const want = Buffer.from(`Bearer ${secret}`)
   return got.length === want.length && timingSafeEqual(got, want)
@@ -138,7 +141,7 @@ async function run(): Promise<Record<string, number>> {
   const meetingReminders = await sendMeetingReminders()
 
   // Only tasks on contacts that still exist and aren't archived.
-  const leads = await prisma.lead.findMany({ where: { archived: false }, select: { id: true, assignedToId: true, email: true, phone: true, firstName: true, lastName: true, company: true } })
+  const leads = await prisma.lead.findMany({ select: { id: true, assignedToId: true, email: true, phone: true, firstName: true, lastName: true, company: true } })
   const leadById = new Map(leads.map((l) => [l.id, l]))
   const tasks = (await loadTasks()).filter((t) => !t.done && t.dueAt && leadById.has(t.leadId))
   // A reminder covers one (task, due date) pair: rescheduling or reopening a task makes it eligible again.
@@ -151,6 +154,9 @@ async function run(): Promise<Record<string, number>> {
     if (!owner || reminded.has(`${t.id}|${t.dueAt!.toISOString()}`)) continue
     byUser.set(owner, [...(byUser.get(owner) ?? []), t])
   }
+  // A lead someone archived for themselves is out of sight for them: no reminders about it.
+  const archives = await prisma.leadArchive.findMany({ where: { userId: { in: [...byUser.keys()] } }, select: { leadId: true, userId: true } })
+  const archivedPair = new Set(archives.map((a) => `${a.userId}|${a.leadId}`))
   const users = await prisma.user.findMany({ where: { id: { in: [...byUser.keys()] }, role: { not: null } }, select: { id: true, email: true, name: true, timeZone: true, role: true } })
   const now = new Date()
   let sent = 0
@@ -160,7 +166,7 @@ async function run(): Promise<Record<string, number>> {
     const hour = localHour(now, u.timeZone)
     if (hour < DIGEST_HOURS.from || hour >= DIGEST_HOURS.to) continue
     // Only tasks on leads this person can still open: an admin, or the lead's current owner.
-    const reachable = (byUser.get(u.id) ?? []).filter((t) => canOpenLeadTask(u, leadById.get(t.leadId)))
+    const reachable = (byUser.get(u.id) ?? []).filter((t) => canOpenLeadTask(u, leadById.get(t.leadId)) && !archivedPair.has(`${u.id}|${t.leadId}`))
     const { overdue, today } = splitDue(reachable, now, u.timeZone)
     const list = [...overdue, ...today]
     checked += list.length
