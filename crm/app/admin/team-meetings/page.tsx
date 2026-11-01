@@ -1,3 +1,5 @@
+import { aiTidyEnabled } from '@/lib/meeting-ai'
+import { organizedFor } from '@/lib/organize-notes'
 import { ConnectGoogleButton, UnverifiedAppHint } from '@/components/ConnectGoogle'
 import { MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
 import { TeamMeetingForm } from '@/components/crm/TeamMeetingForm'
@@ -34,6 +36,8 @@ export default async function TeamMeetingsPage(): Promise<React.ReactElement> {
       summary: m.summaryText,
       nextSteps: m.nextStepsText,
       fullText: m.fullText,
+      ...organizedFor(m),
+      canTidy: aiTidyEnabled(),
       timesUnknown: m.lastError === 'meet-scope-missing',
     }
   }

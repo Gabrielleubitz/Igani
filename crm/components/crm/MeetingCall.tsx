@@ -4,8 +4,9 @@ import { GOOGLE_CONNECT_SCOPES } from '@/lib/google-scopes'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
-import { recheckMeetingNotes, syncMeetings } from '@/app/sales/actions'
+import { recheckMeetingNotes, syncMeetings, tidyMeetingNotes } from '@/app/sales/actions'
 import { Button } from '@/components/ui/button'
+import type { OrganizedNotes } from '@/lib/organize-notes'
 
 export interface MeetingCallView {
   bookingId: string
@@ -19,6 +20,9 @@ export interface MeetingCallView {
   summary: string | null
   nextSteps: string | null
   fullText: string | null
+  notes: OrganizedNotes | null
+  ai: boolean
+  canTidy: boolean
   timesUnknown: boolean
 }
 
@@ -64,6 +68,45 @@ const NOTE_TEXT: Record<string, string> = {
   NOT_AVAILABLE: 'Gemini notes are only pulled in when an @igani.co teammate hosts the call.',
 }
 
+function Section({ title, items, numbered }: { title: string; items: string[]; numbered?: boolean }): React.ReactElement | null {
+  if (!items.length) return null
+  const List = numbered ? 'ol' : 'ul'
+  return (
+    <div>
+      <p className="mb-1 font-semibold">{title}</p>
+      <List className={`space-y-1 pl-4 leading-relaxed ${numbered ? 'list-decimal' : 'list-disc'}`}>
+        {items.map((t, i) => (
+          <li key={i}>{t}</li>
+        ))}
+      </List>
+    </div>
+  )
+}
+
+/** Summary, decisions, next steps and topics as short lists instead of one wall of text. */
+function NotesSections({ n }: { n: OrganizedNotes }): React.ReactElement {
+  return (
+    <div className="space-y-3">
+      {n.overview.length ? <div className="space-y-1 leading-relaxed">{n.overview.map((t, i) => <p key={i}>{t}</p>)}</div> : null}
+      <Section title="Decisions" items={n.decisions} />
+      <Section title="Next steps" items={n.actions} numbered />
+      {n.topics.length ? (
+        <div>
+          <p className="mb-1 font-semibold">Topics discussed</p>
+          <ul className="space-y-1.5 leading-relaxed">
+            {n.topics.map((t, i) => (
+              <li key={i}>
+                {t.title ? <span className="font-medium">{t.title}: </span> : null}
+                {t.points.join(' ')}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 /** What really happened on a Meet call: live/ended, real times, who joined, and the Gemini notes. */
 export function MeetingCall({ m }: { m: MeetingCallView }): React.ReactElement | null {
   const router = useRouter()
@@ -78,6 +121,14 @@ export function MeetingCall({ m }: { m: MeetingCallView }): React.ReactElement |
       if (!r.ok) return setMsg(r.error)
       setMsg(r.data.status === 'READY' ? 'Notes pulled in.' : 'Not there yet. We keep checking automatically.')
       router.refresh()
+    })
+
+  const tidy = (): void =>
+    start(async () => {
+      setMsg(null)
+      const r = await tidyMeetingNotes(m.bookingId)
+      setMsg(r.ok ? 'Notes tidied.' : r.error)
+      if (r.ok) router.refresh()
     })
 
   if (m.status === 'SCHEDULED' && !m.notesStatus) return null
@@ -115,14 +166,19 @@ export function MeetingCall({ m }: { m: MeetingCallView }): React.ReactElement |
           </div>
           {m.notesStatus === 'READY' ? (
             <>
-              {m.summary ? <p className="whitespace-pre-wrap leading-relaxed">{m.summary}</p> : null}
-              {m.nextSteps ? (
+              {m.notes ? <NotesSections n={m.notes} /> : m.summary ? <p className="whitespace-pre-wrap leading-relaxed">{m.summary}</p> : null}
+              {!m.notes && m.nextSteps ? (
                 <div>
                   <p className="font-medium">Next steps</p>
                   <p className="whitespace-pre-wrap leading-relaxed">{m.nextSteps}</p>
                 </div>
               ) : null}
-              {!m.summary && !m.nextSteps && m.fullText ? <p className="whitespace-pre-wrap leading-relaxed">{m.fullText.slice(0, 600)}</p> : null}
+              {!m.notes && !m.summary && !m.nextSteps && m.fullText ? <p className="whitespace-pre-wrap leading-relaxed">{m.fullText.slice(0, 600)}</p> : null}
+              {m.canTidy && m.fullText ? (
+                <button type="button" onClick={tidy} disabled={pending} className="mr-3 text-primary underline-offset-4 hover:underline disabled:opacity-60">
+                  {pending ? 'Working…' : m.ai ? 'Re-tidy with AI' : '✨ Tidy up with AI'}
+                </button>
+              ) : null}
               {m.fullText ? (
                 <button type="button" onClick={() => setFull((v) => !v)} className="text-primary underline-offset-4 hover:underline">
                   {full ? 'Hide full notes' : 'Show full notes'}

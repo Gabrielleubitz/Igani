@@ -1,3 +1,5 @@
+import { aiTidyEnabled } from '@/lib/meeting-ai'
+import { organizedFor } from '@/lib/organize-notes'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -93,6 +95,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       summary: m.summaryText,
       nextSteps: m.nextStepsText,
       fullText: m.fullText,
+      ...organizedFor(m),
+      canTidy: aiTidyEnabled(),
       timesUnknown: m.lastError === 'meet-scope-missing',
     }
   }

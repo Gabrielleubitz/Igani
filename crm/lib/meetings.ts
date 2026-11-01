@@ -1,3 +1,4 @@
+import { tidyWithAI } from './meeting-ai'
 import 'server-only'
 import type { MeetingSession, Prisma } from '@prisma/client'
 import { logActivity } from './audit'
@@ -271,9 +272,10 @@ async function trackNotes(b: BookingRow, s: MeetingSession, api: MeetingApi, now
     const doc = await api.readDoc(ref.docId)
     const text = doc.text.slice(0, NOTES_TEXT_CAP)
     const { summary, nextSteps } = parseGeminiNotes(text)
+    const organized = await tidyWithAI(text)
     const done = await prisma.meetingSession.updateMany({
       where: { id: s.id, OR: [{ notesStatus: null }, { notesStatus: { not: 'READY' } }] },
-      data: { ...link, docTitle: doc.title ?? link.docTitle, notesStatus: 'READY', summaryText: summary, nextStepsText: nextSteps, fullText: text, notesAttempts: attempts, nextCheckAt: null, notesFetchedAt: now, lastError: null },
+      data: { ...link, docTitle: doc.title ?? link.docTitle, notesStatus: 'READY', summaryText: summary, nextStepsText: nextSteps, fullText: text, organizedJson: organized ?? undefined, notesAttempts: attempts, nextCheckAt: null, notesFetchedAt: now, lastError: null },
     })
     if (done.count === 1) await logOnLead(b, 'meeting.notes', { docUrl: link.docUrl, summary: (summary ?? text).slice(0, 1200) })
   } catch (err) {

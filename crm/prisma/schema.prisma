@@ -384,6 +384,8 @@ model MeetingSession {
   summaryText      String?       @db.Text
   nextStepsText    String?       @db.Text
   fullText         String?       @db.Text
+  /// AI-tidied notes (OrganizedNotes JSON); null = use the free parser on fullText
+  organizedJson    Json?
   notesAttempts    Int           @default(0)
   nextCheckAt      DateTime?
   notesFetchedAt   DateTime?

@@ -1,5 +1,6 @@
 'use server'
 
+import { aiTidyEnabled, tidyWithAI } from '@/lib/meeting-ai'
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
@@ -266,6 +267,27 @@ export async function syncMeetings(leadId?: string): Promise<ActionResult<{ chec
     const r = await syncDueMeetings({ ...(leadId ? { leadId } : { hostId: user.id }), limit: 10, minGapMs: 60_000 })
     if (r.checked) refresh(leadId)
     return { ok: true, data: { checked: r.checked } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** "Tidy with AI" on a call whose notes are already pulled in (needs OPENAI_API_KEY). */
+export async function tidyMeetingNotes(bookingId: string): Promise<ActionResult<{ ok: true }>> {
+  try {
+    const user = await requireUser()
+    const id = z.string().cuid().parse(bookingId)
+    const b = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, leadId: true, source: true, meeting: { select: { id: true, fullText: true } } } })
+    if (!b?.meeting?.fullText) return { ok: false, error: 'No notes to tidy yet.' }
+    if (b.source === 'TEAM_MEETING' && user.role !== 'ADMIN') return { ok: false, error: 'Meeting not found.' }
+    if (b.leadId) await assertCanSeeLead(b.leadId, user)
+    else if (b.hostId !== user.id && user.role !== 'ADMIN') return { ok: false, error: 'Meeting not found.' }
+    if (!aiTidyEnabled()) return { ok: false, error: 'AI tidy-up is not switched on (no OpenAI key).' }
+    const organized = await tidyWithAI(b.meeting.fullText)
+    if (!organized) return { ok: false, error: 'The AI tidy-up failed. Try again in a moment.' }
+    await prisma.meetingSession.update({ where: { id: b.meeting.id }, data: { organizedJson: organized } })
+    refresh(b.leadId ?? undefined)
+    return { ok: true, data: { ok: true } }
   } catch (err) {
     return toActionError(err)
   }
