@@ -10,7 +10,7 @@ import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLead
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
-import { canEditAtStage, stageChangeProblem } from '@/lib/stage-rules'
+import { canEditValueAtStage, stageChangeProblem } from '@/lib/stage-rules'
 import { toActionError, type ActionResult } from './result'
 
 export async function updateLeadStatus(
@@ -106,7 +106,7 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
     await prisma.$transaction(async (tx) => {
       const before = await tx.lead.findUniqueOrThrow({ where: { id } })
       // Revenue past Demo scheduled is the admins' to change.
-      if (data.dealValue !== undefined && data.dealValue !== before.dealValue && !canEditAtStage(admin.role, before.status)) {
+      if (data.dealValue !== undefined && data.dealValue !== before.dealValue && !canEditValueAtStage(admin.role, before.status)) {
         throw new BookingError('Only an admin can change the deal value once a lead is past Demo scheduled.', 'FORBIDDEN')
       }
       // Only record fields that really changed, so the timeline stays readable.

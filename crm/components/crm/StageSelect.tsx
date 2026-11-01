@@ -118,7 +118,7 @@ export function StageSelect({ leadId, status, dealValue, disabled, title, classN
     <span className="inline-flex flex-col gap-1">
       <Select
         aria-label="Stage"
-        title={locked ? 'Only an admin can change a lead after Demo scheduled' : title}
+        title={locked ? 'Once a lead reaches Demo scheduled, only an admin can change its stage' : title}
         className={cn('h-8 w-40', className)}
         disabled={pending || disabled || locked}
         value={status}
