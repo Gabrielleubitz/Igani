@@ -66,14 +66,30 @@ export async function googleMeetingApi(hostId: string): Promise<MeetingApi> {
     },
     async recentConferences(since) {
       const filter = encodeURIComponent(`start_time>="${since.toISOString()}"`)
-      const r = await get<{ conferenceRecords?: (ConferenceRec & { space?: string })[] }>(`${MEET}/conferenceRecords?filter=${filter}&pageSize=100`)
-      const out: (ConferenceRec & { meetingCode: string })[] = []
-      for (const rec of r.conferenceRecords ?? []) {
-        if (!rec.space) continue
-        const sp = await get<{ meetingCode?: string }>(`${MEET}/${rec.space}`).catch(() => null)
-        if (sp?.meetingCode) out.push({ name: rec.name, startTime: rec.startTime, endTime: rec.endTime ?? null, meetingCode: sp.meetingCode })
+      const recs: (ConferenceRec & { space?: string })[] = []
+      let token = ''
+      for (let i = 0; i < 5; i++) {
+        const r = await get<{ conferenceRecords?: (ConferenceRec & { space?: string })[]; nextPageToken?: string }>(`${MEET}/conferenceRecords?filter=${filter}&pageSize=100${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`)
+        recs.push(...(r.conferenceRecords ?? []))
+        if (!r.nextPageToken) break
+        token = r.nextPageToken
       }
-      return out
+      const codes = new Map<string, string>()
+      const spaces = [...new Set(recs.flatMap((x) => (x.space ? [x.space] : [])))]
+      const failed: string[] = []
+      await Promise.all(
+        spaces.map(async (sp) => {
+          try {
+            const r = await get<{ meetingCode?: string }>(`${MEET}/${sp}`)
+            if (r.meetingCode) codes.set(sp, r.meetingCode)
+          } catch (err) {
+            failed.push(`${sp}: ${errText(err)}`)
+          }
+        }),
+      )
+      // Surface lookup failures instead of silently dropping the calls (the importer reports this to the admin).
+      if (failed.length) throw new Error(`could not read ${failed.length} Meet space(s): ${failed[0]}`)
+      return recs.flatMap((x) => (x.space && codes.get(x.space) ? [{ name: x.name, startTime: x.startTime, endTime: x.endTime ?? null, meetingCode: codes.get(x.space)! }] : []))
     },
     async participants(record) {
       const out: Participant[] = []
