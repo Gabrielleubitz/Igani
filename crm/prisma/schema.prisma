@@ -241,6 +241,7 @@ model Booking {
   lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
   bookingPage BookingPage? @relation(fields: [bookingPageId], references: [id], onDelete: SetNull)
   createdBy   User?        @relation("BookingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  meeting     MeetingSession?
 
   @@index([hostId, status, startTime])
   @@index([leadId])
@@ -336,4 +337,59 @@ model MailboxSync {
   updatedAt    DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ─── Google Meet tracking + Gemini notes ─────────────────────────────────────
+
+enum MeetingStatus {
+  SCHEDULED
+  LIVE
+  ENDED
+  NOT_HELD
+}
+
+enum NotesStatus {
+  /// meeting over, looking for the Gemini notes (retried with backoff)
+  WAITING
+  /// notes text pulled into the CRM
+  READY
+  /// the notes Doc was found but could not be read (link only, retried)
+  LINK_ONLY
+  /// nothing appeared within 24 h
+  NONE
+  /// host is not on the Gemini-enabled domain
+  NOT_AVAILABLE
+}
+
+/// What really happened on a CRM-scheduled Google Meet call (one per booking).
+model MeetingSession {
+  id               String        @id @default(cuid())
+  bookingId        String        @unique
+  meetingCode      String
+  conferenceRecord String?
+  status           MeetingStatus @default(SCHEDULED)
+  actualStart      DateTime?
+  actualEnd        DateTime?
+  /// [{ name, joinedAt, leftAt, seconds }]
+  participants     Json?
+  notesStatus      NotesStatus?
+  notesSource      String?
+  docId            String?
+  docUrl           String?
+  docTitle         String?
+  summaryText      String?       @db.Text
+  nextStepsText    String?       @db.Text
+  fullText         String?       @db.Text
+  notesAttempts    Int           @default(0)
+  nextCheckAt      DateTime?
+  notesFetchedAt   DateTime?
+  lastCheckedAt    DateTime?
+  lastError        String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([notesStatus, nextCheckAt])
 }

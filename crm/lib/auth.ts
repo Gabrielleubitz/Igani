@@ -9,7 +9,10 @@ import { logActivity } from './audit'
 import { env } from './env'
 import { prisma } from './prisma'
 
-/** Google scopes: identity + create events (Meet) + read free/busy + read Gmail (to file client emails under contacts). */
+/**
+ * Google scopes: identity + create events (Meet) + read free/busy + read Gmail (to file client emails under contacts)
+ * + read Meet conference records (real start/end) + read Docs (pull the Gemini meeting notes).
+ */
 export const GOOGLE_SCOPES = [
   'openid',
   'email',
@@ -17,6 +20,8 @@ export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/calendar.freebusy',
   'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/meetings.space.readonly',
+  'https://www.googleapis.com/auth/documents.readonly',
 ].join(' ')
 
 /** How often the JWT re-checks the whitelist so revoked users lose access. */

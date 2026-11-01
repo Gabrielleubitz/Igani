@@ -1,6 +1,6 @@
 # Plan: Meet call tracking + Gemini notes in the Igani CRM
 
-Status: PROPOSAL for owner approval. Nothing has been built.
+Status: APPROVED and BUILT (mission m-mvx28lfu). See crm/README.md "Google Meet tracking + Gemini notes".
 Scope: `crm/` (Next.js + Prisma + NextAuth Google sign-in, Gmail sync already live).
 
 ## 0. What exists today (read from the code)

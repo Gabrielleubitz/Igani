@@ -10,6 +10,7 @@ import { getSetting } from '@/lib/settings'
 import { createAutoTask, loadTasks, taskOwner } from '@/lib/tasks'
 import { localHour } from '@/lib/time'
 import { syncAllMailboxes } from '@/lib/mail-sync'
+import { syncDueMeetings } from '@/lib/meetings'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -116,6 +117,11 @@ async function run(): Promise<Record<string, number>> {
     console.error('[cron] mail sync failed', err)
     return { mailboxes: 0, stored: 0, failed: 1 }
   })
+  // Google Meet calls scheduled from the CRM: real start/end + Gemini notes (failures are per call, never block the rest).
+  const meet = await syncDueMeetings({ limit: 100 }).catch((err: unknown) => {
+    console.error('[cron] meeting sync failed', err)
+    return { checked: 0, failed: 1 }
+  })
   const followUps = await createFollowUps()
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()
@@ -169,5 +175,5 @@ async function run(): Promise<Record<string, number>> {
     sent++
     for (const t of list) await logActivity({ entityType: 'LEAD', entityId: t.leadId, action: 'task.reminded', metadata: { taskId: t.id, dueAt: t.dueAt!.toISOString() } })
   }
-  return { checked, emailed: sent, followUps, meetingReminders, expired, emailsSynced: mail.stored, mailboxErrors: mail.failed }
+  return { checked, emailed: sent, followUps, meetingReminders, expired, emailsSynced: mail.stored, mailboxErrors: mail.failed, meetingsChecked: meet.checked, meetingErrors: meet.failed }
 }

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { CompleteTaskButton } from '@/components/crm/LeadNotesTasks'
 import { MailSyncTrigger } from '@/components/crm/MailSyncTrigger'
+import { MeetingSyncTrigger } from '@/components/crm/MeetingCall'
 import { StagePill } from '@/components/crm/StagePill'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -39,7 +40,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           where: { status: 'CONFIRMED', endTime: { gte: now }, startTime: { lt: endOfDay }, ...(isAdmin ? {} : { hostId: user.id }) },
           orderBy: { startTime: 'asc' },
           take: 20,
-          include: { host: { select: { name: true } } },
+          include: { host: { select: { name: true } }, meeting: { select: { status: true } } },
         }),
     prisma.lead.findMany({ where: { archived: false, status: { in: [...OPEN] }, ...mineWhere }, take: 1000 }),
     user.role === 'MARKETING' ? Promise.resolve([]) : prisma.lead.findMany({ where: { archived: false, assignedToId: null, status: { in: [...OPEN] } }, orderBy: { createdAt: 'desc' }, take: 6 }),
@@ -108,6 +109,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
       </div>
 
       <MailSyncTrigger />
+      {meetings.length ? <MeetingSyncTrigger everyMs={meetings.some((b) => b.startTime.getTime() - now.getTime() < 15 * 60_000) ? 60_000 : 0} /> : null}
       {newEmails.length ? (
         <Card className="border-emerald-500/30">
           <CardHeader className="pb-3">
@@ -195,6 +197,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
                   <div className="min-w-0">
                     <div className="truncate font-medium">
                       {b.title} · {b.guestName}
+                      {b.meeting?.status === 'LIVE' ? <Badge variant="success" className="ml-2 align-middle">Live now</Badge> : null}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
                       {formatDateTime(b.startTime, tz)}

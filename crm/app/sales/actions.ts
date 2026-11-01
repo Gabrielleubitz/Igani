@@ -15,6 +15,7 @@ import { loadTasks } from '@/lib/tasks'
 import { formatDateTime } from '@/lib/format'
 import { GmailNotConnectedError, hasGmailAccess } from '@/lib/google'
 import { syncMailbox } from '@/lib/mail-sync'
+import { syncDueMeetings, syncMeeting } from '@/lib/meetings'
 
 const refresh = (leadId?: string): void => {
   if (leadId) revalidatePath(`/sales/leads/${leadId}`)
@@ -249,6 +250,39 @@ export async function markEmailsRead(leadId: string): Promise<ActionResult> {
     if (lead.assignedToId && lead.assignedToId !== user.id) return { ok: true, data: undefined }
     await prisma.emailMessage.updateMany({ where: { leadId: id, direction: 'INBOUND', readAt: null }, data: { readAt: new Date() } })
     return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/**
+ * Check Google Meet calls in the background when a page opens: real start/end and Gemini notes.
+ * One contact's calls (if `leadId`), else the signed-in user's own hosted calls. Each call is looked at most once a minute.
+ */
+export async function syncMeetings(leadId?: string): Promise<ActionResult<{ checked: number }>> {
+  try {
+    const user = await requireUser()
+    if (leadId) await assertCanSeeLead(z.string().cuid().parse(leadId), user)
+    const r = await syncDueMeetings({ ...(leadId ? { leadId } : { hostId: user.id }), limit: 10, minGapMs: 60_000 })
+    if (r.checked) refresh(leadId)
+    return { ok: true, data: { checked: r.checked } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** "Check again" on a call: look for its Gemini notes right now (also after we gave up). */
+export async function recheckMeetingNotes(bookingId: string): Promise<ActionResult<{ status: string | null }>> {
+  try {
+    const user = await requireUser()
+    const id = z.string().cuid().parse(bookingId)
+    const b = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, leadId: true } })
+    if (!b) return { ok: false, error: 'Meeting not found.' }
+    if (b.leadId) await assertCanSeeLead(b.leadId, user)
+    else if (b.hostId !== user.id && user.role !== 'ADMIN') return { ok: false, error: 'Meeting not found.' }
+    const s = await syncMeeting(id, { force: true })
+    refresh(b.leadId ?? undefined)
+    return { ok: true, data: { status: s?.notesStatus ?? null } }
   } catch (err) {
     return toActionError(err)
   }

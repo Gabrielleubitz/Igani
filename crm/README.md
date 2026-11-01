@@ -94,6 +94,24 @@ scope, needs a demo video and usually a paid security assessment, which isn't wo
 - *Team page shows "Gmail sync error"*: the message there says why (most often the access was removed in the
   Google account's security settings; connect again).
 
+## Google Meet tracking + Gemini notes
+
+Calls booked from the CRM (they all get a Google Meet link) are tracked automatically:
+- **Start / end:** the Meet REST API gives the real time the call started and ended and who joined. While a call is
+  on, the contact page and Today show **Live now**; afterwards **Call held · 10:02 – 10:41 · 39 min**. If nobody
+  joins within an hour of the scheduled end it is marked **No-show**.
+- **Gemini notes:** only when the host is an `@igani.co` teammate (that is where Gemini takes notes). After the call
+  the CRM looks for the notes Doc, in order: the Doc Gemini attaches to the Calendar event, the Meet API's smart notes,
+  then Gemini's "Notes: …" email in the host's Gmail. It reads the Doc (Docs API) and shows the summary and next
+  steps on the contact, with "Show full notes" and "Open in Google Docs". Checks retry at +3, +5, +10, +15, +30 min,
+  then hourly, and stop after 24 h ("No Gemini notes were made"). **Check again** forces a look.
+- **When it runs:** the hourly cron, plus in the background whenever a teammate opens Today or the contact
+  (every minute while a call is about to start or live). Code: `lib/meetings.ts`, `lib/meet-notes.ts`.
+- **Google setup:** Meet REST API and Google Docs API are enabled in the `igani-478718` project. New read-only scopes
+  `meetings.space.readonly` and `documents.readonly` are requested at sign-in; each teammate clicks
+  **Reconnect Google** (banner in the Meetings card) once. Without them, notes still come through the Calendar/Gmail
+  link, but times and Doc text need the reconnect.
+
 ## Task reminders (cron)
 
 `vercel.json` runs `GET /api/public/cron/task-reminders` hourly. Each run (one at a time, via a lease row): creates
