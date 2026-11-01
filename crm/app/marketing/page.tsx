@@ -19,13 +19,13 @@ export default async function MarketingPage({ searchParams }: { searchParams: { 
   const ids = rows.map((r) => r.id)
   const [progressed, booked] = await Promise.all([
     prisma.activityLog.findMany({
-      where: { entityType: 'LEAD', entityId: { in: ids }, action: 'lead.status_changed', OR: ['DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON'].map((to) => ({ metadata: { path: ['to'], equals: to } })) },
+      where: { entityType: 'LEAD', entityId: { in: ids }, action: 'lead.status_changed', OR: ['DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON'].map((to) => ({ metadata: { path: ['to'], equals: to } })) },
       select: { entityId: true },
       distinct: ['entityId'],
     }),
     prisma.booking.findMany({ where: { leadId: { in: ids }, status: { not: 'CANCELLED' } }, select: { leadId: true }, distinct: ['leadId'] }),
   ])
-  const reached = new Set([...progressed.map((p) => p.entityId), ...booked.map((b) => b.leadId!), ...rows.filter((r) => ['DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON'].includes(r.status)).map((r) => r.id)])
+  const reached = new Set([...progressed.map((p) => p.entityId), ...booked.map((b) => b.leadId!), ...rows.filter((r) => ['DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON'].includes(r.status)).map((r) => r.id)])
   const leads = rows.map((r) => ({ ...r, reached: reached.has(r.id) }))
   const group = (key: (l: (typeof leads)[number]) => string): { label: string; total: number; won: number; qualified: number }[] => {
     const m = new Map<string, { total: number; won: number; qualified: number }>()

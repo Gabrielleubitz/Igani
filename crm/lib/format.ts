@@ -56,13 +56,14 @@ export const LEAD_SOURCES = [
   'Other',
 ] as const
 
-export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'PROPOSAL_SENT', 'WON', 'LOST'] as const satisfies readonly LeadStatus[]
+export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST'] as const satisfies readonly LeadStatus[]
 
 /** Human labels for pipeline stages (used everywhere instead of raw enum values). */
 export const STATUS_LABEL: Record<LeadStatus, string> = {
   NEW: 'New',
   CONTACTED: 'Contacted',
   DEMO_SCHEDULED: 'Demo scheduled',
+  DEMO_SENT: 'Demo sent',
   PROPOSAL_SENT: 'Proposal sent',
   WON: 'Won',
   LOST: 'Lost',
@@ -73,6 +74,7 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
   NEW: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
   CONTACTED: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
   DEMO_SCHEDULED: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
+  DEMO_SENT: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30',
   PROPOSAL_SENT: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
   WON: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
   LOST: 'bg-rose-500/15 text-rose-300 border-rose-500/30',

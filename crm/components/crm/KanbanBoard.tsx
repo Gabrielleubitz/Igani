@@ -24,6 +24,7 @@ const COLORS: Record<string, string> = {
   NEW: 'border-t-sky-400',
   CONTACTED: 'border-t-indigo-400',
   DEMO_SCHEDULED: 'border-t-violet-400',
+  DEMO_SENT: 'border-t-fuchsia-400',
   PROPOSAL_SENT: 'border-t-amber-400',
   WON: 'border-t-emerald-400',
   LOST: 'border-t-rose-400',
@@ -43,7 +44,7 @@ export function KanbanBoard({ leads, isAdmin }: { leads: (BoardLead & { status: 
   return (
     <div>
       {error ? <p className="mb-2 rounded-md border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p> : null}
-      <div className={cn('flex snap-x gap-3 overflow-x-auto pb-3 xl:grid xl:grid-cols-6 xl:overflow-visible', pending && 'opacity-70')}>
+      <div className={cn('flex snap-x gap-3 overflow-x-auto pb-3 xl:grid xl:grid-cols-7 xl:overflow-visible', pending && 'opacity-70')}>
         {LEAD_STATUSES.map((status) => {
           const col = leads.filter((l) => l.status === status)
           const value = col.reduce((n, l) => n + (l.dealValue ?? 0), 0)
