@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { refreshBookingCounters } from '@/lib/refresh-bookings'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import {
@@ -129,12 +128,12 @@ export async function createTeamMeeting(input: z.input<typeof teamMeetingSchema>
         await cancelBookingCore(booking.id, user.id, 'request-email-failed').catch(() => undefined) // release the held time so they can retry
         throw new BookingError(`Could not email the admins: ${err instanceof Error ? err.message : 'unknown error'}`, 'INVALID_STATE')
       }
-      refreshBookingCounters()
+      revalidatePath('/sales', 'layout')
       return { ok: true, data: { bookingId: booking.id, meetUrl: null, requested: true } }
     }
     try {
       const confirmed = await confirmBooking(booking.id, user.id)
-      refreshBookingCounters()
+      revalidatePath('/sales', 'layout')
       return { ok: true, data: { bookingId: booking.id, meetUrl: confirmed.meetUrl, requested: false } }
     } catch (err) {
       await cancelBookingCore(booking.id, user.id, 'team-meeting-failed').catch(() => undefined) // release the held time
@@ -214,7 +213,7 @@ export async function createSalesInvite(input: SalesInviteInput): Promise<Action
       throw err instanceof Error ? new BookingError(`Invite email failed: ${err.message}`, 'INVALID_STATE') : err
     }
 
-    refreshBookingCounters()
+    revalidatePath('/sales')
     return { ok: true, data: { bookingId: booking.id } }
   } catch (err) {
     return toActionError(err)
@@ -234,7 +233,6 @@ export async function confirmInvite(token: string): Promise<ActionResult<{ meetU
     }
     const confirmed = await confirmBooking(booking.id, null)
     revalidatePath(`/invites/${token}`)
-    refreshBookingCounters()
     return { ok: true, data: { meetUrl: confirmed.meetUrl } }
   } catch (err) {
     return publicActionError(err)
@@ -291,12 +289,10 @@ export async function createPublicBooking(
     if (page.requiresApproval) {
       await notifyAdminsOfPendingBooking(booking.id).catch((err: unknown) => console.error('[bookings] approval notice failed', err))
       await notifyGuestOfPendingBooking(booking.id)
-      refreshBookingCounters()
       return { ok: true, data: { status: 'PENDING', meetUrl: null } }
     }
     try {
       const confirmed = await confirmBooking(booking.id, null)
-      refreshBookingCounters()
       return { ok: true, data: { status: 'CONFIRMED', meetUrl: confirmed.meetUrl } }
     } catch (err) {
       await cancelBookingCore(booking.id, null, 'instant-confirmation-failed')
@@ -318,7 +314,7 @@ export async function approveBooking(bookingId: string): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN'])
     await confirmBooking(z.string().cuid().parse(bookingId), user.id)
-    refreshBookingCounters()
+    revalidatePath('/admin/bookings')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -336,7 +332,7 @@ export async function markBookingDone(bookingId: string, done: boolean): Promise
     if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can do that.', 'FORBIDDEN')
     if (booking.status === 'CANCELLED') throw new BookingError('This meeting was cancelled.', 'INVALID_STATE')
     await logActivity({ entityType: 'BOOKING', entityId: id, action: done ? 'booking.done' : 'booking.undone', actorId: user.id })
-    refreshBookingCounters()
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -352,7 +348,8 @@ export async function deleteBooking(bookingId: string): Promise<ActionResult> {
     if (!booking) throw new BookingError('Meeting not found.', 'NOT_FOUND')
     if (user.role !== 'ADMIN' && booking.hostId !== user.id) throw new BookingError('Only the host or an admin can delete a meeting.', 'FORBIDDEN')
     await deleteBookingCore(id, user.id)
-    refreshBookingCounters()
+    revalidatePath('/admin/bookings')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -371,7 +368,8 @@ export async function cancelBooking(bookingId: string, reason = 'cancelled-by-st
     if ((await teamMeetingIds([id])).has(id)) notifyGuest = false
     const kind = booking.status === 'PENDING' && booking.source === 'PUBLIC_PAGE' ? 'declined' : 'cancelled'
     await cancelBookingCore(id, user.id, z.string().max(200).parse(reason), notifyGuest ? kind : false)
-    refreshBookingCounters()
+    revalidatePath('/admin/bookings')
+    revalidatePath('/sales', 'layout')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
