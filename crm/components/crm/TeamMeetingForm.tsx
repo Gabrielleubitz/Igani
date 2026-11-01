@@ -33,7 +33,7 @@ export function TeamMeetingForm({ people }: { people: { id: string; label: strin
       setMsg(null)
       const r = await importTeamMeetingsAction()
       if (!r.ok) return setMsg({ ok: false, text: r.error })
-      setMsg({ ok: true, text: `Found ${r.data.found} team call(s), ${r.data.imported} new, ${r.data.withNotes} with Gemini notes.` })
+      setMsg({ ok: true, text: `Found ${r.data.found} team call(s), ${r.data.imported} new, ${r.data.withNotes} with Gemini notes.${r.data.found === 0 || r.data.diagnostics.some((d) => /missing|failed|Skipped/.test(d)) ? `\n${r.data.diagnostics.join('\n')}` : ''}` })
       router.refresh()
     })
 
@@ -75,7 +75,7 @@ export function TeamMeetingForm({ people }: { people: { id: string; label: strin
         <Button variant="outline" onClick={importNow} disabled={importing}>
           {importing ? 'Importing…' : 'Import from my Google Calendar'}
         </Button>
-        {msg ? <span className={`text-sm ${msg.ok ? 'text-success' : 'text-destructive'}`}>{msg.text}</span> : null}
+        {msg ? <span className={`whitespace-pre-line text-sm ${msg.ok ? 'text-success' : 'text-destructive'}`}>{msg.text}</span> : null}
       </div>
     </div>
   )

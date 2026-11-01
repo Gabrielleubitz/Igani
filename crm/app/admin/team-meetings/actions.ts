@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { toActionError, type ActionResult } from '@/app/actions/result'
 import { requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { createTeamMeeting, importTeamMeetings } from '@/lib/team-meetings'
+import { createTeamMeeting, importTeamMeetings, type ImportResult } from '@/lib/team-meetings'
 
 const schema = z.object({
   title: z.string().trim().min(1).max(200),
@@ -32,7 +32,7 @@ export async function bookTeamMeeting(input: z.input<typeof schema>): Promise<Ac
 }
 
 /** Admin only: pull team calls from the admin's Google Calendar (last 14 days) and fetch their Gemini notes. */
-export async function importTeamMeetingsAction(): Promise<ActionResult<{ found: number; imported: number; withNotes: number }>> {
+export async function importTeamMeetingsAction(): Promise<ActionResult<ImportResult>> {
   try {
     const admin = await requireUser(['ADMIN'])
     const r = await importTeamMeetings(admin.id)

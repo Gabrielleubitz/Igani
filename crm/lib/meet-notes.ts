@@ -194,3 +194,16 @@ export function teamEventAttendees(
   if (others.length === 0) return null
   return [host, ...new Set(others)]
 }
+
+/** Why `teamEventAttendees` rejects an event (null when it is accepted). Shown to the admin so "0 calls" is explainable. */
+export function teamEventSkipReason(
+  ev: Parameters<typeof teamEventAttendees>[0],
+  hostEmail: string,
+): string | null {
+  if (ev.status === 'cancelled') return 'cancelled'
+  if (ev.extendedProperties?.private?.iganiBookingId) return 'is a CRM contact booking'
+  const host = hostEmail.trim().toLowerCase()
+  if (ev.organizer?.email && ev.organizer.email.toLowerCase() !== host && !ev.organizer.self) return `organised by ${ev.organizer.email}, not you`
+  if (!teamEventAttendees(ev, hostEmail)) return 'no other guests on the event'
+  return null
+}
