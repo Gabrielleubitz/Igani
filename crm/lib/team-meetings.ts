@@ -50,6 +50,7 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
   let imported = 0
   const ids: string[] = []
   let myApi: MeetingApi | null = null
+  const foreign = new Set<string>() // bookings hosted by someone else: synced with this admin's Google
   for (const ev of events) {
     const attendees = teamEventAttendees(ev, host.email ?? '')
     const meetUrl = ev.hangoutLink ?? ev.conferenceData?.entryPoints?.find((p) => p.entryPointType === 'video')?.uri ?? null
@@ -98,6 +99,7 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
           // A reused link (recurring room): only the first booking for it is tracked here.
           if (!ids.includes(known.id) && Math.abs(known.startTime.getTime() - start.getTime()) < 3 * 3600_000) {
             ids.push(known.id)
+            if (known.hostId !== hostId) foreign.add(known.id)
             if (known.hostId !== hostId) diagnostics.push(`Meet room ${code} is an existing CRM booking hosted by someone else; pulling its notes with your Google.`)
           }
           continue
@@ -123,8 +125,7 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
   }
   let withNotes = 0
   for (const id of ids) {
-    const own = await prisma.booking.findUnique({ where: { id }, select: { hostId: true } })
-    const s = await syncMeeting(id, { now, force: true, ...(own && own.hostId !== hostId && myApi ? { api: myApi, asEmail: host.email } : {}) }).catch((err: unknown) => {
+    const s = await syncMeeting(id, { now, force: true, ...(foreign.has(id) && myApi ? { api: myApi, asEmail: host.email } : {}) }).catch((err: unknown) => {
       console.error('[team-meetings] sync failed', id, err)
       return null
     })
