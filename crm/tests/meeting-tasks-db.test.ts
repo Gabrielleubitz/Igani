@@ -71,4 +71,14 @@ d('meeting tasks', async () => {
     expect(r!.team.some((t) => t.personId === c.id)).toBe(false)
     expect(r!.followUps).toEqual([{ who: 'Other', title: 'Do the thing' }])
   })
+  it('hides old meeting tasks already given to a non-attendee (everywhere), keeps attendees', async () => {
+    const { b, c, bk } = await seed()
+    const { logActivity } = await import('@/lib/audit')
+    for (const [u, id] of [[c.id, 't-old'], [b.id, 't-ok']] as const) {
+      await logActivity({ entityType: 'USER', entityId: u, action: 'task.created', metadata: { taskId: id, title: 'Old', dueAt: null, assigneeId: u, priority: 'MEDIUM', auto: 'meeting', bookingId: bk.id, meetingTitle: 'Weekly sync' } })
+    }
+    expect(await loadMeetingTasks(c.id)).toHaveLength(0)
+    expect((await loadMeetingTasks()).map((t) => t.id)).toEqual(['t-ok'])
+    expect(await loadMeetingTasks(b.id)).toHaveLength(1)
+  })
 })

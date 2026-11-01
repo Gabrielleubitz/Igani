@@ -122,13 +122,36 @@ export interface MeetingTask extends CrmTask {
   meetingTitle: string | null
 }
 
+/**
+ * Hides meeting tasks given to people who were not in that meeting (host or invited attendee),
+ * including ones created before attendee-only assignment. Drops every event of such a task.
+ */
+async function dropNonAttendeeTasks<T extends { entityId: string; action: string; metadata: unknown }>(logs: T[]): Promise<T[]> {
+  const created = logs.filter((l) => l.action === 'task.created').map((l) => ({ l, m: l.metadata as { taskId?: string; auto?: string; bookingId?: string } | null })).filter((x) => x.m?.auto === 'meeting' && x.m.bookingId && x.m.taskId)
+  if (!created.length) return logs
+  const bookings = await prisma.booking.findMany({ where: { id: { in: [...new Set(created.map((x) => x.m!.bookingId!))] } }, select: { id: true, hostId: true, attendees: true } })
+  const emails = new Set<string>()
+  for (const b of bookings) for (const e of Array.isArray(b.attendees) ? b.attendees : []) if (typeof e === 'string') emails.add(e.toLowerCase())
+  const users = emails.size ? await prisma.user.findMany({ where: { email: { in: [...emails], mode: 'insensitive' } }, select: { id: true, email: true } }) : []
+  const idByEmail = new Map(users.map((u) => [(u.email ?? '').toLowerCase(), u.id]))
+  const allowed = new Map(bookings.map((b) => [b.id, new Set([b.hostId, ...(Array.isArray(b.attendees) ? b.attendees : []).filter((e): e is string => typeof e === 'string').map((e) => idByEmail.get(e.toLowerCase())).filter((x): x is string => !!x)])]))
+  const hidden = new Set<string>()
+  for (const { l, m } of created) {
+    const ok = allowed.get(m!.bookingId!)
+    if (ok && !ok.has(l.entityId)) hidden.add(m!.taskId!)
+  }
+  if (!hidden.size) return logs
+  return logs.filter((l) => !hidden.has((l.metadata as { taskId?: string } | null)?.taskId ?? ''))
+}
+
 /** All meeting tasks (optionally one person's). */
 export async function loadMeetingTasks(userId?: string): Promise<MeetingTask[]> {
-  const logs = await prisma.activityLog.findMany({
+  const allLogs = await prisma.activityLog.findMany({
     where: { entityType: 'USER', action: { in: [...TASK_ACTIONS] }, ...(userId ? { entityId: userId } : {}) },
     select: { entityId: true, action: true, createdAt: true, metadata: true },
     orderBy: { createdAt: 'asc' },
   })
+  const logs = await dropNonAttendeeTasks(allLogs)
   const titles = new Map<string, string | null>()
   for (const l of logs) {
     const m = l.metadata as { taskId?: string; meetingTitle?: string } | null
