@@ -10,6 +10,8 @@ import { requireUser } from '@/lib/auth'
 import { formatDateTime, leadName } from '@/lib/format'
 import { endOfLocalDay } from '@/lib/time'
 import { prisma } from '@/lib/prisma'
+import { MeetingTaskRow } from '@/components/crm/MeetingTaskRow'
+import { loadMeetingTasks } from '@/lib/meeting-tasks'
 import { tasksForUser } from '@/lib/tasks'
 
 export const metadata = { title: 'Tasks' }
@@ -25,7 +27,10 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
     prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } }),
     prisma.user.findMany({ where: { role: { not: null }, ...(user.role === 'ADMIN' ? {} : { OR: [{ id: user.id }, { role: 'ADMIN' }] }) }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
   ])
+  const meetingTasks = (await loadMeetingTasks(scope === 'all' ? undefined : user.id)).filter((t) => t.done === showDone && (scope === 'all' ? user.role === 'ADMIN' : true) && (!priority || t.priority === priority))
+  const ownerName = new Map<string, string>()
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
+  for (const p of people) ownerName.set(p.id, p.name ?? p.email ?? 'Teammate')
   const teammates = people.map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))
   const filtered = (scope === 'all' ? all : mine)
     .filter((t) => t.done === showDone && (!priority || t.priority === priority))
@@ -88,7 +93,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
         </form>
       </div>
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && meetingTasks.length === 0 ? (
         <EmptyState
           title={showDone ? 'No completed tasks yet' : 'You are all caught up 🎉'}
           description={showDone ? 'Completed tasks show up here.' : 'No open tasks match. Open a contact to add a follow-up.'}
@@ -98,6 +103,20 @@ export default async function TasksPage({ searchParams }: { searchParams: Record
             </Link>
           }
         />
+      ) : null}
+      {meetingTasks.length ? (
+        <Card>
+          <CardHeader className="pb-1">
+            <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+              From meetings <span className="tabular-nums">({meetingTasks.length})</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y">
+            {meetingTasks.map((t) => (
+              <MeetingTaskRow key={t.id} ownerId={t.leadId} taskId={t.id} title={t.title} meeting={t.meetingTitle} done={t.done} meta={scope === 'all' ? (t.leadId === user.id ? 'You' : ownerName.get(t.leadId) ?? 'Teammate') : undefined} />
+            ))}
+          </CardContent>
+        </Card>
       ) : null}
       {groups
         .filter(([, list]) => list.length)

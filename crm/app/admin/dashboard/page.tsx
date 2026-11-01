@@ -3,7 +3,10 @@ import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { formatMoney, leadName, timeAgo } from '@/lib/format'
+import { MeetingTaskRow } from '@/components/crm/MeetingTaskRow'
+import { loadMeetingTasks } from '@/lib/meeting-tasks'
 import { prisma } from '@/lib/prisma'
+import { taskOwner, tasksForUser } from '@/lib/tasks'
 import { getSetting } from '@/lib/settings'
 
 export const metadata = { title: 'Overview' }
@@ -38,6 +41,20 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     }),
   ])
   const closed = won + lost
+  const [{ all: leadTasks, leads: taskLeads }, meetingTasks] = await Promise.all([tasksForUser({ id: '', role: 'ADMIN' }), loadMeetingTasks()])
+  const byPerson = new Map<string, { lead: number; overdue: number; meeting: typeof meetingTasks }>()
+  const slot = (id: string): { lead: number; overdue: number; meeting: typeof meetingTasks } => byPerson.get(id) ?? byPerson.set(id, { lead: 0, overdue: 0, meeting: [] }).get(id)!
+  for (const t of leadTasks.filter((x) => !x.done)) {
+    const o = taskOwner(t, taskLeads.get(t.leadId)?.assignedToId) ?? 'none'
+    const e = slot(o)
+    e.lead++
+    if (t.dueAt && t.dueAt < now) e.overdue++
+  }
+  for (const t of meetingTasks.filter((x) => !x.done)) slot(t.assigneeId ?? 'none').meeting.push(t)
+  const nameById = new Map(reps.map((r) => [r.id, r.name ?? r.email ?? 'Teammate']))
+  const openTasks = [...byPerson.entries()]
+    .map(([id, v]) => ({ id, name: id === 'none' ? 'Unassigned' : (nameById.get(id) ?? 'Former teammate'), ...v, total: v.lead + v.meeting.length }))
+    .sort((a, b) => b.total - a.total)
   const tiles: { label: string; value: string | number; href: string; hint?: string; tone?: string }[] = [
     { label: 'Leads', value: total, href: '/sales/leads' },
     { label: 'New this week', value: newWeek, href: '/sales/leads' },
@@ -70,6 +87,38 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           </Link>
         ))}
       </div>
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Open tasks by teammate</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {openTasks.length === 0 ? <p className="text-sm text-muted-foreground">Nobody has open tasks.</p> : null}
+          <div className="divide-y">
+            {openTasks.map((p) => (
+              <details key={p.id} className="py-2 text-sm">
+                <summary className="flex cursor-pointer items-center justify-between gap-3">
+                  <span className="font-medium">{p.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    <span className="tabular-nums text-foreground">{p.total}</span> open{p.overdue ? <span className="text-red-400"> · {p.overdue} overdue</span> : null}
+                    {p.lead ? ` · ${p.lead} on contacts` : ''}
+                    {p.meeting.length ? ` · ${p.meeting.length} from meetings` : ''}
+                  </span>
+                </summary>
+                <div className="mt-1 divide-y pl-2">
+                  {p.meeting.map((t) => (
+                    <MeetingTaskRow key={t.id} ownerId={p.id} taskId={t.id} title={t.title} meeting={t.meetingTitle} done={false} />
+                  ))}
+                  {p.lead ? (
+                    <Link href="/sales/tasks?scope=all" className="block py-2 text-xs text-primary hover:underline">
+                      See the {p.lead} contact task{p.lead === 1 ? '' : 's'} →
+                    </Link>
+                  ) : null}
+                </div>
+              </details>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
       <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card>
           <CardHeader className="pb-3">

@@ -50,6 +50,16 @@ const TEMPLATES: Template[] = [
   },
 ]
 
+/** Hebrew starter templates (same ids as English). */
+const TEMPLATES_HE: Record<string, Pick<Template, 'subject' | 'body'>> = {
+  blank: { subject: '', body: 'שלום {first},\n\n' },
+  intro: { subject: 'תודה שפנית ל-Igani', body: 'שלום {first},\n\nתודה שיצרת קשר עם Igani! אשמח להכיר את {company} ולשמוע מה אתם מחפשים לבנות.\n\nמתאים לך שיחה קצרה של 20 דקות השבוע? אפשר לבחור זמן נוח, או להשיב עם כמה אפשרויות.\n\nמדברים בקרוב,\n{me}' },
+  'follow-up': { subject: 'מעקב', body: 'שלום {first},\n\nרציתי לוודא שההודעה הקודמת לא נטמנה. האם עדיין רלוונטי להתקדם? אשמח לענות על שאלות או לקבוע שיחה קצרה.\n\nבברכה,\n{me}' },
+  proposal: { subject: 'ההצעה שלך מ-Igani', body: 'שלום {first},\n\nכפי שהבטחתי, מצורפת ההצעה עבור {company}. היא כוללת היקף, לוחות זמנים ותמחור.\n\nאשמח לעבור עליה יחד, בכל זמן שנוח לך.\n\nבברכה,\n{me}' },
+  thanks: { subject: 'היה נעים לדבר איתך', body: 'שלום {first},\n\nתודה שהקדשת מזמנך לשיחה. כפי שסיכמנו, הצעדים הבאים הם:\n\n• \n• \n\nאהיה בקשר בקרוב. בינתיים אפשר להשיב להודעה זו עם כל שאלה.\n\nבברכה,\n{me}' },
+  won: { subject: 'ברוכים הבאים ל-Igani 🎉', body: 'שלום {first},\n\nאנחנו שמחים מאוד לעבוד עם {company}! בימים הקרובים נעדכן אתכם לגבי תחילת העבודה והאבני דרך הראשונות.\n\nאם משהו עולה בינתיים, פשוט השיבו להודעה זו.\n\nברוכים הבאים,\n{me}' },
+}
+
 export function EmailComposer({
   leadId,
   email,
@@ -76,10 +86,15 @@ export function EmailComposer({
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
   const [withBooking, setWithBooking] = useState(false)
+  const [lang, setLang] = useState<'en' | 'he'>('en')
+  const [tpl, setTpl] = useState('blank')
+  const he = lang === 'he'
 
   const fill = (s: string): string => s.replaceAll('{first}', firstName || 'there').replaceAll('{company}', company || 'your team').replaceAll('{me}', senderName.split(' ')[0] ?? senderName)
-  const apply = (id: string): void => {
-    const t = TEMPLATES.find((x) => x.id === id) ?? TEMPLATES[0]!
+  const apply = (id: string, l: 'en' | 'he' = lang): void => {
+    setTpl(id)
+    const base = TEMPLATES.find((x) => x.id === id) ?? TEMPLATES[0]!
+    const t = l === 'he' ? { ...base, ...(TEMPLATES_HE[base.id] ?? {}) } : base
     if (reply && id === 'blank') {
       setSubject(/^re:/i.test(reply.subject) ? reply.subject : `Re: ${reply.subject}`)
       setBody(fill(t.body))
@@ -98,7 +113,8 @@ export function EmailComposer({
         variant={reply ? 'outline' : 'default'}
         className={reply ? 'h-7 px-2 text-xs' : undefined}
         onClick={() => {
-          apply('blank')
+          setLang('en')
+          apply('blank', 'en')
           setError(null)
           setSent(null)
           setOpen(true)
@@ -113,7 +129,7 @@ export function EmailComposer({
           onSubmit={(e) => {
             e.preventDefault()
             start(async () => {
-              const res = await emailContact(leadId, { subject, body, cta: withBooking && bookingUrl ? { label: 'Pick a time to talk', href: bookingUrl } : undefined, replyToId: reply?.id })
+              const res = await emailContact(leadId, { subject, body, cta: withBooking && bookingUrl ? { label: he ? 'בחר/י זמן לשיחה' : 'Pick a time to talk', href: bookingUrl } : undefined, lang, replyToId: reply?.id })
               if (res.ok) {
                 setOpen(false)
                 setSent(`Email sent to ${email}.`)
@@ -122,9 +138,27 @@ export function EmailComposer({
             })
           }}
         >
+          <div className="flex items-center gap-2" role="group" aria-label="Email language">
+            <span className="text-sm font-medium">Email language</span>
+            {(['en', 'he'] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                aria-pressed={lang === l}
+                onClick={() => {
+                  setLang(l)
+                  if (!reply) apply(tpl, l)
+                }}
+                className={`rounded-full border px-3 py-1 text-sm ${lang === l ? 'border-primary/50 bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}
+              >
+                {l === 'en' ? 'English' : 'עברית'}
+              </button>
+            ))}
+            <span className="text-xs text-muted-foreground">{he ? 'Sent right-to-left in Hebrew' : ''}</span>
+          </div>
           <div className="space-y-1">
             <Label htmlFor="tpl">Start from</Label>
-            <Select id="tpl" defaultValue="blank" onChange={(e) => apply(e.target.value)}>
+            <Select id="tpl" value={tpl} onChange={(e) => apply(e.target.value)}>
               {TEMPLATES.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.label}
@@ -134,11 +168,11 @@ export function EmailComposer({
           </div>
           <div className="space-y-1">
             <Label htmlFor="subj">Subject</Label>
-            <Input id="subj" required maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <Input id="subj" dir={he ? 'rtl' : 'ltr'} required maxLength={200} value={subject} onChange={(e) => setSubject(e.target.value)} />
           </div>
           <div className="space-y-1">
             <Label htmlFor="body">Message</Label>
-            <Textarea id="body" required rows={10} maxLength={10000} value={body} onChange={(e) => setBody(e.target.value)} />
+            <Textarea id="body" dir={he ? 'rtl' : 'ltr'} required rows={10} maxLength={10000} value={body} onChange={(e) => setBody(e.target.value)} />
           </div>
           {bookingUrl ? (
             <label className="flex items-center gap-2 text-sm">
