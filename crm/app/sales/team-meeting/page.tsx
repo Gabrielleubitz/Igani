@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { TeamMeetingsPanel } from '@/components/crm/TeamMeetingsPanel'
 import { ConnectGoogleButton, UnverifiedAppHint } from '@/components/ConnectGoogle'
 import { PageIntro } from '@/components/PageIntro'
 import { TeamMeetingForm } from '@/components/TeamMeetingForm'
@@ -21,13 +21,7 @@ export default async function TeamMeetingPage(): Promise<React.ReactElement> {
   return (
     <div className="space-y-5">
       <PageIntro title="Book meeting with team" hint={user.role === 'ADMIN' ? 'An internal call with teammates. Choose who and when; they get the Google Meet link by email straight away, with nothing to approve.' : 'Ask an admin for a call. Choose who and when; the time is held and they approve it before the Google Meet is created.'} />
-      {user.role === 'ADMIN' ? (
-        <p className="text-sm text-muted-foreground">
-          See held, live and upcoming team calls with their Gemini notes in{' '}
-          <Link href="/admin/team-meetings" className="font-medium text-primary underline-offset-4 hover:underline">Team meetings</Link> (admins only).
-        </p>
-      ) : null}
-      {!googleConnected ? (
+      {user.role !== 'ADMIN' && !googleConnected ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
           <span>
             Connect Google so the call gets a Meet link and your calendar is checked for clashes.
@@ -45,6 +39,7 @@ export default async function TeamMeetingPage(): Promise<React.ReactElement> {
           </CardContent>
         </Card>
       )}
+      {user.role === 'ADMIN' ? <TeamMeetingsPanel adminId={user.id} /> : null}
     </div>
   )
 }

@@ -18,7 +18,6 @@ import {
   TrendingUp,
   UserCog,
   Users,
-  Video,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -39,7 +38,6 @@ const ICONS: Record<string, LucideIcon> = {
   marketing: Megaphone,
   overview: LayoutDashboard,
   bookings: CalendarCheck,
-  teamMeetings: Video,
   pages: LinkIcon,
   team: UserCog,
   performance: TrendingUp,
