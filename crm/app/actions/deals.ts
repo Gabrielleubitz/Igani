@@ -163,3 +163,22 @@ export async function saveSalespersonTerms(userId: string, terms: CommissionTerm
     return toActionError(err)
   }
 }
+
+/** ADMIN: remove an agreement from a salesperson's documents. */
+export async function deleteAgreement(agreementId: string): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const id = z.string().cuid().parse(agreementId)
+    const a = await prisma.agreement.findUnique({ where: { id }, select: { userId: true, title: true } })
+    if (!a) throw new BookingError('Agreement not found.', 'NOT_FOUND')
+    await prisma.$transaction(async (tx) => {
+      await tx.agreement.delete({ where: { id } })
+      await logActivity({ entityType: 'USER', entityId: a.userId, action: 'agreement.deleted', actorId: admin.id, metadata: { agreementId: id, title: a.title } }, tx)
+    })
+    revalidatePath(`/admin/team/${a.userId}`)
+    revalidatePath('/sales/documents')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}

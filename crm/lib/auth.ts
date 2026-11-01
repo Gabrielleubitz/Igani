@@ -158,6 +158,16 @@ export async function requireUser(roles?: readonly Role[]): Promise<SessionUser>
   return { id: dbUser.id, email: dbUser.email, name: dbUser.name, role }
 }
 
+/** Like requireUser, but for API routes: returns null instead of redirecting. The role is re-read from the database. */
+export async function currentUserOrNull(): Promise<SessionUser | null> {
+  const session = await getServerSession(authOptions())
+  if (!session?.user?.id) return null
+  const dbUser = await prisma.user.findUnique({ where: { id: session.user.id } })
+  const role = await activeRoleFor(dbUser?.email)
+  if (!dbUser?.email || !role) return null
+  return { id: dbUser.id, email: dbUser.email, name: dbUser.name, role }
+}
+
 export async function getOptionalUser(): Promise<SessionUser | null> {
   const session = await getServerSession(authOptions())
   if (!session?.user?.id || !session.user.email) return null

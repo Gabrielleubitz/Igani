@@ -101,6 +101,7 @@ model User {
   bookingPages    BookingPage[]
   calendarEntries CalendarEntry[]
   activityLogs    ActivityLog[]
+  agreements      Agreement[]
   leadNotes       LeadNote[]
   mailboxEmails   EmailMessage[]
   mailboxSync     MailboxSync?
@@ -275,6 +276,26 @@ model Booking {
   @@index([hostId, status, startTime])
   @@index([leadId])
   @@index([status, createdAt])
+}
+
+// ─── Agreements ──────────────────────────────────────────────────────────────
+
+/// A document (contract, commission terms…) an admin uploaded for one salesperson. The salesperson can read their own.
+model Agreement {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  fileName     String
+  mimeType     String
+  size         Int
+  /// The file itself. Always select columns explicitly in lists: this can be several MB.
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 // ─── Audit ───────────────────────────────────────────────────────────────────

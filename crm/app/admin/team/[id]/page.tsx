@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { AgreementsPanel } from '@/components/admin/AgreementsPanel'
 import { CommissionTermsForm } from '@/components/admin/CommissionTermsForm'
 import { TeamMemberForm } from '@/components/admin/TeamMemberForm'
 import { PageIntro } from '@/components/PageIntro'
@@ -22,6 +23,8 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
   const user = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, name: true, email: true, role: true, timeZone: true, createdAt: true } })
   if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) notFound()
   const now = new Date()
+  // Never select the file bytes in a list.
+  const agreements = await prisma.agreement.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true } })
   const [stats, tasks, leads, meetings] = await Promise.all([
     loadRepStats(me).then((all) => all.find((r) => r.id === user.id) ?? null),
     tasksForUser(me),
@@ -138,6 +141,14 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
           </CardContent>
         </Card>
       ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>Agreements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AgreementsPanel userId={user.id} name={display} agreements={agreements.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() }))} />
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader>
           <CardTitle>Personal details</CardTitle>
