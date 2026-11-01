@@ -108,18 +108,22 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
         <Tile label="Win rate (all time)" value={r.winRate === null ? '—' : `${Math.round(r.winRate * 100)}%`} />
       </div>
 
+      {user.role !== 'ADMIN' ? (
+        // A salesperson's own commission: total, what has been paid, and what is still to come, each in its own box.
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Tile label="My commission (total)" value={formatIls(commission.total)} sub={`${commissionRows.length} won deal${commissionRows.length === 1 ? '' : 's'}`} />
+          <Tile label="Paid" value={formatIls(commission.paid)} sub="Already paid to you" />
+          <Tile label="Pending" value={formatIls(commission.total - commission.paid)} sub="Still to come" />
+        </div>
+      ) : null}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {user.role === 'ADMIN' ? (
           <>
             <Tile label="Pipeline value" value={`₪${formatMoney(totalPipeline)}`} sub={`Quoted price added (30d): ₪${formatMoney(cur.added)} · ${delta(cur.added, prev.added)}`} />
             <Tile label="Revenue, won deals (30d)" value={`₪${formatMoney(cur.won)}`} sub={delta(cur.won, prev.won)} />
           </>
-        ) : (
-          <>
-            <Tile label="My commission (total)" value={formatIls(commission.total)} sub={`${commissionRows.length} won deal${commissionRows.length === 1 ? '' : 's'}`} />
-            <Tile label="Paid / pending" value={`${formatIls(commission.paid)} / ${formatIls(commission.total - commission.paid)}`} sub="Paid so far / still to come" />
-          </>
-        )}
+        ) : null}
         <Tile label="Win rate (closed in 30d)" value={cur.winRate === null ? '—' : `${cur.winRate}%`} sub={`${deltaPts(cur.winRate, prev.winRate)} · won ÷ (won + lost)`} />
         <Tile label="Meetings kept (30d)" value={cur.kept === null ? '—' : `${cur.kept}%`} sub={`${deltaPts(cur.kept, prev.kept)} · past meetings not cancelled`} />
       </div>
