@@ -45,7 +45,7 @@ vi.mock('@/lib/email', () => ({
 const d = testDb ? describe : describe.skip
 
 d('booking confirmation flow', async () => {
-  const { cancelBooking, createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
+  const { cancelBooking, createPendingBooking, confirmBooking, assertSlotOffered, allowedTeammates, findTimeConflict, findParticipantConflicts, teamMeetingIds, bookingScope, doneBookingIds, deleteBooking, BookingError } = await import('@/lib/bookings')
   const { getAvailableSlots } = await import('@/lib/calendar')
   const prisma = new PrismaClient()
   let hostId = ''
@@ -130,6 +130,17 @@ d('booking confirmation flow', async () => {
     expect(await ids({ id: hostId, role: 'SALES' })).toEqual([booking.id])
     expect(await ids({ id: ada.id, role: 'ADMIN' })).toEqual([booking.id])
     expect(await ids({ id: other.id, role: 'SALES' })).toEqual([])
+  })
+
+  it('names each added teammate who is not free', async () => {
+    const a = await prisma.user.create({ data: { email: 'a@igani.co', name: 'Avi', role: 'SALES' } })
+    const b = await prisma.user.create({ data: { email: 'b@igani.co', name: 'Bea', role: 'SALES' } })
+    const start = new Date('2030-01-07T08:00:00Z')
+    expect(await findParticipantConflicts([a.id, b.id], start, 30)).toBeNull()
+    await createPendingBooking({ hostId: a.id, source: 'SALES_INVITE', start, durationMinutes: 30, title: 'X', guestName: 'G', guestEmail: 'g@example.com' })
+    expect(await findParticipantConflicts([a.id, b.id], start, 30)).toBe('Avi is not free at this time.')
+    await createPendingBooking({ hostId: b.id, source: 'SALES_INVITE', start, durationMinutes: 30, title: 'Y', guestName: 'H', guestEmail: 'h@example.com' })
+    expect(await findParticipantConflicts([a.id, b.id], start, 30)).toBe('Avi and Bea are not free at this time.')
   })
 
   it('marks a meeting done (and undone), and deletes one for good', async () => {

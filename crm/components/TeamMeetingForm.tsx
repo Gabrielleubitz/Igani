@@ -26,7 +26,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
     setChecking(true)
     let stale = false
     const t = setTimeout(async () => {
-      const res = await checkInviteTime({ startTime: startIso, durationMinutes: duration })
+      const res = await checkInviteTime({ startTime: startIso, durationMinutes: duration, teammateIds: ids })
       if (stale) return
       setChecking(false)
       setNote(res.ok ? res.data.note : res.error)
@@ -35,7 +35,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
       stale = true
       clearTimeout(t)
     }
-  }, [startIso, duration])
+  }, [startIso, duration, ids])
 
   function submit(e: React.FormEvent): void {
     e.preventDefault()
@@ -85,7 +85,7 @@ export function TeamMeetingForm({ teammates, adminsOnly, defaultDuration = 30 }:
             </Select>
           </div>
         </div>
-        {note ? <p className="text-xs text-amber-300">{note}</p> : startIso && !checking ? <p className="text-xs text-muted-foreground">✓ You are free at this time.</p> : null}
+        {note ? <p className="text-xs text-amber-300">{note}</p> : startIso && !checking ? <p className="text-xs text-muted-foreground">✓ You and everyone you added are free at this time.</p> : null}
         <Button type="submit" className="w-full" disabled={sending || !startIso || checking || Boolean(note) || ids.length === 0}>
           {sending ? (adminsOnly ? 'Sending…' : 'Booking…') : ids.length === 0 ? 'Select a teammate to continue' : startIso ? (adminsOnly ? 'Request team meeting' : 'Book team meeting') : 'Choose a time to continue'}
         </Button>
