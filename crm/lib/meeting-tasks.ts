@@ -77,12 +77,18 @@ export interface MeetingActionItems {
   followUps: FollowUp[]
 }
 
+/** Team members who were in the call (invited attendees + host). Only they get its tasks. */
+async function meetingAttendees(b: { hostId: string; attendees: unknown }): Promise<Person[]> {
+  const emails = (Array.isArray(b.attendees) ? b.attendees : []).filter((e): e is string => typeof e === 'string').map((e) => e.toLowerCase())
+  return prisma.user.findMany({ where: { role: { not: null }, OR: [{ email: { in: emails, mode: 'insensitive' } }, { id: b.hostId }] }, select: { id: true, name: true, email: true } })
+}
+
 /** Fetches a call's action items grouped per team member, plus follow-ups for people who aren't on the team. */
 export async function getMeetingActionItems(bookingId: string): Promise<MeetingActionItems | null> {
   const b = await prisma.booking.findUnique({ where: { id: bookingId }, include: { meeting: true } })
   if (!b?.meeting) return null
   const notes = organizedFor(b.meeting).notes
-  const people = await prisma.user.findMany({ where: { role: { not: null } }, select: { id: true, name: true, email: true } })
+  const people = await meetingAttendees(b)
   const { tasks, followUps } = classifyActions(notes?.actions ?? [], people, b.hostId)
   const done = new Map<string, boolean>()
   for (const t of await loadMeetingTasks()) done.set(`${t.assigneeId}|${t.title}`, t.done)
@@ -104,10 +110,8 @@ export async function createMeetingTasks(bookingId: string): Promise<number> {
   if (dup) return 0
   const notes = organizedFor(b.meeting).notes
   if (!notes?.actions.length) return 0
-  const emails = (Array.isArray(b.attendees) ? b.attendees : []).filter((e): e is string => typeof e === 'string').map((e) => e.toLowerCase())
-  const people = await prisma.user.findMany({ where: { role: { not: null }, OR: [{ email: { in: emails, mode: 'insensitive' } }, { id: b.hostId }] }, select: { id: true, name: true, email: true } })
-  const everyone = await prisma.user.findMany({ where: { role: { not: null } }, select: { id: true, name: true, email: true } })
-  const plan = planMeetingTasks(notes.actions, everyone.length ? everyone : people.length ? people : [b.host], b.hostId)
+  const people = await meetingAttendees(b)
+  const plan = planMeetingTasks(notes.actions, people.length ? people : [b.host], b.hostId)
   for (const t of plan) {
     await logActivity({ entityType: 'USER', entityId: t.assigneeId, action: 'task.created', metadata: { taskId: randomUUID(), title: t.title, dueAt: null, assigneeId: t.assigneeId, priority: 'MEDIUM', auto: 'meeting', bookingId, meetingTitle: b.title } })
   }

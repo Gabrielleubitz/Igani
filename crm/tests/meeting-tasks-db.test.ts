@@ -61,4 +61,14 @@ d('meeting tasks', async () => {
     expect(r!.team.map((t) => [t.personId, t.items.map((i) => i.title)]).sort()).toEqual([[a.id, ['Review the deck']], [b.id, ['Send the proposal']]].sort())
     expect(r!.followUps).toEqual([{ who: 'Sarah', title: 'Sign the contract' }])
   })
+
+  it('a teammate who was not in the meeting gets no task and sees nothing of it', async () => {
+    const { c, bk } = await seed()
+    await prisma.meetingSession.update({ where: { bookingId: bk.id }, data: { fullText: 'Next steps\n- Other: do the thing\n- Review the deck\n' } })
+    await createMeetingTasks(bk.id)
+    expect(await loadMeetingTasks(c.id)).toHaveLength(0)
+    const r = await getMeetingActionItems(bk.id)
+    expect(r!.team.some((t) => t.personId === c.id)).toBe(false)
+    expect(r!.followUps).toEqual([{ who: 'Other', title: 'Do the thing' }])
+  })
 })
