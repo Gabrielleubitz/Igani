@@ -38,7 +38,6 @@ export function TeamInvite({ role, inviterName, loginUrl, logoUrl, brandName = '
         title="Getting started"
         steps={[
           { title: 'Sign in with Google', body: 'One click, no new password to remember.' },
-          ...(role === 'MARKETING' ? [] : [{ title: 'Set your working hours', body: 'So people can book meetings with you.' }]),
           { title: 'Open Today', body: 'Your daily list of tasks, meetings and leads to follow up.' },
         ]}
       />
