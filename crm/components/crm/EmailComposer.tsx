@@ -91,19 +91,32 @@ export function EmailComposer({
   const he = lang === 'he'
 
   const fill = (s: string): string => s.replaceAll('{first}', firstName || 'there').replaceAll('{company}', company || 'your team').replaceAll('{me}', senderName.split(' ')[0] ?? senderName)
-  const apply = (id: string, l: 'en' | 'he' = lang): void => {
-    setTpl(id)
+  const build = (id: string, l: 'en' | 'he'): { subject: string; body: string; withBooking: boolean } => {
     const base = TEMPLATES.find((x) => x.id === id) ?? TEMPLATES[0]!
     const t = l === 'he' ? { ...base, ...(TEMPLATES_HE[base.id] ?? {}) } : base
     if (reply && id === 'blank') {
-      setSubject(/^re:/i.test(reply.subject) ? reply.subject : `Re: ${reply.subject}`)
-      setBody(fill(t.body))
-      setWithBooking(false)
-      return
+      return { subject: /^re:/i.test(reply.subject) ? reply.subject : `Re: ${reply.subject}`, body: fill(t.body), withBooking: false }
     }
-    setSubject(fill(t.subject))
-    setBody(fill(t.body))
-    setWithBooking(Boolean(bookingUrl) && (id === 'intro' || id === 'follow-up'))
+    return { subject: fill(t.subject), body: fill(t.body), withBooking: Boolean(bookingUrl) && (id === 'intro' || id === 'follow-up') }
+  }
+  const apply = (id: string, l: 'en' | 'he' = lang): void => {
+    setTpl(id)
+    const t = build(id, l)
+    setSubject(t.subject)
+    setBody(t.body)
+    setWithBooking(t.withBooking)
+  }
+  /** Switch language; swap the template text only if the user has not edited it, never overwrite typed text. */
+  const switchLang = (l: 'en' | 'he'): void => {
+    if (l === lang) return
+    const old = build(tpl, lang)
+    const untouched = subject === old.subject && body === old.body
+    setLang(l)
+    if (untouched) {
+      const t = build(tpl, l)
+      setSubject(t.subject)
+      setBody(t.body)
+    }
   }
 
   return (
@@ -145,10 +158,7 @@ export function EmailComposer({
                 key={l}
                 type="button"
                 aria-pressed={lang === l}
-                onClick={() => {
-                  setLang(l)
-                  if (!reply) apply(tpl, l)
-                }}
+                onClick={() => switchLang(l)}
                 className={`rounded-full border px-3 py-1 text-sm ${lang === l ? 'border-primary/50 bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}
               >
                 {l === 'en' ? 'English' : 'עברית'}
