@@ -211,11 +211,11 @@ async function trackTimes(b: BookingRow, s: MeetingSession, api: MeetingApi, now
 }
 
 /** Step 2: find the Gemini notes Doc and pull its text in. */
-async function trackNotes(b: BookingRow, s: MeetingSession, api: MeetingApi, now: Date, force: boolean): Promise<void> {
+async function trackNotes(b: BookingRow, s: MeetingSession, api: MeetingApi, now: Date, force: boolean, notesEmail?: string | null): Promise<void> {
   // Notes exist only after the call ends. Without Meet access we fall back to the scheduled end.
   const endedAt = s.status === 'ENDED' ? s.actualEnd : s.status !== 'NOT_HELD' && !api.can.meet && now > b.endTime ? b.endTime : null
   if (!endedAt) return
-  if (!hostHasGeminiNotes(b.host.email)) {
+  if (!hostHasGeminiNotes(notesEmail ?? b.host.email)) {
     if (s.notesStatus !== 'NOT_AVAILABLE') await prisma.meetingSession.update({ where: { id: s.id }, data: { notesStatus: 'NOT_AVAILABLE', nextCheckAt: null } })
     return
   }
@@ -286,7 +286,7 @@ async function trackNotes(b: BookingRow, s: MeetingSession, api: MeetingApi, now
 }
 
 /** Check one CRM-scheduled Meet call: record start/end, then pull the Gemini notes once they exist. */
-export async function syncMeeting(bookingId: string, opts: { api?: MeetingApi; now?: Date; force?: boolean } = {}): Promise<MeetingSession | null> {
+export async function syncMeeting(bookingId: string, opts: { api?: MeetingApi; now?: Date; force?: boolean; /** Sync with another teammate's Google (they hold the notes), and use their email for the Gemini check. */ asEmail?: string | null } = {}): Promise<MeetingSession | null> {
   const now = opts.now ?? new Date()
   const b = await prisma.booking.findUnique({ where: { id: bookingId }, include: { host: { select: { email: true } }, meeting: true } })
   const code = meetingCodeFromUrl(b?.meetUrl)
@@ -299,7 +299,7 @@ export async function syncMeeting(bookingId: string, opts: { api?: MeetingApi; n
   } catch (err) {
     await prisma.meetingSession.update({ where: { id: s.id }, data: { lastCheckedAt: now, lastError: `meet: ${errText(err)}` } })
   }
-  await trackNotes(b, s, api, now, opts.force ?? false)
+  await trackNotes(b, s, api, now, opts.force ?? false, opts.asEmail)
   return prisma.meetingSession.findUnique({ where: { bookingId } })
 }
 

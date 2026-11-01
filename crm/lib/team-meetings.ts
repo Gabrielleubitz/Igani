@@ -49,6 +49,7 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
   let found = 0
   let imported = 0
   const ids: string[] = []
+  let myApi: MeetingApi | null = null
   for (const ev of events) {
     const attendees = teamEventAttendees(ev, host.email ?? '')
     const meetUrl = ev.hangoutLink ?? ev.conferenceData?.entryPoints?.find((p) => p.entryPointType === 'video')?.uri ?? null
@@ -75,6 +76,7 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
   // Calls with no Calendar event (instant meetings, "New meeting" in Meet) or no guests on the event: ask Meet directly.
   try {
     const api = opts.api ?? (await googleMeetingApi(hostId))
+    myApi = api
     if (!api.can.meet) diagnostics.push('Meet access is missing: reconnect Google (Connect Google) and accept the Meet and Docs permissions, then import again.')
     else if (api.recentConferences) {
       const recs = await api.recentConferences(from)
@@ -83,7 +85,7 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
       for (const r of recs) byCode.set(r.meetingCode.toLowerCase(), [...(byCode.get(r.meetingCode.toLowerCase()) ?? []), r])
       for (const [code, group] of byCode) {
         const meetUrl = `https://meet.google.com/${code}`
-        const known = await prisma.booking.findFirst({ where: { hostId, meetUrl: { contains: code } }, select: { id: true, startTime: true } })
+        const known = await prisma.booking.findFirst({ where: { meetUrl: { contains: code }, status: 'CONFIRMED' }, orderBy: { startTime: 'desc' }, select: { id: true, startTime: true, hostId: true } })
         const sorted = [...group].sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))
         const start = new Date(sorted[0]!.startTime)
         const ends = sorted.flatMap((r) => (r.endTime ? [Date.parse(r.endTime)] : []))
@@ -94,7 +96,10 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
         const end = new Date(Math.max(...ends))
         if (known) {
           // A reused link (recurring room): only the first booking for it is tracked here.
-          if (!ids.includes(known.id) && Math.abs(known.startTime.getTime() - start.getTime()) < 3 * 3600_000) ids.push(known.id)
+          if (!ids.includes(known.id) && Math.abs(known.startTime.getTime() - start.getTime()) < 3 * 3600_000) {
+            ids.push(known.id)
+            if (known.hostId !== hostId) diagnostics.push(`Meet room ${code} is an existing CRM booking hosted by someone else; pulling its notes with your Google.`)
+          }
           continue
         }
         const people = (await api.participants(sorted[0]!.name).catch(() => [])).length
@@ -118,7 +123,8 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
   }
   let withNotes = 0
   for (const id of ids) {
-    const s = await syncMeeting(id, { now, force: true }).catch((err: unknown) => {
+    const own = await prisma.booking.findUnique({ where: { id }, select: { hostId: true } })
+    const s = await syncMeeting(id, { now, force: true, ...(own && own.hostId !== hostId && myApi ? { api: myApi, asEmail: host.email } : {}) }).catch((err: unknown) => {
       console.error('[team-meetings] sync failed', id, err)
       return null
     })
