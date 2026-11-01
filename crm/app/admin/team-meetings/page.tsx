@@ -1,8 +1,10 @@
+import { ConnectGoogleButton, UnverifiedAppHint } from '@/components/ConnectGoogle'
 import { MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
 import { TeamMeetingForm } from '@/components/crm/TeamMeetingForm'
 import { PageIntro } from '@/components/PageIntro'
 import { requireUser } from '@/lib/auth'
 import { formatDateTime } from '@/lib/format'
+import { googleGrants } from '@/lib/google'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Team meetings' }
@@ -10,7 +12,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function TeamMeetingsPage(): Promise<React.ReactElement> {
   const admin = await requireUser(['ADMIN'])
-  const [me, rows, people] = await Promise.all([
+  const [grants, me, rows, people] = await Promise.all([
+    googleGrants(admin.id),
     prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { timeZone: true } }),
     prisma.booking.findMany({ where: { source: 'TEAM_MEETING', status: { not: 'CANCELLED' } }, orderBy: { startTime: 'desc' }, take: 100, include: { host: { select: { name: true, email: true } }, meeting: true } }),
     prisma.user.findMany({ where: { id: { not: admin.id }, email: { not: null } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
@@ -38,6 +41,15 @@ export default async function TeamMeetingsPage(): Promise<React.ReactElement> {
     <div className="space-y-6">
       <MeetingSyncTrigger everyMs={120_000} />
       <PageIntro title="Team meetings" hint="Internal calls with the team, with real start and end times, who joined, and the Gemini summary. Only admins can see this page." />
+      {!(grants.connected && grants.meet && grants.docs && grants.gmail) ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2.5 text-sm">
+          <span>
+            {grants.connected ? 'Your Google is connected but is missing the Meet, Docs or Gmail permission' : 'Google is not connected yet'}. Signing in does not ask for these. Click Connect Google and tick every box, or Import and the Gemini notes cannot work.
+            <UnverifiedAppHint />
+          </span>
+          <ConnectGoogleButton callbackUrl="/admin/team-meetings" label={grants.connected ? 'Reconnect Google' : 'Connect Google'} />
+        </div>
+      ) : null}
       <TeamMeetingForm people={people.map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))} />
       {rows.length === 0 ? <p className="text-sm text-muted-foreground">No team meetings yet. Book one above, or import a recent call from your Google Calendar.</p> : null}
       <div className="space-y-3">
