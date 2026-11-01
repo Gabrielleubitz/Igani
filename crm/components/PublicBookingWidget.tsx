@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { createPublicBooking, getPublicSlots } from '@/app/actions/bookings'
 import { SlotPicker, todayIso } from '@/components/SlotPicker'
 import { Button } from '@/components/ui/button'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Input, Label, Textarea } from '@/components/ui/input'
 
 type Done = { status: 'CONFIRMED' | 'PENDING'; meetUrl: string | null }
@@ -64,7 +65,7 @@ export function PublicBookingWidget({ slug, requiresApproval }: { slug: string; 
     >
       <div className="space-y-2">
         <Label htmlFor="date">Date</Label>
-        <Input id="date" type="date" min={todayIso()} value={date} onChange={(e) => setDate(e.target.value)} />
+        <DateTimePicker id="date" mode="date" min={todayIso()} value={date} onChange={(v) => v && setDate(v)} />
       </div>
       {loading ? <p className="text-sm text-muted-foreground">Loading times…</p> : <SlotPicker slots={slots} selected={slot} onSelect={setSlot} date={date} />}
       <div className="grid gap-3 sm:grid-cols-2">

@@ -6,6 +6,7 @@ import { addNote, completeTask, createTask, deleteTask, logTouch, reopenTask, up
 import { TASK_PRIORITIES, type TaskPriority } from '@/components/crm/crm-utils'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { dateToZonedInput, localMidnight, zonedInputToDate } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -170,7 +171,7 @@ export function AddTaskForm({ leadId, teammates, currentUserId, timeZone }: { le
         ))}
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <Input aria-label="Due" type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="col-span-2 h-9" />
+        <DateTimePicker aria-label="Due" placeholder="Due date & time (optional)" value={due} onChange={setDue} className="col-span-2" clearable />
         <Select aria-label="Priority" value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="h-9">
           {TASK_PRIORITIES.map((x) => (
             <option key={x} value={x}>
@@ -297,7 +298,7 @@ export function TaskRow({ task, teammates, contact, timeZone }: { task: TaskView
           </div>
           <div className="space-y-1">
             <Label htmlFor={`d-${task.id}`}>Due ({timeZone.replaceAll('_', ' ')})</Label>
-            <Input id={`d-${task.id}`} type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
+            <DateTimePicker id={`d-${task.id}`} placeholder="No due date" value={due} onChange={setDue} clearable />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
