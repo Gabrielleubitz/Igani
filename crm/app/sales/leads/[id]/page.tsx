@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { appUrl } from '@/lib/env'
 import { formatDateTime, formatMoney, leadName, statusLabel, timeAgo } from '@/lib/format'
+import { recipientLabel } from '@/lib/email-labels'
 import { canSeeLead } from '@/lib/lead-access'
 import { dealTerms, parseTerms, commissionStatus, salespersonCommissionView, type CommissionBreakdown, type CommissionTerms } from '@/lib/commission'
 import { termsForAssignee } from '@/lib/deals'
@@ -213,7 +214,8 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
     id: e.id,
     direction: e.direction,
     fromLabel: e.fromName ? `${e.fromName}` : e.fromEmail,
-    toLabel: e.toEmails[0] === lead.email ? leadName(lead) : (e.toEmails.join(', ') || '—'),
+    // A message addressed to several clients is filed under each of them: show only THIS lead, never the other recipients.
+    toLabel: recipientLabel({ email: lead.email, name: leadName(lead) }, e),
     subject: e.subject,
     snippet: e.snippet,
     body: e.bodyText,
