@@ -2,10 +2,10 @@ import 'server-only'
 import { auth, calendar, type calendar_v3 } from '@googleapis/calendar'
 import { gmail, type gmail_v1 } from '@googleapis/gmail'
 import { env } from './env'
-import { GMAIL_READ_SCOPE } from './google-scopes'
+import { DOCS_READ_SCOPE, GMAIL_READ_SCOPE, MEET_READ_SCOPE } from './google-scopes'
 import { prisma } from './prisma'
 
-export { GMAIL_READ_SCOPE }
+export { GMAIL_READ_SCOPE, MEET_READ_SCOPE, DOCS_READ_SCOPE }
 
 export class GoogleNotConnectedError extends Error {
   constructor(hostId: string) {
@@ -29,6 +29,14 @@ async function googleAccount(userId: string) {
 export async function hasGmailAccess(userId: string): Promise<boolean> {
   const a = await googleAccount(userId)
   return Boolean(a?.refresh_token && a.scope?.split(/\s+/).includes(GMAIL_READ_SCOPE))
+}
+
+/** Which optional Google permissions the user's stored grant includes. */
+export async function googleGrants(userId: string): Promise<{ connected: boolean; gmail: boolean; meet: boolean; docs: boolean }> {
+  const a = await googleAccount(userId)
+  const scopes = new Set(a?.scope?.split(/\s+/) ?? [])
+  const connected = Boolean(a?.refresh_token)
+  return { connected, gmail: connected && scopes.has(GMAIL_READ_SCOPE), meet: connected && scopes.has(MEET_READ_SCOPE), docs: connected && scopes.has(DOCS_READ_SCOPE) }
 }
 
 /** OAuth client authenticated as the user. Refreshed tokens are written back to the Account row. */
@@ -68,4 +76,10 @@ export async function calendarForHost(hostId: string): Promise<calendar_v3.Calen
 /** Read-only Gmail client for the user (throws GmailNotConnectedError if they haven't granted it). */
 export async function gmailForUser(userId: string): Promise<gmail_v1.Gmail> {
   return gmail({ version: 'v1', auth: await oauthFor(userId, true) })
+}
+
+/** Authorised HTTP GET (JSON) as the user, for Google APIs without a bundled client (Meet REST, Docs). */
+export async function googleGetter(userId: string): Promise<<T>(url: string) => Promise<T>> {
+  const client = await oauthFor(userId, false)
+  return async <T>(url: string): Promise<T> => (await client.request<T>({ url, method: 'GET' })).data
 }

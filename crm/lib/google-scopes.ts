@@ -10,8 +10,13 @@ export const CALENDAR_SCOPES = [
 
 export const GMAIL_READ_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly'
 
-/** Asked only when someone clicks "Connect Google": identity + Calendar + read Gmail. */
-export const GOOGLE_CONNECT_SCOPES = [SIGN_IN_SCOPES, ...CALENDAR_SCOPES, GMAIL_READ_SCOPE].join(' ')
+/** Read Meet conference records (actual start/end, participants, notes/transcript docs). */
+export const MEET_READ_SCOPE = 'https://www.googleapis.com/auth/meetings.space.readonly'
+/** Read the Gemini notes Google Doc. */
+export const DOCS_READ_SCOPE = 'https://www.googleapis.com/auth/documents.readonly'
+
+/** Asked only when someone clicks "Connect Google": identity + Calendar + read Gmail + Meet + Docs. */
+export const GOOGLE_CONNECT_SCOPES = [SIGN_IN_SCOPES, ...CALENDAR_SCOPES, GMAIL_READ_SCOPE, MEET_READ_SCOPE, DOCS_READ_SCOPE].join(' ')
 
 /** True when a granted-scope string includes Calendar or Gmail access (anything beyond identity). */
 export function grantsWorkspaceAccess(scope: string | null | undefined): boolean {

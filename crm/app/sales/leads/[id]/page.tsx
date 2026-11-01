@@ -5,7 +5,8 @@ import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { EditContactForm } from '@/components/crm/EditContactForm'
 import { EmailComposer } from '@/components/crm/EmailComposer'
 import { EmailsPanel, type EmailView } from '@/components/crm/EmailsPanel'
-import { hasGmailAccess } from '@/lib/google'
+import { googleGrants } from '@/lib/google'
+import { MeetConnectBanner, MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
 import { LeadActions } from '@/components/crm/LeadActions'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
@@ -30,6 +31,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 }
 
 const ICON: Record<string, string> = {
+  'meeting.started': '🟢',
+  'meeting.ended': '🎥',
+  'meeting.not_held': '⚪',
+  'meeting.notes': '✨',
   'note.added': '📝',
   'touch.logged': '📞',
   'email.sent': '✉️',
@@ -51,11 +56,11 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   const isAdmin = user.role === 'ADMIN'
   const lead = await prisma.lead.findUnique({
     where: { id: params.id },
-    include: { assignedTo: { select: { name: true, email: true } }, bookings: { orderBy: { startTime: 'desc' }, take: 20, include: { host: { select: { name: true } } } } },
+    include: { assignedTo: { select: { name: true, email: true } }, bookings: { orderBy: { startTime: 'desc' }, take: 20, include: { host: { select: { name: true } }, meeting: true } } },
   })
   if (!lead || !canSeeLead(user, lead)) notFound()
 
-  const [logs, people, me, threshold, myPage, emailRows, gmailConnected] = await Promise.all([
+  const [logs, people, me, threshold, myPage, emailRows, grants] = await Promise.all([
     prisma.activityLog.findMany({
       where: { entityType: 'LEAD', entityId: lead.id },
       orderBy: { createdAt: 'desc' },
@@ -67,10 +72,31 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
     getSetting('leads.staleDays'),
     prisma.bookingPage.findFirst({ where: { active: true, hostId: user.id }, select: { slug: true } }),
     prisma.emailMessage.findMany({ where: { leadId: lead.id }, orderBy: { sentAt: 'desc' }, take: 100 }),
-    hasGmailAccess(user.id),
+    googleGrants(user.id),
   ])
-  const anyPage = myPage ?? (await prisma.bookingPage.findFirst({ where: { active: true }, select: { slug: true }, orderBy: { createdAt: 'asc' } }))
+  const gmailConnected = grants.gmail
   const tz = me.timeZone
+  const hostsMeetCalls = lead.bookings.some((b) => b.hostId === user.id && b.meetUrl)
+  const timeOnly = (d: Date): string => new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit' }).format(d)
+  const callView = (b: (typeof lead.bookings)[number]): MeetingCallView | null => {
+    const m = b.meeting
+    if (!m) return null
+    return {
+      bookingId: b.id,
+      status: m.status,
+      started: m.actualStart ? timeOnly(m.actualStart) : null,
+      ended: m.actualEnd ? timeOnly(m.actualEnd) : null,
+      minutes: m.actualStart && m.actualEnd ? Math.round((m.actualEnd.getTime() - m.actualStart.getTime()) / 60_000) : null,
+      people: Array.isArray(m.participants) ? (m.participants as { name?: string }[]).map((p) => p.name ?? 'Guest') : [],
+      notesStatus: m.notesStatus,
+      docUrl: m.docUrl,
+      summary: m.summaryText,
+      nextSteps: m.nextStepsText,
+      fullText: m.fullText,
+      timesUnknown: m.lastError === 'meet-scope-missing',
+    }
+  }
+  const anyPage = myPage ?? (await prisma.bookingPage.findFirst({ where: { active: true }, select: { slug: true }, orderBy: { createdAt: 'asc' } }))
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
   const reps = people.filter((p) => (p.role === 'SALES' || p.role === 'ADMIN') && (isAdmin || p.id === user.id)).map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))
   // Keep a former owner (left the team / role changed) selectable so the owner menu shows the truth.
@@ -138,6 +164,14 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         return { title: 'Restored from archive' }
       case 'lead.assignment_skipped':
         return { title: 'Auto-assign skipped: no active sales reps' }
+      case 'meeting.started':
+        return { title: `Call started: ${s(m.title)}`, body: m.at ? formatDateTime(new Date(s(m.at)), tz) : undefined }
+      case 'meeting.ended':
+        return { title: `Call ended: ${s(m.title)}${m.minutes != null ? ` · ${s(m.minutes)} min` : ''}`, body: Array.isArray(m.people) && m.people.length ? `Joined: ${(m.people as string[]).join(', ')}` : undefined }
+      case 'meeting.not_held':
+        return { title: `Nobody joined the call: ${s(m.title)}` }
+      case 'meeting.notes':
+        return { title: `Gemini notes: ${s(m.title)}`, body: s(m.summary) ? s(m.summary).slice(0, 400) + (s(m.summary).length > 400 ? '…' : '') : 'Notes doc linked under Meetings' }
       case 'meeting.cancelled':
         return { title: `Meeting cancelled: ${s(m.title)}`, body: m.start ? formatDateTime(new Date(s(m.start)), tz) : undefined }
       case 'task.created':
@@ -295,9 +329,14 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               <CardTitle className="text-base">Meetings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
+              <MeetingSyncTrigger leadId={lead.id} everyMs={upcoming.some((b) => b.startTime.getTime() - now.getTime() < 15 * 60_000) ? 60_000 : 0} />
+              {hostsMeetCalls && grants.connected && !(grants.meet && grants.docs) ? <MeetConnectBanner /> : null}
               {lead.bookings.length === 0 ? <p className="text-muted-foreground">No meetings yet.</p> : null}
-              {[...upcoming, ...past].map((b) => (
-                <div key={b.id} className="flex items-start justify-between gap-2">
+              {[...upcoming, ...past].map((b) => {
+                const call = callView(b)
+                return (
+                <div key={b.id}>
+                <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className={b.status === 'CANCELLED' ? 'text-muted-foreground line-through' : 'font-medium'}>{b.title}</div>
                     <div className="text-xs text-muted-foreground">
@@ -305,17 +344,28 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    {b.meetUrl && b.status === 'CONFIRMED' && b.endTime >= now ? (
+                    {b.meetUrl && b.status === 'CONFIRMED' && b.endTime >= now && call?.status !== 'ENDED' ? (
                       <a href={b.meetUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline-offset-4 hover:underline">
                         Join
                       </a>
                     ) : null}
-                    <Badge variant={b.status === 'CONFIRMED' ? (b.endTime < now ? 'secondary' : 'success') : b.status === 'PENDING' ? 'warning' : 'outline'}>
-                      {b.status === 'CONFIRMED' ? (b.endTime < now ? 'Held' : 'Confirmed') : b.status === 'PENDING' ? 'Awaiting guest' : 'Cancelled'}
-                    </Badge>
+                    {call?.status === 'LIVE' ? (
+                      <Badge variant="success">Live now</Badge>
+                    ) : call?.status === 'ENDED' ? (
+                      <Badge variant="secondary">Held</Badge>
+                    ) : call?.status === 'NOT_HELD' ? (
+                      <Badge variant="outline">No-show</Badge>
+                    ) : (
+                      <Badge variant={b.status === 'CONFIRMED' ? (b.endTime < now ? 'secondary' : 'success') : b.status === 'PENDING' ? 'warning' : 'outline'}>
+                        {b.status === 'CONFIRMED' ? (b.endTime < now ? 'Held' : 'Confirmed') : b.status === 'PENDING' ? 'Awaiting guest' : 'Cancelled'}
+                      </Badge>
+                    )}
                   </div>
                 </div>
-              ))}
+                {call ? <MeetingCall m={call} /> : null}
+                </div>
+                )
+              })}
             </CardContent>
           </Card>
 

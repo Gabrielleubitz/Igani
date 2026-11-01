@@ -1,5 +1,5 @@
 /**
- * Igani email design tokens. White card on a soft blue-grey canvas, navy ink, Igani blue accent.
+ * Igani email design tokens. White card on a soft blue-grey canvas, navy ink, Igani blue accent (#4080E0). Text links use the darker `link` blue for contrast.
  * Logo rule: white backgrounds use "igani-logo 2.png" (dark wordmark, transparent PNG), shown bare — never in a box.
  */
 export const colors = {
@@ -7,14 +7,17 @@ export const colors = {
   card: '#ffffff',
   border: '#e3e8ef',
   hairline: '#eef1f5',
-  text: '#0b1f3a',
+  text: '#002040',
   body: '#3d4b5f',
   muted: '#6b7a8f',
   faint: '#98a4b5',
-  accent: '#2f6fd6',
-  accentSoft: '#e9f1fd',
+  accent: '#4080E0',
+  link: '#2f66bd',
+  surface: '#204060',
+  accentLight: '#80A0E0',
+  accentSoft: '#e8effb',
   accentText: '#ffffff',
-  brand: '#001429',
+  brand: '#002040',
   panel: '#f7f9fc',
   danger: '#d64545',
   dangerSoft: '#fdecec',
@@ -29,7 +32,7 @@ export const font = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Rob
 export type Tone = 'brand' | 'success' | 'danger' | 'warning'
 
 export const TONES: Record<Tone, { fg: string; bg: string }> = {
-  brand: { fg: colors.accent, bg: colors.accentSoft },
+  brand: { fg: colors.link, bg: colors.accentSoft },
   success: { fg: colors.success, bg: colors.successSoft },
   danger: { fg: colors.danger, bg: colors.dangerSoft },
   warning: { fg: colors.warning, bg: colors.warningSoft },
