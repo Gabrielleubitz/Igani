@@ -3,7 +3,7 @@ import type { Booking } from '@prisma/client'
 import { logActivity } from './audit'
 import { createMeetEvent, listMeetEvents } from './calendar'
 import { meetingCodeFromUrl, teamEventAttendees } from './meet-notes'
-import { syncMeeting } from './meetings'
+import { googleMeetingApi, syncMeeting } from './meetings'
 import { prisma } from './prisma'
 
 /** Teammates a team call can invite: anyone on the allowlist with an email. */
@@ -57,6 +57,40 @@ export async function importTeamMeetings(hostId: string, opts: { daysBack?: numb
     await logActivity({ entityType: 'BOOKING', entityId: row.id, action: 'team_meeting.imported', actorId: hostId })
     ids.push(row.id)
     imported++
+  }
+  // Calls with no Calendar event (instant meetings, "New meeting" in Meet) or no guests on the event: ask Meet directly.
+  try {
+    const api = await googleMeetingApi(hostId)
+    if (api.can.meet && api.recentConferences) {
+      const recs = await api.recentConferences(new Date(now.getTime() - (opts.daysBack ?? 14) * 86_400_000))
+      const byCode = new Map<string, typeof recs>()
+      for (const r of recs) byCode.set(r.meetingCode.toLowerCase(), [...(byCode.get(r.meetingCode.toLowerCase()) ?? []), r])
+      for (const [code, group] of byCode) {
+        const meetUrl = `https://meet.google.com/${code}`
+        const known = await prisma.booking.findFirst({ where: { hostId, meetUrl: { contains: code } }, select: { id: true, startTime: true } })
+        const sorted = [...group].sort((a, b) => Date.parse(a.startTime) - Date.parse(b.startTime))
+        const start = new Date(sorted[0]!.startTime)
+        const ends = sorted.flatMap((r) => (r.endTime ? [Date.parse(r.endTime)] : []))
+        if (ends.length < sorted.length) continue // still live
+        const end = new Date(Math.max(...ends))
+        if (known) {
+          // A reused link (recurring room): only the first booking for it is tracked here.
+          if (!ids.includes(known.id) && Math.abs(known.startTime.getTime() - start.getTime()) < 3 * 3600_000) ids.push(known.id)
+          continue
+        }
+        const people = (await api.participants(sorted[0]!.name).catch(() => [])).length
+        if (people < 2) continue // solo room, not a team call
+        found++
+        const row = await prisma.booking.create({
+          data: { status: 'CONFIRMED', source: 'TEAM_MEETING', meetUrl, startTime: start, endTime: end, title: 'Team call', guestName: 'Team', guestEmail: (host.email ?? '').toLowerCase(), attendees: [(host.email ?? '').toLowerCase()], hostId, createdById: hostId, confirmedAt: now },
+        })
+        await logActivity({ entityType: 'BOOKING', entityId: row.id, action: 'team_meeting.imported', actorId: hostId })
+        ids.push(row.id)
+        imported++
+      }
+    }
+  } catch (err) {
+    console.error('[team-meetings] meet discovery failed', err)
   }
   let withNotes = 0
   for (const id of ids) {

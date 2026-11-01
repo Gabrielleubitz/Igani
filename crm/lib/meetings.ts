@@ -36,6 +36,8 @@ export interface DocRef {
 export interface MeetingApi {
   can: { meet: boolean; docs: boolean; gmail: boolean }
   conferences(meetingCode: string): Promise<ConferenceRec[]>
+  /** Calls the host ran recently, found via Meet itself (covers instant meetings that have no Calendar event). */
+  recentConferences?(since: Date): Promise<(ConferenceRec & { meetingCode: string })[]>
   participants(record: string): Promise<Participant[]>
   meetDocs(record: string, transcripts: boolean): Promise<DocRef[]>
   calendarDocs(eventId: string): Promise<DocRef[]>
@@ -61,6 +63,17 @@ export async function googleMeetingApi(hostId: string): Promise<MeetingApi> {
       const filter = encodeURIComponent(`space.meeting_code = "${code}"`)
       const r = await get<{ conferenceRecords?: ConferenceRec[] }>(`${MEET}/conferenceRecords?filter=${filter}&pageSize=25`)
       return r.conferenceRecords ?? []
+    },
+    async recentConferences(since) {
+      const filter = encodeURIComponent(`start_time>="${since.toISOString()}"`)
+      const r = await get<{ conferenceRecords?: (ConferenceRec & { space?: string })[] }>(`${MEET}/conferenceRecords?filter=${filter}&pageSize=100`)
+      const out: (ConferenceRec & { meetingCode: string })[] = []
+      for (const rec of r.conferenceRecords ?? []) {
+        if (!rec.space) continue
+        const sp = await get<{ meetingCode?: string }>(`${MEET}/${rec.space}`).catch(() => null)
+        if (sp?.meetingCode) out.push({ name: rec.name, startTime: rec.startTime, endTime: rec.endTime ?? null, meetingCode: sp.meetingCode })
+      }
+      return out
     },
     async participants(record) {
       const out: Participant[] = []
