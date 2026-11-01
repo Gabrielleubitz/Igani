@@ -103,8 +103,8 @@ export function DateTimePicker({
       </button>
       {open ? (
         <div id={panelId} role="dialog" aria-label="Choose date and time" className="flex max-w-full flex-col overflow-hidden rounded-xl border bg-card shadow-lg sm:flex-row">
-          <div className="flex justify-center p-2">
-            <Calendar mode="single" selected={selected} onSelect={pickDay} defaultMonth={selected ?? minDay} disabled={minDay ? { before: minDay } : undefined} />
+          <div className="flex flex-1 justify-center p-2">
+            <Calendar className="bg-transparent" mode="single" selected={selected} onSelect={pickDay} defaultMonth={selected ?? minDay} disabled={minDay ? { before: minDay } : undefined} />
           </div>
           {mode === 'datetime' ? (
             <div className="border-t sm:w-32 sm:border-l sm:border-t-0">
