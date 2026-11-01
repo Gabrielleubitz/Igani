@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 import { createCalendarEntry, deleteCalendarEntry } from '@/app/sales/today/actions'
 import { Button, buttonVariants } from '@/components/ui/button'
+import { DateTimePicker } from '@/components/ui/date-time-picker'
 import { Dialog } from '@/components/ui/dialog'
 import { EventCalendar, type EventCalendarProps } from '@/components/ui/event-calendar/event-calendar'
 import { EventCalendarContent } from '@/components/ui/event-calendar/event-calendar-content'
@@ -208,7 +209,7 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
   const [color, setColor] = useState<EntryColor>('blue')
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
-  const type = allDay ? 'date' : 'datetime-local'
+  const mode = allDay ? 'date' : 'datetime'
   const val = (v: string): string => (allDay ? v.slice(0, 10) : v.length === 10 ? `${v}T09:00` : v)
 
   return (
@@ -231,14 +232,14 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All day
       </label>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="ev-start">Starts</Label>
-          <Input id="ev-start" type={type} required value={val(start)} onChange={(e) => setStart(e.target.value)} />
+          <DateTimePicker id="ev-start" mode={mode} value={val(start)} onChange={setStart} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="ev-end">Ends</Label>
-          <Input id="ev-end" type={type} required value={val(end)} onChange={(e) => setEnd(e.target.value)} />
+          <DateTimePicker id="ev-end" mode={mode} min={val(start).slice(0, 10)} value={val(end)} onChange={setEnd} />
         </div>
       </div>
       <div className="space-y-1.5">
