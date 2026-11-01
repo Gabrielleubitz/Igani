@@ -49,7 +49,13 @@ export function DateTimePicker({
   const time = mode === 'datetime' ? value.slice(11, 16) : ''
   const selected = parseDay(dayStr)
   const minDay = min ? parseDay(min) : undefined
-  const slots = useMemo(() => (time && !SLOTS.includes(time) ? [...SLOTS, time].sort() : SLOTS), [time])
+  const slots = useMemo(() => {
+    // Today: hide slots that have already passed (keep the currently selected one).
+    const now = new Date()
+    const nowKey = `${pad(now.getHours())}:${pad(now.getMinutes())}`
+    const base = dayStr === toIsoDay(now) ? SLOTS.filter((t) => t >= nowKey || t === time) : SLOTS
+    return time && !base.includes(time) ? [...base, time].sort() : base
+  }, [time, dayStr])
   const timeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {

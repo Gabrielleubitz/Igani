@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { CalendarClock, ExternalLink, FileText, Mail, Phone, Building2, User, Users, Video, RefreshCw } from 'lucide-react'
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { createCalendarEntry, deleteCalendarEntry } from '@/app/sales/today/actions'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { DateTimePicker } from '@/components/ui/date-time-picker'
@@ -74,6 +74,18 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
         })),
     [items, removed],
   )
+  // Viewing today: the grid starts one hour before now (past hours hidden) so the red now-line sits near the top.
+  const [tick, setTick] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setTick(new Date()), 60_000)
+    return () => clearInterval(t)
+  }, [])
+  const startHour = useMemo(() => {
+    const hourIn = (d: Date): string => new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(d)
+    const dayKey = (d: Date): string => new Intl.DateTimeFormat('en-CA', { timeZone }).format(d)
+    if (view !== 'day' || dayKey(date) !== dayKey(tick)) return 6
+    return Math.min(Math.max(Number(hourIn(tick)), 0), 20)
+  }, [view, date, tick, timeZone])
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
 
   function openForm(start: Date, allDay: boolean, end?: Date): void {
@@ -99,7 +111,7 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
         onDateChange={setDate}
         views={['day', 'month']}
         timeZone={timeZone}
-        dayStartHour={6}
+        dayStartHour={startHour}
         dayEndHour={22}
         interactions={{ drag: false, resize: false, selectSlot: false }}
         onSlotClick={onSlotClick}
