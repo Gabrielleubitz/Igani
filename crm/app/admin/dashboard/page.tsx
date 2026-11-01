@@ -27,7 +27,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       WHERE l.archived = false AND l.status NOT IN ('WON', 'LOST')
         AND COALESCE((SELECT max(a."createdAt") FROM "ActivityLog" a WHERE a."entityType" = 'LEAD' AND a."entityId" = l.id AND a."actorId" IS NOT NULL), l."createdAt") < ${stale}`.then((r) => Number(r[0]?.n ?? 0)),
     prisma.lead.count({ where: { archived: false, createdAt: { gte: new Date(now.getTime() - 7 * 86_400_000) } } }),
-    prisma.booking.count({ where: { status: 'CONFIRMED', endTime: { gte: now }, startTime: { lt: dayEnd } } }),
+    prisma.booking.count({ where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, endTime: { gte: now }, startTime: { lt: dayEnd } } }),
     prisma.booking.count({ where: { status: 'PENDING', source: 'PUBLIC_PAGE', startTime: { gt: now } } }),
     prisma.lead.aggregate({ where: { archived: false, status: 'WON' }, _sum: { dealValue: true } }),
     prisma.lead.aggregate({ where: open, _sum: { dealValue: true } }),

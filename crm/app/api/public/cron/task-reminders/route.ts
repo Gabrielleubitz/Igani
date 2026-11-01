@@ -62,7 +62,7 @@ async function sendMeetingReminders(): Promise<number> {
   if (!(await getSetting('reminders.meetingEmails'))) return 0
   const now = Date.now()
   const soon = await prisma.booking.findMany({
-    where: { status: 'CONFIRMED', startTime: { gt: new Date(now + 2 * 3600_000), lte: new Date(now + 25 * 3600_000) } },
+    where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, startTime: { gt: new Date(now + 2 * 3600_000), lte: new Date(now + 25 * 3600_000) } },
     select: { id: true, meetUrl: true, confirmedAt: true },
     take: 200,
   })

@@ -37,7 +37,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
     user.role === 'MARKETING'
       ? Promise.resolve([])
       : prisma.booking.findMany({
-          where: { status: 'CONFIRMED', endTime: { gte: now }, startTime: { lt: endOfDay }, ...(isAdmin ? {} : { hostId: user.id }) },
+          where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, endTime: { gte: now }, startTime: { lt: endOfDay }, ...(isAdmin ? {} : { hostId: user.id }) },
           orderBy: { startTime: 'asc' },
           take: 20,
           include: { host: { select: { name: true } }, meeting: { select: { status: true } } },

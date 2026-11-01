@@ -276,8 +276,9 @@ export async function recheckMeetingNotes(bookingId: string): Promise<ActionResu
   try {
     const user = await requireUser()
     const id = z.string().cuid().parse(bookingId)
-    const b = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, leadId: true } })
+    const b = await prisma.booking.findUnique({ where: { id }, select: { hostId: true, leadId: true, source: true } })
     if (!b) return { ok: false, error: 'Meeting not found.' }
+    if (b.source === 'TEAM_MEETING' && user.role !== 'ADMIN') return { ok: false, error: 'Meeting not found.' }
     if (b.leadId) await assertCanSeeLead(b.leadId, user)
     else if (b.hostId !== user.id && user.role !== 'ADMIN') return { ok: false, error: 'Meeting not found.' }
     const s = await syncMeeting(id, { force: true })

@@ -122,6 +122,8 @@ export function docToText(doc: DocsDocument): string {
   const out: string[] = []
   const walk = (tabs: DocsTab[], top: boolean): void => {
     for (const t of tabs) {
+      // The verbatim transcript can be hundreds of thousands of characters; the Doc link keeps it one click away.
+      if (/transcript/i.test(t.tabProperties?.title ?? '')) continue
       if (!top || tabs.length > 1) out.push('', `# ${t.tabProperties?.title ?? 'Tab'}`)
       contentToLines(t.documentTab?.body?.content, out)
       walk(t.childTabs ?? [], false)
@@ -174,4 +176,21 @@ export function normTitle(s: string): string {
     .replace(/[“”"'’]/g, '')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
+}
+
+/**
+ * Is this calendar event a call hosted by `hostEmail` with other guests, not already a CRM contact booking?
+ * (Guests may be outside the team's domain: a team call can include an advisor or partner.)
+ */
+export function teamEventAttendees(
+  ev: { status?: string | null; organizer?: { email?: string | null; self?: boolean | null } | null; attendees?: { email?: string | null; self?: boolean | null; resource?: boolean | null }[] | null; extendedProperties?: { private?: Record<string, string> | null } | null },
+  hostEmail: string,
+): string[] | null {
+  if (ev.status === 'cancelled' || ev.extendedProperties?.private?.iganiBookingId) return null
+  const host = hostEmail.trim().toLowerCase()
+  if (ev.organizer?.email && ev.organizer.email.toLowerCase() !== host && !ev.organizer.self) return null
+  const people = (ev.attendees ?? []).filter((a) => !a.resource).map((a) => (a.email ?? '').trim().toLowerCase()).filter(Boolean)
+  const others = people.filter((e) => e !== host)
+  if (others.length === 0) return null
+  return [host, ...new Set(others)]
 }

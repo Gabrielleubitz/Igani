@@ -32,10 +32,10 @@ export default async function BookingsPage({ searchParams }: { searchParams: { f
     prisma.booking.findMany({
       where:
         filter === 'upcoming'
-          ? { status: { in: ['PENDING', 'CONFIRMED'] }, endTime: { gte: now } }
+          ? { status: { in: ['PENDING', 'CONFIRMED'] }, endTime: { gte: now }, source: { not: 'TEAM_MEETING' } }
           : filter === 'all'
-            ? {}
-            : { status: filter },
+            ? { source: { not: 'TEAM_MEETING' } }
+            : { status: filter, source: { not: 'TEAM_MEETING' } },
       orderBy: filter === 'upcoming' ? { startTime: 'asc' } : { createdAt: 'desc' },
       take: 100,
       include: { host: { select: { name: true, email: true } } },

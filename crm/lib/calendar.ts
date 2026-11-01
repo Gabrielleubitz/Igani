@@ -1,5 +1,6 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
+import type { calendar_v3 } from '@googleapis/calendar'
 import { GoogleNotConnectedError, calendarForHost } from './google'
 import { prisma } from './prisma'
 import { civilDate, computeSlots, overlaps, windowsForDate, type Interval } from './slots'
@@ -106,6 +107,8 @@ export interface MeetEventInput {
   end: Date
   guestEmail: string
   guestName: string
+  /** Team meetings: invite these people instead of one guest, and let Google email them. */
+  attendeeEmails?: string[]
 }
 
 /** Inserts the event on the host's primary calendar with an auto-provisioned Google Meet. */
@@ -114,13 +117,13 @@ export async function createMeetEvent(input: MeetEventInput): Promise<{ eventId:
   const res = await cal.events.insert({
     calendarId: 'primary',
     conferenceDataVersion: 1,
-    sendUpdates: 'none', // Igani sends its own branded confirmation via Resend
+    sendUpdates: input.attendeeEmails ? 'all' : 'none', // contacts get Igani's branded Resend email; teammates get Google's invite
     requestBody: {
       summary: input.title,
       description: input.description,
       start: { dateTime: input.start.toISOString() },
       end: { dateTime: input.end.toISOString() },
-      attendees: [{ email: input.guestEmail, displayName: input.guestName }],
+      attendees: input.attendeeEmails ? input.attendeeEmails.map((email) => ({ email })) : [{ email: input.guestEmail, displayName: input.guestName }],
       extendedProperties: { private: { iganiBookingId: input.bookingId } },
       conferenceData: {
         createRequest: { requestId: `igani-${input.bookingId}-${randomUUID()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } },
@@ -136,6 +139,20 @@ export async function createMeetEvent(input: MeetEventInput): Promise<{ eventId:
     throw new Error('Google Calendar did not return a Meet link for the new event')
   }
   return { eventId: event.id, meetUrl, htmlLink: event.htmlLink ?? null }
+}
+
+/** Calendar events (with a Meet link) in a time window, for importing past team calls. */
+export async function listMeetEvents(hostId: string, from: Date, to: Date): Promise<calendar_v3.Schema$Event[]> {
+  const cal = await calendarForHost(hostId)
+  const out: calendar_v3.Schema$Event[] = []
+  let pageToken: string | undefined
+  for (let i = 0; i < 5; i++) {
+    const r = await cal.events.list({ calendarId: 'primary', timeMin: from.toISOString(), timeMax: to.toISOString(), singleEvents: true, orderBy: 'startTime', maxResults: 250, pageToken })
+    out.push(...(r.data.items ?? []).filter((e) => e.hangoutLink || e.conferenceData?.entryPoints?.some((p) => p.entryPointType === 'video')))
+    pageToken = r.data.nextPageToken ?? undefined
+    if (!pageToken) break
+  }
+  return out
 }
 
 export async function deleteCalendarEvent(hostId: string, eventId: string): Promise<void> {

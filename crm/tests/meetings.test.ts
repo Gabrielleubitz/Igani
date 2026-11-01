@@ -1,7 +1,7 @@
 /** Meet tracking + Gemini notes: pure helpers (always run) + the full sync against a fake Google (needs TEST_DATABASE_URL). */
 import { PrismaClient } from '@prisma/client'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { docIdFromUrl, docToText, hostHasGeminiNotes, looksLikeGeminiNotes, meetingCodeFromUrl, nextNotesCheck, parseGeminiNotes, pickConference } from '@/lib/meet-notes'
+import { teamEventAttendees, docIdFromUrl, docToText, hostHasGeminiNotes, looksLikeGeminiNotes, meetingCodeFromUrl, nextNotesCheck, parseGeminiNotes, pickConference } from '@/lib/meet-notes'
 
 const testDb = process.env.TEST_DATABASE_URL
 if (testDb) process.env.DATABASE_URL = testDb
@@ -15,6 +15,15 @@ vi.mock('@/lib/google', () => ({
 const DOC = 'a'.repeat(10) + 'B_c-' + 'd'.repeat(30)
 
 describe('meet helpers', () => {
+  it('calls hosted by the user with other guests (not CRM contact bookings) count as team meetings', () => {
+    const ev = (o: object = {}) => ({ organizer: { email: 'gabrielleubitz@igani.co', self: true }, attendees: [{ email: 'gabrielleubitz@igani.co', self: true }, { email: 'Noa@igani.co' }, { email: 'room@resource.calendar.google.com', resource: true }], ...o })
+    expect(teamEventAttendees(ev(), 'gabrielleubitz@igani.co')).toEqual(['gabrielleubitz@igani.co', 'noa@igani.co'])
+    expect(teamEventAttendees(ev({ attendees: [{ email: 'gabrielleubitz@igani.co' }, { email: 'ilan@gmail.com' }] }), 'gabrielleubitz@igani.co')).toEqual(['gabrielleubitz@igani.co', 'ilan@gmail.com'])
+    expect(teamEventAttendees(ev({ attendees: [{ email: 'gabrielleubitz@igani.co' }] }), 'gabrielleubitz@igani.co')).toBeNull()
+    expect(teamEventAttendees(ev({ organizer: { email: 'noa@igani.co' } }), 'gabrielleubitz@igani.co')).toBeNull()
+    expect(teamEventAttendees(ev({ status: 'cancelled' }), 'gabrielleubitz@igani.co')).toBeNull()
+    expect(teamEventAttendees(ev({ extendedProperties: { private: { iganiBookingId: 'x' } } }), 'gabrielleubitz@igani.co')).toBeNull()
+  })
   it('reads meeting codes and doc ids from links', () => {
     expect(meetingCodeFromUrl('https://meet.google.com/abc-defg-hij?authuser=0')).toBe('abc-defg-hij')
     expect(meetingCodeFromUrl('https://zoom.us/j/1')).toBeNull()
@@ -56,7 +65,7 @@ describe('meet helpers', () => {
     })
     expect(text).toContain('## Summary')
     expect(text).toContain('• Scope: 8 pages')
-    expect(text).toContain('# Transcript')
+    expect(text).not.toContain('Noa: Hi Dana')
     expect(parseGeminiNotes(text)).toEqual({ summary: 'Dana wants a new site by March. Budget approved.', nextSteps: '• Noa will send a proposal' })
     expect(parseGeminiNotes('random text')).toEqual({ summary: null, nextSteps: null })
   })
@@ -176,7 +185,7 @@ d('syncMeeting', async () => {
     expect(await syncMeeting(booking.id, { api, now: at('2026-11-02T11:31:00Z') })).toMatchObject({ status: 'NOT_HELD', notesStatus: null })
     expect(await actions(lead.id)).toEqual(['meeting.not_held'])
 
-    const two = await prisma.booking.create({ data: { ...booking, id: undefined, inviteToken: null, createdAt: undefined, updatedAt: undefined, meetUrl: 'https://meet.google.com/xyz-abcd-efg' } })
+    const two = await prisma.booking.create({ data: { ...booking, id: undefined, attendees: undefined, inviteToken: null, createdAt: undefined, updatedAt: undefined, meetUrl: 'https://meet.google.com/xyz-abcd-efg' } })
     const api2 = fakeApi({ records: [{ name: 'conferenceRecords/r2', startTime: '2026-11-02T10:01:00Z', endTime: '2026-11-02T10:31:00Z' }] })
     await syncMeeting(two.id, { api: api2, now: at('2026-11-02T10:40:00Z') })
     expect(await syncMeeting(two.id, { api: api2, now: at('2026-11-03T11:00:00Z') })).toMatchObject({ notesStatus: 'NONE', nextCheckAt: null })
@@ -187,6 +196,16 @@ d('syncMeeting', async () => {
     const api = fakeApi({ records: [], calendar: [{ docId: 'doc-notes', title: 'Notes by Gemini' }] }, { meet: false, docs: true, gmail: true })
     expect(await syncMeeting(booking.id, { api, now: at('2026-11-02T10:10:00Z') })).toMatchObject({ status: 'SCHEDULED', lastError: 'meet-scope-missing', notesStatus: null })
     expect(await syncMeeting(booking.id, { api, now: at('2026-11-02T10:35:00Z') })).toMatchObject({ status: 'SCHEDULED', notesStatus: 'READY' })
+  })
+
+  it('tracks a team meeting (no contact) through to Gemini notes', async () => {
+    const host = await prisma.user.create({ data: { email: 'gabrielleubitz@igani.co', name: 'Gabi', role: 'ADMIN' } })
+    const b = await prisma.booking.create({
+      data: { status: 'CONFIRMED', source: 'TEAM_MEETING', meetUrl: 'https://meet.google.com/abc-defg-hij', googleEventId: 'tm1', startTime: start, endTime: end, title: 'Team sync', guestName: 'Team', guestEmail: host.email!, attendees: [host.email!], hostId: host.id },
+    })
+    const api = fakeApi({ records: [{ name: 'conferenceRecords/t1', startTime: '2026-11-02T10:01:00Z', endTime: '2026-11-02T10:31:00Z' }], calendar: [{ docId: 'doc-team', title: 'Team sync - Notes by Gemini' }] })
+    const s = await syncMeeting(b.id, { api, now: at('2026-11-02T10:40:00Z') })
+    expect(s).toMatchObject({ status: 'ENDED', notesStatus: 'READY', summaryText: 'Dana wants a new site.' })
   })
 
   it('syncDueMeetings selects only calls that need a look', async () => {

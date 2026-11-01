@@ -17,7 +17,7 @@ export default async function MeetingsPage({ searchParams }: { searchParams: { v
   const isAdmin = user.role === 'ADMIN'
   const now = new Date()
   const past = searchParams.view === 'past'
-  const host = isAdmin ? {} : { hostId: user.id }
+  const host = { source: { not: 'TEAM_MEETING' as const }, ...(isAdmin ? {} : { hostId: user.id }) }
   const [bookings, me] = await Promise.all([
     prisma.booking.findMany({
       where: past

@@ -35,6 +35,8 @@ enum BookingStatus {
 enum BookingSource {
   SALES_INVITE
   PUBLIC_PAGE
+  /// internal team call (admins only), not tied to a contact
+  TEAM_MEETING
 }
 
 enum EntityType {
@@ -228,6 +230,8 @@ model Booking {
   notes         String?       @db.Text
   guestName     String
   guestEmail    String
+  /// team meetings: invited teammates' emails
+  attendees     Json?
   hostId        String
   leadId        String?
   bookingPageId String?
