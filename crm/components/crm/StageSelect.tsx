@@ -3,21 +3,23 @@
 import type { LeadStatus } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { getDealCommissionTerms } from '@/app/actions/deals'
 import { updateLeadStatus } from '@/app/actions/leads'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { LEAD_STATUSES, STATUS_LABEL } from '@/lib/format'
+import { type CommissionTerms, calculateCommission, formatIls } from '@/lib/commission'
 import { canEditAtStage, stagesFor } from '@/lib/stage-rules'
 import { cn } from '@/lib/utils'
 
 export const LOST_REASONS = ['Budget', 'Chose a competitor', 'No response', 'Timing / not now', 'Not a fit', 'Other'] as const
 
-type Extras = { lostReason?: string; dealValue?: number }
+type Extras = { lostReason?: string; quotedPrice?: number }
 
 /**
  * Hook behind every stage change in the CRM. Moving to Lost asks for a reason (required),
- * moving to Won asks for the deal value (optional) — in a proper dialog instead of a browser prompt.
+ * moving to Won (admins only) asks for the quoted price and shows the salesperson's commission live — in a proper dialog.
  */
 export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) => void): {
   request: (leadId: string, to: LeadStatus, currentValue?: number | null) => void
@@ -29,6 +31,8 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [ask, setAsk] = useState<{ leadId: string; to: 'WON' | 'LOST'; value: string } | null>(null)
+  // Terms for the commission preview in the Won dialog (admins only; null until loaded)
+  const [dealTerms, setDealTerms] = useState<{ terms: CommissionTerms; salesperson: string | null } | null>(null)
   const [reason, setReason] = useState<string>(LOST_REASONS[0])
   const [detail, setDetail] = useState('')
 
@@ -46,6 +50,12 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
       setReason(LOST_REASONS[0])
       setDetail('')
       setAsk({ leadId, to, value: currentValue ? String(currentValue) : '' })
+      setDealTerms(null)
+      if (to === 'WON') {
+        void getDealCommissionTerms(leadId).then((res) => {
+          if (res.ok) setDealTerms({ terms: res.data.terms, salesperson: res.data.salesperson })
+        })
+      }
     } else commit(leadId, to)
   }
 
@@ -55,7 +65,7 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
       open={ask !== null}
       onClose={close}
       title={ask?.to === 'WON' ? 'Mark as won 🎉' : 'Mark as lost'}
-      description={ask?.to === 'WON' ? 'Nice work. Add the deal value so revenue reports stay accurate (optional).' : 'Pick a reason. It is saved on the contact and shows up in Reports.'}
+      description={ask?.to === 'WON' ? 'Nice work. Enter the quoted price (the price agreed with the client). The salesperson’s commission is calculated from it and frozen when you confirm.' : 'Pick a reason. It is saved on the contact and shows up in Reports.'}
     >
       <form
         className="space-y-4"
@@ -64,7 +74,7 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
           if (!ask) return
           if (ask.to === 'WON') {
             const v = ask.value.replace(/[^\d]/g, '')
-            commit(ask.leadId, 'WON', v ? { dealValue: Number(v) } : {})
+            commit(ask.leadId, 'WON', v ? { quotedPrice: Number(v) } : {})
           } else {
             const text = reason === 'Other' ? detail.trim() || 'Other' : detail.trim() ? `${reason}: ${detail.trim()}` : reason
             commit(ask.leadId, 'LOST', { lostReason: text })
@@ -74,8 +84,13 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
       >
         {ask?.to === 'WON' ? (
           <div className="space-y-2">
-            <Label htmlFor="deal-value">Deal value</Label>
-            <Input id="deal-value" inputMode="numeric" autoFocus placeholder="e.g. 12000" value={ask.value} onChange={(e) => setAsk({ ...ask, value: e.target.value })} />
+            <Label htmlFor="deal-value">Quoted price (₪)</Label>
+            <Input id="deal-value" inputMode="numeric" autoFocus placeholder="e.g. 17000" value={ask.value} onChange={(e) => setAsk({ ...ask, value: e.target.value })} />
+            {dealTerms && ask.value.replace(/[^\d]/g, '') ? (
+              <p className="rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300" aria-live="polite">
+                {dealTerms.salesperson ?? 'Commission'}: <strong>{formatIls(calculateCommission(Number(ask.value.replace(/[^\d]/g, '')), dealTerms.terms).total)}</strong>
+              </p>
+            ) : null}
           </div>
         ) : (
           <>
@@ -108,7 +123,7 @@ export function useStageChange(onDone?: (res: { ok: boolean; error?: string }) =
 }
 
 /** Stage dropdown used in tables and on the contact page. */
-export function StageSelect({ leadId, status, dealValue, disabled, title, className, onDone, isAdmin }: { leadId: string; status: LeadStatus; dealValue?: number | null; isAdmin: boolean; disabled?: boolean; title?: string; className?: string; onDone?: (res: { ok: boolean; error?: string }) => void }): React.ReactElement {
+export function StageSelect({ leadId, status, quotedPrice, disabled, title, className, onDone, isAdmin }: { leadId: string; status: LeadStatus; quotedPrice?: number | null; isAdmin: boolean; disabled?: boolean; title?: string; className?: string; onDone?: (res: { ok: boolean; error?: string }) => void }): React.ReactElement {
   const { request, pending, error, dialog } = useStageChange(onDone)
   const role = isAdmin ? 'ADMIN' : 'SALES'
   // Non-admins can only pick up to Demo scheduled, and a lead already past it is locked for them.
@@ -122,7 +137,7 @@ export function StageSelect({ leadId, status, dealValue, disabled, title, classN
         className={cn('h-8 w-40', className)}
         disabled={pending || disabled || locked}
         value={status}
-        onChange={(e) => request(leadId, e.target.value as LeadStatus, dealValue)}
+        onChange={(e) => request(leadId, e.target.value as LeadStatus, quotedPrice)}
       >
         {(options.includes(status) ? options : [...options, status]).map((s) => (
           <option key={s} value={s}>

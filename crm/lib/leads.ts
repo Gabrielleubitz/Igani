@@ -6,6 +6,7 @@ import { sendLeadAssignedEmail, sendLeadsImportedEmail, sendNewLeadAlertEmail } 
 import { newLeadRecipients } from './lead-alerts'
 import { getSetting } from './settings'
 import { appUrl } from './env'
+import { snapshotWonCommission } from './deals'
 import { prisma } from './prisma'
 
 const optionalText = (max: number) =>
@@ -247,7 +248,8 @@ export async function assignLeadManually(leadId: string, assigneeId: string | nu
 
 export interface StatusExtras {
   lostReason?: string
-  dealValue?: number
+  /** The price agreed with the client (admins only; whole ₪) */
+  quotedPrice?: number
 }
 
 export async function changeLeadStatus(leadId: string, status: LeadStatus, actorId: string | null, extras: StatusExtras = {}): Promise<void> {
@@ -260,9 +262,11 @@ export async function changeLeadStatus(leadId: string, status: LeadStatus, actor
       data: {
         status,
         lostReason: status === 'LOST' ? extras.lostReason!.trim() : null,
-        ...(extras.dealValue !== undefined ? { dealValue: extras.dealValue } : {}),
+        ...(extras.quotedPrice !== undefined ? { quotedPrice: extras.quotedPrice } : {}),
       },
     })
+    // Winning a deal freezes the salesperson's commission as it stands today.
+    if (status === 'WON') await snapshotWonCommission(leadId, tx)
     await logActivity(
       { entityType: 'LEAD', entityId: leadId, action: 'lead.status_changed', actorId, metadata: { from: before.status, to: status, ...extras } },
       tx,

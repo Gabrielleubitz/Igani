@@ -10,13 +10,13 @@ import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLead
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
-import { canEditValueAtStage, stageChangeProblem } from '@/lib/stage-rules'
+import { stageChangeProblem } from '@/lib/stage-rules'
 import { toActionError, type ActionResult } from './result'
 
 export async function updateLeadStatus(
   leadId: string,
   status: LeadStatus,
-  extras: { lostReason?: string; dealValue?: number } = {},
+  extras: { lostReason?: string; quotedPrice?: number } = {},
 ): Promise<ActionResult> {
   try {
     const user = await requireUser()
@@ -26,7 +26,9 @@ export async function updateLeadStatus(
     const current = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { status: true } })
     const problem = stageChangeProblem(user.role, current.status, parsed)
     if (problem) throw new BookingError(problem, 'FORBIDDEN')
-    const ex = z.object({ lostReason: z.string().trim().max(500).optional(), dealValue: z.number().int().min(0).max(1_000_000_000).optional() }).parse(extras)
+    const ex = z.object({ lostReason: z.string().trim().max(500).optional(), quotedPrice: z.number().int().min(0).max(1_000_000_000).optional() }).parse(extras)
+    // Prices are an admin matter: a salesperson can never enter or change one.
+    if (ex.quotedPrice !== undefined && user.role !== 'ADMIN') throw new BookingError('Only an admin can enter a price.', 'FORBIDDEN')
     if (parsed === 'LOST' && !ex.lostReason) throw new z.ZodError([{ code: 'custom', path: ['lostReason'], message: 'A reason is required when marking a lead as lost' }])
     await changeLeadStatus(id, parsed, user.id, ex)
     revalidatePath('/sales', 'layout')
@@ -92,7 +94,6 @@ const leadEditSchema = z.object({
   website: optText(500),
   budget: optText(100),
   message: optText(20000),
-  dealValue: z.number().int().min(0).max(1_000_000_000).nullable().optional(),
   tags: z.array(z.string().trim().toLowerCase().min(1).max(40)).max(20).transform((t) => [...new Set(t)]).optional(),
 })
 
@@ -105,10 +106,6 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
     await assertCanSeeLead(id, admin)
     await prisma.$transaction(async (tx) => {
       const before = await tx.lead.findUniqueOrThrow({ where: { id } })
-      // Revenue past Demo scheduled is the admins' to change.
-      if (data.dealValue !== undefined && data.dealValue !== before.dealValue && !canEditValueAtStage(admin.role, before.status)) {
-        throw new BookingError('Only an admin can change the deal value once a lead is past Demo scheduled.', 'FORBIDDEN')
-      }
       // Only record fields that really changed, so the timeline stays readable.
       const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => data[k] !== undefined && JSON.stringify(data[k]) !== JSON.stringify(before[k]))
       if (changed.length === 0) return
@@ -240,8 +237,8 @@ export async function exportLeadsCsv(params: Record<string, string | undefined> 
       include: { assignedTo: { select: { email: true } } },
     })
     const csv = toCsv(
-      ['email', 'firstName', 'lastName', 'phone', 'company', 'website', 'status', 'owner', 'source', 'sourceDetail', 'utmSource', 'utmMedium', 'utmCampaign', 'budget', 'dealValue', 'tags', 'lostReason', 'createdAt'],
-      leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.assignedTo?.email, l.source, l.sourceDetail, l.utmSource, l.utmMedium, l.utmCampaign, l.budget, l.dealValue, l.tags.join(';'), l.lostReason, l.createdAt]),
+      ['email', 'firstName', 'lastName', 'phone', 'company', 'website', 'status', 'owner', 'source', 'sourceDetail', 'utmSource', 'utmMedium', 'utmCampaign', 'budget', ...(user.role === 'ADMIN' ? ['quotedPrice'] : []), 'tags', 'lostReason', 'createdAt'],
+      leads.map((l) => [l.email, l.firstName, l.lastName, l.phone, l.company, l.website, l.status, l.assignedTo?.email, l.source, l.sourceDetail, l.utmSource, l.utmMedium, l.utmCampaign, l.budget, ...(user.role === 'ADMIN' ? [l.quotedPrice] : []), l.tags.join(';'), l.lostReason, l.createdAt]),
     )
     return { ok: true, data: { csv } }
   } catch (err) {

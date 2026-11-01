@@ -37,6 +37,7 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
     title: 'Tools',
     items: [
       { href: '/sales/import', label: 'Import leads', icon: 'import', roles: ALL },
+      { href: '/sales/documents', label: 'Documents', icon: 'documents', roles: ['SALES'] },
       { href: '/marketing', label: 'Marketing', icon: 'marketing', roles: ['ADMIN', 'MARKETING'] },
     ],
   },

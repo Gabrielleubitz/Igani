@@ -9,8 +9,6 @@ import { Input } from '@/components/ui/input'
 
 interface Props {
   leadId: string
-  /** Non-admins cannot change the deal value once a lead is past Demo scheduled */
-  dealValueLocked?: boolean
   initial: {
     email: string | null
     firstName: string | null
@@ -19,7 +17,6 @@ interface Props {
     company: string | null
     website: string | null
     budget: string | null
-    dealValue: number | null
     tags: string[]
     source: string
     sourceDetail: string | null
@@ -31,7 +28,7 @@ function Field({ label, children, wide = false }: { label: string; children: Rea
 }
 
 /** Editable contact details for the contact page; open to every role that can see the contact. */
-export function EditContactForm({ leadId, initial, dealValueLocked = false }: Props): React.ReactElement {
+export function EditContactForm({ leadId, initial }: Props): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -42,7 +39,6 @@ export function EditContactForm({ leadId, initial, dealValueLocked = false }: Pr
         e.preventDefault()
         const fd = new FormData(e.currentTarget)
         const s = (k: string): string => String(fd.get(k) ?? '')
-        const value = s('dealValue').trim()
         start(async () => {
           const res = await updateLead(leadId, {
             email: s('email'),
@@ -52,8 +48,6 @@ export function EditContactForm({ leadId, initial, dealValueLocked = false }: Pr
             company: s('company'),
             website: s('website'),
             budget: s('budget'),
-            // Locked for non-admins once the lead is past Demo scheduled: leave the saved value untouched.
-            ...(dealValueLocked ? {} : { dealValue: value ? Number(value) : null }),
             tags: s('tags').split(',').filter((t) => t.trim()),
             source: s('source') || undefined,
             sourceDetail: s('sourceDetail'),
@@ -85,9 +79,6 @@ export function EditContactForm({ leadId, initial, dealValueLocked = false }: Pr
         <Input name="budget" defaultValue={initial.budget ?? ''} />
       </Field>
       <SourcePicker defaultSource={initial.source} defaultDetail={initial.sourceDetail} idPrefix={`edit-${leadId}`} compact />
-      <Field label={dealValueLocked ? 'Deal value (admins only at this stage)' : 'Deal value'}>
-        <Input name="dealValue" type="number" min={0} defaultValue={initial.dealValue ?? ''} disabled={dealValueLocked} />
-      </Field>
       <Field label="Tags (comma separated)">
         <Input name="tags" defaultValue={initial.tags.join(', ')} />
       </Field>

@@ -54,7 +54,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
     assignedToId: l.assignedToId,
     createdAt: l.createdAt.toISOString(),
     tags: l.tags,
-    dealValue: l.dealValue,
+    quotedPrice: user.role === 'ADMIN' ? l.quotedPrice : null,
     lostReason: l.lostReason,
   }))
 

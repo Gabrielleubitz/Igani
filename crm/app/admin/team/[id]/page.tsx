@@ -1,11 +1,14 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { AgreementsPanel } from '@/components/admin/AgreementsPanel'
+import { CommissionTermsForm } from '@/components/admin/CommissionTermsForm'
 import { TeamMemberForm } from '@/components/admin/TeamMemberForm'
 import { PageIntro } from '@/components/PageIntro'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
+import { termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
 import { isOpenTask } from '@/lib/team-metrics'
 import { loadRepStats } from '@/lib/team-stats'
@@ -20,6 +23,8 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
   const user = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, name: true, email: true, role: true, timeZone: true, createdAt: true } })
   if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) notFound()
   const now = new Date()
+  // Never select the file bytes in a list.
+  const agreements = await prisma.agreement.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true } })
   const [stats, tasks, leads, meetings] = await Promise.all([
     loadRepStats(me).then((all) => all.find((r) => r.id === user.id) ?? null),
     tasksForUser(me),
@@ -27,7 +32,7 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
       where: { archived: false, assignedToId: user.id, status: { notIn: ['WON', 'LOST'] } },
       orderBy: { updatedAt: 'desc' },
       take: 12,
-      select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, status: true, dealValue: true, updatedAt: true },
+      select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, status: true, quotedPrice: true, updatedAt: true },
     }),
     prisma.booking.findMany({ where: { hostId: user.id, status: 'CONFIRMED', startTime: { gt: now } }, orderBy: { startTime: 'asc' }, take: 8, select: { id: true, title: true, guestName: true, startTime: true } }),
   ])
@@ -124,6 +129,24 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
               </div>
             </div>
           ))}
+        </CardContent>
+      </Card>
+      {user.role === 'SALES' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Commission terms</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CommissionTermsForm userId={user.id} terms={await termsForAssignee(user.id)} usingDefaults={!(await prisma.allowedUser.findUnique({ where: { email: user.email ?? '' }, select: { commissionTerms: true } }))?.commissionTerms} />
+          </CardContent>
+        </Card>
+      ) : null}
+      <Card>
+        <CardHeader>
+          <CardTitle>Agreements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <AgreementsPanel userId={user.id} name={display} agreements={agreements.map((a) => ({ ...a, createdAt: a.createdAt.toISOString() }))} />
         </CardContent>
       </Card>
       <Card>

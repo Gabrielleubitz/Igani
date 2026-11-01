@@ -17,6 +17,12 @@ enum Role {
   MARKETING
 }
 
+enum LeadSourceType {
+  COLD_CALL
+  ADS
+  OTHER
+}
+
 enum LeadStatus {
   NEW
   CONTACTED
@@ -62,6 +68,8 @@ model AllowedUser {
   inviteToken      String?   @unique
   invitedAt        DateTime?
   inviteAcceptedAt DateTime?
+  /// This salesperson's agreed commission terms (null = the defaults). Admin-only.
+  commissionTerms  Json?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -93,6 +101,7 @@ model User {
   bookingPages    BookingPage[]
   calendarEntries CalendarEntry[]
   activityLogs    ActivityLog[]
+  agreements      Agreement[]
   leadNotes       LeadNote[]
   mailboxEmails   EmailMessage[]
   mailboxSync     MailboxSync?
@@ -163,8 +172,23 @@ model Lead {
   status       LeadStatus @default(NEW)
   /// Why a lead was LOST (required when moving to LOST)
   lostReason   String?
-  /// Deal value in whole currency units, set on WON/proposal
+  /// Legacy deal value (no longer read; copied into quotedPrice by the 20261103 migration)
   dealValue    Int?
+  /// The price agreed with the client after the sales call, whole currency units. Admin-only.
+  quotedPrice  Int?
+  currency     String     @default("ILS")
+  /// Where the lead came from, for commission terms (admin-edited)
+  sourceType   LeadSourceType @default(OTHER)
+  /// Per-deal commission overrides set by an admin before the deal is won (null = use the salesperson's terms)
+  commissionOverrides Json?
+  /// Terms + breakdown used when the deal was won. Never changes when the salesperson's terms change later. Admin-only.
+  commissionSnapshot  Json?
+  /// The salesperson's commission in whole shekels. This, with the two payment dates, is all a salesperson ever sees.
+  commissionTotal       Int?
+  /// The client paid us (admin enters the date): the commission is only payable from here
+  finalPaymentReceivedAt DateTime?
+  /// The commission was paid out to the salesperson
+  finalPaidAt            DateTime?
   /// Soft-delete: hidden from pipelines, restorable by admin
   archived     Boolean    @default(false)
   tags         String[]   @default([])
@@ -252,6 +276,26 @@ model Booking {
   @@index([hostId, status, startTime])
   @@index([leadId])
   @@index([status, createdAt])
+}
+
+// ─── Agreements ──────────────────────────────────────────────────────────────
+
+/// A document (contract, commission terms…) an admin uploaded for one salesperson. The salesperson can read their own.
+model Agreement {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  fileName     String
+  mimeType     String
+  size         Int
+  /// The file itself. Always select columns explicitly in lists: this can be several MB.
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 // ─── Audit ───────────────────────────────────────────────────────────────────
