@@ -14,7 +14,9 @@ export const entryInput = z.object({
   notes: z.string().trim().max(2000).optional(),
   allDay: z.boolean(),
   start: when,
-  end: when,
+  /** Either an explicit end, or a duration in minutes (the form sends a duration; all-day uses whole days = 1440 min each). */
+  end: when.optional(),
+  durationMin: z.number().int().min(5).max(60 * 24 * 30).optional(),
   color: z.enum(ENTRY_COLORS).optional(),
 })
 export type EntryInput = z.infer<typeof entryInput>
@@ -23,18 +25,26 @@ export type EntryInput = z.infer<typeof entryInput>
  * Turns the form values (wall-clock strings in the user's time zone) into stored instants.
  * All-day entries run from local midnight of the first day to local midnight after the last day (end is exclusive).
  */
-export function resolveEntryTimes(i: Pick<EntryInput, 'allDay' | 'start' | 'end'>, timeZone: string): { startTime: Date; endTime: Date } {
+export function resolveEntryTimes(i: Pick<EntryInput, 'allDay' | 'start' | 'end' | 'durationMin'>, timeZone: string): { startTime: Date; endTime: Date } {
   const day = (v: string): string => v.slice(0, 10)
   const startTime = zonedInputToDate(i.allDay ? `${day(i.start)}T00:00` : i.start, timeZone)
   let endTime: Date
   if (i.allDay) {
-    const last = zonedInputToDate(`${day(i.end)}T00:00`, timeZone)
+    let lastDay = i.end ? day(i.end) : day(i.start)
+    if (!i.end && i.durationMin && i.durationMin > 1440) {
+      const d = new Date(`${day(i.start)}T12:00:00Z`)
+      d.setUTCDate(d.getUTCDate() + Math.ceil(i.durationMin / 1440) - 1)
+      lastDay = d.toISOString().slice(0, 10)
+    }
+    const last = zonedInputToDate(`${lastDay}T00:00`, timeZone)
     // next local midnight: noon of the last day + 24h lands on the next day in every zone; re-anchor it to midnight.
     const next = new Date(last.getTime() + 36 * 3600_000)
     const nd = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(next)
     endTime = zonedInputToDate(`${nd}T00:00`, timeZone)
   } else {
-    endTime = zonedInputToDate(i.end, timeZone)
+    if (i.end) endTime = zonedInputToDate(i.end, timeZone)
+    else if (i.durationMin) endTime = new Date(startTime.getTime() + i.durationMin * 60_000)
+    else throw new Error('Pick a valid date')
   }
   if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) throw new Error('Pick a valid date')
   if (endTime.getTime() <= startTime.getTime()) throw new Error('The end must be after the start')

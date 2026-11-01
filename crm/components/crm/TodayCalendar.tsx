@@ -12,7 +12,7 @@ import { EventCalendar, type EventCalendarProps } from '@/components/ui/event-ca
 import { EventCalendarContent } from '@/components/ui/event-calendar/event-calendar-content'
 import { EventCalendarNav, EventCalendarNavNext, EventCalendarNavPrev, EventCalendarNavToday, EventCalendarTitle } from '@/components/ui/event-calendar/event-calendar-nav'
 import type { CalendarEvent, CalendarView, EventCalendarOccurrence } from '@/components/ui/event-calendar/event-calendar-types'
-import { Input, Label, Textarea } from '@/components/ui/input'
+import { Input, Label, Select, Textarea } from '@/components/ui/input'
 import { ENTRY_COLORS, entryColorVar, type EntryColor } from '@/lib/calendar-entries'
 import { cn } from '@/lib/utils'
 import { dateToZonedInput } from '@/lib/time'
@@ -55,7 +55,7 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
   const [view, setView] = useState<'day' | 'month'>('day')
   const [date, setDate] = useState(() => new Date())
   const [removed, setRemoved] = useState<Set<string>>(new Set())
-  const [form, setForm] = useState<{ start: string; end: string; allDay: boolean } | null>(null)
+  const [form, setForm] = useState<{ start: string; durationMin: number; allDay: boolean } | null>(null)
   const [selected, setSelected] = useState<CalendarItem | null>(null)
 
   const events = useMemo<CalendarEvent<Data>[]>(
@@ -79,8 +79,8 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
   function openForm(start: Date, allDay: boolean, end?: Date): void {
     const s = new Date(start)
     if (!allDay && s.getMinutes() === 0 && s.getHours() === 0) s.setHours(9) // month cell click has no time of day
-    const e = end ?? new Date(s.getTime() + 3600_000)
-    setForm({ start: dateToZonedInput(s, timeZone), end: dateToZonedInput(e, timeZone), allDay })
+    const mins = end && !allDay ? Math.round((end.getTime() - s.getTime()) / 60_000) : 60
+    setForm({ start: dateToZonedInput(s, timeZone), durationMin: mins >= 5 && mins <= 720 ? mins : 60, allDay })
   }
 
   const onSlotClick: NonNullable<EventCalendarProps<Data>['onSlotClick']> = (slot) => {
@@ -287,12 +287,30 @@ function DeleteButton({ id, onDeleted }: { id: string; onDeleted: () => void }):
   )
 }
 
-function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; end: string; allDay: boolean }; onDone: () => void; onCancel: () => void }): React.ReactElement {
+const DURATIONS = [15, 30, 45, 60, 90, 120, 180, 240]
+
+function fmtDuration(m: number): string {
+  if (m < 60) return `${m} min`
+  const h = Math.floor(m / 60)
+  const r = m % 60
+  return r ? `${h} hr ${r} min` : h === 1 ? '1 hr' : `${h} hr`
+}
+
+/** End time of a wall-clock start + duration, for display only (the server computes the real end). */
+function endLabel(start: string, minutes: number): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(start)
+  if (!m) return '—'
+  const d = new Date(Date.UTC(+m[1]!, +m[2]! - 1, +m[3]!, +m[4]!, +m[5]!) + minutes * 60_000)
+  return d.toLocaleString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; durationMin: number; allDay: boolean }; onDone: () => void; onCancel: () => void }): React.ReactElement {
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
   const [allDay, setAllDay] = useState(initial.allDay)
   const [start, setStart] = useState(initial.start)
-  const [end, setEnd] = useState(initial.end)
+  const [duration, setDuration] = useState(initial.durationMin)
+  const [days, setDays] = useState(1)
   const [color, setColor] = useState<EntryColor>('blue')
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -306,7 +324,7 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
         e.preventDefault()
         setError(null)
         startTransition(async () => {
-          const r = await createCalendarEntry({ title, notes: notes || undefined, allDay, start: val(start), end: val(end), color })
+          const r = await createCalendarEntry({ title, notes: notes || undefined, allDay, start: val(start), durationMin: allDay ? days * 1440 : duration, color })
           if (!r.ok) return setError(r.error)
           if (!r.data.googleSynced) window.alert('Saved in the CRM, but it could not be added to your Google Calendar. Open Connect Google and reconnect, then reload this page to retry.')
           onDone()
@@ -326,8 +344,22 @@ function EntryForm({ initial, onDone, onCancel }: { initial: { start: string; en
           <DateTimePicker id="ev-start" mode={mode} value={val(start)} onChange={setStart} />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="ev-end">Ends</Label>
-          <DateTimePicker id="ev-end" mode={mode} min={val(start).slice(0, 10)} value={val(end)} onChange={setEnd} />
+          <Label htmlFor="ev-duration">{allDay ? 'Length' : 'Meeting duration'}</Label>
+          {allDay ? (
+            <Select id="ev-duration" value={days} onChange={(e) => setDays(Number(e.target.value))}>
+              {[1, 2, 3, 4, 5, 6, 7, 14].map((n) => (
+                <option key={n} value={n}>{n === 1 ? '1 day' : `${n} days`}</option>
+              ))}
+            </Select>
+          ) : (
+            <Select id="ev-duration" value={DURATIONS.includes(duration) ? duration : 'custom'} onChange={(e) => setDuration(e.target.value === 'custom' ? 90 : Number(e.target.value))}>
+              {DURATIONS.map((m) => (
+                <option key={m} value={m}>{fmtDuration(m)}</option>
+              ))}
+              {DURATIONS.includes(duration) ? null : <option value="custom">{fmtDuration(duration)}</option>}
+            </Select>
+          )}
+          {!allDay ? <p className="text-xs text-muted-foreground">Ends at {endLabel(start, duration)}</p> : null}
         </div>
       </div>
       <div className="space-y-1.5">

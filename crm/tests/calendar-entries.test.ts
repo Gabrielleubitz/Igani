@@ -16,4 +16,11 @@ describe('calendar entries', () => {
     expect(() => resolveEntryTimes({ allDay: false, start: '2026-11-02T10:00', end: '2026-11-02T09:00' }, 'UTC')).toThrow()
     expect(entryInput.safeParse({ title: '  ', allDay: false, start: '2026-11-02T10:00', end: '2026-11-02T11:00' }).success).toBe(false)
   })
+  it('computes the end from a duration', () => {
+    const r = resolveEntryTimes({ allDay: false, start: '2026-11-02T09:00', durationMin: 45 }, 'UTC')
+    expect(r.endTime.getTime() - r.startTime.getTime()).toBe(45 * 60_000)
+    const d = resolveEntryTimes({ allDay: true, start: '2026-11-01', durationMin: 2 * 1440 }, 'UTC')
+    expect(d.endTime.toISOString()).toBe('2026-11-03T00:00:00.000Z')
+    expect(() => resolveEntryTimes({ allDay: false, start: '2026-11-02T09:00' }, 'UTC')).toThrow()
+  })
 })
