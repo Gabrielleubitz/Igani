@@ -10,6 +10,18 @@ IGANI builds custom websites meant to win the first impression: clients judge a 
 - [About IGANI](https://www.igani.co/about): the studio and its founders
 - [Get in touch](https://www.igani.co/#contact): the contact form, section 5 of the home page
 
+## How a project works
+1. Intro meeting
+2. Demo and preview: a working preview of the site before any commitment
+3. Structuring and closing down the specs
+4. Contract signed
+5. Delivery
+
+## What IGANI builds
+- Websites for real estate agents and brokerages (home-valuation and showing-request forms, Matterport 3D tours)
+- Brand-led websites for service businesses
+- Landing pages
+
 ## Founders
 - [Ilan Leubitz](https://www.igani.co/about/team/ilan-leubitz)
 - [Amitay Hanson](https://www.igani.co/about/team/amitay-hanson)

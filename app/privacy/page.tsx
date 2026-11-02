@@ -9,6 +9,7 @@ import { SplashCursor } from '@/components/ui/splash-cursor'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { T } from '@/components/T'
+import { GABRIEL_PHONE, formatPhone } from '@/lib/siteSocial'
 
 export default function PrivacyPage() {
   return (
@@ -129,7 +130,7 @@ export default function PrivacyPage() {
                 </p>
                 <div className="mt-4 p-4 bg-slate-900/60 rounded-xl border border-slate-700/50">
                   <p className="text-cyan-400 font-semibold"><T>Email:</T> info@igani.co</p>
-                  <p className="text-slate-400 mt-2"><T>Phone:</T> +972 58 44 77757</p>
+                  <p className="text-slate-400 mt-2"><T>Phone:</T> {formatPhone(GABRIEL_PHONE)}</p>
                   <p className="text-slate-400 mt-2"><T>Location:</T> Netanya, Israel</p>
                 </div>
               </section>

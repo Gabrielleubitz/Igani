@@ -71,6 +71,20 @@ export default async function FounderProfilePage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       <FounderPersonJsonLd slug={params.slug} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+              { '@type': 'ListItem', position: 2, name: 'About', item: `${SITE_URL}/about` },
+              { '@type': 'ListItem', position: 3, name: founder.name, item: founderProfileUrl(founder.name) },
+            ],
+          }),
+        }}
+      />
       <Header showBackButton backButtonText="About IGANI" backButtonHref="/about" />
 
       <main className="mx-auto max-w-3xl px-4 pb-20 pt-32 sm:px-6">

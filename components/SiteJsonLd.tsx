@@ -21,6 +21,16 @@ export async function SiteJsonLd() {
         email: 'info@igani.co',
         address: { '@type': 'PostalAddress', addressLocality: 'Netanya', addressCountry: 'IL' },
         areaServed: 'IL',
+        knowsAbout: ['Website design', 'Website development', 'Real estate agent websites', 'Landing pages'],
+        hasOfferCatalog: {
+          '@type': 'OfferCatalog',
+          name: 'IGANI services',
+          itemListElement: [
+            'Websites for real estate agents and brokerages',
+            'Brand-led websites for service businesses',
+            'Landing pages',
+          ].map((name) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name } })),
+        },
         contactPoint: [
           { '@type': 'ContactPoint', name: 'Gabriel', telephone: tel(GABRIEL_PHONE), email: 'info@igani.co', contactType: 'sales' },
           { '@type': 'ContactPoint', name: 'Amitay', telephone: tel(AMITAY_PHONE), email: 'info@igani.co', contactType: 'sales' },

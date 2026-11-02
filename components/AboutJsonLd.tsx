@@ -23,16 +23,8 @@ export async function AboutJsonLd() {
     ? `${pageDescription} Meet the ${SITE_NAME} co-founders: ${founderNames}.`
     : pageDescription
 
+  // The Organization itself is defined once, site-wide (SiteJsonLd, same @id); this page only references it.
   const graph = [
-    {
-      '@type': 'Organization',
-      '@id': orgId,
-      name: SITE_NAME,
-      url: SITE_URL,
-      logo: `${SITE_URL}/igani-logo.png`,
-      description: pageDescription,
-      founder: founders.map((f) => ({ '@id': `${founderProfileUrl(f.name)}#person` })),
-    },
     {
       '@type': 'AboutPage',
       '@id': `${aboutUrl}#webpage`,
@@ -42,6 +34,13 @@ export async function AboutJsonLd() {
       isPartOf: { '@id': orgId },
       mainEntity: { '@id': orgId },
       about: founders.map((f) => ({ '@id': `${founderProfileUrl(f.name)}#person` })),
+    },
+    {
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
+        { '@type': 'ListItem', position: 2, name: 'About', item: aboutUrl },
+      ],
     },
     ...founders.map((f) => ({
       '@type': 'Person',
