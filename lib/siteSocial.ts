@@ -8,12 +8,20 @@ export const DEFAULT_WHATSAPP_FALLBACK = '+972584477757'
 export const GABRIEL_PHONE = '+972 58-447-7757'
 export const AMITAY_PHONE = '+972 54-540-8814'
 
+/** One display format for every Israeli number, whatever way it was typed: "+972 58-447-7757". Anything else is shown as typed. */
+export function formatPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '')
+  const m = /^(?:972|0)?(5\d)(\d{3})(\d{4})$/.exec(digits)
+  return m ? `+972 ${m[1]}-${m[2]}-${m[3]}` : raw.trim()
+}
+
 export function teamPhones(settings: { businessPhone?: string }): { label: string; display: string; tel: string }[] {
-  const gabriel = settings.businessPhone?.trim() || GABRIEL_PHONE
-  return [
-    { label: 'Gabriel', display: gabriel, tel: gabriel.replace(/[^\d+]/g, '') },
-    { label: 'Amitay', display: AMITAY_PHONE, tel: AMITAY_PHONE.replace(/[^\d+]/g, '') },
+  const people = [
+    { label: 'Gabriel', raw: settings.businessPhone?.trim() || GABRIEL_PHONE },
+    { label: 'Amitay', raw: AMITAY_PHONE },
   ]
+  // Same format for each, so the list reads evenly whichever way the number was saved in the admin settings.
+  return people.map((p) => ({ label: p.label, display: formatPhone(p.raw), tel: `+${formatPhone(p.raw).replace(/\D/g, '')}` }))
 }
 
 export function whatsappDigitsFromSettings(settings: {
