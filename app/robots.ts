@@ -1,8 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { SITE_URL } from '@/lib/seo/site'
 
-// Never crawled: the admin area, the API, and customer/checkout pages.
-const DISALLOW = ['/admin/', '/api/', '/checkout', '/orders/', '/preview/']
+// Never crawled: the API and customer/checkout pages. The admin area is deliberately NOT listed here: robots.txt is public,
+// so naming it would advertise it. Admin pages are kept out of search by a noindex tag instead.
+const DISALLOW = ['/api/', '/checkout', '/orders/', '/preview/']
 
 // Search engines and AI assistants we want to be able to read and cite the public site. They are listed explicitly so the
 // intent is on record. (A crawler that matches its own group ignores the '*' group, so each repeats the disallow list.)
