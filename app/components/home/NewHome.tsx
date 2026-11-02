@@ -50,6 +50,15 @@ export function NewHome() {
       .finally(() => setLoading(false))
   }, [])
 
+  // A link like /#contact from another page lands on that section once the page has laid out (the team data loads after first paint).
+  useEffect(() => {
+    if (loading) return
+    const id = window.location.hash.slice(1)
+    if (!id) return
+    const t = window.setTimeout(() => scrollToSection(id, 'auto'), 450)
+    return () => window.clearTimeout(t)
+  }, [loading])
+
   return (
     <div id="home" className={`relative min-h-screen bg-[#030814] text-white ${displaySerif.variable}`}>
       <HomepageTracker />
@@ -59,7 +68,7 @@ export function NewHome() {
       <Header />
 
       <HoldStill className="relative z-0 pb-10">
-        <HomeHero onCheckWork={() => scrollToSection('work')} />
+        <HomeHero onCheckWork={() => scrollToSection('work')} onStart={() => scrollToSection('contact')} />
       </HoldStill>
 
       {/* Chapters slide up over one another; one light chapter (why it matters) as the break, blue to close */}

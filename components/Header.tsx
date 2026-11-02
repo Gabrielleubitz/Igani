@@ -15,6 +15,7 @@ import {
 } from '@/lib/siteSocial'
 import { TikTokGlyph, WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { ArrowLeft, ArrowRight, Instagram } from 'lucide-react'
+import { CONTACT_HREF, goToContact } from '@/lib/contactLink'
 
 interface HeaderProps {
   showBackButton?: boolean
@@ -237,8 +238,11 @@ export default function Header({
                 })}
               </nav>
               <a
-                href="/start"
-                onClick={() => setIsMenuOpen(false)}
+                href={CONTACT_HREF}
+                onClick={(e) => {
+                  goToContact(e)
+                  setIsMenuOpen(false)
+                }}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-white py-4 text-[15px] font-semibold text-[#04101e] transition-colors hover:bg-[#dbe6ff]"
               >
                 Start a project

@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { IganiLogo } from '@/components/IganiLogo'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { siteContent } from '@/lib/i18n'
+import { CONTACT_HREF, goToContact } from '@/lib/contactLink'
 import { useSiteSettings } from '@/hooks/useSiteSettings'
 import {
   INSTAGRAM_URL,
@@ -95,7 +96,7 @@ export default function Footer() {
               <a href="/terms" className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
                 {footer.terms[language]}
               </a>
-              <a href="/contact" className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
+              <a href={CONTACT_HREF} onClick={goToContact} className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
                 {footer.contact[language]}
               </a>
             </div>

@@ -10,6 +10,7 @@ import { SitePreviewFrame } from '@/app/components/SitePreviewFrame'
 import { normalizeWebsiteUrl } from '@/lib/websiteUrl'
 import { PageShell, SerifAccent } from '@/app/components/landing/fx/PageShell'
 import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
+import { CONTACT_HREF } from '@/lib/contactLink'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -176,7 +177,7 @@ export default function PreviewPage({ params }: { params: { id: string } }) {
             Tell us about your business and we&rsquo;ll show you a live demo of yours.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <MagneticButton href="/start">
+            <MagneticButton href={CONTACT_HREF}>
               Start a project
               <ArrowRight className="h-4 w-4" />
             </MagneticButton>

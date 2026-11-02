@@ -15,7 +15,7 @@ const fadeUp = (delay: number) => ({
 })
 
 /** Opening: why a site matters for a service business, then straight to the proof. */
-export function HomeHero({ onCheckWork }: { onCheckWork: () => void }) {
+export function HomeHero({ onCheckWork, onStart }: { onCheckWork: () => void; onStart: () => void }) {
   return (
     <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI">
       <HeroCanvas />
@@ -55,7 +55,7 @@ export function HomeHero({ onCheckWork }: { onCheckWork: () => void }) {
               Check our work
               <ArrowDown className="h-4 w-4" />
             </MagneticButton>
-            <MagneticButton variant="ghost" href="/start">
+            <MagneticButton variant="ghost" onClick={onStart}>
               Start a project
               <ArrowRight className="h-4 w-4" />
             </MagneticButton>

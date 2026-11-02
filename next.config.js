@@ -10,7 +10,16 @@ const nextConfig = {
   transpilePackages: ['three'],
   // The public Packages page was removed: old links and search results land on the home page instead of a 404.
   async redirects() {
-    return [{ source: '/packages', destination: '/', permanent: true }]
+    return [
+      { source: '/packages', destination: '/', permanent: true },
+      // The generic funnel pages are retired (the real estate page stays); old ad and search links land on the home page.
+      { source: '/funnels', destination: '/', permanent: true },
+      { source: '/funnel2', destination: '/', permanent: true },
+      { source: '/funnel3', destination: '/', permanent: true },
+      // Getting in touch is section 05 of the home page, so the separate pages point there.
+      { source: '/contact', destination: '/#contact', permanent: true },
+      { source: '/start', destination: '/#contact', permanent: true },
+    ]
   },
   images: {
     domains: ['localhost', 'igani.co'],

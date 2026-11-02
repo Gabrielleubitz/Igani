@@ -9,6 +9,7 @@ import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
 import { getAboutUsSections, getAboutUsSettings, getPackageFAQs, getTeamMembers } from '@/lib/firestore'
 import { AboutUsSection, AboutUsSettings, PackageFAQ, TeamMember } from '@/types'
 import { T } from '@/components/T'
+import { CONTACT_HREF } from '@/lib/contactLink'
 
 function teamMemberSlug(name: string): string {
   return name
@@ -371,7 +372,7 @@ export default function AboutPageClient() {
             Tell us what you&rsquo;re building. We&rsquo;ll come back with real questions, not a brochure.
           </p>
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <MagneticButton href="/start">
+            <MagneticButton href={CONTACT_HREF}>
               Start a project
               <ArrowRight className="h-4 w-4" />
             </MagneticButton>

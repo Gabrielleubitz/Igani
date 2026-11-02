@@ -6,8 +6,6 @@ import { SITE_URL } from '@/lib/seo/site'
 const CHANGED = {
   home: new Date('2026-11-02'),
   about: new Date('2026-11-02'),
-  contact: new Date('2026-10-31'),
-  start: new Date('2026-10-27'),
   legal: new Date('2026-10-30'),
 }
 
@@ -25,8 +23,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: SITE_URL, lastModified: CHANGED.home, changeFrequency: 'weekly', priority: 1 },
     { url: `${SITE_URL}/about`, lastModified: CHANGED.about, changeFrequency: 'monthly', priority: 0.9 },
     ...founderPages,
-    { url: `${SITE_URL}/contact`, lastModified: CHANGED.contact, changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${SITE_URL}/start`, lastModified: CHANGED.start, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${SITE_URL}/privacy`, lastModified: CHANGED.legal, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/terms`, lastModified: CHANGED.legal, changeFrequency: 'yearly', priority: 0.3 },
   ]
