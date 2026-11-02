@@ -18,7 +18,6 @@ export interface SiteContent {
   navigation: {
     home: I18nText
     portfolio: I18nText
-    packages: I18nText
     about: I18nText
     iganiCapital: I18nText
     contact: I18nText

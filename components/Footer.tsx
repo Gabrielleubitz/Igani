@@ -9,6 +9,7 @@ import { useSiteSettings } from '@/hooks/useSiteSettings'
 import {
   INSTAGRAM_URL,
   getWhatsAppChatHref,
+  teamPhones,
   tiktokHrefFromSettings,
 } from '@/lib/siteSocial'
 import { TikTokGlyph, WhatsAppGlyph } from '@/components/SocialGlyphs'
@@ -43,8 +44,8 @@ export default function Footer() {
   }
   socialItems.push({ href: whatsappHref, label: 'WhatsApp', Icon: WhatsAppGlyph })
 
-  const hasContact =
-    !!(settings.businessEmail?.trim() || settings.businessPhone?.trim() || settings.businessAddress?.trim())
+  const phones = teamPhones(settings)
+  const hasContact = true // the labelled phone numbers always show
 
   return (
     <footer className="relative mx-4 mb-4 overflow-hidden rounded-2xl border border-white/[0.10] bg-[#04101e]/30 backdrop-blur-[36px] backdrop-saturate-[180%] shadow-[0_-4px_40px_-4px_rgba(0,0,20,0.5),inset_0_1px_0_rgba(255,255,255,0.12),inset_0_0_28px_rgba(64,128,224,0.04)] sm:mx-6 lg:mx-8">
@@ -109,14 +110,13 @@ export default function Footer() {
                     {settings.businessEmail.trim()}
                   </a>
                 )}
-                {settings.businessPhone?.trim() && (
-                  <a
-                    href={`tel:${settings.businessPhone.replace(/\s/g, '')}`}
-                    className="block hover:text-[#80A0E0] transition-colors"
-                  >
-                    {settings.businessPhone.trim()}
+                {phones.map((p) => (
+                  <a key={p.label} href={`tel:${p.tel}`} className="block hover:text-[#80A0E0] transition-colors">
+                    <span className="text-white/35">{p.label}</span>
+                    <span aria-hidden> · </span>
+                    <span dir="ltr">{p.display}</span>
                   </a>
-                )}
+                ))}
                 {settings.businessAddress?.trim() && (
                   <p className="flex items-start justify-center md:justify-end gap-2">
                     <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-[#4080E0]/50" aria-hidden />

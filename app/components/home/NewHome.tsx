@@ -9,9 +9,8 @@ import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
 import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
 import { HoldStill, SectionSheet, scrollToSection } from '@/app/components/funnel-shared/SectionSheet'
-import { getSettings, getTeamMembers, getWebsites } from '@/lib/firestore'
-import { caseStudies } from '@/lib/caseStudies'
-import { SiteSettings, TeamMember, Website } from '@/types'
+import { getSettings, getTeamMembers } from '@/lib/firestore'
+import { SiteSettings, TeamMember } from '@/types'
 import { defaultSettings } from '@/data/defaultSettings'
 import { ContactSection } from '@/app/components/landing/ContactSection'
 import { HomeHero } from './HomeHero'
@@ -29,27 +28,25 @@ const RAIL = [
 ]
 
 /**
- * Home page, in the order: hero → our work (two before/afters, then every
- * site we've built) → why this change is crucial → our team → the process →
+ * Home page, in the order: hero → our work (the pinned site gallery, then a ticker of
+ * everyone we've built for) → why this change is crucial → our team → the process →
  * the contact form.
  */
 export function NewHome() {
-  const [websites, setWebsites] = useState<Website[]>([])
   const [team, setTeam] = useState<TeamMember[]>([])
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
-      getWebsites().catch(() => [] as Website[]),
       getTeamMembers().catch(() => [] as TeamMember[]),
       getSettings().catch(() => null),
     ])
-      .then(([w, t, p]) => {
-        setWebsites([...w].sort((a, b) => Number(b.featured) - Number(a.featured) || a.order - b.order))
+      .then(([t, p]) => {
         setTeam(t.filter((m) => m.published).sort((a, b) => a.order - b.order))
         if (p) setSettings(p)
       })
+      .catch(() => undefined)
       .finally(() => setLoading(false))
   }, [])
 
@@ -67,7 +64,7 @@ export function NewHome() {
 
       {/* Chapters slide up over one another; one light chapter (why it matters) as the break, blue to close */}
       <SectionSheet hold veilPrevious id="sheet-work" layer={1} fill={false} className="bg-[#081833]">
-        <WorkSection studies={caseStudies} websites={websites} loading={loading} />
+        <WorkSection onWant={() => scrollToSection('contact')} />
       </SectionSheet>
 
       <SectionSheet hold veilPrevious id="sheet-why" layer={2} fill={false} className="bg-[#EEF1F6]">
@@ -95,13 +92,6 @@ export function NewHome() {
 
       <div className="relative z-[6] -mt-6 rounded-t-[32px] bg-[#030814] pt-6 shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.5)]">
         <Footer />
-        {/* Sign-off: the page clearly ends here */}
-        <div
-          aria-hidden
-          className="select-none overflow-hidden pb-[1vw] pt-6 text-center text-[20vw] font-semibold leading-[0.8] tracking-[-0.06em] text-[#081833]"
-        >
-          Igani
-        </div>
       </div>
     </div>
   )

@@ -8,6 +8,10 @@ const nextConfig = {
     }
   },
   transpilePackages: ['three'],
+  // The public Packages page was removed: old links and search results land on the home page instead of a 404.
+  async redirects() {
+    return [{ source: '/packages', destination: '/', permanent: true }]
+  },
   images: {
     domains: ['localhost', 'igani.co'],
     formats: ['image/webp', 'image/avif']

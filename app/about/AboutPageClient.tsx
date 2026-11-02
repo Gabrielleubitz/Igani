@@ -375,9 +375,6 @@ export default function AboutPageClient() {
               Start a project
               <ArrowRight className="h-4 w-4" />
             </MagneticButton>
-            <MagneticButton variant="ghost" href="/packages">
-              See packages
-            </MagneticButton>
           </div>
         </div>
       </section>

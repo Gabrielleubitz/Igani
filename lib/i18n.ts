@@ -7,7 +7,6 @@ export const siteContent: SiteContent = {
   navigation: {
     home: { en: 'Home', he: 'בית' },
     portfolio: { en: 'Portfolio', he: 'תיק עבודות' },
-    packages: { en: 'Packages', he: 'חבילות' },
     about: { en: 'About', he: 'אודות' },
     iganiCapital: { en: 'Igani Capital', he: 'איגני קפיטל' },
     contact: { en: 'Contact', he: 'צור קשר' },

@@ -86,7 +86,6 @@ export default function Header({
   const navigationItems = [
     { id: 'home',      label: nav.home[currentLanguage], type: 'section' as const },
     { id: 'portfolio', label: nav.portfolio[currentLanguage], type: 'section' as const },
-    { id: 'packages',  label: nav.packages[currentLanguage], type: 'page'    as const, href: '/packages' },
     { id: 'about',     label: nav.about[currentLanguage], type: 'page'    as const, href: '/about' },
   ]
 

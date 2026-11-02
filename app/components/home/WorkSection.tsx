@@ -1,54 +1,47 @@
 'use client'
 
-import { Website } from '@/types'
-import { CaseStudy } from '@/lib/funnelCaseStudy'
-import PortfolioInfiniteScroll from '@/app/components/PortfolioInfiniteScroll'
-import { ChapterBody, ChapterOpener } from '@/app/components/landing/fx/ChapterOpener'
-import { BeforeAfter } from './BeforeAfter'
+import { SectionHeading } from '@/app/components/landing/fx/SectionHeading'
+import { WorkGallery, WorkTheme } from '@/app/components/funnel-shared/WorkShowcase'
+import { LogoTicker } from '@/app/components/realestate/LogoTicker'
 
-/**
- * "Our work": two before/after comparisons up top, then every site we've built
- * in the portfolio carousel (as on the original home page).
- */
-export function WorkSection({
-  studies,
-  websites,
-  loading,
-}: {
-  studies: CaseStudy[]
-  websites: Website[]
-  loading: boolean
-}) {
-  // Only real projects; add more in lib/caseStudies.ts as they're ready
-  const list = studies.filter((s) => s.ready).slice(0, 2)
+// Same look as the gallery on /realestate (pinned phone-and-browser stage, then a ticker of everyone we've built for).
+const THEME: WorkTheme = {
+  frame: 'border-white/[0.12] bg-[#0a1830]',
+  chrome: 'bg-[#0a1830]',
+  chromeText: 'text-white/50',
+  title: 'text-white',
+  meta: 'text-white/55',
+  body: 'text-white/70',
+  button: 'rounded-full bg-white text-[#04101e] hover:bg-[#e6eefc]',
+  link: 'text-[#9ec0f5] hover:text-white',
+  counter: 'font-display text-[15px] text-white/80',
+  dot: 'bg-white/25',
+  dotActive: 'bg-[#4080E0]',
+  overlay: 'bg-[#030814]/90',
+  panel: 'border-white/10 bg-[#030814]',
+}
 
+/** 01 — Our work: the sites themselves in the pinned gallery, then a sliding ticker of the businesses we've built for. */
+export function WorkSection({ onWant }: { onWant: () => void }) {
   return (
-    <section id="work" className="relative scroll-mt-20">
-      <ChapterOpener
-        index="01"
-        label="Our work"
-        aside="drag the line on each one."
-        title="Before. *After*."
-        sub="Service businesses, before and after we rebuilt their front door."
-      />
-      <ChapterBody className="bg-[#081833] pb-24 pt-14 sm:pb-32 sm:pt-20">
-        <div className="mx-auto flex max-w-6xl flex-col gap-20 px-4 sm:gap-28 sm:px-6 lg:px-8">
-          {list.map((s) => (
-            <BeforeAfter key={s.client} study={s} sample={!s.ready} />
-          ))}
-        </div>
+    <section id="work" className="relative scroll-mt-20 pb-24 pt-20 sm:pt-28">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <SectionHeading
+          index="01"
+          label="Our work"
+          aside="scroll to browse them"
+          title="Real businesses. *Live today.*"
+          sub="A few examples of the sites we’ve designed and built, for owners who were tired of a site that didn’t sell them."
+          className="mb-10 lg:mb-0"
+        />
+      </div>
 
-        {/* Everything we've shipped */}
-        <div id="portfolio" className="scroll-mt-28 pt-24 sm:pt-32">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 flex items-baseline justify-between gap-6 border-t border-white/[0.12] pt-3 text-[13px] text-white/60">
-              <span>Every site we&rsquo;ve built</span>
-              {websites.length > 0 && <span className="hidden sm:block">{websites.length} projects · hover to pause, click to open</span>}
-            </div>
-          </div>
-          {loading ? <div aria-hidden className="h-[328px]" /> : websites.length > 0 && <PortfolioInfiniteScroll websites={websites} />}
-        </div>
-      </ChapterBody>
+      {/* The header's "Portfolio" link lands here */}
+      <div id="portfolio" className="scroll-mt-28">
+        <WorkGallery theme={THEME} onWant={onWant} />
+      </div>
+
+      <LogoTicker className="mt-10 sm:mt-14 lg:mt-6" />
     </section>
   )
 }
