@@ -156,7 +156,8 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-60px' }}
             transition={{ duration: 0.6, delay: 0.1 }}
-            className="order-1 lg:order-2"
+            id="contact-form"
+            className="order-1 scroll-mt-24 lg:order-2"
           >
             <SpotlightCard intensity={0.12} className="relative">
               <form onSubmit={handleSubmit} className="space-y-5 p-7 sm:p-9">

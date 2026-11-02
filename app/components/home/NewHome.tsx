@@ -17,6 +17,7 @@ import { HomeHero } from './HomeHero'
 import { WorkSection } from './WorkSection'
 import { WhyCrucial } from './WhyCrucial'
 import { TeamSection } from './TeamSection'
+import { CONTACT_FORM_ID } from '@/lib/contactLink'
 import { ProcessSection } from './ProcessSection'
 
 const RAIL = [
@@ -50,13 +51,30 @@ export function NewHome() {
       .finally(() => setLoading(false))
   }, [])
 
-  // A link like /#contact from another page lands on that section once the page has laid out (the team data loads after first paint).
+  // A link like /#contact from another page lands on its target once the page has laid out. Content above it (the team data, images)
+  // keeps settling after load, so check a few times and correct if it has drifted off screen; stop the moment the visitor scrolls.
   useEffect(() => {
-    if (loading) return
-    const id = window.location.hash.slice(1)
-    if (!id) return
-    const t = window.setTimeout(() => scrollToSection(id, 'auto'), 450)
-    return () => window.clearTimeout(t)
+    const hash = window.location.hash.slice(1)
+    if (!hash) return
+    // /#contact means "I want to get in touch", so it opens on the form rather than the section's heading
+    const id = hash === 'contact' ? CONTACT_FORM_ID : hash
+    let userScrolled = false
+    const stop = () => {
+      userScrolled = true
+    }
+    const events = ['wheel', 'touchmove', 'keydown', 'mousedown'] as const
+    events.forEach((e) => window.addEventListener(e, stop, { passive: true }))
+    const timers = [450, 1400, 2800, 4500].map((ms) =>
+      window.setTimeout(() => {
+        if (userScrolled) return
+        const top = document.getElementById(id)?.getBoundingClientRect().top
+        if (top === undefined || top < 0 || top > window.innerHeight * 0.4) scrollToSection(id, 'auto')
+      }, ms),
+    )
+    return () => {
+      timers.forEach(window.clearTimeout)
+      events.forEach((e) => window.removeEventListener(e, stop))
+    }
   }, [loading])
 
   return (
@@ -68,12 +86,12 @@ export function NewHome() {
       <Header />
 
       <HoldStill className="relative z-0 pb-10">
-        <HomeHero onCheckWork={() => scrollToSection('work')} onStart={() => scrollToSection('contact')} />
+        <HomeHero onCheckWork={() => scrollToSection('work')} onStart={() => scrollToSection(CONTACT_FORM_ID)} />
       </HoldStill>
 
       {/* Chapters slide up over one another; one light chapter (why it matters) as the break, blue to close */}
       <SectionSheet hold veilPrevious id="sheet-work" layer={1} fill={false} className="bg-[#081833]">
-        <WorkSection onWant={() => scrollToSection('contact')} />
+        <WorkSection onWant={() => scrollToSection(CONTACT_FORM_ID)} />
       </SectionSheet>
 
       <SectionSheet hold veilPrevious id="sheet-why" layer={2} fill={false} className="bg-[#EEF1F6]">
