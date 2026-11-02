@@ -3,6 +3,7 @@ import { getAboutUsSettings } from '@/lib/firestore'
 import { AboutJsonLd } from '@/components/AboutJsonLd'
 import { buildFounderKeywords, getFounderProfiles } from '@/lib/seo/founders'
 import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
+import { DEFAULT_OG_IMAGE } from '@/lib/seo/meta'
 
 // Team bios are edited in the admin; rebuild these pages from Firestore every few minutes
 export const revalidate = 300
@@ -38,11 +39,13 @@ export async function generateMetadata(): Promise<Metadata> {
       url: `${SITE_URL}/about`,
       siteName: SITE_NAME,
       type: 'website',
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: 'summary_large_image',
       title: `${pageTitle} — ${founderNames || SITE_NAME}`,
       description,
+      images: [DEFAULT_OG_IMAGE.url],
     },
   }
 }

@@ -11,6 +11,7 @@ import {
   getFounderProfiles,
 } from '@/lib/seo/founders'
 import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
+import { DEFAULT_OG_IMAGE } from '@/lib/seo/meta'
 
 // Team bios are edited in the admin; rebuild these pages from Firestore every few minutes
 export const revalidate = 300
@@ -51,13 +52,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       url: profileUrl,
       siteName: SITE_NAME,
       type: 'website',
-      ...(founder.imageUrl ? { images: [{ url: founder.imageUrl }] } : {}),
+      images: founder.imageUrl ? [{ url: founder.imageUrl }] : [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      ...(founder.imageUrl ? { images: [founder.imageUrl] } : {}),
+      images: founder.imageUrl ? [founder.imageUrl] : [DEFAULT_OG_IMAGE.url],
     },
   }
 }

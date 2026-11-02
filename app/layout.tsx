@@ -7,6 +7,8 @@ import { SiteJsonLd } from '@/components/SiteJsonLd'
 import { getSiteSettings } from '@/lib/getSiteSettings'
 import { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { DEFAULT_OG_IMAGE } from '@/lib/seo/meta'
+import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -17,6 +19,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings()
 
   return {
+    // Lets relative URLs (share images) resolve to the real site address
+    metadataBase: new URL(SITE_URL),
     title: settings.metaTitle || 'IGANI - Premium Website Development',
     description: settings.metaDescription || 'Transform your vision into a stunning digital presence with custom website development',
     keywords: settings.metaKeywords || 'web development, design, websites, digital solutions',
@@ -35,12 +39,17 @@ export async function generateMetadata(): Promise<Metadata> {
       title: settings.metaTitle || 'IGANI - Premium Website Development',
       description: settings.metaDescription || 'Transform your vision into a stunning digital presence with custom website development',
       type: 'website',
+      siteName: SITE_NAME,
+      locale: 'en_US',
+      images: [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: 'summary_large_image',
       title: settings.metaTitle || 'IGANI - Premium Website Development',
       description: settings.metaDescription || 'Transform your vision into a stunning digital presence with custom website development',
-    }
+      images: [DEFAULT_OG_IMAGE.url],
+    },
+    robots: { index: true, follow: true },
   }
 }
 
