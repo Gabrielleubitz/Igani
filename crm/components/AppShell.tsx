@@ -46,6 +46,7 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
       { href: '/admin/dashboard', label: 'Overview', icon: 'overview', roles: ['ADMIN'] },
       { href: '/admin/bookings', label: 'Bookings', icon: 'bookings', roles: ['ADMIN'] },
       { href: '/admin/team-meetings', label: 'Team meetings', icon: 'teamMeetings', roles: ['ADMIN'] },
+      { href: '/admin/offers', label: 'Offers', icon: 'offers', roles: ['ADMIN'] },
       { href: '/admin/booking-pages', label: 'Booking pages', icon: 'pages', roles: ['ADMIN'] },
       { href: '/admin/team', label: 'Sales team', icon: 'performance', roles: ['ADMIN'] },
       { href: '/admin/users', label: 'Team access', icon: 'team', roles: ['ADMIN'] },

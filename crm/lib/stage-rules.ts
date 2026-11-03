@@ -4,14 +4,14 @@ import type { LeadStatus } from '@prisma/client'
  * Who may move a lead through the pipeline:
  *  - Admins: every stage, and they own the revenue numbers.
  *  - Everyone else: they work the early stages (New, Contacted, Demo scheduled) and can move a lead between them,
- *    including back to New/Contacted. The later stages (Demo sent, Proposal sent, Won, Lost) are set by admins only:
+ *    including back to New/Contacted. The later stages (Demo sent, Proposal sent, Signed, Won, Lost) are set by admins only:
  *    once an admin has put a lead there, a salesperson can no longer change its stage or its deal value.
  */
 export const SALES_STAGES: readonly LeadStatus[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED']
 /** Stages a lead can still be moved FROM by a non-admin: the same early stages. */
 const SALES_EDITABLE_FROM: readonly LeadStatus[] = SALES_STAGES
 
-const LABEL: Record<LeadStatus, string> = { NEW: 'New', CONTACTED: 'Contacted', DEMO_SCHEDULED: 'Demo scheduled', DEMO_SENT: 'Demo sent', PROPOSAL_SENT: 'Proposal sent', WON: 'Won', LOST: 'Lost' }
+const LABEL: Record<LeadStatus, string> = { NEW: 'New', CONTACTED: 'Contacted', DEMO_SCHEDULED: 'Demo scheduled', DEMO_SENT: 'Demo sent', PROPOSAL_SENT: 'Proposal sent', SIGNED: 'Signed', WON: 'Won', LOST: 'Lost' }
 
 const isAdmin = (role: string | null | undefined): boolean => role === 'ADMIN'
 

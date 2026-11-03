@@ -19,6 +19,7 @@ const TYPE_LABEL: Record<EntityType, string> = {
   BOOKING_PAGE: 'Booking pages',
   AVAILABILITY: 'Hours',
   SETTING: 'Settings',
+  OFFER: 'Offers',
 }
 
 function summarize(meta: unknown): string {

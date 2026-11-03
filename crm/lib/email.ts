@@ -10,6 +10,7 @@ import { BookingRequested } from '@/emails/BookingRequested'
 import { ContactEmail } from '@/emails/ContactEmail'
 import { MeetingReminder } from '@/emails/MeetingReminder'
 import { NewLeadAlert, type NewLeadAlertProps } from '@/emails/NewLeadAlert'
+import { OfferSigned, type OfferSignedProps } from '@/emails/OfferSigned'
 import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
 import { PendingBooking } from '@/emails/PendingBooking'
 import { TaskDigest, type TaskDigestProps } from '@/emails/TaskDigest'
@@ -242,4 +243,15 @@ export async function sendContactEmail(a: {
     text: await render(element, { plainText: true }),
     headers: mid ? { 'In-Reply-To': mid, References: mid } : undefined,
   })
+}
+
+/** Signed offer: the client's receipt and the team alert, each with the signed PDF attached. */
+export async function sendOfferSignedEmail(
+  to: string | string[],
+  a: Omit<OfferSignedProps, 'logoUrl' | 'brandName' | 'supportEmail'>,
+  pdf: { filename: string; content: Buffer },
+): Promise<string> {
+  const element = OfferSigned({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  const subject = a.audience === 'team' ? `Signed: ${a.offerTitle} (${a.clientName})` : a.lang === 'he' ? `ההסכם נחתם: ${a.offerTitle}` : `Signed: ${a.offerTitle}`
+  return send({ to, subject, html: await render(element), text: await render(element, { plainText: true }), attachments: [{ ...pdf, contentType: 'application/pdf' }] })
 }

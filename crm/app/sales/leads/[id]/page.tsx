@@ -11,6 +11,8 @@ import { googleGrants } from '@/lib/google'
 import { MeetConnectBanner, MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
 import { LeadActions } from '@/components/crm/LeadActions'
 import { LeadDocuments } from '@/components/crm/LeadDocuments'
+import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE } from '@/lib/offer-admin'
+import { formatPrice } from '@/lib/offer-modules'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
 import { AdminDealPanel, MyCommissionCard } from '@/components/crm/AdminDealPanel'
@@ -186,7 +188,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       case 'meeting.cancelled':
         return { title: `Meeting cancelled: ${s(m.title)}`, body: m.start ? formatDateTime(new Date(s(m.start)), tz) : undefined }
       case 'task.created':
-        return { title: `Task added: ${s(m.title)}`, body: m.auto ? 'Created automatically around a meeting' : undefined }
+        return { title: `Task added: ${s(m.title)}`, body: m.auto === 'invoice' ? 'Created when the client signed the offer' : m.auto ? 'Created automatically around a meeting' : undefined }
       case 'task.completed':
         return { title: `Task done: ${titles.get(s(m.taskId)) ?? 'task'}` }
       case 'task.reopened':
@@ -195,6 +197,18 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
         return { title: `Task edited: ${titles.get(s(m.taskId)) ?? 'task'}` }
       case 'task.deleted':
         return { title: `Task deleted: ${titles.get(s(m.taskId)) ?? 'task'}` }
+      case 'offer.created':
+        return { title: `Offer created: ${s(m.title)}` }
+      case 'offer.live':
+        return { title: 'Offer published to the client' }
+      case 'offer.draft':
+        return { title: 'Offer taken back to draft' }
+      case 'offer.archived':
+        return { title: 'Offer archived' }
+      case 'offer.deleted':
+        return { title: 'Draft offer deleted' }
+      case 'offer.signed':
+        return { title: `Offer signed online by ${s(m.signerName)}`, body: isAdmin && m.total != null ? `One-time total ${formatPrice(Number(m.total), s(m.currency) || 'ILS')} · signed PDF in Documents` : 'Signed PDF in Documents' }
       case 'document.added':
         return { title: `Document added: ${s(m.title)}` }
       case 'document.removed':
@@ -231,7 +245,10 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   // Client documents: file bytes are never selected here, only the list.
   const docRows = await prisma.leadDocument.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true, uploadedById: true } })
   const uploaderNames = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
-  const documents = docRows.map((d) => ({ id: d.id, title: d.title, fileName: d.fileName, size: d.size, createdAt: d.createdAt.toISOString(), by: d.uploadedById ? (uploaderNames.get(d.uploadedById) ?? 'Former teammate') : 'Unknown', canDelete: isAdmin || d.uploadedById === user.id }))
+  const documents = docRows.map((d) => ({ id: d.id, title: d.title, fileName: d.fileName, size: d.size, createdAt: d.createdAt.toISOString(), by: d.uploadedById ? (uploaderNames.get(d.uploadedById) ?? 'Former teammate') : d.title.startsWith('Signed agreement:') ? 'Client (signed online)' : 'Unknown', canDelete: isAdmin || d.uploadedById === user.id }))
+
+  // Offers (admin-only feature for now)
+  const offers = isAdmin ? await prisma.offer.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, status: true, signedAt: true } }) : []
 
   // Money: admins get the full picture; the assigned salesperson gets only the commission amount, paid and pending.
   const adminDeal = isAdmin
@@ -372,6 +389,28 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
               </details>
             </CardContent>
           </Card>
+
+          {isAdmin ? (
+            <Card>
+              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base">Offers</CardTitle>
+                <Link href={`/admin/offers?lead=${lead.id}`} className="text-sm text-primary hover:underline">
+                  + New offer
+                </Link>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                {offers.length === 0 ? <p className="text-muted-foreground">No offers yet.</p> : null}
+                {offers.map((o) => (
+                  <div key={o.id} className="flex items-center justify-between gap-3">
+                    <Link href={`/admin/offers/${o.id}`} className="truncate hover:underline">
+                      {o.title}
+                    </Link>
+                    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${OFFER_STATUS_TONE[o.status]}`}>{OFFER_STATUS_LABEL[o.status]}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader className="pb-2">

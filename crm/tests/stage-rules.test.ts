@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { canEditAtStage, canSetStage, stageChangeProblem, stagesFor } from '../lib/stage-rules'
 
-const ALL7 = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'WON', 'LOST'] as const
+const ALL7 = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED', 'WON', 'LOST'] as const
 
 describe('pipeline permissions', () => {
   it('admins can do everything', () => {

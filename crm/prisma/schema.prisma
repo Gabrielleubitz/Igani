@@ -29,6 +29,8 @@ enum LeadStatus {
   DEMO_SCHEDULED
   DEMO_SENT
   PROPOSAL_SENT
+  /// The client signed the offer contract online; a down-payment invoice is due before it becomes Won
+  SIGNED
   WON
   LOST
 }
@@ -54,6 +56,7 @@ enum EntityType {
   BOOKING_PAGE
   AVAILABILITY
   SETTING
+  OFFER
 }
 
 // ─── Access control ──────────────────────────────────────────────────────────
@@ -94,9 +97,9 @@ model User {
 
   accounts        Account[]
   sessions        Session[]
-  assignedLeads   Lead[]         @relation("LeadAssignee")
-  hostBookings    Booking[]      @relation("BookingHost")
-  createdBookings Booking[]      @relation("BookingCreator")
+  assignedLeads   Lead[]          @relation("LeadAssignee")
+  hostBookings    Booking[]       @relation("BookingHost")
+  createdBookings Booking[]       @relation("BookingCreator")
   availability    Availability[]
   bookingPages    BookingPage[]
   calendarEntries CalendarEntry[]
@@ -152,50 +155,50 @@ model VerificationToken {
 // ─── CRM ─────────────────────────────────────────────────────────────────────
 
 model Lead {
-  id           String     @id @default(cuid())
+  id                     String         @id @default(cuid())
   /// Null for phone-only leads (e.g. funnel forms that only ask for a phone number)
-  email        String?    @unique
-  firstName    String?
-  lastName     String?
-  phone        String?
-  company      String?
-  website      String?
-  message      String?    @db.Text
-  source       String     @default("igani.co")
+  email                  String?        @unique
+  firstName              String?
+  lastName               String?
+  phone                  String?
+  company                String?
+  website                String?
+  message                String?        @db.Text
+  source                 String         @default("igani.co")
   /// Free text: which page/form/campaign/person the lead came from
-  sourceDetail String?
-  utmSource    String?
-  utmMedium    String?
-  utmCampaign  String?
-  utmTerm      String?
-  utmContent   String?
-  budget       String?
-  status       LeadStatus @default(NEW)
+  sourceDetail           String?
+  utmSource              String?
+  utmMedium              String?
+  utmCampaign            String?
+  utmTerm                String?
+  utmContent             String?
+  budget                 String?
+  status                 LeadStatus     @default(NEW)
   /// Why a lead was LOST (required when moving to LOST)
-  lostReason   String?
+  lostReason             String?
   /// Legacy deal value (no longer read; copied into quotedPrice by the 20261103 migration)
-  dealValue    Int?
+  dealValue              Int?
   /// The price agreed with the client after the sales call, whole currency units. Admin-only.
-  quotedPrice  Int?
-  currency     String     @default("ILS")
+  quotedPrice            Int?
+  currency               String         @default("ILS")
   /// Where the lead came from, for commission terms (admin-edited)
-  sourceType   LeadSourceType @default(OTHER)
+  sourceType             LeadSourceType @default(OTHER)
   /// Per-deal commission overrides set by an admin before the deal is won (null = use the salesperson's terms)
-  commissionOverrides Json?
+  commissionOverrides    Json?
   /// Terms + breakdown used when the deal was won. Never changes when the salesperson's terms change later. Admin-only.
-  commissionSnapshot  Json?
+  commissionSnapshot     Json?
   /// The salesperson's commission in whole shekels. This, with the two payment dates, is all a salesperson ever sees.
-  commissionTotal       Int?
+  commissionTotal        Int?
   /// The client paid us (admin enters the date): the commission is only payable from here
   finalPaymentReceivedAt DateTime?
   /// The commission was paid out to the salesperson
   finalPaidAt            DateTime?
   /// Legacy global flag. Archiving is per person now (LeadArchive); the migration moved existing archives over and this is unused.
-  archived     Boolean    @default(false)
-  tags         String[]   @default([])
-  assignedToId String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  archived               Boolean        @default(false)
+  tags                   String[]       @default([])
+  assignedToId           String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
   assignedTo User?          @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   bookings   Booking[]
@@ -203,6 +206,7 @@ model Lead {
   emails     EmailMessage[]
   documents  LeadDocument[]
   archives   LeadArchive[]
+  offers     Offer[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -270,10 +274,10 @@ model Booking {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  host        User         @relation("BookingHost", fields: [hostId], references: [id], onDelete: Restrict)
-  lead        Lead?        @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  bookingPage BookingPage? @relation(fields: [bookingPageId], references: [id], onDelete: SetNull)
-  createdBy   User?        @relation("BookingCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  host        User            @relation("BookingHost", fields: [hostId], references: [id], onDelete: Restrict)
+  lead        Lead?           @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  bookingPage BookingPage?    @relation(fields: [bookingPageId], references: [id], onDelete: SetNull)
+  createdBy   User?           @relation("BookingCreator", fields: [createdById], references: [id], onDelete: SetNull)
   meeting     MeetingSession?
 
   @@index([hostId, status, startTime])
@@ -486,18 +490,70 @@ model MeetingSession {
 
 /// Personal calendar entries added from the Today page (reminders, calls, blocks of time).
 model CalendarEntry {
-  id        String   @id @default(cuid())
-  ownerId   String
-  title     String
-  notes     String?  @db.Text
-  startTime DateTime
-  endTime   DateTime
-  allDay    Boolean  @default(false)
-  color     String?
+  id            String   @id @default(cuid())
+  ownerId       String
+  title         String
+  notes         String?  @db.Text
+  startTime     DateTime
+  endTime       DateTime
+  allDay        Boolean  @default(false)
+  color         String?
   googleEventId String?
-  createdAt DateTime @default(now())
+  createdAt     DateTime @default(now())
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([ownerId, startTime])
+}
+
+// ─── Offers (client proposal microsites, admin-only for now) ─────────────────
+
+enum OfferStatus {
+  /// Being written in the local studio; only admins (and localhost) can open it
+  DRAFT
+  /// Published at <slug>.app.igani.co; the client can choose modules and sign
+  LIVE
+  /// The client signed; the page stays readable but can't be signed again
+  SIGNED
+  /// Taken down: the public page returns "not found"
+  ARCHIVED
+}
+
+/// One proposal for one existing lead. The numbers and contract live here (entered by admins);
+/// the written content and mockup screens live in the repo under offers/<slug>/ (written by Claude in the studio).
+model Offer {
+  id               String      @id @default(cuid())
+  /// Subdomain and folder name: honey → honey.app.igani.co and offers/honey/
+  slug             String      @unique
+  leadId           String
+  title            String
+  status           OfferStatus @default(DRAFT)
+  currency         String      @default("ILS")
+  monthlyPrice     Int?
+  timelineMonths   Int?
+  /// Priced modules entered by an admin: [{ id, group, name, price, required, included }]
+  modules          Json        @default("[]")
+  /// Contract PDF the client signs (Cloudinary)
+  contractUrl      String?
+  contractPublicId String?
+  contractFileName String?
+  /// Module ids the client chose on the page (required ones are always in)
+  selectedModules  String[]    @default([])
+  signedAt         DateTime?
+  signerName       String?
+  signerEmail      String?
+  signerIp         String?
+  /// One-time total at the moment of signing, whole currency units
+  signedTotal      Int?
+  /// The signed PDF, stored on the lead as a LeadDocument
+  signedDocumentId String?
+  publishedAt      DateTime?
+  createdById      String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@index([status])
 }

@@ -15,6 +15,7 @@ import {
   SquareKanban,
   Sun,
   FileText,
+  FileSignature,
   TrendingUp,
   UserCog,
   Users,
@@ -42,6 +43,7 @@ const ICONS: Record<string, LucideIcon> = {
   team: UserCog,
   performance: TrendingUp,
   audit: ScrollText,
+  offers: FileSignature,
   settings: Settings,
 }
 

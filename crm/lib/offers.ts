@@ -1,0 +1,72 @@
+import 'server-only'
+import type { Offer, OfferStatus } from '@prisma/client'
+import { OFFERS } from '@/offers/registry'
+import type { OfferDefinition } from '@/offers/types'
+import { currentUserOrNull } from './auth'
+import { parseModules, type OfferModuleItem } from './offer-modules'
+import { prisma } from './prisma'
+
+/** The domain offers live under: honey → honey.app.igani.co. */
+export const OFFER_ROOT_DOMAIN = process.env.OFFER_ROOT_DOMAIN ?? 'app.igani.co'
+/** Port the local CRM runs on (npm run dev / npm run studio). */
+export const STUDIO_APP_PORT = 3100
+
+export function liveOfferUrl(slug: string): string {
+  return `https://${slug}.${OFFER_ROOT_DOMAIN}`
+}
+export function localOfferUrl(slug: string): string {
+  return `http://${slug}.localhost:${STUDIO_APP_PORT}`
+}
+export function studioUrl(slug: string): string {
+  return `http://localhost:${STUDIO_APP_PORT}/admin/offers/studio/${slug}`
+}
+
+export const isLocalDev = (): boolean => process.env.NODE_ENV === 'development'
+
+export async function loadDefinition(slug: string): Promise<OfferDefinition | null> {
+  const load = OFFERS[slug]
+  if (!load) return null
+  try {
+    return await load()
+  } catch (err) {
+    console.error(`[offers] content for "${slug}" failed to load`, err)
+    return null
+  }
+}
+
+export interface PublicOffer {
+  offer: Offer & { lead: { firstName: string | null; lastName: string | null; company: string | null; email: string | null } }
+  modules: OfferModuleItem[]
+  definition: OfferDefinition | null
+  /** True when an admin (or localhost) is looking at a draft */
+  preview: boolean
+}
+
+/** Statuses a client can open. Drafts only show on localhost or to a signed-in admin. */
+const PUBLIC: readonly OfferStatus[] = ['LIVE', 'SIGNED']
+
+export async function loadPublicOffer(slug: string): Promise<PublicOffer | null> {
+  const offer = await prisma.offer.findUnique({
+    where: { slug },
+    include: { lead: { select: { firstName: true, lastName: true, company: true, email: true } } },
+  })
+  if (!offer || offer.status === 'ARCHIVED') return null
+  let preview = false
+  if (!PUBLIC.includes(offer.status)) {
+    if (isLocalDev()) preview = true
+    else {
+      const user = await currentUserOrNull()
+      if (user?.role !== 'ADMIN') return null
+      preview = true
+    }
+  }
+  return { offer, modules: parseModules(offer.modules), definition: await loadDefinition(slug), preview }
+}
+
+/** The address a client uses: the subdomain in production, <slug>.localhost when running locally. */
+export function publicOfferUrl(slug: string): string {
+  return isLocalDev() ? localOfferUrl(slug) : liveOfferUrl(slug)
+}
+
+/** Lead stages an online signature may move forward to Signed (never pulls a Won or Lost lead back). */
+export const SIGNABLE_LEAD_STAGES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT'] as const

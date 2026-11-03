@@ -6,3 +6,8 @@ next-env.d.ts
 *.tsbuildinfo
 .playwright-cli
 .email-outbox/
+
+# Offer studio (local only)
+studio/node_modules
+studio/.token
+offers/*/offer-data.json

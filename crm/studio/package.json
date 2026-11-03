@@ -1,0 +1,8 @@
+{
+  "name": "igani-offer-studio",
+  "private": true,
+  "type": "module",
+  "description": "Local-only terminal bridge for the CRM offer studio. Never deployed.",
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": { "node-pty": "1.0.0", "ws": "8.18.0" }
+}

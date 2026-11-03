@@ -26,6 +26,7 @@ const COLORS: Record<string, string> = {
   DEMO_SCHEDULED: 'border-t-violet-400',
   DEMO_SENT: 'border-t-fuchsia-400',
   PROPOSAL_SENT: 'border-t-amber-400',
+  SIGNED: 'border-t-teal-400',
   WON: 'border-t-emerald-400',
   LOST: 'border-t-rose-400',
 }

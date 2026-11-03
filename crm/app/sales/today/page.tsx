@@ -24,7 +24,7 @@ import { notArchivedBy } from '@/lib/lead-archive'
 export const metadata = { title: 'Today' }
 export const dynamic = 'force-dynamic'
 
-const OPEN = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT'] as const
+const OPEN = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED'] as const
 
 function greeting(tz: string): string {
   const h = Number(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' }).format(new Date()))

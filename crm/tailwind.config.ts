@@ -3,7 +3,7 @@ import plugin from 'tailwindcss/plugin'
 
 const config: Config = {
   darkMode: 'class',
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './offers/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
