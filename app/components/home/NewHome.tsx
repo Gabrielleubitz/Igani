@@ -33,10 +33,12 @@ const RAIL = [
  * everyone we've built for) → why this change is crucial → our team → the process →
  * the contact form.
  */
-export function NewHome() {
-  const [team, setTeam] = useState<TeamMember[]>([])
-  const [settings, setSettings] = useState<SiteSettings>(defaultSettings)
-  const [loading, setLoading] = useState(true)
+export function NewHome({ initialTeam, initialSettings }: { initialTeam?: TeamMember[]; initialSettings?: SiteSettings | null } = {}) {
+  // The server passes the team and contact details so they are in the page's HTML (search engines and AI tools read that);
+  // the browser still refreshes them below, so edits made in the admin show up without waiting for the next rebuild.
+  const [team, setTeam] = useState<TeamMember[]>(initialTeam ?? [])
+  const [settings, setSettings] = useState<SiteSettings>(initialSettings ?? defaultSettings)
+  const [loading, setLoading] = useState(!initialTeam)
 
   useEffect(() => {
     Promise.all([
