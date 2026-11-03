@@ -115,3 +115,47 @@ describe('signed PDF', () => {
     expect(signed.getPageCount()).toBe(3)
   })
 })
+
+describe('offer access', () => {
+  it('admins see every offer; nobody else while Offers is admin-only', async () => {
+    const { OFFERS_FOR_SALES, canSeeOffer, offerScope } = await import('@/lib/offer-access')
+    const o = { createdById: 'rep1', memberIds: ['rep2'] }
+    expect(canSeeOffer({ id: 'boss', role: 'ADMIN' }, o)).toBe(true)
+    expect(offerScope({ id: 'boss', role: 'ADMIN' })).toEqual({})
+    if (!OFFERS_FOR_SALES) {
+      expect(canSeeOffer({ id: 'rep1', role: 'SALES' }, o)).toBe(false)
+      expect(offerScope({ id: 'rep1', role: 'SALES' })).toEqual({ id: { in: [] } })
+    } else {
+      expect(canSeeOffer({ id: 'rep1', role: 'SALES' }, o)).toBe(true) // creator
+      expect(canSeeOffer({ id: 'rep2', role: 'SALES' }, o)).toBe(true) // invited
+      expect(canSeeOffer({ id: 'rep3', role: 'SALES' }, o)).toBe(false) // neither
+    }
+    expect(canSeeOffer({ id: 'm', role: 'MARKETING' }, o)).toBe(false)
+  })
+})
+
+describe('contract template safety', () => {
+  it('drops anything that is not a real image data URL and escapes text', async () => {
+    const { contractHtml } = await import('@/lib/contract-html')
+    const html = contractHtml({
+      lang: 'en',
+      doc: { title: 'T <b>', intro: '"quoted" & <i>', sections: [{ heading: 'H', clauses: ['<img src=x onerror=alert(1)>'] }] },
+      accent: 'red;}</style><script>x</script>',
+      iganiLogo: 'javascript:alert(1)',
+      clientLogo: null,
+      igani: { name: 'Igani', signaturePng: 'data:image/png;base64,AAAA" onload="x', signedAt: null },
+      client: { name: '<script>c</script>', signaturePng: 'data:image/png;base64,iVBORw0KGgo=', signedAt: null },
+      fees: [],
+      totals: { oneTime: '₪0', monthly: null, yearly: null },
+      offerUrl: 'https://x',
+      reference: 'R',
+      date: new Date(),
+      status: 'draft',
+    })
+    expect(html).not.toMatch(/<script>|<img src=x|onload=|javascript:|T <b>|<i>/) // user markup never becomes real tags
+    expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;') // it is shown as text instead
+    expect(html).toContain('T &lt;b&gt;')
+    expect(html).toContain('data:image/png;base64,iVBORw0KGgo=') // the real signature stays
+    expect(html).toContain('--accent:#2563eb') // bad accent replaced
+  })
+})

@@ -9,15 +9,16 @@ import { leadName } from '@/lib/format'
 import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE, leadOptions } from '@/lib/offer-admin'
 import { defaultSelection, formatPrice, normalizeSelection, parseModules, selectionTotal } from '@/lib/offer-modules'
 import { liveOfferUrl } from '@/lib/offers'
+import { offerScope } from '@/lib/offer-access'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Offers' }
 export const dynamic = 'force-dynamic'
 
 export default async function OffersPage({ searchParams }: { searchParams: { lead?: string } }): Promise<React.ReactElement> {
-  await requireUser(['ADMIN'])
+  const user = await requireUser(['ADMIN'])
   const [offers, leads] = await Promise.all([
-    prisma.offer.findMany({ orderBy: { updatedAt: 'desc' }, include: { lead: { select: { firstName: true, lastName: true, email: true, company: true } } } }),
+    prisma.offer.findMany({ where: offerScope(user), orderBy: { updatedAt: 'desc' }, include: { lead: { select: { firstName: true, lastName: true, email: true, company: true } } } }),
     leadOptions(),
   ])
   return (

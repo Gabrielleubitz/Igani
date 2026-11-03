@@ -5,6 +5,7 @@ import type { Offer, OfferStatus } from '@prisma/client'
 import { OFFERS } from '@/offers/registry'
 import type { OfferDefinition } from '@/offers/types'
 import { currentUserOrNull } from './auth'
+import { canSeeOffer } from './offer-access'
 import { parseModules, type OfferModuleItem } from './offer-modules'
 import { prisma } from './prisma'
 
@@ -71,8 +72,9 @@ export async function loadPublicOffer(slug: string): Promise<PublicOffer | null>
   if (!PUBLIC.includes(offer.status)) {
     if (isLocalDev()) preview = true
     else {
+      // Drafts: admins, and the offer's own people once Offers opens to salespeople
       const user = await currentUserOrNull()
-      if (user?.role !== 'ADMIN') return null
+      if (!user || !canSeeOffer(user, offer)) return null
       preview = true
     }
   }

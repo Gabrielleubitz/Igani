@@ -10,7 +10,9 @@ import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE } from '@/lib/offer-admin'
 import { formatPrice, parseModules } from '@/lib/offer-modules'
 import { isLocalDev, liveOfferUrl, loadDefinition, localOfferUrl } from '@/lib/offers'
 import { transcriptAiEnabled } from '@/lib/offer-transcript-ai'
+import { OFFERS_FOR_SALES, canSeeOffer } from '@/lib/offer-access'
 import { prisma } from '@/lib/prisma'
+import { OfferMembers } from '@/components/admin/OfferMembers'
 
 export const metadata = { title: 'Offer' }
 export const dynamic = 'force-dynamic'
@@ -18,10 +20,12 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 180
 
 export default async function OfferAdminPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
-  await requireUser(['ADMIN'])
+  const user = await requireUser(['ADMIN'])
   const offer = await prisma.offer.findUnique({ where: { id: params.id }, include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, status: true } } } })
-  if (!offer) notFound()
+  if (!offer || !canSeeOffer(user, offer)) notFound()
   const modules = parseModules(offer.modules)
+  const team = await prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true, role: true }, orderBy: { name: 'asc' } })
+  const creator = offer.createdById ? team.find((p) => p.id === offer.createdById) : null
   const definition = await loadDefinition(offer.slug)
   const live = liveOfferUrl(offer.slug)
   const local = isLocalDev()
@@ -125,6 +129,21 @@ export default async function OfferAdminPage({ params }: { params: { id: string 
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">People on this offer</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <OfferMembers
+            offerId={offer.id}
+            creator={creator ? (creator.name ?? creator.email) : null}
+            people={team.filter((p) => p.role === 'SALES' && p.id !== offer.createdById).map((p) => ({ id: p.id, label: p.name ?? p.email ?? p.id }))}
+            initial={offer.memberIds}
+            salesEnabled={OFFERS_FOR_SALES}
+          />
+        </CardContent>
+      </Card>
 
       {offer.signedAt ? (
         <Card className="border-teal-500/40">

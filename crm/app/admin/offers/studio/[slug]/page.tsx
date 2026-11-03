@@ -4,6 +4,7 @@ import { StudioConnect } from '@/components/admin/StudioConnect'
 import { PageIntro } from '@/components/PageIntro'
 import { requireUser } from '@/lib/auth'
 import { slugProblem } from '@/lib/offer-modules'
+import { canSeeOffer } from '@/lib/offer-access'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Offer studio' }
@@ -14,11 +15,11 @@ export const dynamic = 'force-dynamic'
  * admin's Mac through the studio helper; this page just connects to them (see components/admin/StudioConnect).
  */
 export default async function StudioPage({ params }: { params: { slug: string } }): Promise<React.ReactElement> {
-  await requireUser(['ADMIN'])
+  const user = await requireUser(['ADMIN'])
   const slug = params.slug
   if (slugProblem(slug)) notFound()
-  const offer = await prisma.offer.findUnique({ where: { slug }, select: { id: true, title: true } })
-  if (!offer) notFound()
+  const offer = await prisma.offer.findUnique({ where: { slug }, select: { id: true, title: true, createdById: true, memberIds: true } })
+  if (!offer || !canSeeOffer(user, offer)) notFound()
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">

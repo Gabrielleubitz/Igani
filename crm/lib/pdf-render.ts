@@ -28,8 +28,11 @@ export async function htmlToPdf(html: string, opts: PdfOptions = {}): Promise<Ui
   const browser = await puppeteer.launch({ executablePath, args, headless: true })
   try {
     const page = await browser.newPage()
+    // Defence in depth: the contract needs no scripts and no network (fonts and images are inline data URLs)
+    await page.setJavaScriptEnabled(false)
+    await page.setRequestInterception(true)
+    page.on('request', (r) => (r.url().startsWith('data:') || r.url() === 'about:blank' ? r.continue() : r.abort()))
     await page.setContent(html, { waitUntil: 'load', timeout: 30_000 })
-    await page.evaluate(() => document.fonts.ready)
     const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
     const pdf = await page.pdf({
       format: 'A4',

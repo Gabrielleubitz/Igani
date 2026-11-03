@@ -59,6 +59,10 @@ export function publicFileDataUrl(publicPath: string | null | undefined): string
   }
 }
 
+/** Only embed real image data URLs (logos, signatures); anything else is dropped. */
+const IMG_DATA = /^data:image\/(png|jpeg|webp|svg\+xml);base64,[A-Za-z0-9+/]+={0,2}$/
+const img = (src: string | null | undefined, alt = ''): string => (src && IMG_DATA.test(src) ? `<img src="${src}" alt="${esc(alt)}" />` : '')
+
 const esc = (s: string | null | undefined): string => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 const L = {
@@ -83,7 +87,7 @@ export function contractHtml(i: ContractRenderInput): string {
   const sigBox = (role: string, p: ContractParty & { signaturePng: string | null; signedAt: Date | null }): string => `
     <div class="sig">
       <div class="role">${esc(role)}</div>
-      <div class="sigline">${p.signaturePng ? `<img src="${p.signaturePng}" alt="" />` : ''}</div>
+      <div class="sigline">${img(p.signaturePng)}</div>
       <div class="siglabel">${esc(t.signature)}</div>
       <table class="sigtable">
         <tr><td>${esc(t.name)}</td><td>${esc(p.name) || '&nbsp;'}</td></tr>
@@ -105,7 +109,7 @@ export function contractHtml(i: ContractRenderInput): string {
 <title>${esc(i.doc.title)}</title>
 <style>
 ${fonts()}
-:root{--accent:${esc(i.accent)};--ink:#0f172a;--muted:#64748b;--line:#e2e8f0}
+:root{--accent:${/^#[0-9a-f]{3,8}$/i.test(i.accent) ? i.accent : '#2563eb'};--ink:#0f172a;--muted:#64748b;--line:#e2e8f0}
 *{box-sizing:border-box}
 html,body{margin:0;background:#f1f5f9}
 body{font-family:Heebo,Helvetica,Arial,sans-serif;color:var(--ink);font-size:10.5pt;line-height:1.6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
@@ -160,8 +164,8 @@ table.fees tr.rec td{color:#334155}
 <div class="page">
   ${banner}
   <div class="top">
-    ${i.iganiLogo ? `<img src="${i.iganiLogo}" alt="Igani" />` : '<span class="mono">Igani</span>'}
-    ${i.clientLogo ? `<img src="${i.clientLogo}" alt="${esc(i.client.company || i.client.name)}" />` : `<span class="mono">${esc(i.client.company || i.client.name)}</span>`}
+    ${img(i.iganiLogo, 'Igani') || '<span class="mono">Igani</span>'}
+    ${img(i.clientLogo, i.client.company || i.client.name) || `<span class="mono">${esc(i.client.company || i.client.name)}</span>`}
   </div>
   <div style="margin-top:20px"><span class="badge">${esc(stamp)}</span></div>
   <h1>${esc(i.doc.title)}</h1>

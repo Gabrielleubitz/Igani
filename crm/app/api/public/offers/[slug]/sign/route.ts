@@ -17,10 +17,12 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const PNG_PREFIX = 'data:image/png;base64,'
+/** The drawn signature: a PNG data URL and nothing else (it is embedded into the contract HTML and PDF). */
+const PNG_DATA_URL = /^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/
 const Body = z.object({
   name: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(200),
-  signature: z.string().startsWith(PNG_PREFIX).max(600_000),
+  signature: z.string().max(600_000).regex(PNG_DATA_URL),
   agree: z.literal(true),
   modules: z.array(z.string().max(80)).max(60),
   lang: z.enum(['he', 'en']).default('he'),
@@ -132,7 +134,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const when = new Intl.DateTimeFormat(body.lang === 'he' ? 'he-IL' : 'en-GB', { timeZone: 'Asia/Jerusalem', dateStyle: 'long', timeStyle: 'short' }).format(signedAt)
   const common = { signerName: body.name, clientName, offerTitle: offer.title, total: formatPrice(total, offer.currency), monthly: monthlyText, yearly: yearlyText, signedAt: when, offerUrl }
   const attachment = { filename: fileName, content: Buffer.from(pdf) }
-  const team = await teamRecipients(offer.createdById, offer.lead.assignedToId)
+  const team = await teamRecipients(offer.createdById, offer.lead.assignedToId, ...offer.memberIds)
   const results = await Promise.allSettled([
     sendOfferSignedEmail(body.email, { ...common, audience: 'client', lang: body.lang }, attachment),
     team.length ? sendOfferSignedEmail(team, { ...common, audience: 'team', lang: 'en', leadUrl: appUrl(`/sales/leads/${offer.leadId}`) }, attachment) : Promise.resolve('no-team'),
@@ -142,7 +144,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   return NextResponse.json({ ok: true, signedAt: signedAt.toISOString() })
 }
 
-/** Who at Igani gets the signed copy: the admin who made the offer, the lead's owner, and ADMIN_NOTIFY_EMAIL. */
+/** Who at Igani gets the signed copy: the offer's creator and invited teammates, the lead's owner, and ADMIN_NOTIFY_EMAIL. */
 async function teamRecipients(...userIds: (string | null)[]): Promise<string[]> {
   const ids = userIds.filter((x): x is string => !!x)
   const users = ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { email: true } }) : []

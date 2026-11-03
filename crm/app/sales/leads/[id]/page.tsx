@@ -12,6 +12,7 @@ import { MeetConnectBanner, MeetingCall, MeetingSyncTrigger, type MeetingCallVie
 import { LeadActions } from '@/components/crm/LeadActions'
 import { LeadDocuments } from '@/components/crm/LeadDocuments'
 import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE } from '@/lib/offer-admin'
+import { offerScope } from '@/lib/offer-access'
 import { formatPrice } from '@/lib/offer-modules'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
@@ -248,7 +249,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
   const documents = docRows.map((d) => ({ id: d.id, title: d.title, fileName: d.fileName, size: d.size, createdAt: d.createdAt.toISOString(), by: d.uploadedById ? (uploaderNames.get(d.uploadedById) ?? 'Former teammate') : d.title.startsWith('Signed agreement:') ? 'Client (signed online)' : 'Unknown', canDelete: isAdmin || d.uploadedById === user.id }))
 
   // Offers (admin-only feature for now)
-  const offers = isAdmin ? await prisma.offer.findMany({ where: { leadId: lead.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, status: true, signedAt: true } }) : []
+  const offers = isAdmin ? await prisma.offer.findMany({ where: { leadId: lead.id, ...offerScope(user) }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, slug: true, status: true, signedAt: true } }) : []
 
   // Money: admins get the full picture; the assigned salesperson gets only the commission amount, paid and pending.
   const adminDeal = isAdmin

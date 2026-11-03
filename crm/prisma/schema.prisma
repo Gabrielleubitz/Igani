@@ -562,6 +562,8 @@ model Offer {
   brief                Json?
   briefAt              DateTime?
   createdById          String?
+  /// Teammates invited to work on this offer (besides its creator). Admins see every offer.
+  memberIds            String[]    @default([])
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 

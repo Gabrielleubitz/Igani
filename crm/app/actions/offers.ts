@@ -9,6 +9,9 @@ import { BookingError } from '@/lib/bookings'
 import { isOwnCloudinaryUrl } from '@/lib/cloudinary'
 import { BILLING_PERIODS, MODULE_GROUPS, parseModules, slugProblem } from '@/lib/offer-modules'
 import { MAX_TRANSCRIPT_CHARS, modulesFromTranscript, type TranscriptModules } from '@/lib/offer-transcript-ai'
+import { canSeeLead } from '@/lib/lead-access'
+import { OFFERS_FOR_SALES, canAdministerOffer, canSeeOffer } from '@/lib/offer-access'
+import { loadDefinition } from '@/lib/offers'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
@@ -27,12 +30,13 @@ const CreateInput = z.object({
 /** A new draft offer for an existing lead. Admins only. */
 export async function createOffer(input: z.input<typeof CreateInput>): Promise<ActionResult<{ id: string }>> {
   try {
-    const user = await requireUser(['ADMIN'])
+    const user = await requireUser()
+    if (!canAdministerOffer(user) && !(OFFERS_FOR_SALES && user.role === 'SALES')) throw new BookingError('Only admins can create offers for now.', 'FORBIDDEN')
     const data = CreateInput.parse(input)
     const problem = slugProblem(data.slug)
     if (problem) throw new BookingError(problem, 'INVALID_STATE')
-    const lead = await prisma.lead.findUnique({ where: { id: data.leadId }, select: { id: true } })
-    if (!lead) throw new BookingError('That lead no longer exists.', 'NOT_FOUND')
+    const lead = await prisma.lead.findUnique({ where: { id: data.leadId }, select: { id: true, assignedToId: true } })
+    if (!lead || !canSeeLead(user, lead)) throw new BookingError('That lead no longer exists.', 'NOT_FOUND')
     if (await prisma.offer.findUnique({ where: { slug: data.slug }, select: { id: true } })) throw new BookingError(`"${data.slug}" is already used by another offer. Pick another name.`, 'INVALID_STATE')
     const offer = await prisma.$transaction(async (tx) => {
       const o = await tx.offer.create({ data: { leadId: data.leadId, slug: data.slug, title: data.title, createdById: user.id }, select: { id: true } })
@@ -71,17 +75,24 @@ export async function updateOffer(input: z.input<typeof UpdateInput>): Promise<A
   try {
     const user = await requireUser(['ADMIN'])
     const data = UpdateInput.parse(input)
-    const offer = await prisma.offer.findUnique({ where: { id: data.id }, select: { slug: true, status: true, leadId: true } })
+    const offer = await prisma.offer.findUnique({ where: { id: data.id }, select: { slug: true, status: true, leadId: true, signedAt: true, contractApprovedAt: true, modules: true, monthlyPrice: true, currency: true } })
     if (!offer) throw new BookingError('Offer not found.', 'NOT_FOUND')
-    if (offer.status === 'SIGNED') throw new BookingError('This offer is signed. Its numbers can no longer change.', 'INVALID_STATE')
+    if (offer.status === 'SIGNED' || offer.signedAt) throw new BookingError('This offer is signed. Its numbers can no longer change.', 'INVALID_STATE')
     if (data.slug !== offer.slug) {
       if (offer.status !== 'DRAFT') throw new BookingError('The web address can only change while the offer is a draft (the client may already have the link).', 'INVALID_STATE')
+      // The written content and mockups live in offers/<slug>/: renaming would leave the offer without them
+      if (await loadDefinition(offer.slug)) throw new BookingError('This offer already has content and mockups under its current address, so the address can no longer change.', 'INVALID_STATE')
       const problem = slugProblem(data.slug)
       if (problem) throw new BookingError(problem, 'INVALID_STATE')
     }
     const ids = data.modules.map((m) => m.id)
     if (new Set(ids).size !== ids.length) throw new BookingError('Two modules have the same key. Each module needs its own key.', 'INVALID_STATE')
     const modules = parseModules(data.modules)
+    // Igani signed the approved contract with these fees: changing them needs the contract reopened first
+    if (offer.contractApprovedAt) {
+      const changed = JSON.stringify(parseModules(offer.modules)) !== JSON.stringify(modules) || offer.monthlyPrice !== data.monthlyPrice || offer.currency !== data.currency
+      if (changed) throw new BookingError('The contract is approved with these prices. Reopen the contract (Contract → Reopen for edits) to change modules or prices.', 'INVALID_STATE')
+    }
     await prisma.$transaction(async (tx) => {
       await tx.offer.update({
         where: { id: data.id },
@@ -126,6 +137,7 @@ export async function saveOfferContract(input: z.input<typeof ContractInput>): P
     const user = await requireUser(['ADMIN'])
     const data = ContractInput.parse(input)
     if (!isOwnCloudinaryUrl(data.url)) throw new BookingError('That file is not from our Cloudinary account.', 'INVALID_STATE')
+    if (!decodeURIComponent(new URL(data.url).pathname).includes(`/${data.publicId}`)) throw new BookingError('The uploaded file does not match.', 'INVALID_STATE')
     const offer = await prisma.offer.findUnique({ where: { id: data.id }, select: { status: true, leadId: true } })
     if (!offer) throw new BookingError('Offer not found.', 'NOT_FOUND')
     if (offer.status === 'SIGNED') throw new BookingError('This offer is signed. The contract can no longer change.', 'INVALID_STATE')
@@ -164,10 +176,10 @@ const TranscriptInput = z.object({ id: z.string().cuid(), transcript: z.string()
 /** Reads a call transcript with OpenAI and suggests modules. Nothing is saved: the admin picks, prices and saves. */
 export async function suggestModulesFromTranscript(input: z.input<typeof TranscriptInput>): Promise<ActionResult<TranscriptModules>> {
   try {
-    const user = await requireUser(['ADMIN'])
+    const user = await requireUser()
     const data = TranscriptInput.parse(input)
-    const offer = await prisma.offer.findUnique({ where: { id: data.id }, select: { status: true, modules: true } })
-    if (!offer) throw new BookingError('Offer not found.', 'NOT_FOUND')
+    const offer = await prisma.offer.findUnique({ where: { id: data.id }, select: { status: true, modules: true, createdById: true, memberIds: true } })
+    if (!offer || !canSeeOffer(user, offer)) throw new BookingError('Offer not found.', 'NOT_FOUND')
     if (offer.status === 'SIGNED') throw new BookingError('This offer is signed. Its modules can no longer change.', 'INVALID_STATE')
     let result: TranscriptModules
     try {
@@ -179,6 +191,28 @@ export async function suggestModulesFromTranscript(input: z.input<typeof Transcr
     await prisma.offer.update({ where: { id: data.id }, data: { brief: result as unknown as Prisma.InputJsonValue, briefAt: new Date() } })
     await logActivity({ entityType: 'OFFER', entityId: data.id, action: 'offer.modules_suggested', actorId: user.id, metadata: { chars: data.transcript.length, suggested: result.modules.length } })
     return { ok: true, data: result }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const MembersInput = z.object({ id: z.string().cuid(), memberIds: z.array(z.string().cuid()).max(30) })
+
+/** Invite teammates to an offer (admins). Invited salespeople will see it once Offers opens to them. */
+export async function setOfferMembers(input: z.input<typeof MembersInput>): Promise<ActionResult> {
+  try {
+    const user = await requireUser(['ADMIN'])
+    const data = MembersInput.parse(input)
+    const offer = await prisma.offer.findUnique({ where: { id: data.id }, select: { id: true, leadId: true, memberIds: true } })
+    if (!offer) throw new BookingError('Offer not found.', 'NOT_FOUND')
+    const people = await prisma.user.findMany({ where: { id: { in: data.memberIds }, role: { not: null } }, select: { id: true } })
+    const memberIds = people.map((p) => p.id)
+    await prisma.$transaction(async (tx) => {
+      await tx.offer.update({ where: { id: offer.id }, data: { memberIds } })
+      await logActivity({ entityType: 'OFFER', entityId: offer.id, action: 'offer.members', actorId: user.id, metadata: { from: offer.memberIds, to: memberIds } }, tx)
+    })
+    refresh(offer.id, offer.leadId)
+    return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
   }

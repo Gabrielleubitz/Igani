@@ -4,6 +4,7 @@ import { ContractEditor } from '@/components/admin/ContractEditor'
 import { requireUser } from '@/lib/auth'
 import { parseContractDoc } from '@/lib/contract'
 import { loadDefinition } from '@/lib/offers'
+import { canSeeOffer } from '@/lib/offer-access'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 
@@ -13,9 +14,9 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 180
 
 export default async function ContractPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
-  await requireUser(['ADMIN'])
-  const offer = await prisma.offer.findUnique({ where: { id: params.id }, select: { id: true, slug: true, title: true, contractDoc: true, contractLang: true, contractApprovedAt: true, signedAt: true } })
-  if (!offer) notFound()
+  const user = await requireUser(['ADMIN'])
+  const offer = await prisma.offer.findUnique({ where: { id: params.id }, select: { id: true, slug: true, title: true, contractDoc: true, contractLang: true, contractApprovedAt: true, signedAt: true, createdById: true, memberIds: true } })
+  if (!offer || !canSeeOffer(user, offer)) notFound()
   const [signer, signature, def] = await Promise.all([getSetting('contract.signer'), getSetting('contract.signature'), loadDefinition(offer.slug)])
   const lang = offer.contractLang === 'en' || offer.contractLang === 'he' ? offer.contractLang : (def?.content.defaultLang ?? 'he')
   return (
