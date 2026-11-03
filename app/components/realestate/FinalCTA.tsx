@@ -4,8 +4,6 @@ import { ChangeEvent, FormEvent, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
-import { SideNote } from '@/app/components/landing/fx/SideNote'
-import { SettleHeadline } from '@/app/components/funnel-shared/SettleHeadline'
 import { caseStudy } from '@/lib/funnelCaseStudy'
 import { WhoWeAre } from './WhoWeAre'
 import { WHATSAPP_HREF } from './contact'
@@ -58,74 +56,55 @@ export function FinalCTA() {
   }
 
   return (
-    <section id="build" className="relative scroll-mt-20">
-      <SettleHeadline
-        className="pt-20"
-        stageHeight={70}
-        screens={0.3}
-        backdrop={
-          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
-            {[0, 1].map((i) => (
-              <span key={i} className="funnel-marquee shrink-0 pr-[0.3em] font-display text-[20vw] leading-none text-white/[0.08] md:text-[12rem]" style={{ animationDuration: '60s' }}>
-                {MARQUEE.repeat(3)}
-              </span>
-            ))}
-          </div>
-        }
-        cue={<SideNote arrow="down" className="!text-white/85">your turn</SideNote>}
-      >
-        <div className="mb-8 flex items-baseline justify-center gap-3 text-[13px] text-white/70">
-          <span className="font-display text-lg leading-none text-white">06</span>
-          <span>The bottom line</span>
+    <section id="build" className="relative scroll-mt-20 overflow-hidden">
+      {/* The headline: a normal screen, no long pinned scroll */}
+      <div className="relative flex min-h-[62svh] flex-col justify-center px-4 pb-10 pt-28 text-center sm:px-6">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
+          {[0, 1].map((i) => (
+            <span key={i} className="funnel-marquee shrink-0 pr-[0.3em] font-display text-[20vw] leading-none text-white/[0.08] md:text-[12rem]" style={{ animationDuration: '60s' }}>
+              {MARQUEE.repeat(3)}
+            </span>
+          ))}
         </div>
-        <h2 className="mx-auto max-w-5xl border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-7xl lg:text-8xl">
-          Stop losing <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">buyers</span> to agents with better websites
-          <span className="text-white">.</span>
-        </h2>
-      </SettleHeadline>
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.4 }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          className="relative mx-auto max-w-5xl"
+        >
+          <div className="mb-8 flex items-baseline justify-center gap-3 text-[13px] text-white/70">
+            <span className="font-display text-lg leading-none text-white">06</span>
+            <span>The bottom line</span>
+          </div>
+          <h2 className="mx-auto max-w-5xl border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-7xl lg:text-8xl">
+            Stop losing <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">buyers</span> to agents with better websites
+            <span className="text-white">.</span>
+          </h2>
+        </motion.div>
+      </div>
 
+      {/* The form pops up in one go, with its heading inside, then the text and WhatsApp below it */}
       <motion.div
         id="build-form"
-        initial={{ y: 24 }}
-        whileInView={{ y: 0 }}
-        viewport={{ once: true, margin: '-80px' }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="relative mx-auto grid max-w-5xl scroll-mt-28 gap-8 px-4 pb-16 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-12 lg:px-8"
+        initial={{ opacity: 0, y: 60, scale: 0.94 }}
+        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+        viewport={{ once: true, amount: 0.25 }}
+        transition={{ type: 'spring', stiffness: 170, damping: 18, mass: 0.9 }}
+        className="relative mx-auto max-w-xl scroll-mt-28 px-4 pb-16 sm:px-6"
       >
-        <div className="text-center lg:text-left">
-          <div className="flex items-baseline justify-center gap-3 text-[13px] text-white/75 lg:justify-start">
-            <span className="font-display text-lg leading-none text-white">talk</span>
-            to a founder, not a sales rep
-          </div>
-          <h3 className="mt-4 text-balance text-3xl font-semibold leading-[1.05] tracking-[-0.025em] text-white sm:text-4xl">
-            Leave your number. <span className="font-display font-normal text-[#e9f0ff]">We&rsquo;ll call you back.</span>
-          </h3>
-          <p className="!mt-4 text-lg leading-relaxed text-white/85">
-            Leave your details and we&rsquo;ll call you within one business day to talk through what a site that wins listings would look
-            like for you.
-          </p>
-          <a
-            href={WHATSAPP_HREF}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-6 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.12]"
-          >
-            <WhatsAppGlyph className="h-4 w-4" />
-            Rather chat? Talk to us on WhatsApp
-          </a>
-
-          {quote && (
-            <figure className="mx-auto mt-8 max-w-md rounded-2xl border border-white/15 bg-white/[0.08] p-5 text-left backdrop-blur-md lg:mx-0">
-              <blockquote className="text-[15px] leading-relaxed text-white/90">&ldquo;{quote.text}&rdquo;</blockquote>
-              <figcaption className="mt-3 text-[13px] text-white/65">
-                <span className="font-semibold text-white">{quote.author}</span>
-                {quote.role ? ` · ${quote.role}` : ''} · {caseStudy.client}
-              </figcaption>
-            </figure>
-          )}
-        </div>
-
         <div className="relative rounded-3xl border border-white/10 bg-[#04101e] shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)]">
+          {status !== 'success' && (
+            <div className="px-6 pt-7 text-center sm:px-8 sm:pt-8">
+              <div className="flex items-baseline justify-center gap-3 text-[13px] text-white/60">
+                <span className="font-display text-lg leading-none text-white">talk</span>
+                to a founder, not a sales rep
+              </div>
+              <h3 className="mt-3 text-balance text-3xl font-semibold leading-[1.05] tracking-[-0.025em] text-white sm:text-4xl">
+                Leave your number. <span className="font-display font-normal text-[#e9f0ff]">We&rsquo;ll call you back.</span>
+              </h3>
+            </div>
+          )}
           {status === 'success' ? (
             <div className="flex flex-col items-center p-10 text-center">
               <CheckCircle2 className="h-10 w-10 text-[#4080E0]" />
@@ -182,6 +161,31 @@ export function FinalCTA() {
             </form>
           )}
         </div>
+
+        <p className="!mt-6 text-center text-lg leading-relaxed text-white/85">
+          Leave your details and we&rsquo;ll call you within one business day to talk through what a site that wins listings would look like for you.
+        </p>
+        <div className="mt-5 flex justify-center">
+          <a
+            href={WHATSAPP_HREF}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/[0.06] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/[0.12]"
+          >
+            <WhatsAppGlyph className="h-4 w-4" />
+            Rather chat? Talk to us on WhatsApp
+          </a>
+        </div>
+
+        {quote && (
+          <figure className="mx-auto mt-8 max-w-md rounded-2xl border border-white/15 bg-white/[0.08] p-5 text-left backdrop-blur-md">
+            <blockquote className="text-[15px] leading-relaxed text-white/90">&ldquo;{quote.text}&rdquo;</blockquote>
+            <figcaption className="mt-3 text-[13px] text-white/65">
+              <span className="font-semibold text-white">{quote.author}</span>
+              {quote.role ? ` · ${quote.role}` : ''} · {caseStudy.anonymous ? caseStudy.industry : caseStudy.client}
+            </figcaption>
+          </figure>
+        )}
       </motion.div>
 
       <WhoWeAre />
