@@ -74,18 +74,16 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
         })),
     [items, removed],
   )
-  // Viewing today: the grid starts one hour before now (past hours hidden) so the red now-line sits near the top.
-  const [tick, setTick] = useState(() => new Date())
-  useEffect(() => {
-    const t = setInterval(() => setTick(new Date()), 60_000)
-    return () => clearInterval(t)
-  }, [])
-  const startHour = useMemo(() => {
-    const hourIn = (d: Date): string => new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(d)
+  // The day view always covers the full 24 hours (late meetings and early starts stay reachable). It opens scrolled to
+  // an hour before now when showing today, otherwise to 07:00. Worked out only when the day changes, so it never
+  // yanks the scroll position while someone is looking at the grid.
+  const scrollHour = useMemo(() => {
+    const now = new Date()
+    const hourIn = (d: Date): number => Number(new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(d))
     const dayKey = (d: Date): string => new Intl.DateTimeFormat('en-CA', { timeZone }).format(d)
-    if (view !== 'day' || dayKey(date) !== dayKey(tick)) return 6
-    return Math.min(Math.max(Number(hourIn(tick)), 0), 22)
-  }, [view, date, tick, timeZone])
+    if (view !== 'day' || dayKey(date) !== dayKey(now)) return 7
+    return Math.min(Math.max(hourIn(now) - 1, 0), 21)
+  }, [view, date, timeZone])
   const byId = useMemo(() => new Map(items.map((i) => [i.id, i])), [items])
 
   function openForm(start: Date, allDay: boolean, end?: Date): void {
@@ -111,8 +109,9 @@ export function TodayCalendar({ items, timeZone }: { items: CalendarItem[]; time
         onDateChange={setDate}
         views={['day', 'month']}
         timeZone={timeZone}
-        dayStartHour={startHour}
-        dayEndHour={Math.max(22, startHour + 2)}
+        dayStartHour={0}
+        dayEndHour={24}
+        scrollToHour={scrollHour}
         interactions={{ drag: false, resize: false, selectSlot: false }}
         onSlotClick={onSlotClick}
         onEventClick={onEventClick}
