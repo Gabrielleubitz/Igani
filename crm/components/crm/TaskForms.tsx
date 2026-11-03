@@ -180,6 +180,7 @@ export function TeamTaskRow({
   meta,
   onCalendar,
   canDelete,
+  hideDue,
 }: {
   ownerId: string
   taskId: string
@@ -191,6 +192,7 @@ export function TeamTaskRow({
   meta?: string
   onCalendar: boolean
   canDelete: boolean
+  hideDue?: boolean
 }): React.ReactElement {
   const router = useRouter()
   const [done, setDone] = useState(initial)
@@ -223,10 +225,16 @@ export function TeamTaskRow({
           <span className={`rounded-full border px-1.5 py-px text-[10px] uppercase tracking-wide ${PRIORITY_TONE[priority] ?? ''}`}>{priority.toLowerCase()}</span>
           {onCalendar ? <CalendarPlus className="h-3.5 w-3.5 text-muted-foreground" aria-label="On the calendar" /> : null}
         </div>
-        <div className="text-xs text-muted-foreground">
-          {dueLabel ? <span className={overdue && !done ? 'text-red-400' : ''}>{dueLabel}</span> : 'No due date'}
-          {meta ? ` · ${meta}` : ''}
-        </div>
+        {hideDue && !meta ? null : (
+          <div className="text-xs text-muted-foreground">
+            {hideDue ? meta : (
+              <>
+                {dueLabel ? <span className={overdue && !done ? 'text-red-400' : ''}>{dueLabel}</span> : 'No due date'}
+                {meta ? ` · ${meta}` : ''}
+              </>
+            )}
+          </div>
+        )}
         {error ? <div className="text-xs text-red-400">{error}</div> : null}
       </div>
       {canDelete ? (

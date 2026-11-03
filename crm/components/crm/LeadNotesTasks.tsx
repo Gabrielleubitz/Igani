@@ -231,7 +231,7 @@ const PRIORITY_TONE: Record<TaskPriority, string> = {
 }
 
 /** One task with complete / reopen / edit / delete. Used on the contact page and the Tasks page. */
-export function TaskRow({ task, teammates, contact, timeZone }: { task: TaskView; teammates: Teammate[]; contact?: React.ReactNode; timeZone: string }): React.ReactElement {
+export function TaskRow({ task, teammates, contact, timeZone, hideDue }: { task: TaskView; teammates: Teammate[]; contact?: React.ReactNode; timeZone: string; hideDue?: boolean }): React.ReactElement {
   const { pending, error, run } = useRun()
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(task.title)
@@ -271,8 +271,8 @@ export function TaskRow({ task, teammates, contact, timeZone }: { task: TaskView
         </div>
         <div className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-muted-foreground">
           {contact}
-          {task.dueLabel ? <span className={task.overdue && !done ? 'font-medium text-red-400' : ''}>{task.overdue && !done ? 'Overdue · ' : 'Due '}{task.dueLabel}</span> : <span>No due date</span>}
-          <span>· {task.assigneeLabel ?? 'Unassigned'}</span>
+          {hideDue ? null : task.dueLabel ? <span className={task.overdue && !done ? 'font-medium text-red-400' : ''}>{task.overdue && !done ? 'Overdue · ' : 'Due '}{task.dueLabel}</span> : <span>No due date</span>}
+          <span>{hideDue && !contact ? '' : '· '}{task.assigneeLabel ?? 'Unassigned'}</span>
         </div>
         {error ? <div className="text-xs text-red-400">{error}</div> : null}
       </div>
