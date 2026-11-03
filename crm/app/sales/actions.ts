@@ -1,5 +1,6 @@
 'use server'
 
+import { removeTaskCalendarEntry } from '@/lib/team-tasks'
 import { aiTidyEnabled, tidyWithAI } from '@/lib/meeting-ai'
 import { randomUUID } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
@@ -139,6 +140,7 @@ export async function deleteTask(leadId: string, taskId: string): Promise<Action
     const user = await requireUser()
     const { id, tid } = await taskFor(leadId, taskId, user)
     await logActivity({ entityType: 'LEAD', entityId: id, actorId: user.id, action: 'task.deleted', metadata: { taskId: tid } })
+    await removeTaskCalendarEntry(tid) // a block it put on someone's calendar goes with it
     refresh(id)
     return { ok: true, data: undefined }
   } catch (err) {

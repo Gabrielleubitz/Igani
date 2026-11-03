@@ -145,7 +145,8 @@ async function dropNonAttendeeTasks<T extends { entityId: string; action: string
 }
 
 /** All meeting tasks (optionally one person's). */
-export async function loadMeetingTasks(userId?: string): Promise<MeetingTask[]> {
+/** Meeting action items (team tasks, which share the same storage, are left out unless includeTeam). */
+export async function loadMeetingTasks(userId?: string, opts: { includeTeam?: boolean } = {}): Promise<MeetingTask[]> {
   const allLogs = await prisma.activityLog.findMany({
     where: { entityType: 'USER', action: { in: [...TASK_ACTIONS] }, ...(userId ? { entityId: userId } : {}) },
     select: { entityId: true, action: true, createdAt: true, metadata: true },
@@ -157,13 +158,15 @@ export async function loadMeetingTasks(userId?: string): Promise<MeetingTask[]> 
     const m = l.metadata as { taskId?: string; meetingTitle?: string } | null
     if (l.action === 'task.created' && m?.taskId) titles.set(m.taskId, m.meetingTitle ?? null)
   }
-  return foldTasks(logs).map((t) => ({ ...t, meetingTitle: titles.get(t.id) ?? null }))
+  return foldTasks(logs)
+    .filter((t) => opts.includeTeam || t.auto !== 'team')
+    .map((t) => ({ ...t, meetingTitle: titles.get(t.id) ?? null }))
 }
 
-/** Set a meeting task done/open for its owner (only the owner or an admin). */
+/** Set a meeting task or team task done/open for its owner (only the owner or an admin). */
 export async function setMeetingTaskDone(actor: { id: string; role: string }, ownerId: string, taskId: string, done: boolean): Promise<void> {
   if (actor.id !== ownerId && actor.role !== 'ADMIN') throw new Error('Not your task.')
-  const t = (await loadMeetingTasks(ownerId)).find((x) => x.id === taskId)
+  const t = (await loadMeetingTasks(ownerId, { includeTeam: true })).find((x) => x.id === taskId)
   if (!t) throw new Error('Task not found.')
   if (t.done === done) return
   await logActivity({ entityType: 'USER', entityId: ownerId, actorId: actor.id, action: done ? 'task.completed' : 'task.reopened', metadata: { taskId } })

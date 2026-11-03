@@ -17,6 +17,8 @@ import { pushPendingEntries } from '@/lib/calendar-entry-sync'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { tasksForUser } from '@/lib/tasks'
+import { loadTeamTasks } from '@/lib/team-tasks'
+import { TeamTaskRow } from '@/components/crm/TaskForms'
 import { entryColorVar } from '@/lib/calendar-entries'
 import { endOfLocalDay, startOfLocalDay } from '@/lib/time'
 import { notArchivedBy } from '@/lib/lead-archive'
@@ -58,6 +60,8 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const { mine, leads: byId } = await tasksForUser(user)
   const endOfToday = endOfLocalDay(now, tz)
   const due = mine.filter((t) => !t.done && t.dueAt && t.dueAt < endOfToday).sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())
+  // Team tasks (not about a contact) given to me, due by tonight
+  const teamDue = (await loadTeamTasks(user.id)).filter((t) => !t.done && t.dueAt && t.dueAt < endOfToday).sort((a, b) => a.dueAt!.getTime() - b.dueAt!.getTime())
 
   // Calendar: my meetings, due tasks and personal entries around today (the grid itself is client-side).
   const winStart = new Date(startOfLocalDay(now, tz).getTime() - 62 * 864e5)
@@ -164,14 +168,14 @@ export default async function TodayPage(): Promise<React.ReactElement> {
       return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
     }, { total: 0, paid: 0, payable: 0, pending: 0 }),
   )
-  const overdueCount = due.filter((t) => t.dueAt! < now).length
+  const overdueCount = due.filter((t) => t.dueAt! < now).length + teamDue.filter((t) => t.dueAt! < now).length
 
   const stats: { label: string; value: string | number; href: string; tone?: string }[] = [
     { label: isAdmin ? 'Open deals' : 'My open deals', value: openLeads.length, href: '/sales/board' },
     isAdmin
       ? { label: 'Pipeline value', value: `₪${formatMoney(pipelineValue)}`, href: '/sales/reports' }
       : { label: 'My commission (pending)', value: formatIls(myCommission.pending), href: '/sales/reports' },
-    { label: 'Tasks due today', value: due.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
+    { label: 'Tasks due today', value: due.length + teamDue.length, href: '/sales/tasks', tone: overdueCount ? 'text-red-400' : undefined },
     { label: 'New leads (7 days)', value: newThisWeek, href: '/sales/leads' },
   ]
 
@@ -240,11 +244,18 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center justify-between text-base">
               <span>Due today &amp; overdue</span>
-              <span className="text-sm font-normal text-muted-foreground">{due.length}</span>
+              <span className="text-sm font-normal text-muted-foreground">{due.length + teamDue.length}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {due.length === 0 ? <p className="text-sm text-muted-foreground">Nothing due. Nice work! ✨</p> : null}
+            {due.length + teamDue.length === 0 ? <p className="text-sm text-muted-foreground">Nothing due. Nice work! ✨</p> : null}
+            {teamDue.length ? (
+              <div className="divide-y">
+                {teamDue.slice(0, 5).map((t) => (
+                  <TeamTaskRow key={t.id} ownerId={t.ownerId} taskId={t.id} title={t.title} done={false} dueLabel={formatDateTime(t.dueAt!, tz)} overdue={t.dueAt! < now} priority={t.priority} onCalendar={!!t.calendarEntryId} canDelete={false} />
+                ))}
+              </div>
+            ) : null}
             {due.slice(0, 10).map((t) => {
               const l = byId.get(t.leadId)
               return (
