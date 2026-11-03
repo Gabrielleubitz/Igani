@@ -16,6 +16,8 @@ export type CaseStudy = {
   client: string
   industry: string
   location?: string
+  /** Keep the client unnamed in the comparison: the card shows the industry, with no location, link or quote */
+  anonymous?: boolean
   /** Live URL of the site we built */
   url?: string
   before: { image?: string; mobileImage?: string; caption: string }
@@ -30,7 +32,8 @@ export type CaseStudy = {
 export const caseStudy: CaseStudy = {
   ready: true,
   client: 'Gabai Real Estate',
-  industry: 'Real estate',
+  anonymous: true,
+  industry: 'Real estate agency',
   location: 'Jerusalem',
   url: 'https://www.gabairealestate.com',
   before: { image: '/case-studies/gabai-before.jpg', caption: 'Their old site' },

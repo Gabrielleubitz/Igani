@@ -176,11 +176,11 @@ export default function RealEstatePage() {
             heading={{
               index: '01',
               label: 'Your website is your first listing presentation',
-              aside: 'drag the line',
+              aside: 'old vs new',
               title: 'Clients google you *before they buy*.',
               sub: 'Before a seller lets you in their door, they’ve already compared you to two other agents online.',
             }}
-            caption="From a dated template to a premium showcase for high-end Jerusalem properties."
+            caption="From a dated template to a premium showcase for high-end properties."
           />
         </SectionSheet>
         <SectionSheet id="sheet-proof" layer={2} fill={false} className="bg-[#EEF3FC]">
