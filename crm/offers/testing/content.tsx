@@ -3,13 +3,14 @@ import { screens } from './screens'
 
 /**
  * Offer "testing": produce boxes for home subscribers and restaurants, with delivery and a back office.
- * Client name is a placeholder until the CRM lead has the real business name.
+ * Client: Altius (name taken from the uploaded logo). logo.svg is the original (white letters, for dark backgrounds);
+ * logo-on-light.svg is the same mark with dark letters for white backgrounds.
  */
 const offer: OfferDefinition = {
   screens,
   content: {
     defaultLang: 'he',
-    client: { name: { he: 'השדה', en: 'HaSade' }, accent: '#3d6b35' },
+    client: { name: { he: 'Altius', en: 'Altius' }, logo: '/offers/testing/logo-on-light.svg', accent: '#8a6336' },
     hero: {
       eyebrow: { he: 'הצעת פרויקט · הזמנות, מנויים ומשלוחים', en: 'Project offer · Orders, subscriptions and delivery' },
       title: {

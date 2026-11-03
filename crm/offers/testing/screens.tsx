@@ -1,5 +1,6 @@
+import Image from 'next/image'
 import type { Lang, Screen } from '../types'
-import { AppScreen, OtpSignIn, OrderSummary, PaymentMethods, StatusTimeline, NotificationList } from '../blocks/app'
+import { AppScreen, OrderSummary, PaymentMethods, StatusTimeline, NotificationList } from '../blocks/app'
 import { DashboardShell, StatCards, DataTable, Kanban, FormPanel } from '../blocks/dashboard'
 import { Icon, cx } from '../blocks/base'
 
@@ -9,7 +10,9 @@ import { Icon, cx } from '../blocks/base'
  */
 
 const tx = (lang: Lang, he: string, en: string): string => (lang === 'he' ? he : en)
-const BRAND = { he: 'השדה', en: 'HaSade' }
+const BRAND = { he: 'Altius', en: 'Altius' }
+const LOGO = '/offers/testing/logo.svg'
+const LOGO_ON_LIGHT = '/offers/testing/logo-on-light.svg'
 
 // ─── Local parts ─────────────────────────────────────────────────────────────
 
@@ -51,16 +54,28 @@ function SmallButton({ children, solid }: { children: React.ReactNode; solid?: b
 
 // ─── Subscriber (phone) ──────────────────────────────────────────────────────
 
-const Login: Screen = ({ lang }) => (
-  <OtpSignIn
-    brand={tx(lang, BRAND.he, BRAND.en)}
-    title={tx(lang, 'שלחנו לך קוד ב-WhatsApp', 'We sent you a code on WhatsApp')}
-    subtitle={tx(lang, 'לטלפון שמסתיים ב-4417', 'To the number ending 4417')}
-    typed="7203"
-    resend={tx(lang, 'לא הגיע? שליחה חוזרת בעוד 0:41', "Didn't get it? Resend in 0:41")}
-    cta={tx(lang, 'כניסה', 'Sign in')}
-  />
-)
+/** Sign-in on the brand's dark ground, so the original logo (white letters) is used as designed. */
+const Login: Screen = ({ lang }) => {
+  const typed = '7203'
+  return (
+    <div className="flex min-h-full flex-col bg-stone-950 px-6 pt-14 text-white">
+      <Image src={LOGO} alt={BRAND.en} width={102} height={35} />
+      <h2 className="mt-12 text-2xl font-semibold">{tx(lang, 'שלחנו לך קוד ב-WhatsApp', 'We sent you a code on WhatsApp')}</h2>
+      <p className="mt-2 text-sm text-stone-400">{tx(lang, 'לטלפון שמסתיים ב-4417', 'To the number ending 4417')}</p>
+      <div className="mt-8 flex justify-between gap-2" dir="ltr">
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} className={cx('flex h-12 w-10 items-center justify-center rounded-lg text-xl font-semibold ring-1', i < typed.length ? 'ring-stone-600' : i === typed.length ? 'ring-2 ring-[#c09560]' : 'ring-stone-800')}>
+            {typed[i] ?? ''}
+          </span>
+        ))}
+      </div>
+      <p className="mt-4 text-xs text-stone-500">{tx(lang, 'לא הגיע? שליחה חוזרת בעוד 0:41', "Didn't get it? Resend in 0:41")}</p>
+      <div className="mt-auto pb-8">
+        <span className="block rounded-xl bg-[var(--offer-accent)] py-3.5 text-center text-sm font-semibold">{tx(lang, 'כניסה', 'Sign in')}</span>
+      </div>
+    </div>
+  )
+}
 
 const BOX = [
   { he: 'עגבניות שרי', en: 'Cherry tomatoes', qty: '500 g' },
@@ -260,7 +275,7 @@ const nav = (lang: Lang) => [
 ]
 
 const Orders: Screen = ({ lang }) => (
-  <DashboardShell brand={tx(lang, BRAND.he, BRAND.en)} nav={nav(lang)} active={1} title={tx(lang, 'הזמנות לחמישי, 13.11', 'Orders for Thursday, 13 Nov')} subtitle={tx(lang, 'נסגר לשינויים בשלישי 20:00', 'Locks Tuesday 20:00')} actions={[tx(lang, 'ייצוא לפריוריטי', 'Export to Priority'), tx(lang, '+ הזמנה', '+ Order')]} user="Yael">
+  <DashboardShell brand={tx(lang, BRAND.he, BRAND.en)} logo={LOGO_ON_LIGHT} nav={nav(lang)} active={1} title={tx(lang, 'הזמנות לחמישי, 13.11', 'Orders for Thursday, 13 Nov')} subtitle={tx(lang, 'נסגר לשינויים בשלישי 20:00', 'Locks Tuesday 20:00')} actions={[tx(lang, 'ייצוא לפריוריטי', 'Export to Priority'), tx(lang, '+ הזמנה', '+ Order')]} user="Yael">
     <StatCards
       stats={[
         { label: tx(lang, 'סלים', 'Boxes'), value: '214' },
@@ -284,7 +299,7 @@ const Orders: Screen = ({ lang }) => (
 )
 
 const Picking: Screen = ({ lang }) => (
-  <DashboardShell brand={tx(lang, BRAND.he, BRAND.en)} nav={nav(lang)} active={3} title={tx(lang, 'ליקוט, חמישי', 'Picking, Thursday')} actions={[tx(lang, 'הדפסת רשימות', 'Print lists')]} user="Yael">
+  <DashboardShell brand={tx(lang, BRAND.he, BRAND.en)} logo={LOGO_ON_LIGHT} nav={nav(lang)} active={3} title={tx(lang, 'ליקוט, חמישי', 'Picking, Thursday')} actions={[tx(lang, 'הדפסת רשימות', 'Print lists')]} user="Yael">
     <Kanban
       columns={[
         { title: tx(lang, 'לליקוט', 'To pick'), cards: [{ title: tx(lang, 'מסלול ג׳ · 38 סלים', 'Route C · 38 boxes'), meta: tx(lang, 'גדרה, יבנה', 'Gedera, Yavne') }, { title: tx(lang, 'מסעדות · 9', 'Restaurants · 9'), meta: '06:30' }] },
@@ -296,7 +311,7 @@ const Picking: Screen = ({ lang }) => (
 )
 
 const Zones: Screen = ({ lang }) => (
-  <DashboardShell brand={tx(lang, BRAND.he, BRAND.en)} nav={nav(lang)} active={4} title={tx(lang, 'אזורי חלוקה', 'Delivery zones')} user="Yael">
+  <DashboardShell brand={tx(lang, BRAND.he, BRAND.en)} logo={LOGO_ON_LIGHT} nav={nav(lang)} active={4} title={tx(lang, 'אזורי חלוקה', 'Delivery zones')} user="Yael">
     <FormPanel
       title={tx(lang, 'רחובות', 'Rehovot')}
       fields={[
