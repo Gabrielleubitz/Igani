@@ -29,14 +29,14 @@ const STATS: Stat[] = [
 
 function StatCard({ progress, i, stats }: { progress: MotionValue<number>; i: number; stats: Stat[] }) {
   const s = stats[i]
-  const { opacity, y } = useStatReveal(progress, i, stats.length)
+  const { opacity, y } = useStatReveal(progress, i, stats.length, true)
   return (
     <motion.div
       style={{ opacity, y }}
       className="grid grid-cols-[auto_1fr] items-baseline gap-x-5 border-t border-[#04101e]/10 py-4 md:block md:rounded-3xl md:border md:border-[#04101e]/10 md:bg-white md:p-8 md:shadow-[0_30px_60px_-30px_rgba(4,16,30,0.25)]"
     >
       <div className="flex items-baseline gap-1 text-5xl font-semibold tracking-[-0.04em] text-[#04101e] md:text-7xl">
-        <CountUp progress={progress} i={i} count={stats.length} to={s.value} />
+        <CountUp progress={progress} i={i} count={stats.length} to={s.value} together />
         <span className="font-display text-[0.7em] font-normal tracking-normal text-[#2f6fd8]">{s.unit}</span>
       </div>
       <div>
@@ -54,7 +54,7 @@ function StatCard({ progress, i, stats }: { progress: MotionValue<number>; i: nu
 export function Proof({ title, stats = STATS }: { title?: ReactNode; stats?: Stat[] } = {}) {
   return (
     <section id="proof" className="relative scroll-mt-20">
-      <PinnedStage className="pb-24 pt-28 sm:pt-32 md:pb-10">
+      <PinnedStage screens={0.9} className="pb-24 pt-28 sm:pt-32 md:pb-10">
         {(progress) => (
           <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8">
             {/* Same editorial opener as SectionHeading, inverted for the light surface */}
