@@ -15,6 +15,7 @@ import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
 import { PendingBooking } from '@/emails/PendingBooking'
 import { TaskDigest, type TaskDigestProps } from '@/emails/TaskDigest'
 import { TeamInvite } from '@/emails/TeamInvite'
+import { WeeklySummary, type WeeklySummaryProps } from '@/emails/WeeklySummary'
 import { appUrl, env } from './env'
 import { buildIcs } from './ics'
 import { newLeadSubject } from './lead-alerts'
@@ -181,6 +182,12 @@ export async function sendTaskDigestEmail(to: string, a: Omit<TaskDigestProps, '
   const element = TaskDigest({ ...a, logoUrl: logoUrl(), ...(await brand()) })
   const n = a.tasks.length
   return send({ to, subject: `${n} CRM task${n === 1 ? '' : 's'} need attention`, html: await render(element), text: await render(element, { plainText: true }) })
+}
+
+/** Sunday summary for one admin. */
+export async function sendWeeklySummaryEmail(to: string, a: Omit<WeeklySummaryProps, 'logoUrl' | 'brandName' | 'supportEmail'>, subject: string): Promise<string> {
+  const element = WeeklySummary({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  return send({ to, subject, html: await render(element), text: await render(element, { plainText: true }) })
 }
 
 /** Guest notice that a meeting was cancelled, or that an approval request was declined. */

@@ -15,6 +15,7 @@ async function sent(lang?: 'he' | 'en'): Promise<string> {
   const { sendContactEmail } = await import('@/lib/email')
   await sendContactEmail({ ...base, lang })
   vi.restoreAllMocks()
+  vi.unstubAllEnvs() // test files share one process: don't leave dry-run on for the next file
   const f = readdirSync(join(dir, '.email-outbox'))[0]!
   return readFileSync(join(dir, '.email-outbox', f), 'utf8')
 }

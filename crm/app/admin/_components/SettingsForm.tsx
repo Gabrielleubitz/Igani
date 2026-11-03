@@ -43,6 +43,7 @@ export function SettingsForm({ initial }: { initial: typeof SETTING_DEFAULTS }):
               .map((s) => s.trim())
               .filter(Boolean),
             'notifications.newLead': v['notifications.newLead'],
+            'notifications.weeklySummary': v['notifications.weeklySummary'],
             'reminders.meetingEmails': v['reminders.meetingEmails'],
             'booking.defaultDurationMinutes': Number(v['booking.defaultDurationMinutes']),
             'booking.bufferMinutes': Number(v['booking.bufferMinutes']),
@@ -84,6 +85,7 @@ export function SettingsForm({ initial }: { initial: typeof SETTING_DEFAULTS }):
             <p className="text-xs text-muted-foreground">Comma separated. These addresses get booking approval requests and (if on) new-lead alerts. Admins always get approval requests.</p>
           </div>
           <Toggle checked={v['notifications.newLead']} onChange={(x) => set({ 'notifications.newLead': x })} label="Email the list above when a new lead arrives" hint="A branded alert with the lead's details and a button to open them in the CRM." />
+          <Toggle checked={v['notifications.weeklySummary']} onChange={(x) => set({ 'notifications.weeklySummary': x })} label="Email admins a weekly summary every Sunday" hint="New leads, deals won and signed, offers clients are reading, and who has overdue tasks." />
           <Toggle checked={v['reminders.meetingEmails']} onChange={(x) => set({ 'reminders.meetingEmails': x })} label="Remind guests the day before a meeting" hint="Sent about 24 hours before each confirmed meeting, with the Meet link. Cuts no-shows." />
         </CardContent>
       </Card>

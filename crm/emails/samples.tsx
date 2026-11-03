@@ -10,6 +10,7 @@ import { NewLeadAlert } from './NewLeadAlert'
 import { PendingBooking } from './PendingBooking'
 import { TaskDigest } from './TaskDigest'
 import { TeamInvite } from './TeamInvite'
+import { WeeklySummary } from './WeeklySummary'
 
 /** Sample data for every CRM email: used by scripts/render-emails.tsx and the email tests. */
 const logoUrl = 'https://app.igani.co/igani-logo%202.png'
@@ -28,6 +29,33 @@ export const SAMPLES: Record<string, React.ReactElement> = {
   TeamInvite: <TeamInvite {...base} role="SALES" inviterName="Gabriel" loginUrl="https://app.igani.co/login?invite=x" />,
   LeadAssigned: <LeadAssigned {...base} repName="Noa" leadName="Dana Levi" leadEmail="dana@acme.com" phone="+972 50 123 4567" company="Acme" source="igani.co" message="Hi! We need a new site for our store, budget around $8k." leadUrl="https://app.igani.co/sales/leads/x" />,
   NewLeadAlert: <NewLeadAlert {...base} leadName="Dana Levi" leadEmail="dana@acme.com" phone="+972 50 123 4567" company="Acme" budget="$8k" source="igani.co/contact" campaign="fall-promo" owner="Noa" message="Hi! We need a new site for our store." leadUrl="https://app.igani.co/sales/leads/x" />,
+  WeeklySummary: (
+    <WeeklySummary
+      {...base}
+      name="Gabriel"
+      range="Oct 27 – Nov 2"
+      stats={[
+        { label: 'New leads', value: '12', sub: '+50% vs last week', tone: 'good' },
+        { label: 'Deals won', value: '2', sub: '₪41,000', tone: 'good' },
+        { label: 'Meetings held', value: '7' },
+        { label: 'Open pipeline', value: '₪186,500', sub: '14 open deals' },
+      ]}
+      signed={[{ title: 'Website and booking system', client: 'Cryotherapy Rejuvenate', total: '$18,500' }]}
+      hotOffers={[
+        { title: 'Online store', client: 'Honey Ltd', detail: '4 visits by 2 people · read 85% · last Nov 2', url: 'https://app.igani.co/admin/offers/x#visits' },
+        { title: 'Real estate site', client: 'Gabai Real Estate', detail: '1 visit · read 40% · last Oct 30', url: 'https://app.igani.co/admin/offers/y#visits' },
+      ]}
+      tasks={[
+        { name: 'Noa', open: 6, overdue: 2 },
+        { name: 'Rita Rep', open: 3, overdue: 0 },
+      ]}
+      sources="igani.co (7), google (3), manual (2)"
+      quiet={3}
+      dashboardUrl="https://app.igani.co/admin/dashboard"
+      tasksUrl="https://app.igani.co/sales/tasks?scope=all"
+      todayUrl="https://app.igani.co/sales/today"
+    />
+  ),
   TaskDigest: (
     <TaskDigest
       {...base}

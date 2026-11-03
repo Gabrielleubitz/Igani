@@ -1,4 +1,13 @@
 {
   "buildCommand": "npm run build",
-  "crons": [{ "path": "/api/public/cron/task-reminders", "schedule": "0 * * * *" }]
+  "crons": [
+    {
+      "path": "/api/public/cron/task-reminders",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/public/cron/weekly-summary",
+      "schedule": "0 5 * * 0"
+    }
+  ]
 }

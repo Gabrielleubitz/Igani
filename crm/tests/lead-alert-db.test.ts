@@ -43,6 +43,8 @@ d('new-lead alerts', async () => {
     failWith = null
     await prisma.siteSetting.deleteMany()
     await prisma.activityLog.deleteMany()
+    // other DB test files run in the same database first and can leave bookings that point at users
+    await prisma.booking.deleteMany()
     await prisma.lead.deleteMany()
     await prisma.user.deleteMany()
     await prisma.allowedUser.deleteMany()

@@ -1,7 +1,7 @@
-import { timingSafeEqual } from 'node:crypto'
 import { splitDue } from '@/components/crm/crm-utils'
 import { logActivity } from '@/lib/audit'
 import { cancelBooking, emailDataFor, teamMeetingIds } from '@/lib/bookings'
+import { cronAuthorised } from '@/lib/cron-auth'
 import { appUrl } from '@/lib/env'
 import { sendMeetingReminderEmail, sendTaskDigestEmail } from '@/lib/email'
 import { formatDateTime, leadName } from '@/lib/format'
@@ -17,16 +17,7 @@ import { syncCalendarChanges } from '@/lib/calendar-sync'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
-function authorised(req: Request): boolean {
-  const secret = process.env.CRON_SECRET
-  if (!secret) {
-    console.error('[cron] CRON_SECRET is not set: every call is refused, so reminders, follow-ups, meeting reminders and email sync are OFF. Set it in Vercel → Settings → Environment Variables.')
-    return false
-  }
-  const got = Buffer.from(req.headers.get('authorization') ?? '')
-  const want = Buffer.from(`Bearer ${secret}`)
-  return got.length === want.length && timingSafeEqual(got, want)
-}
+const authorised = cronAuthorised
 
 /** Calls that ended in the last 3 days get one auto follow-up task for the host (marked by `booking.ended`). */
 async function createFollowUps(): Promise<number> {
