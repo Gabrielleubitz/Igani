@@ -6,7 +6,7 @@ import { motion } from 'framer-motion'
 import { User, Plus, Mail, Instagram, Linkedin, ArrowRight } from 'lucide-react'
 import { PageIntro, PageShell, SerifAccent } from '@/app/components/landing/fx/PageShell'
 import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
-import { getAboutUsSections, getAboutUsSettings, getPackageFAQs, getTeamMembers } from '@/lib/firestore'
+import { getAboutUsSections, getAboutUsSettings, getPackageFAQs, getTeamMembers, orderFounders } from '@/lib/firestore'
 import { AboutUsSection, AboutUsSettings, PackageFAQ, TeamMember } from '@/types'
 import { T } from '@/components/T'
 import { CONTACT_HREF } from '@/lib/contactLink'
@@ -192,7 +192,7 @@ export default function AboutPageClient() {
         ])
 
         setSections(sectionsData.filter(s => s.published).sort((a, b) => a.order - b.order))
-        setTeamMembers(teamData.filter(m => m.published).sort((a, b) => a.order - b.order))
+        setTeamMembers(orderFounders(teamData.filter(m => m.published)))
         setFAQs(faqsData.filter(f => f.published))
 
         if (settingsData) {

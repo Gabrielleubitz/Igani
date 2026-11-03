@@ -888,6 +888,16 @@ export const withFounderPhoto = <T extends { name: string; imageUrl?: string }>(
   return photo ? { ...m, imageUrl: photo } : m;
 };
 
+/** Team order on the site: Ilan, Gabriel, Amitay (matched on first name); anyone else follows in their admin order. Set here, so it overrides the admin order for these three. */
+const FOUNDER_ORDER = ['ilan', 'gabriel', 'amitay'];
+export const orderFounders = <T extends { name: string; order: number }>(members: T[]): T[] => {
+  const rank = (m: T) => {
+    const i = FOUNDER_ORDER.indexOf(m.name.trim().split(/\s+/)[0]?.toLowerCase() ?? '');
+    return i === -1 ? FOUNDER_ORDER.length + m.order : i;
+  };
+  return [...members].sort((a, b) => rank(a) - rank(b));
+};
+
 export const getTeamMembers = async (): Promise<TeamMember[]> => {
   try {
     const q = query(
@@ -895,7 +905,7 @@ export const getTeamMembers = async (): Promise<TeamMember[]> => {
       orderBy('order', 'asc')
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((d) => {
+    return orderFounders(snapshot.docs.map((d) => {
       const data = d.data();
       return withFounderPhoto({
         id: d.id,
@@ -912,7 +922,7 @@ export const getTeamMembers = async (): Promise<TeamMember[]> => {
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? data.createdAt,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() ?? data.updatedAt
       } as TeamMember);
-    });
+    }));
   } catch (error) {
     console.error('Error getting team members:', error);
     return [];

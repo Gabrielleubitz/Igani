@@ -13,14 +13,14 @@ export const STATIC_FOUNDERS: Pick<TeamMember, 'name' | 'position' | 'bio'>[] = 
     bio: 'Ilan Leubitz is the Founder & CEO of IGANI, leading product, engineering, and brand across web development and digital products.',
   },
   {
-    name: about.amitayName.en,
-    position: about.amitayRole.en,
-    bio: about.amitayBio.en,
-  },
-  {
     name: about.gabrielName.en,
     position: about.gabrielRole.en,
     bio: about.gabrielBio.en,
+  },
+  {
+    name: about.amitayName.en,
+    position: about.amitayRole.en,
+    bio: about.amitayBio.en,
   },
 ]
 

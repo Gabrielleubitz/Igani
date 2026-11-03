@@ -1,6 +1,6 @@
 import type { Metadata, ResolvingMetadata } from 'next'
 import { NewHome } from '@/app/components/home/NewHome'
-import { getSettings, getTeamMembers } from '@/lib/firestore'
+import { getSettings, getTeamMembers, orderFounders } from '@/lib/firestore'
 import type { SiteSettings, TeamMember } from '@/types'
 
 // Rebuild the home page from Firestore every few minutes, so the team and contact details are real text in the HTML.
@@ -21,7 +21,7 @@ const within = <T,>(work: Promise<T>, ms = 4000): Promise<T | undefined> =>
 
 export default async function HomePage() {
   const [team, settings] = await Promise.all([within(getTeamMembers()), within(getSettings())])
-  const initialTeam: TeamMember[] | undefined = team ? team.filter((m) => m.published).sort((a, b) => a.order - b.order) : undefined
+  const initialTeam: TeamMember[] | undefined = team ? orderFounders(team.filter((m) => m.published)) : undefined
   // Plain JSON only: Firestore values (timestamps) cannot cross into the browser as they are.
   const initialSettings: SiteSettings | null | undefined = settings ? (JSON.parse(JSON.stringify(settings)) as SiteSettings) : undefined
   return <NewHome initialTeam={initialTeam} initialSettings={initialSettings} />

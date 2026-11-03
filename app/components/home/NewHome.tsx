@@ -9,7 +9,7 @@ import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
 import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
 import { HoldStill, SectionSheet, scrollToSection } from '@/app/components/funnel-shared/SectionSheet'
-import { getSettings, getTeamMembers } from '@/lib/firestore'
+import { getSettings, getTeamMembers, orderFounders } from '@/lib/firestore'
 import { SiteSettings, TeamMember } from '@/types'
 import { defaultSettings } from '@/data/defaultSettings'
 import { ContactSection } from '@/app/components/landing/ContactSection'
@@ -46,7 +46,7 @@ export function NewHome({ initialTeam, initialSettings }: { initialTeam?: TeamMe
       getSettings().catch(() => null),
     ])
       .then(([t, p]) => {
-        setTeam(t.filter((m) => m.published).sort((a, b) => a.order - b.order))
+        setTeam(orderFounders(t.filter((m) => m.published)))
         if (p) setSettings(p)
       })
       .catch(() => undefined)
