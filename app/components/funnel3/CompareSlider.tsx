@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { SectionHeading } from '@/app/components/landing/fx/SectionHeading'
-import { ArrowRight, X } from 'lucide-react'
+import { ArrowRight, Maximize2, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useCaseStudy } from '@/app/components/funnel-shared/useCaseStudy'
 import { Screenshot } from '@/app/components/funnel-shared/Screenshot'
@@ -105,7 +105,7 @@ function Lightbox({ label, onClose, children }: { label: string; onClose: () => 
 export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?: Heading; caption?: string } = {}) {
   const cs = useCaseStudy()
   const [tab, setTab] = useState<'front' | 'back'>('front')
-  const [mobileSide, setMobileSide] = useState<Side>('old')
+  const [mobileSide, setMobileSide] = useState<Side>('new')
   const [open, setOpen] = useState<Side | null>(null)
   const [wide, setWide] = useState(false)
   const backend = cs?.backend
@@ -123,7 +123,7 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
 
   const switchTab = (t: 'front' | 'back') => {
     if (t === tab) return
-    setMobileSide('old')
+    setMobileSide('new')
     setTab(t)
   }
 
@@ -159,7 +159,7 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
           active ? 'opacity-100' : 'pointer-events-none opacity-0'
         }`}
       >
-        <div className={`mb-3 flex items-baseline gap-2 text-[13px] ${side === 'new' ? 'text-white' : 'text-white/60'}`}>
+        <div className={`mb-3 hidden items-baseline gap-2 text-[13px] lg:flex ${side === 'new' ? 'text-white' : 'text-white/60'}`}>
           <span className="font-display text-lg leading-none">{side === 'new' ? 'After' : 'Before'}</span>
           <span className={side === 'new' ? 'text-white/70' : 'text-white/45'}>· {captions[side]}</span>
         </div>
@@ -173,7 +173,13 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
           }`}
         >
           {nodes[side]}
-          <span className="pointer-events-none absolute inset-0 z-10" />
+          {/* Phones: the label sits on the picture itself, and a small icon says it can be enlarged */}
+          <span className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md lg:hidden">
+            {side === 'new' ? 'After' : 'Before'}
+          </span>
+          <span className="pointer-events-none absolute right-2.5 top-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white/85 backdrop-blur-md">
+            <Maximize2 className="h-3.5 w-3.5" />
+          </span>
         </button>
       </div>
     )
@@ -185,7 +191,7 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
         <SectionHeading {...heading} className="mb-12" />
 
         {backend && (
-          <div className="mb-6 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex items-center justify-between gap-3 sm:mb-6">
             <div role="tablist" aria-label="What to compare" className="inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1">
               {([['front', 'Front-end'], ['back', 'Back-end']] as const).map(([key, label]) => (
                 <button
@@ -205,31 +211,17 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
                     }
                   }}
                   tabIndex={tab === key ? 0 : -1}
-                  className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${tab === key ? 'bg-white text-[#04101e]' : 'text-white/65 hover:text-white'}`}
+                  className={`rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors sm:px-5 sm:py-2 sm:text-sm ${tab === key ? 'bg-white text-[#04101e]' : 'text-white/65 hover:text-white'}`}
                 >
                   {label}
                 </button>
               ))}
             </div>
-            <p className="text-[13px] text-white/55">The site your buyers see, and the dashboard you run it from.</p>
+            <p className="hidden text-[13px] text-white/55 sm:block">The site your buyers see, and the dashboard you run it from.</p>
           </div>
         )}
 
-        {/* Phones and tablets: flip between old and new */}
-        <div role="group" aria-label="Show the old or the new design" className="mb-5 grid grid-cols-2 gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1 lg:hidden">
-          {(['old', 'new'] as const).map((side) => (
-            <button
-              key={side}
-              type="button"
-              aria-pressed={mobileSide === side}
-              onClick={() => setMobileSide(side)}
-              className={`rounded-full py-3 text-[15px] font-semibold transition-colors ${mobileSide === side ? (side === 'new' ? 'bg-[#2f6fd8] text-white' : 'bg-white text-[#04101e]') : 'text-white/65'}`}
-            >
-              {side === 'old' ? 'Old' : 'New'}
-            </button>
-          ))}
-        </div>
-
+        <div className="relative mb-8 lg:mb-0">
         <div id="compare-panel" role={backend ? 'tabpanel' : undefined} aria-labelledby={backend ? `compare-tab-${tab}` : undefined} className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_auto_1fr] lg:gap-5">
           {frame('old')}
           <div aria-hidden className="hidden self-center lg:col-start-2 lg:row-start-1 lg:flex">
@@ -239,7 +231,23 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
           </div>
           {frame('new')}
         </div>
-        <p className="mt-3 text-center text-[12px] text-white/40 lg:text-left">Tap a design to enlarge it.</p>
+        {/* Phones: the Old / New switch sits on the picture, where the thumb already is */}
+        <div role="group" aria-label="Show the old or the new design" className="absolute inset-x-0 bottom-0 z-20 flex translate-y-1/2 justify-center lg:hidden">
+          <div className="inline-flex gap-1 rounded-full bg-black/65 p-1 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.8)] backdrop-blur-md">
+            {(['old', 'new'] as const).map((side) => (
+              <button
+                key={side}
+                type="button"
+                aria-pressed={mobileSide === side}
+                onClick={() => setMobileSide(side)}
+                className={`min-w-[72px] rounded-full px-4 py-2 text-[14px] font-semibold transition-colors ${mobileSide === side ? (side === 'new' ? 'bg-[#2f6fd8] text-white' : 'bg-white text-[#04101e]') : 'text-white/70'}`}
+              >
+                {side === 'old' ? 'Old' : 'New'}
+              </button>
+            ))}
+          </div>
+        </div>
+        </div>
 
         {cs && !showBack && (
           <motion.div
