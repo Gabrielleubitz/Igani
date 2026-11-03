@@ -1,7 +1,8 @@
-import { KanbanSquare, PenLine, ShieldCheck, Sparkles } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { Logo } from '@/components/brand/Logo'
 import { DevLogin } from '@/components/DevLogin'
 import { GoogleSignIn } from '@/components/GoogleSignIn'
+import { LoginFeed } from '@/components/LoginFeed'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Sign in' }
@@ -73,49 +74,65 @@ export default async function LoginPage({ searchParams }: { searchParams: Record
         </section>
 
         {/* ── Brand panel ── */}
-        <section aria-hidden className="relative hidden overflow-hidden rounded-[32px] bg-[#0b1530] lg:block">
-          {/* silky ribbons: colour along the band, soft edges across it (mask), a thin highlight on top */}
-          <div className="absolute inset-0 bg-[radial-gradient(70%_55%_at_85%_5%,#1d4ed8_0%,transparent_65%),radial-gradient(60%_55%_at_5%_95%,#4338ca_0%,transparent_65%),linear-gradient(160deg,#0b1a3d,#0a1230)]" />
+        <section aria-hidden className="relative hidden overflow-hidden rounded-[32px] bg-[#0a1230] lg:block">
+          {/* Base glow, slowly breathing */}
+          <div className="absolute inset-0 bg-[linear-gradient(160deg,#0b1a3d,#0a1230)]" />
+          <span className="login-orb absolute -right-[20%] -top-[25%] h-[75%] w-[75%] rounded-full bg-[radial-gradient(closest-side,rgba(37,99,235,0.85),transparent)] [animation-duration:26s]" />
+          <span className="login-orb absolute -bottom-[30%] -left-[20%] h-[80%] w-[80%] rounded-full bg-[radial-gradient(closest-side,rgba(79,70,229,0.8),transparent)] [animation-delay:-9s] [animation-duration:32s]" />
+          <span className="login-orb absolute left-[30%] top-[35%] h-[45%] w-[45%] rounded-full bg-[radial-gradient(closest-side,rgba(56,189,248,0.35),transparent)] [animation-delay:-4s] [animation-duration:22s]" />
+          {/* Silky ribbons: each drifts on its own long, eased loop, so the motion never visibly repeats */}
           {(
             [
-              { top: '-6%', h: '26%', from: '#93c5fd', via: '#3b82f6', to: '#1e3a8a', d: '0s' },
-              { top: '14%', h: '18%', from: '#c4b5fd', via: '#6366f1', to: '#1e1b4b', d: '2s' },
-              { top: '30%', h: '30%', from: '#e0f2fe', via: '#60a5fa', to: '#1d4ed8', d: '4s' },
-              { top: '54%', h: '16%', from: '#a5b4fc', via: '#4f46e5', to: '#172554', d: '1s' },
-              { top: '68%', h: '24%', from: '#bae6fd', via: '#38bdf8', to: '#1e40af', d: '3s' },
+              { top: '-6%', h: '26%', from: '#93c5fd', via: '#3b82f6', to: '#1e3a8a', dur: '28s', delay: '0s' },
+              { top: '14%', h: '18%', from: '#c4b5fd', via: '#6366f1', to: '#1e1b4b', dur: '34s', delay: '-11s' },
+              { top: '30%', h: '30%', from: '#e0f2fe', via: '#60a5fa', to: '#1d4ed8', dur: '40s', delay: '-23s' },
+              { top: '54%', h: '16%', from: '#a5b4fc', via: '#4f46e5', to: '#172554', dur: '31s', delay: '-6s' },
+              { top: '68%', h: '24%', from: '#bae6fd', via: '#38bdf8', to: '#1e40af', dur: '37s', delay: '-17s' },
             ] as const
           ).map((r, i) => (
-            <span key={i} className="absolute -left-[35%] w-[170%] -rotate-[30deg] [animation:ribbon_16s_ease-in-out_infinite_alternate] motion-reduce:animate-none" style={{ top: r.top, height: r.h, animationDelay: r.d }}>
+            <span key={i} className="login-ribbon absolute -left-[45%] w-[190%]" style={{ top: r.top, height: r.h, animationDuration: r.dur, animationDelay: r.delay }}>
               <span
                 className="absolute inset-0 opacity-90"
                 style={{ background: `linear-gradient(90deg, transparent 0%, ${r.to} 18%, ${r.via} 48%, ${r.from} 72%, transparent 100%)`, maskImage: 'linear-gradient(180deg, transparent 0%, #000 38%, #000 52%, transparent 100%)', WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, #000 38%, #000 52%, transparent 100%)' }}
               />
-              <span className="absolute inset-x-[10%] top-[42%] h-px bg-gradient-to-r from-transparent via-white/70 to-transparent blur-[0.5px]" />
+              <span className="absolute inset-x-[10%] top-[42%] h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
             </span>
           ))}
-          <span className="absolute inset-0 backdrop-blur-[1.5px]" />
-          <span className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(3,7,18,0.75))]" />
-          <span className="absolute inset-0 opacity-[0.07] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:22px_22px]" />
-          <style>{'@keyframes ribbon{from{transform:translateX(-3%) rotate(-30deg)}to{transform:translateX(4%) rotate(-27deg)}}'}</style>
+          {/* A soft sheen that sweeps across every few seconds */}
+          <span className="login-sheen absolute -inset-y-1/4 -left-1/2 w-1/3 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent)]" />
+          <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,18,0.15)_0%,transparent_30%,rgba(3,7,18,0.7)_100%)]" />
+          <span className="absolute inset-0 opacity-[0.06] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1px)] [background-size:22px_22px]" />
+          <style>{`
+            .login-ribbon{transform:translate3d(-4%,0,0) rotate(-30deg);animation:login-ribbon ease-in-out infinite alternate;will-change:transform}
+            @keyframes login-ribbon{0%{transform:translate3d(-6%,-2%,0) rotate(-31deg)}50%{transform:translate3d(2%,3%,0) rotate(-28deg)}100%{transform:translate3d(7%,-1%,0) rotate(-30deg)}}
+            .login-orb{animation:login-orb ease-in-out infinite alternate;will-change:transform}
+            @keyframes login-orb{0%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-8%,6%,0) scale(1.12)}100%{transform:translate3d(6%,-5%,0) scale(0.95)}}
+            .login-sheen{transform:translate3d(0,0,0) rotate(20deg);animation:login-sheen 9s cubic-bezier(.45,0,.55,1) infinite;will-change:transform}
+            @keyframes login-sheen{0%{transform:translate3d(0,0,0) rotate(20deg);opacity:0}15%{opacity:1}55%{transform:translate3d(520%,0,0) rotate(20deg);opacity:1}70%,100%{transform:translate3d(520%,0,0) rotate(20deg);opacity:0}}
+            @media (prefers-reduced-motion: reduce){.login-ribbon,.login-orb,.login-sheen{animation:none}}
+          `}</style>
 
-          <div className="absolute inset-x-8 top-8 flex items-center gap-2 text-sm font-medium text-white/80">
-            <Sparkles className="h-4 w-4" /> Igani CRM
+          <div className="absolute inset-x-8 top-8 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark */}
+              <img src="/android-chrome-192x192.png" alt="" width={36} height={36} className="h-9 w-9 rounded-[10px] shadow-lg shadow-black/30 ring-1 ring-white/15" />
+              <div className="leading-tight">
+                <div className="text-[15px] font-semibold tracking-tight text-white">Igani</div>
+                <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-white/55">Sales workspace</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-white/80 ring-1 ring-white/15 backdrop-blur-md">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60 motion-reduce:hidden" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+              </span>
+              Live
+            </div>
           </div>
-          <div className="absolute inset-x-8 bottom-8 space-y-4">
+          <div className="absolute inset-x-8 bottom-8 space-y-5">
             <h2 className="max-w-md text-3xl font-semibold leading-tight tracking-[-0.02em]">From first call to signed contract, in one place.</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { icon: KanbanSquare, title: 'Pipeline & meetings', body: 'Every lead, call, task and follow-up, with Google Calendar and Gmail in sync.' },
-                { icon: PenLine, title: 'Offers & contracts', body: 'Proposal pages with live mockups, signed online and saved on the lead.' },
-              ].map(({ icon: Icon, title, body }) => (
-                <div key={title} className="rounded-2xl bg-white/10 p-4 ring-1 ring-white/20 backdrop-blur-xl">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <div className="mt-3 font-semibold">{title}</div>
-                  <p className="mt-1 text-sm leading-6 text-white/75">{body}</p>
-                </div>
-              ))}
+            <div className="max-w-xl">
+              <LoginFeed />
             </div>
           </div>
         </section>
