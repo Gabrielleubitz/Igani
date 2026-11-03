@@ -21,6 +21,8 @@ export type CaseStudy = {
   before: { image?: string; mobileImage?: string; caption: string }
   /** `video`: a recording of the live site (its hero video playing); `image` is its poster */
   after: { image?: string; mobileImage?: string; video?: string; caption: string }
+  /** The back-end tab: a screenshot of the old admin, against our dashboard mock-up (drawn in code) */
+  backend?: { before: { image: string; caption: string }; after: { caption: string } }
   results: { value: string; label: string }[]
   quote?: { text: string; author: string; role?: string }
 }
@@ -33,6 +35,10 @@ export const caseStudy: CaseStudy = {
   url: 'https://www.gabairealestate.com',
   before: { image: '/case-studies/gabai-before.jpg', caption: 'Their old site' },
   after: { image: '/case-studies/gabai-after.jpg', video: '/work/gabai-after.mp4', caption: 'The site we built' },
+  backend: {
+    before: { image: '/case-studies/backend-before.jpg', caption: 'A typical WordPress admin' },
+    after: { caption: 'Your own dashboard' },
+  },
   results: [],
   quote: undefined,
 }

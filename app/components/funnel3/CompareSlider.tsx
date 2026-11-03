@@ -8,6 +8,7 @@ import { AnimationPlaybackControls, animate, motion, useInView } from 'framer-mo
 import { useReducedMotionSafe } from '@/app/components/funnel-shared/useReducedMotionSafe'
 import { useCaseStudy } from '@/app/components/funnel-shared/useCaseStudy'
 import { Screenshot } from '@/app/components/funnel-shared/Screenshot'
+import { ModernBackend } from './ModernBackend'
 
 /** Deliberately dated mock site: flat greys, clutter, bevels. */
 function DatedSite({ name = 'Smith & Co.' }: { name?: string }) {
@@ -81,6 +82,9 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
   const desktopShotsOnly = Boolean(cs?.before.image && cs.after.image && !cs.before.mobileImage && !cs.after.mobileImage)
   const frameRef = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState(50)
+  const [tab, setTab] = useState<'front' | 'back'>('front')
+  const backend = cs?.backend
+  const showBack = tab === 'back' && Boolean(backend)
   const [dragging, setDragging] = useState(false)
   const reduce = useReducedMotionSafe()
   const inView = useInView(frameRef, { once: true, amount: 0.6 })
@@ -108,6 +112,14 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
   const takeControl = () => {
     touchedRef.current = true
     motionRef.current?.stop()
+  }
+
+  // Switching tab starts the new comparison from the middle
+  const switchTab = (t: 'front' | 'back') => {
+    if (t === tab) return
+    takeControl()
+    setPos(50)
+    setTab(t)
   }
 
   // One gentle sweep the first time it's seen, so it's obvious the line moves
@@ -169,7 +181,40 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
           <SideNote arrow="down">go on, drag it</SideNote>
         </div>
 
+        {backend && (
+          <div className="mb-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div role="tablist" aria-label="What to compare" className="inline-flex rounded-full border border-white/10 bg-white/[0.04] p-1">
+              {([['front', 'Front-end'], ['back', 'Back-end']] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  role="tab"
+                  type="button"
+                  id={`compare-tab-${key}`}
+                  aria-selected={tab === key}
+                  aria-controls="compare-panel"
+                  onClick={() => switchTab(key)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+                      e.preventDefault()
+                      switchTab(key === 'front' ? 'back' : 'front')
+                      document.getElementById(`compare-tab-${key === 'front' ? 'back' : 'front'}`)?.focus()
+                    }
+                  }}
+                  tabIndex={tab === key ? 0 : -1}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${tab === key ? 'bg-white text-[#04101e]' : 'text-white/65 hover:text-white'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[13px] text-white/55">The site your buyers see, and the dashboard you run it from.</p>
+          </div>
+        )}
+
         <div
+          id="compare-panel"
+          role={backend ? 'tabpanel' : undefined}
+          aria-labelledby={backend ? `compare-tab-${tab}` : undefined}
           ref={frameRef}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -182,13 +227,17 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
             dragging ? 'cursor-grabbing' : 'cursor-ew-resize'
           }`}
         >
-          {cs?.after.image ? (
+          {showBack ? (
+            <ModernBackend />
+          ) : cs?.after.image ? (
             <Screenshot src={cs.after.image} mobileSrc={cs.after.mobileImage} video={cs.after.video} alt={`${cs.client} — ${cs.after.caption}`} />
           ) : (
             <ModernSite name={cs?.client} />
           )}
           <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-            {cs?.before.image ? (
+            {showBack && backend ? (
+              <Screenshot src={backend.before.image} alt={backend.before.caption} />
+            ) : cs?.before.image ? (
               <Screenshot src={cs.before.image} mobileSrc={cs.before.mobileImage} alt={`${cs.client} — ${cs.before.caption}`} />
             ) : (
               <DatedSite name={cs?.client} />
@@ -224,7 +273,7 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
             aria-pressed={pos > 95}
             className={`rounded-full border px-4 py-2 transition-colors ${pos > 95 ? 'border-white/40 bg-white/10 text-white' : 'border-white/10 text-white/55 hover:text-white'}`}
           >
-            ← {cs ? `Before · ${cs.before.caption}` : 'Before'}
+            ← {cs ? `Before · ${showBack && backend ? backend.before.caption : cs.before.caption}` : 'Before'}
           </button>
           <span className="hidden text-white/35 sm:inline">{cs ? '' : 'ugly · low trust vs. modern · high conversion'}</span>
           <button
@@ -236,7 +285,7 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
             aria-pressed={pos < 5}
             className={`rounded-full border px-4 py-2 transition-colors ${pos < 5 ? 'border-white/40 bg-white/10 text-white' : 'border-white/10 text-white/80 hover:text-white'}`}
           >
-            {cs ? `After · ${cs.after.caption}` : 'After'} →
+            {cs ? `After · ${showBack && backend ? backend.after.caption : cs.after.caption}` : 'After'} →
           </button>
         </div>
 
