@@ -4,6 +4,8 @@ import { ChangeEvent, FormEvent, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
+import { SideNote } from '@/app/components/landing/fx/SideNote'
+import { SettleHeadline } from '@/app/components/funnel-shared/SettleHeadline'
 import { caseStudy } from '@/lib/funnelCaseStudy'
 import { WhoWeAre } from './WhoWeAre'
 import { WHATSAPP_HREF } from './contact'
@@ -56,33 +58,33 @@ export function FinalCTA() {
   }
 
   return (
-    <section id="build" className="relative scroll-mt-20 overflow-hidden">
-      {/* The headline: a normal screen, no long pinned scroll */}
-      <div className="relative flex min-h-[62svh] flex-col justify-center px-4 pb-10 pt-28 text-center sm:px-6">
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
-          {[0, 1].map((i) => (
-            <span key={i} className="funnel-marquee shrink-0 pr-[0.3em] font-display text-[20vw] leading-none text-white/[0.08] md:text-[12rem]" style={{ animationDuration: '60s' }}>
-              {MARQUEE.repeat(3)}
-            </span>
-          ))}
-        </div>
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-          className="relative mx-auto max-w-5xl"
-        >
-          <div className="mb-8 flex items-baseline justify-center gap-3 text-[13px] text-white/70">
-            <span className="font-display text-lg leading-none text-white">06</span>
-            <span>The bottom line</span>
+    <section id="build" className="relative scroll-mt-20">
+      {/* The headline settles into focus as you scroll. The frame is short and the form follows it directly, so once the text is
+          fully in view one more scroll reaches the form. */}
+      <SettleHeadline
+        className="pt-20"
+        stageHeight={70}
+        screens={0.6}
+        backdrop={
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
+            {[0, 1].map((i) => (
+              <span key={i} className="funnel-marquee shrink-0 pr-[0.3em] font-display text-[20vw] leading-none text-white/[0.08] md:text-[12rem]" style={{ animationDuration: '60s' }}>
+                {MARQUEE.repeat(3)}
+              </span>
+            ))}
           </div>
-          <h2 className="mx-auto max-w-5xl border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-7xl lg:text-8xl">
-            Stop losing <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">buyers</span> to agents with better websites
-            <span className="text-white">.</span>
-          </h2>
-        </motion.div>
-      </div>
+        }
+        cue={<SideNote arrow="down" className="!text-white/85">your turn</SideNote>}
+      >
+        <div className="mb-8 flex items-baseline justify-center gap-3 text-[13px] text-white/70">
+          <span className="font-display text-lg leading-none text-white">06</span>
+          <span>The bottom line</span>
+        </div>
+        <h2 className="mx-auto max-w-5xl border-none pb-0 text-balance text-5xl font-semibold leading-[0.98] tracking-[-0.04em] text-white sm:text-7xl lg:text-8xl">
+          Stop losing <span className="font-display pr-[0.04em] text-[1.08em] font-normal text-[#e9f0ff]">buyers</span> to agents with better websites
+          <span className="text-white">.</span>
+        </h2>
+      </SettleHeadline>
 
       {/* The form pops up in one go, with its heading inside, then the text and WhatsApp below it */}
       <motion.div
