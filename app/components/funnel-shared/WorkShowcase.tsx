@@ -48,10 +48,14 @@ const PHONE_RATIO = 844 / 390
  * so a full-page capture reads as a live site. With a `video` (a recording of
  * scrolling the real page) it plays that instead, while active.
  */
-function LiveScreen({ shot, width, frameRatio, active, load }: { shot: WorkProject['desktop']; width: number; frameRatio: number; active: boolean; load: boolean }) {
+function LiveScreen({ shot, width, frameRatio, active, load, stillOnPhones = false }: { shot: WorkProject['desktop']; width: number; frameRatio: number; active: boolean; load: boolean; stillOnPhones?: boolean }) {
   const reduce = useReducedMotionSafe()
   const videoRef = useRef<HTMLVideoElement>(null)
-  const useVideo = Boolean(shot.video) && !reduce
+  // On a phone the laptop frame is small and sits beside the phone frame that already plays: showing its still picture
+  // keeps one video decoding instead of two, which keeps scrolling smooth
+  const [phone, setPhone] = useState(false)
+  useEffect(() => setPhone(window.matchMedia('(max-width: 639px)').matches), [])
+  const useVideo = Boolean(shot.video) && !reduce && !(stillOnPhones && phone)
 
   useEffect(() => {
     const v = videoRef.current
@@ -77,18 +81,31 @@ function LiveScreen({ shot, width, frameRatio, active, load }: { shot: WorkProje
   }
 
   const overflow = shot.height / width / frameRatio
-  const scrolls = overflow > 1.15 && !reduce
-  const style: CSSProperties = {
-    backgroundImage: load ? `url(${shot.src})` : undefined,
-    backgroundSize: '100% auto',
-    backgroundPosition: '50% 0%',
-    backgroundRepeat: 'no-repeat',
-    ...(scrolls && {
-      animation: `work-scroll ${Math.round(5 * overflow)}s ease-in-out infinite`,
-      animationPlayState: active ? 'running' : 'paused',
-    }),
+  const scrolls = overflow > 1.15 && !reduce && !(stillOnPhones && phone)
+  if (!scrolls) {
+    return (
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-black/20"
+        style={{ backgroundImage: load ? `url(${shot.src})` : undefined, backgroundSize: '100% auto', backgroundPosition: '50% 0%', backgroundRepeat: 'no-repeat' }}
+      />
+    )
   }
-  return <div aria-hidden className="absolute inset-0 bg-black/20" style={style} />
+  // A tall copy of the picture slides up and down inside the frame (a transform, so it never repaints)
+  const style: CSSProperties = {
+    height: `${overflow * 100}%`,
+    backgroundImage: load ? `url(${shot.src})` : undefined,
+    backgroundSize: '100% 100%',
+    animation: `work-scroll-y ${Math.round(5 * overflow)}s ease-in-out infinite`,
+    animationPlayState: active ? 'running' : 'paused',
+    ['--shift' as string]: `${-(1 - 1 / overflow) * 100}%`,
+    willChange: 'transform',
+  }
+  return (
+    <div aria-hidden className="absolute inset-0 overflow-hidden bg-black/20">
+      <div className="w-full" style={style} />
+    </div>
+  )
 }
 
 function BrowserFrame({ project, theme, active, load }: { project: WorkProject; theme: WorkTheme; active: boolean; load: boolean }) {
@@ -104,7 +121,7 @@ function BrowserFrame({ project, theme, active, load }: { project: WorkProject; 
         <span className="w-[42px]" aria-hidden />
       </div>
       <div className="relative" style={{ aspectRatio: '16 / 10' }}>
-        <LiveScreen shot={project.desktop} width={1200} frameRatio={BROWSER_RATIO} active={active} load={load} />
+        <LiveScreen shot={project.desktop} width={1200} frameRatio={BROWSER_RATIO} active={active} load={load} stillOnPhones />
       </div>
     </div>
   )

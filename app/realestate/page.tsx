@@ -65,18 +65,27 @@ export default function RealEstatePage() {
 
   // Mobile sticky CTA: show after the hero, hide once the form is on screen
   useEffect(() => {
-    const handleScroll = () => {
+    let raf = 0
+    const update = () => {
+      raf = 0
       const form = document.getElementById('build-form')
       const formTop = form ? form.getBoundingClientRect().top : Infinity
       setShowStickyCTA(window.scrollY > 500 && formTop > window.innerHeight * 0.6)
     }
-    handleScroll()
+    // At most one layout read per frame, however many scroll events arrive
+    const handleScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+    update()
     window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
   }, [])
 
   return (
-    <div className={`relative min-h-screen bg-[#030814] text-white ${displaySerif.variable}`}>
+    <div className={`perf-touch relative min-h-screen bg-[#030814] text-white ${displaySerif.variable}`}>
       {/* Hotjar Tracking Code for igani.co */}
       <Script
         id="hotjar"
@@ -100,7 +109,7 @@ export default function RealEstatePage() {
       <ScrollProgress
         items={PROGRESS}
         positionClass="top-[70px] sm:top-[86px]"
-        barClass="border border-white/10 bg-[#04101e]/70"
+        barClass="border border-white/10 bg-[#04101e]/70 [@media(pointer:coarse)]:bg-[#04101e]/95"
         trackClass="bg-white/10"
         fillClass="bg-[#4080E0]"
         labelClass="text-white/40"
@@ -109,7 +118,7 @@ export default function RealEstatePage() {
 
       {/* Floating pill header, same shape as the home page's */}
       <header className="fixed inset-x-0 top-3 z-50 px-3 sm:top-4 sm:px-6">
-        <div className="mx-auto flex max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-[#04101e]/70 py-2.5 pl-5 pr-2.5 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:pl-8">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-between rounded-full border border-white/10 bg-[#04101e]/70 [@media(pointer:coarse)]:bg-[#04101e]/95 py-2.5 pl-5 pr-2.5 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:pl-8">
           <IganiLogo className="h-9 w-24 shrink-0 sm:w-28" />
           <div className="flex items-center gap-2">
             <a
@@ -140,7 +149,7 @@ export default function RealEstatePage() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#030814]/85 p-4 backdrop-blur-xl lg:hidden"
+            className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#030814]/85 [@media(pointer:coarse)]:bg-[#030814]/96 p-4 backdrop-blur-xl lg:hidden"
           >
             <div className="flex gap-2">
               <button onClick={scrollToForm} className="flex-1 rounded-full bg-white py-3.5 text-sm font-semibold text-[#04101e]">

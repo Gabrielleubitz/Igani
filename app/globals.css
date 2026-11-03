@@ -334,8 +334,26 @@
   92%, 100% { background-position: 50% 0%; }
 }
 
+/* Same scroll as work-scroll, but as a transform (runs on the GPU) instead of repainting the background every frame */
+@keyframes work-scroll-y {
+  0%, 8% { transform: translate3d(0, 0, 0); }
+  46%, 54% { transform: translate3d(0, var(--shift, 0%), 0); }
+  92%, 100% { transform: translate3d(0, 0, 0); }
+}
+
 /* Real estate funnel hero: the photo behind the headline drifts very slowly */
 @keyframes hero-drift {
   from { transform: scale(1.04) translate3d(0, 0, 0); }
   to { transform: scale(1.12) translate3d(-1.5%, -1%, 0); }
+}
+
+/* /realestate on phones: backdrop blur is recomputed under moving content every frame, which makes iOS scrolling stutter.
+   The surfaces already have a dark translucent fill, so without the blur they look the same. */
+@media (pointer: coarse) {
+  .perf-touch .backdrop-blur,
+  .perf-touch .backdrop-blur-md,
+  .perf-touch .backdrop-blur-xl {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
 }

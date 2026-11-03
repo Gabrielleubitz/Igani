@@ -22,6 +22,7 @@ export function CursorGlow() {
     const onMove = (e: PointerEvent) => {
       tx = e.clientX
       ty = e.clientY
+      if (!raf) raf = requestAnimationFrame(tick)
       if (!visible) {
         visible = true
         el.style.opacity = '1'
@@ -32,11 +33,12 @@ export function CursorGlow() {
       el.style.opacity = '0'
     }
 
+    // Runs only while the glow is still catching up with the pointer; idle pages do no per-frame work
     const tick = () => {
       x += (tx - x) * 0.12
       y += (ty - y) * 0.12
       el.style.transform = `translate3d(${x - 260}px, ${y - 260}px, 0)`
-      raf = requestAnimationFrame(tick)
+      raf = Math.abs(tx - x) + Math.abs(ty - y) > 0.5 ? requestAnimationFrame(tick) : 0
     }
 
     window.addEventListener('pointermove', onMove, { passive: true })

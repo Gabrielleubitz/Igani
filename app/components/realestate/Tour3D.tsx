@@ -52,7 +52,7 @@ export function Tour3D() {
   const [load, setLoad] = useState(false)
   const [src, setSrc] = useState('/work/tour-3d.mp4')
   const [active, setActive] = useState(0)
-  const [progress, setProgress] = useState(0)
+  const barRef = useRef<HTMLDivElement>(null)
   // Some phones (e.g. iPhone in Low Power Mode) refuse to start a video by themselves: then a tap on Play does it
   const [blocked, setBlocked] = useState(false)
   const inView = useRef(false)
@@ -105,7 +105,7 @@ export function Tour3D() {
     const v = videoRef.current
     if (!v || !v.duration) return
     setActive(roomAt(v.currentTime))
-    setProgress(v.currentTime / v.duration)
+    if (barRef.current) barRef.current.style.width = `${(v.currentTime / v.duration) * 100}%`
   }
 
   return (
@@ -183,7 +183,7 @@ export function Tour3D() {
                 <FloorPlan active={active} />
               </div>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-white/10">
-                <div className="h-full bg-[#9ec0f5]" style={{ width: `${progress * 100}%` }} />
+                <div ref={barRef} className="h-full bg-[#9ec0f5]" style={{ width: 0 }} />
               </div>
             </div>
           </motion.div>

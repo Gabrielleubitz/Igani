@@ -61,6 +61,9 @@ export function SectionSheet({
 }: SectionSheetProps) {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotionSafe()
+  // Touch screens: animating the corner radius repaints the section every frame, so only the scale animates there
+  const [coarse, setCoarse] = useState(false)
+  useEffect(() => setCoarse(window.matchMedia('(pointer: coarse)').matches), [])
   const holding = hold && !reduce
   const height = useHeight(ref, holding)
   const { scrollYProgress } = useScroll({ target: ref, offset: hold ? ['start end', 'start 0.35'] : ['start end', 'start start'] })
@@ -84,7 +87,7 @@ export function SectionSheet({
         />
       )}
       <motion.div
-        style={reduce ? undefined : { scale, borderTopLeftRadius: radius, borderTopRightRadius: radius, transformOrigin: '50% 0%' }}
+        style={reduce ? undefined : coarse ? { scale, transformOrigin: '50% 0%' } : { scale, borderTopLeftRadius: radius, borderTopRightRadius: radius, transformOrigin: '50% 0%' }}
         className={`relative overflow-clip rounded-t-[40px] shadow-[0_-24px_60px_-20px_rgba(0,0,0,0.45)] ${
           fill ? 'flex min-h-[90svh] flex-col justify-center' : ''
         } ${className}`}

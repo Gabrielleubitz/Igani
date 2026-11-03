@@ -14,7 +14,7 @@ void main() {
 `
 
 // Domain-warped FBM "liquid aurora" in IGANI blues, with a cursor-driven bloom.
-const FRAG = /* glsl */ `
+const makeFrag = (octaves: number) => /* glsl */ `
 precision highp float;
 uniform float uTime;
 uniform vec2 uRes;
@@ -42,7 +42,7 @@ float fbm(vec2 p) {
   float v = 0.0;
   float a = 0.5;
   mat2 m = mat2(1.6, 1.2, -1.2, 1.6);
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < ${octaves}; i++) {
     v += a * noise(p);
     p = m * p;
     a *= 0.5;
@@ -125,8 +125,10 @@ export function HeroCanvas({ className = '', palette = 0 }: { className?: string
 
     let renderer: Renderer
     try {
+      // Phones: render at 1x with a lighter shader; the background is soft, so the difference is not visible
+      const phone = window.matchMedia('(pointer: coarse)').matches
       renderer = new Renderer({
-        dpr: Math.min(window.devicePixelRatio || 1, 1.5),
+        dpr: phone ? 1 : Math.min(window.devicePixelRatio || 1, 1.5),
         alpha: false,
         antialias: false,
         powerPreference: 'high-performance',
@@ -145,7 +147,7 @@ export function HeroCanvas({ className = '', palette = 0 }: { className?: string
     const geometry = new Triangle(gl)
     const program = new Program(gl, {
       vertex: VERT,
-      fragment: FRAG,
+      fragment: makeFrag(window.matchMedia('(pointer: coarse)').matches ? 3 : 5),
       uniforms: {
         uTime: { value: 0 },
         uRes: { value: [1, 1] },

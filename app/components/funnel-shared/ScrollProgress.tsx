@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type ScrollProgressProps = {
   /** Section element ids in page order, with the label shown under each segment. */
@@ -29,24 +29,32 @@ export function ScrollProgress({
   labelClass,
   activeLabelClass,
 }: ScrollProgressProps) {
-  const [progress, setProgress] = useState<number[]>(() => items.map(() => 0))
+  const [active, setActive] = useState(-1)
   const [shown, setShown] = useState(false)
+  const fills = useRef<(HTMLSpanElement | null)[]>([])
+  const last = useRef<number[]>([])
 
   useEffect(() => {
     let raf = 0
     const update = () => {
       raf = 0
       const vh = window.innerHeight
-      const next = items.map(({ id }) => {
-        const el = document.getElementById(id)
-        if (!el) return 0
-        const r = el.getBoundingClientRect()
+      // All layout reads together, then the writes: the bar fills are set directly, so scrolling never re-renders React
+      const rects = items.map(({ id }) => document.getElementById(id)?.getBoundingClientRect() ?? null)
+      let firstOpen = -1
+      rects.forEach((r, i) => {
         // 0 when the section's top reaches mid-screen, 1 when its bottom does
-        return Math.min(1, Math.max(0, (vh * 0.5 - r.top) / Math.max(r.height, 1)))
+        const v = r ? Math.round(Math.min(1, Math.max(0, (vh * 0.5 - r.top) / Math.max(r.height, 1))) * 200) / 200 : 0
+        if (v < 1 && firstOpen === -1) firstOpen = i
+        if (last.current[i] !== v) {
+          last.current[i] = v
+          const el = fills.current[i]
+          if (el) el.style.width = `${v * 100}%`
+        }
       })
-      setProgress(next)
-      const first = document.getElementById(items[0].id)
-      setShown(!!first && first.getBoundingClientRect().top < vh * 0.6)
+      setActive(firstOpen)
+      const first = rects[0]
+      setShown(!!first && first.top < vh * 0.6)
     }
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update)
@@ -60,8 +68,6 @@ export function ScrollProgress({
       window.removeEventListener('resize', onScroll)
     }
   }, [items])
-
-  const active = progress.findIndex((p) => p < 1)
 
   return (
     <nav
@@ -80,10 +86,7 @@ export function ScrollProgress({
               aria-current={i === active ? 'step' : undefined}
             >
               <span className={`block h-[3px] overflow-hidden rounded-full ${trackClass}`}>
-                <span
-                  className={`block h-full rounded-full transition-[width] duration-150 ${fillClass}`}
-                  style={{ width: `${progress[i] * 100}%` }}
-                />
+                <span ref={(el) => void (fills.current[i] = el)} className={`block h-full rounded-full ${fillClass}`} style={{ width: 0 }} />
               </span>
               <span className={`mt-1.5 hidden truncate text-[11px] transition-colors sm:block ${i === active ? activeLabelClass : labelClass}`}>
                 {String(i + 1).padStart(2, '0')} · {item.label}
