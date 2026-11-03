@@ -13,10 +13,18 @@ export interface AppTopBarProps {
 }
 export function AppTopBar({ title, back = false, action, rtl = false }: AppTopBarProps): React.ReactElement {
   return (
-    <div className="flex items-center gap-3 border-b border-slate-100 bg-white px-4 py-3">
-      {back ? <Icon name={rtl ? 'chevronRight' : 'chevronLeft'} className="h-5 w-5 text-slate-400" /> : null}
-      <span className="flex-1 truncate font-semibold text-slate-900">{title}</span>
-      {action ? <Icon name={action} className="h-5 w-5 text-slate-500" /> : null}
+    <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-slate-900/[0.05] bg-white/85 px-3 py-2.5 backdrop-blur-md">
+      {back ? (
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/[0.04]">
+          <Icon name={rtl ? 'chevronRight' : 'chevronLeft'} className="h-4 w-4 text-slate-600" />
+        </span>
+      ) : null}
+      <span className={cx('flex-1 truncate text-[17px] font-semibold tracking-[-0.01em] text-slate-900', !back && 'ps-1')}>{title}</span>
+      {action ? (
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/[0.04]">
+          <Icon name={action} className="h-4 w-4 text-slate-600" />
+        </span>
+      ) : null}
     </div>
   )
 }
@@ -27,10 +35,12 @@ export interface TabBarProps {
 }
 export function TabBar({ tabs, active }: TabBarProps): React.ReactElement {
   return (
-    <nav className="sticky bottom-0 grid border-t border-slate-100 bg-white/95 px-2 pb-2 pt-1.5 backdrop-blur" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
+    <nav className="sticky bottom-0 grid border-t border-slate-900/[0.05] bg-white/90 px-2 pb-4 pt-1.5 backdrop-blur-md" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
       {tabs.map((t, i) => (
         <span key={t.label} className={cx('flex flex-col items-center gap-0.5 py-1 text-[10px]', i === active ? 'font-semibold text-[var(--offer-accent)]' : 'text-slate-400')}>
-          <Icon name={t.icon} className="h-5 w-5" />
+          <span className={cx('flex h-7 w-12 items-center justify-center rounded-full transition', i === active && 'bg-[color-mix(in_srgb,var(--offer-accent)_12%,white)]')}>
+            <Icon name={t.icon} className="h-[18px] w-[18px]" />
+          </span>
           {t.label}
         </span>
       ))}
@@ -83,14 +93,14 @@ export interface SearchFieldProps {
 export function SearchField({ placeholder, chips, activeChip = 0 }: SearchFieldProps): React.ReactElement {
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-400">
+      <div className="flex items-center gap-2 rounded-xl border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] px-3 py-2.5 text-sm text-slate-400">
         <Icon name="search" className="h-4 w-4" />
         {placeholder}
       </div>
       {chips?.length ? (
         <div className="flex gap-2 overflow-x-auto">
           {chips.map((c, i) => (
-            <span key={c} className={cx('whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium', i === activeChip ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200')}>
+            <span key={c} className={cx('whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium', i === activeChip ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]')}>
               {c}
             </span>
           ))}
@@ -148,7 +158,7 @@ export function ProductGrid({ products, addLabel = '+' }: ProductGridProps): Rea
   return (
     <div className="grid grid-cols-2 gap-3">
       {products.map((p) => (
-        <div key={p.name} className="overflow-hidden rounded-2xl bg-white ring-1 ring-slate-200">
+        <div key={p.name} className="overflow-hidden rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
           <div className="relative">
             <Picture src={p.image} alt={p.name} className="aspect-square w-full" sizes="150px" />
             {p.tag ? (
@@ -196,7 +206,7 @@ export function DetailHero({ image, title, subtitle, price, facts, description }
         {facts?.length ? (
           <div className="flex flex-wrap gap-2">
             {facts.map((f) => (
-              <span key={f.label} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 ring-1 ring-slate-200">
+              <span key={f.label} className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs text-slate-600 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
                 <Icon name={f.icon} className="h-3.5 w-3.5" />
                 {f.label}
               </span>
@@ -267,7 +277,7 @@ export interface OrderSummaryProps {
 }
 export function OrderSummary({ lines, total, note }: OrderSummaryProps): React.ReactElement {
   return (
-    <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+    <div className="rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       <div className="space-y-2 text-sm">
         {lines.map((l) => (
           <div key={l.label} className="flex justify-between gap-3">
@@ -298,7 +308,7 @@ export function PaymentMethods({ wallet = ' Pay', orCard, cardFields, consent }:
       <div className="rounded-xl bg-black py-3 text-center text-sm font-semibold text-white">{wallet}</div>
       <div className="text-center text-xs text-slate-400">{orCard}</div>
       {cardFields.map((f) => (
-        <div key={f} className="rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-400" dir="ltr">
+        <div key={f} className="rounded-xl border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-3 text-sm text-slate-400" dir="ltr">
           {f}
         </div>
       ))}
@@ -327,7 +337,7 @@ export function SuccessScreen({ title, body, card, footnote }: SuccessScreenProp
       <div className="mt-6 text-2xl font-semibold text-slate-900">{title}</div>
       <p className="mt-2 text-sm leading-6 text-slate-600">{body}</p>
       {card ? (
-        <div className="mt-6 w-full rounded-2xl border border-slate-200 bg-white p-4 text-start text-sm">
+        <div className="mt-6 w-full rounded-2xl border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-4 text-start text-sm">
           <div className="font-semibold text-slate-900">{card.title}</div>
           {card.subtitle ? <div className="mt-1 text-slate-500">{card.subtitle}</div> : null}
           {card.actions?.length ? (
@@ -384,7 +394,7 @@ export interface ProfileHeaderProps {
 }
 export function ProfileHeader({ name, subtitle, avatar, stats }: ProfileHeaderProps): React.ReactElement {
   return (
-    <div className="rounded-2xl bg-white p-4 text-center ring-1 ring-slate-200">
+    <div className="rounded-2xl bg-white p-4 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       <div className="flex justify-center">
         <Avatar name={name} src={avatar} size={64} />
       </div>
@@ -414,7 +424,7 @@ export function SettingsList({ groups, rtl = false }: SettingsListProps): React.
       {groups.map((g, gi) => (
         <div key={gi}>
           {g.title ? <div className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{g.title}</div> : null}
-          <div className="divide-y divide-slate-100 rounded-2xl bg-white ring-1 ring-slate-200">
+          <div className="divide-y divide-slate-100 rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
             {g.rows.map((r) => (
               <div key={r.label} className="flex items-center gap-3 px-3 py-3 text-sm">
                 <Icon name={r.icon} className="h-4 w-4 text-slate-400" />
@@ -456,7 +466,7 @@ export function ChatThread({ with: who, avatar, messages, composer }: ChatThread
       <div className="flex-1 space-y-2 p-4">
         {messages.map((m, i) => (
           <div key={i} className={cx('flex', m.from === 'me' ? 'justify-end' : 'justify-start')}>
-            <div className={cx('max-w-[78%] rounded-2xl px-3 py-2 text-sm', m.from === 'me' ? 'rounded-ee-md bg-[var(--offer-accent)] text-white' : 'rounded-es-md bg-white text-slate-800 ring-1 ring-slate-200')}>
+            <div className={cx('max-w-[78%] rounded-2xl px-3 py-2 text-sm', m.from === 'me' ? 'rounded-ee-md bg-[var(--offer-accent)] text-white' : 'rounded-es-md bg-white text-slate-800 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]')}>
               {m.image ? <Picture src={m.image} className="mb-2 aspect-[4/3] w-48 rounded-xl" sizes="200px" /> : null}
               {m.text}
               {m.time ? <div className={cx('mt-0.5 text-[10px]', m.from === 'me' ? 'text-white/70' : 'text-slate-400')}>{m.time}</div> : null}
@@ -479,7 +489,7 @@ export interface NotificationListProps {
 }
 export function NotificationList({ items }: NotificationListProps): React.ReactElement {
   return (
-    <div className="divide-y divide-slate-100 rounded-2xl bg-white ring-1 ring-slate-200">
+    <div className="divide-y divide-slate-100 rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       {items.map((n, i) => (
         <div key={i} className="flex gap-3 p-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--offer-accent)_10%,white)] text-[var(--offer-accent)]">
@@ -505,7 +515,7 @@ export interface StatusTimelineProps {
 /** Order / delivery / application progress. */
 export function StatusTimeline({ steps }: StatusTimelineProps): React.ReactElement {
   return (
-    <ol className="space-y-0 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+    <ol className="space-y-0 rounded-2xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       {steps.map((s, i) => (
         <li key={s.label} className="relative flex gap-3 pb-4 last:pb-0">
           {i < steps.length - 1 ? <span className={cx('absolute start-[9px] top-5 h-full w-0.5', s.done ? 'bg-[var(--offer-accent)]' : 'bg-slate-200')} /> : null}

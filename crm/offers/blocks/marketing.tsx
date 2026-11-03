@@ -88,7 +88,7 @@ export function HeroCentered({ badge, title, highlight, subtitle, primaryCta, se
       <div className="relative mx-auto max-w-3xl text-center">
         {badge ? (
           <div className="mb-5 flex justify-center">
-            <span className="rounded-full border border-slate-200 bg-white/70 px-3 py-1 text-xs text-slate-500 shadow-sm">{badge}</span>
+            <span className="rounded-full border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]/70 px-3 py-1 text-xs text-slate-500 shadow-sm">{badge}</span>
           </div>
         ) : null}
         <h1 className="text-balance text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl">
@@ -98,7 +98,7 @@ export function HeroCentered({ badge, title, highlight, subtitle, primaryCta, se
         <p className="mx-auto mt-4 max-w-2xl text-pretty text-base leading-relaxed text-slate-500 sm:text-lg">{subtitle}</p>
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           <span className="inline-flex min-w-[160px] items-center justify-center rounded-full bg-slate-900 px-6 py-3.5 text-sm font-medium text-white">{primaryCta}</span>
-          {secondaryCta ? <span className="inline-flex min-w-[160px] items-center justify-center rounded-full border border-slate-200 bg-white/80 px-6 py-3.5 text-sm font-medium text-slate-900">{secondaryCta}</span> : null}
+          {secondaryCta ? <span className="inline-flex min-w-[160px] items-center justify-center rounded-full border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]/80 px-6 py-3.5 text-sm font-medium text-slate-900">{secondaryCta}</span> : null}
         </div>
       </div>
       {preview ? <Picture src={preview} className="relative mx-auto mt-10 aspect-[16/9] max-w-4xl rounded-2xl border border-slate-200 shadow-xl" sizes="900px" /> : null}
@@ -160,7 +160,7 @@ export interface FeatureGridProps extends SectionIntro {
 export function FeatureGrid({ title, subtitle, features }: FeatureGridProps): React.ReactElement {
   return (
     <section className="px-4 py-12">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-10">
+      <div className="rounded-3xl border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 shadow-sm md:p-10">
         <Intro title={title} subtitle={subtitle} />
         <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
@@ -185,7 +185,7 @@ export interface StepsProps extends SectionIntro {
 export function Steps({ title, subtitle, steps }: StepsProps): React.ReactElement {
   return (
     <section className="px-4 py-12">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm md:p-10">
+      <div className="rounded-3xl border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-6 shadow-sm md:p-10">
         <Intro title={title} subtitle={subtitle} />
         <div className="mt-10 flex flex-col gap-6 md:flex-row">
           {steps.map((st, i) => (
@@ -228,7 +228,7 @@ export function Testimonials({ title, subtitle, items }: TestimonialsProps): Rea
       <Intro title={title} subtitle={subtitle} />
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {items.map((t) => (
-          <figure key={t.name} className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200/70">
+          <figure key={t.name} className="rounded-2xl bg-white p-5 shadow-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
             {t.rating ? <div className="mb-2 text-amber-400">{'★'.repeat(Math.round(t.rating))}</div> : null}
             <blockquote className="leading-relaxed text-slate-700">“{t.quote}”</blockquote>
             <figcaption className="mt-4 flex items-center gap-3">
@@ -255,7 +255,7 @@ export function PricingTiers({ title, subtitle, tiers }: PricingTiersProps): Rea
       <Intro title={title} subtitle={subtitle} />
       <div className="mt-8 grid gap-4 md:grid-cols-3">
         {tiers.map((t) => (
-          <div key={t.name} className={cx('flex flex-col rounded-3xl p-6', t.featured ? 'bg-slate-900 text-white shadow-xl' : 'bg-white ring-1 ring-slate-200')}>
+          <div key={t.name} className={cx('flex flex-col rounded-3xl p-6', t.featured ? 'bg-slate-900 text-white shadow-xl' : 'bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]')}>
             <div className="flex items-center justify-between">
               <span className="font-semibold">{t.name}</span>
               {t.badge ? <Pill>{t.badge}</Pill> : null}
@@ -288,7 +288,7 @@ export function Faq({ title, subtitle, items }: FaqProps): React.ReactElement {
   return (
     <section className="mx-auto max-w-3xl px-6 py-12">
       <Intro title={title} subtitle={subtitle} />
-      <div className="mt-8 divide-y divide-slate-200 rounded-2xl border border-slate-200 bg-white">
+      <div className="mt-8 divide-y divide-slate-200 rounded-2xl border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         {items.map((it, i) => (
           <details key={it.q} className="group px-5 py-4" open={i === 0}>
             <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium text-slate-900">
@@ -392,7 +392,7 @@ export function ContactSection({ title, subtitle, details, fields, submit }: Con
           ))}
         </ul>
       </div>
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="space-y-3 rounded-2xl border border-slate-900/[0.07] bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] p-5">
         {fields.map((f) => (
           <div key={f}>
             <div className="mb-1 text-sm font-medium text-slate-700">{f}</div>

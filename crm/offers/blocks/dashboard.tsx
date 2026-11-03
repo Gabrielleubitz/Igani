@@ -19,11 +19,11 @@ export interface DashboardShellProps {
 export function DashboardShell({ brand, logo, nav, active, title, subtitle, actions = [], user, children }: DashboardShellProps): React.ReactElement {
   return (
     <div className="flex min-h-full bg-slate-50 text-[13px]">
-      <aside className="w-48 shrink-0 border-e border-slate-200 bg-white p-3">
+      <aside className="w-48 shrink-0 border-e border-slate-900/[0.06] bg-white/90 p-3">
         <div className="mb-5 flex h-8 items-center">{logo ? <Picture src={logo} alt={brand} className="h-7 w-28 [&_img]:object-contain" sizes="120px" /> : <span className="text-base font-bold text-slate-900">{brand}</span>}</div>
         <nav className="space-y-0.5">
           {nav.map((n, i) => (
-            <div key={n.label} className={cx('flex items-center gap-2 rounded-md px-2 py-1.5', i === active ? 'bg-[color-mix(in_srgb,var(--offer-accent)_10%,white)] font-semibold text-[var(--offer-accent)]' : 'text-slate-600')}>
+            <div key={n.label} className={cx('relative flex items-center gap-2 rounded-lg px-2 py-1.5', i === active ? 'bg-[color-mix(in_srgb,var(--offer-accent)_9%,white)] font-semibold text-[var(--offer-accent)] before:absolute before:-start-3 before:top-1.5 before:h-5 before:w-1 before:rounded-e before:bg-[var(--offer-accent)]' : 'text-slate-600')}>
               <Icon name={n.icon} className="h-4 w-4" />
               <span className="flex-1">{n.label}</span>
               {n.badge ? <span className="rounded-full bg-[var(--offer-accent)] px-1.5 text-[10px] font-semibold text-white">{n.badge}</span> : null}
@@ -40,12 +40,12 @@ export function DashboardShell({ brand, logo, nav, active, title, subtitle, acti
       <div className="min-w-0 flex-1 p-5">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-lg font-semibold text-slate-900">{title}</div>
+            <div className="text-lg font-semibold tracking-[-0.01em] text-slate-900">{title}</div>
             {subtitle ? <div className="text-slate-500">{subtitle}</div> : null}
           </div>
           <div className="flex gap-2">
             {actions.map((a, i) => (
-              <span key={a} className={cx('rounded-md px-3 py-1.5 font-medium', i === actions.length - 1 ? 'bg-[var(--offer-accent)] text-white' : 'border border-slate-200 bg-white text-slate-700')}>
+              <span key={a} className={cx('rounded-lg px-3 py-1.5 font-medium', i === actions.length - 1 ? 'bg-[var(--offer-accent)] text-white shadow-[0_6px_16px_-8px_var(--offer-accent)]' : 'bg-white text-slate-700 shadow-sm ring-1 ring-slate-900/10')}>
                 {a}
               </span>
             ))}
@@ -65,7 +65,7 @@ export function StatCards({ stats }: StatCardsProps): React.ReactElement {
   return (
     <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(stats.length, 4)}, minmax(0, 1fr))` }}>
       {stats.map((s) => (
-        <div key={s.label} className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+        <div key={s.label} className="rounded-xl bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             {s.label}
             {s.icon ? <Icon name={s.icon} className="h-4 w-4 text-slate-400" /> : null}
@@ -101,7 +101,7 @@ export interface DataTableProps {
 /** Simple table; a cell can be a status pill. */
 export function DataTable({ title, columns, rows, footer }: DataTableProps): React.ReactElement {
   return (
-    <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+    <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       {title ? <div className="border-b border-slate-100 px-3 py-2.5 font-semibold text-slate-900">{title}</div> : null}
       <table className="w-full text-start">
         <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
@@ -142,7 +142,7 @@ export interface BarChartProps {
 export function BarChart({ title, subtitle, bars, prefix = '', highlight }: BarChartProps): React.ReactElement {
   const max = Math.max(...bars.map((b) => b.value), 1)
   return (
-    <div className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+    <div className="rounded-xl bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       <div className="flex items-baseline justify-between">
         <span className="font-semibold text-slate-900">{title}</span>
         {subtitle ? <span className="text-[11px] text-slate-500">{subtitle}</span> : null}
@@ -180,7 +180,7 @@ const TONE: Record<string, string> = {
 /** Hour rows with booking chips (pattern from the cryo-booking admin calendar). */
 export function DaySchedule({ title, hours, items, columns }: DayScheduleProps): React.ReactElement {
   return (
-    <div className="overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+    <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2.5">
         <span className="font-semibold text-slate-900">{title}</span>
         {columns?.length ? (
@@ -225,7 +225,7 @@ export function Kanban({ columns }: KanbanProps): React.ReactElement {
           </div>
           <div className="space-y-2">
             {c.cards.map((card) => (
-              <div key={card.title} className="rounded-lg bg-white p-2.5 shadow-sm ring-1 ring-slate-200">
+              <div key={card.title} className="rounded-lg bg-white p-2.5 shadow-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
                 <div className="font-medium text-slate-900">{card.title}</div>
                 <div className="mt-1.5 flex items-center justify-between gap-2">
                   {card.meta ? <span className="text-[11px] text-slate-500">{card.meta}</span> : <span />}
@@ -246,7 +246,7 @@ export interface ActivityFeedProps {
 }
 export function ActivityFeed({ title, items }: ActivityFeedProps): React.ReactElement {
   return (
-    <div className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+    <div className="rounded-xl bg-white p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       <div className="mb-2 font-semibold text-slate-900">{title}</div>
       <ul className="space-y-2.5">
         {items.map((a, i) => (
@@ -277,7 +277,7 @@ export interface FormPanelProps {
 /** Settings / edit form (static), two columns where fields are `half`. */
 export function FormPanel({ title, fields, actions = [] }: FormPanelProps): React.ReactElement {
   return (
-    <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+    <div className="rounded-xl bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.07]">
       <div className="mb-3 font-semibold text-slate-900">{title}</div>
       <div className="grid grid-cols-2 gap-3">
         {fields.map((f) => (
@@ -299,7 +299,7 @@ export function FormPanel({ title, fields, actions = [] }: FormPanelProps): Reac
       {actions.length ? (
         <div className="mt-4 flex justify-end gap-2">
           {actions.map((a, i) => (
-            <span key={a} className={cx('rounded-md px-3 py-1.5 font-medium', i === actions.length - 1 ? 'bg-[var(--offer-accent)] text-white' : 'border border-slate-200 text-slate-700')}>
+            <span key={a} className={cx('rounded-lg px-3 py-1.5 font-medium', i === actions.length - 1 ? 'bg-[var(--offer-accent)] text-white shadow-[0_6px_16px_-8px_var(--offer-accent)]' : 'bg-white text-slate-700 shadow-sm ring-1 ring-slate-900/10')}>
               {a}
             </span>
           ))}

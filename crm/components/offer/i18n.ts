@@ -71,6 +71,8 @@ const UI = {
   needSignature: { he: 'נא לחתום בתיבה.', en: 'Please draw your signature in the box.' },
   needAgree: { he: 'נא לאשר את ההסכם.', en: 'Please tick the box to accept the agreement.' },
   preparedBy: { he: 'הוכן על ידי Igani', en: 'Prepared by Igani' },
+  yourDetails: { he: 'הפרטים שלכם', en: 'Your details' },
+  secureNote: { he: 'עותק חתום יישלח אליכם ואלינו באימייל', en: 'A signed copy is emailed to you and to us' },
   loading: { he: 'טוען…', en: 'Loading…' },
 } satisfies Record<string, L>
 
