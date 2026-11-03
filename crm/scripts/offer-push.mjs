@@ -4,7 +4,7 @@
 //  3. pull --rebase, push → Vercel deploys
 //  4. wait until the live CRM serves the new content, then set the offer LIVE (drafts only; signed offers stay signed)
 import { execFileSync, spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -29,7 +29,7 @@ step('Typechecking')
 if (spawnSync('npx', ['tsc', '--noEmit'], { cwd: CRM, stdio: 'inherit' }).status !== 0) fail('Typecheck failed. Fix the errors above, then push again.')
 
 step('Committing this offer only')
-const paths = [`offers/${slug}`, 'offers/registry.ts', ...(existsSync(join(CRM, 'public', 'offers', slug)) ? [`public/offers/${slug}`] : [])]
+const paths = [`offers/${slug}`, 'offers/registry.ts', ...(existsSync(join(CRM, 'public', 'offers', slug)) && readdirSync(join(CRM, 'public', 'offers', slug)).length ? [`public/offers/${slug}`] : [])]
 git('add', '--', ...paths)
 const staged = git('diff', '--cached', '--name-only', '--', ...paths)
 if (staged) {
