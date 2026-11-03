@@ -14,6 +14,13 @@ if (!existsSync(join(STUDIO, 'node_modules', 'node-pty'))) {
   if (r.status !== 0) process.exit(r.status ?? 1)
 }
 
+// Already running? Then don't start a second CRM and bridge next to it.
+const busy = spawnSync('lsof', ['-ti', 'tcp:3100', '-sTCP:LISTEN'], { encoding: 'utf8' }).stdout.trim()
+if (busy) {
+  console.error('\n[studio] Something is already running on port 3100 (probably the studio). Open http://localhost:3100/admin/offers, or stop it first.\n')
+  process.exit(1)
+}
+
 const children = [
   spawn('node', ['server.mjs'], { cwd: STUDIO, stdio: 'inherit' }),
   // Dev login on: Google sign-in needs an OAuth client set up for localhost, the dev login doesn't (it never works in production)

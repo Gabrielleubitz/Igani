@@ -21,7 +21,8 @@ const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/
 const SCROLLBACK = 400_000
 
 const token = randomBytes(24).toString('hex')
-writeFileSync(join(HERE, '.token'), token, { mode: 0o600 })
+// The token file is written only once this bridge is really listening (see 'listening' below): a second
+// `npm run studio` must never overwrite the key of the bridge that is already running.
 
 /** slug → { term, buffer, sockets } */
 const sessions = new Map()
@@ -90,7 +91,17 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => s.sockets.delete(ws))
 })
 
-wss.on('listening', () => console.log(`[studio] terminal bridge on ws://127.0.0.1:${PORT}`))
+wss.on('listening', () => {
+  writeFileSync(join(HERE, '.token'), token, { mode: 0o600 })
+  console.log(`[studio] terminal bridge on ws://127.0.0.1:${PORT}`)
+})
+wss.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`\n[studio] The studio is already running (port ${PORT} is taken). Use that one, or stop it first (Ctrl+C in its terminal).\n`)
+    process.exit(1)
+  }
+  throw err
+})
 const shutdown = () => {
   for (const s of sessions.values()) s.term.kill()
   rmSync(join(HERE, '.token'), { force: true })
