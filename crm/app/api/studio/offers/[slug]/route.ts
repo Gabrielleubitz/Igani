@@ -23,7 +23,8 @@ function authorized(req: Request): boolean {
 
 const notFound = (): NextResponse => NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-export async function GET(req: Request, { params }: { params: { slug: string } }): Promise<NextResponse> {
+export async function GET(req: Request, props: { params: Promise<{ slug: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   if (!authorized(req)) return notFound()
   const o = await prisma.offer.findUnique({
     where: { slug: params.slug },
@@ -49,7 +50,8 @@ export async function GET(req: Request, { params }: { params: { slug: string } }
 
 const Body = z.object({ action: z.literal('publish') })
 
-export async function POST(req: Request, { params }: { params: { slug: string } }): Promise<NextResponse> {
+export async function POST(req: Request, props: { params: Promise<{ slug: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   if (!authorized(req)) return notFound()
   if (!Body.safeParse(await req.json().catch(() => null)).success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   const o = await prisma.offer.findUnique({ where: { slug: params.slug }, select: { id: true, status: true, leadId: true, publishedAt: true } })

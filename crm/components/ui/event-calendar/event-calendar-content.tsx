@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // Title: Event Calendar Content
 // Description: Active-view switchboard rendering month, week, day, N-days, or agenda; swappable per view via the components prop.
 

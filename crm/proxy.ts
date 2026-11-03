@@ -39,7 +39,7 @@ function secure(res: NextResponse, framing: Framing = 'none'): NextResponse {
 /** Paths that go through the session check below (everything else, e.g. /login, /book, /o, is public). */
 const GUARDED = /^\/(admin|sales|marketing|api)(\/|$)/
 
-export async function middleware(req: NextRequest): Promise<NextResponse> {
+export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl
 
   // Offer microsites: honey.app.igani.co/<path> (or honey.localhost) serves /o/honey/<path>. APIs and files pass through.

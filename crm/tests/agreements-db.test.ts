@@ -45,7 +45,7 @@ d('agreements: upload and download permissions', async () => {
     form.set('file', file)
     return upload.POST(new NextRequest('http://localhost/api/admin/agreements', { method: 'POST', body: form }))
   }
-  const get = (id: string): Promise<Response> => download.GET(new NextRequest(`http://localhost/api/agreements/${id}`), { params: { id } })
+  const get = (id: string): Promise<Response> => download.GET(new NextRequest(`http://localhost/api/agreements/${id}`), { params: Promise.resolve({ id }) })
   const pdf = (): File => new File([new Uint8Array([37, 80, 68, 70, 45])], 'Commission agreement.pdf', { type: 'application/pdf' })
 
   it('only an admin can upload; the file is stored for that salesperson', async () => {

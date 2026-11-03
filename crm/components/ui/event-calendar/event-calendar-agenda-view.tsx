@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // Title: Event Calendar Agenda View
 // Description: Chronological agenda grouped by day - a day header row plus a clean time / dot / title table.
 

@@ -19,7 +19,8 @@ export const dynamic = 'force-dynamic'
 // The transcript → modules AI step can take a while on long calls
 export const maxDuration = 180
 
-export default async function OfferAdminPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
+export default async function OfferAdminPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
+  const params = await props.params;
   const user = await requireUser(['ADMIN'])
   const offer = await prisma.offer.findUnique({ where: { id: params.id }, include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, status: true } } } })
   if (!offer || !canSeeOffer(user, offer)) notFound()

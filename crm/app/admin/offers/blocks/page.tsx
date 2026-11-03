@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic'
 const ACCENTS = ['#2563eb', '#0e7490', '#059669', '#d97706', '#e11d48', '#7c3aed', '#0f172a']
 
 /** Every lego brick Claude builds offer mockups from, rendered live in the chosen accent colour. */
-export default async function BlocksPage({ searchParams }: { searchParams: { accent?: string; cat?: string } }): Promise<React.ReactElement> {
+export default async function BlocksPage(props: { searchParams: Promise<{ accent?: string; cat?: string }> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   await requireUser(['ADMIN'])
   const accent = /^#[0-9a-f]{6}$/i.test(searchParams.accent ?? '') ? searchParams.accent! : ACCENTS[0]!
   const cat = BLOCK_CATEGORIES.find((c) => c === searchParams.cat)

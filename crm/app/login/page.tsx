@@ -26,7 +26,10 @@ const ERRORS: Record<string, string> = {
  * Sign-in: Google only, and only for emails an admin has invited (the whitelist is checked on every sign-in).
  * Split layout: the form on one side, a brand panel with what the CRM does on the other.
  */
-export default async function LoginPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }): Promise<React.ReactElement> {
+export default async function LoginPage(
+  props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
+): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const token = typeof searchParams.invite === 'string' ? searchParams.invite.slice(0, 64) : ''
   const invite = token ? await prisma.allowedUser.findUnique({ where: { inviteToken: token }, select: { role: true, active: true } }) : null
   const error = typeof searchParams.error === 'string' ? (ERRORS[searchParams.error] ?? 'Sign-in failed. Please try again.') : null

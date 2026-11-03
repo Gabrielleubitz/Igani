@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // Title: Event Calendar Dnd
 // Description: Custom pointer-event interaction engine - move, resize, and drag-create across month, week, day, and N-day views with live validation.
 

@@ -18,7 +18,8 @@ import { STATUS_LABEL } from '@/lib/format'
 export const metadata = { title: 'Salesperson' }
 export const dynamic = 'force-dynamic'
 
-export default async function TeamMemberPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
+export default async function TeamMemberPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
+  const params = await props.params;
   const me = await requireUser(['ADMIN'])
   const user = await prisma.user.findUnique({ where: { id: params.id }, select: { id: true, name: true, email: true, role: true, timeZone: true, createdAt: true } })
   if (!user || (user.role !== 'SALES' && user.role !== 'ADMIN')) notFound()

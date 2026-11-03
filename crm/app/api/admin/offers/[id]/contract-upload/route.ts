@@ -8,7 +8,8 @@ import { prisma } from '@/lib/prisma'
  * Signed parameters for the browser to upload a contract PDF straight to Cloudinary.
  * The file never passes through Vercel, so contracts aren't limited by the 4.5 MB request cap.
  */
-export async function POST(_req: Request, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function POST(_req: Request, props: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   const user = await currentUserOrNull()
   if (user?.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   if (!cloudinaryConfigured()) return NextResponse.json({ error: 'Cloudinary is not set up for the CRM yet (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET).' }, { status: 503 })

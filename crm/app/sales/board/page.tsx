@@ -16,7 +16,8 @@ export const metadata = { title: 'Board' }
 type SP = Record<string, string | string[] | undefined>
 const one = (v: string | string[] | undefined): string | undefined => (Array.isArray(v) ? v[0] : v) || undefined
 
-export default async function BoardPage({ searchParams }: { searchParams: SP }): Promise<React.ReactElement> {
+export default async function BoardPage(props: { searchParams: Promise<SP> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
   const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), notArchivedBy(user.id)] }

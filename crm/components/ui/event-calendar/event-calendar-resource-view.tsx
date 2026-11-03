@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // Title: Event Calendar Resource View
 // Description: Resource-columns day grid for booking scenarios - one time axis, one column per resource, full drag, resize, and drag-create.
 

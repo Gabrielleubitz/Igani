@@ -13,7 +13,8 @@ import { notArchivedBy } from '@/lib/lead-archive'
 export const metadata = { title: 'Send meeting invite' }
 export const dynamic = 'force-dynamic'
 
-export default async function InvitePage({ searchParams }: { searchParams: { leadId?: string } }): Promise<React.ReactElement> {
+export default async function InvitePage(props: { searchParams: Promise<{ leadId?: string }> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const user = await requireUser(['ADMIN', 'SALES'])
   const select = { id: true, email: true, firstName: true, lastName: true, company: true } as const
   const [leads, preselected, hosts, googleConnected, defaultDuration, me] = await Promise.all([

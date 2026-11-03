@@ -15,7 +15,8 @@ import { prisma } from '@/lib/prisma'
 export const metadata = { title: 'Offers' }
 export const dynamic = 'force-dynamic'
 
-export default async function OffersPage({ searchParams }: { searchParams: { lead?: string } }): Promise<React.ReactElement> {
+export default async function OffersPage(props: { searchParams: Promise<{ lead?: string }> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const user = await requireUser(['ADMIN'])
   const [offers, leads] = await Promise.all([
     prisma.offer.findMany({ where: offerScope(user), orderBy: { updatedAt: 'desc' }, include: { lead: { select: { firstName: true, lastName: true, email: true, company: true } } } }),

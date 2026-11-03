@@ -10,12 +10,14 @@ async function load(slug: string) {
   return prisma.bookingPage.findFirst({ where: { slug, active: true }, include: { host: { select: { name: true, image: true } } } })
 }
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<{ title: string }> {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<{ title: string }> {
+  const params = await props.params;
   const page = await load(params.slug)
   return { title: page?.title ?? 'Book a call' }
 }
 
-export default async function BookPage({ params }: { params: { slug: string } }): Promise<React.ReactElement> {
+export default async function BookPage(props: { params: Promise<{ slug: string }> }): Promise<React.ReactElement> {
+  const params = await props.params;
   const page = await load(params.slug)
   if (!page) notFound()
   return (

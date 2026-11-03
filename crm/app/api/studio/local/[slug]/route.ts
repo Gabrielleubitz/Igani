@@ -14,7 +14,8 @@ export const dynamic = 'force-dynamic'
  *   2. create offers/<slug>/ on first use
  *   3. refresh assets.json (uploaded logo) and offer-data.json (what Claude reads)
  */
-export async function POST(req: Request, { params }: { params: { slug: string } }): Promise<NextResponse> {
+export async function POST(req: Request, props: { params: Promise<{ slug: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   if (!isLocalDev() || slugProblem(params.slug)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const { pullOffer, scaffoldOffer, studioRemote, studioToken, writeAssetsManifest, writeOfferData } = await import('@/lib/offer-studio')
   const expected = studioToken()

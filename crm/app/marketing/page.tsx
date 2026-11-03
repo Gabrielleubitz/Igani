@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic'
 
 const RANGES = [7, 30, 90, 365] as const
 
-export default async function MarketingPage({ searchParams }: { searchParams: { days?: string } }): Promise<React.ReactElement> {
+export default async function MarketingPage(props: { searchParams: Promise<{ days?: string }> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   await requireUser(['ADMIN', 'MARKETING'])
   const days = RANGES.find((d) => String(d) === searchParams.days) ?? 30
   const since = new Date(Date.now() - days * 864e5)

@@ -12,7 +12,20 @@ export const metadata = { title: 'Analytics' }
 
 export const dynamic = 'force-dynamic'
 
-export default async function ReportsPage({ searchParams }: { searchParams: { scope?: string } }): Promise<React.ReactElement> {
+function Tile({ label, value, sub }: { label: string; value: string | number; sub?: string }): React.ReactElement {
+  return (
+    <Card>
+      <CardContent className="pt-[var(--card-pad)]">
+        <div className="text-3xl font-semibold">{value}</div>
+        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+        {sub ? <div className="mt-1 text-xs text-muted-foreground">{sub}</div> : null}
+      </CardContent>
+    </Card>
+  )
+}
+
+export default async function ReportsPage(props: { searchParams: Promise<{ scope?: string }> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const user = await requireUser()
   // Salespeople only ever see their own numbers; admins can switch between the whole team and just themselves.
   const mine = user.role === 'SALES' || (searchParams.scope === 'mine' && user.role === 'ADMIN')
@@ -75,16 +88,6 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
   const last30 = r.perDay.reduce((n, d) => n + d.count, 0)
   const lostReasons = [...leads.filter((l) => l.status === 'LOST').reduce((m, l) => m.set((l.lostReason ?? 'No reason').split(':')[0]!.trim(), (m.get((l.lostReason ?? 'No reason').split(':')[0]!.trim()) ?? 0) + 1), new Map<string, number>())].sort((a, b) => b[1] - a[1])
   const maxLost = Math.max(1, ...lostReasons.map(([, n]) => n))
-
-  const Tile = ({ label, value, sub }: { label: string; value: string | number; sub?: string }): React.ReactElement => (
-    <Card>
-      <CardContent className="pt-[var(--card-pad)]">
-        <div className="text-3xl font-semibold">{value}</div>
-        <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-        {sub ? <div className="mt-1 text-xs text-muted-foreground">{sub}</div> : null}
-      </CardContent>
-    </Card>
-  )
 
   return (
     <div className="space-y-6">

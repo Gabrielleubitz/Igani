@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // @ts-nocheck -- vendored from reui.io; written for a looser tsconfig (no noUncheckedIndexedAccess)
 // Title: Event Calendar Time Grid
 // Description: Shared week/day/N-days engine - hour gutter, minute-positioned events, all-day row, drag ghosts, now indicator, and configurable scrolling.

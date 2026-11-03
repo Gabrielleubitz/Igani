@@ -34,7 +34,8 @@ import { foldTasksFromLogs } from '@/lib/task-view'
 
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const user = await requireUser()
   const lead = await prisma.lead.findUnique({ where: { id: params.id }, select: { firstName: true, lastName: true, email: true, phone: true, assignedToId: true } })
   return { title: lead && canSeeLead(user, lead) ? leadName(lead) : 'Contact' }
@@ -62,7 +63,8 @@ const TOUCH: Record<string, string> = { call: 'Call', email: 'Email', meeting: '
 const HIDDEN = new Set(['task.reminded'])
 const MONEY_EVENTS = ['lead.price_changed', 'lead.commission_overridden', 'lead.commission_recalculated', 'lead.commission_payment', 'lead.source_type_changed'] as const
 
-export default async function LeadPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
+export default async function LeadPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
+  const params = await props.params;
   const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
   const lead = await prisma.lead.findUnique({
@@ -219,7 +221,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
       case 'lead.commission_payment':
         return { title: `${s(m.kind) === 'received' ? 'Client payment received' : 'Commission paid out'}${m.date ? ` (${s(m.date)})` : ' (undone)'}` }
       default:
-        return { title: l.action.replace(/[._]/g, ' ') }
+        return { title: l.action.replace(/[._]/g, ' ') };
     }
   }
   // Email bodies live in the Emails card; the timeline shows a one-line entry for each.

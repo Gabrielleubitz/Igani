@@ -39,7 +39,8 @@ function clientIp(req: Request): string {
  * The client signs a live offer: the contract gets a signature page, the signed PDF is saved on the lead,
  * the lead moves to Signed with a "send the down-payment invoice" task, and both sides get the PDF by email.
  */
-export async function POST(req: Request, { params }: { params: { slug: string } }): Promise<NextResponse> {
+export async function POST(req: Request, props: { params: Promise<{ slug: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
     const field = parsed.error.issues[0]?.path[0]

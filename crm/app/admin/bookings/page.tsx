@@ -18,7 +18,8 @@ const FILTERS = [
   ['CANCELLED', 'Cancelled'],
 ] as const
 
-export default async function BookingsPage({ searchParams }: { searchParams: { filter?: string } }): Promise<React.ReactElement> {
+export default async function BookingsPage(props: { searchParams: Promise<{ filter?: string }> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const admin = await requireUser(['ADMIN'])
   const filter = FILTERS.find(([k]) => k === searchParams.filter)?.[0] ?? 'all'
   const now = new Date()

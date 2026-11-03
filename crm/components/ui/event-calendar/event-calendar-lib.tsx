@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // @ts-nocheck -- vendored from reui.io; written for a looser tsconfig (no noUncheckedIndexedAccess)
 // Title: Event Calendar Lib
 // Description: Pure, React-free calendar math: view ranges, zoned day keys, multi-day segmentation, overlap packing, lane packing, and the event index.

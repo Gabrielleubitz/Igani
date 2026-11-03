@@ -15,7 +15,8 @@ import { prisma } from '@/lib/prisma'
 export const metadata = { title: 'Meetings' }
 export const dynamic = 'force-dynamic'
 
-export default async function MeetingsPage({ searchParams }: { searchParams: { view?: string } }): Promise<React.ReactElement> {
+export default async function MeetingsPage(props: { searchParams: Promise<{ view?: string }> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const user = await requireUser(['ADMIN', 'SALES'])
   const isAdmin = user.role === 'ADMIN'
   const now = new Date()

@@ -14,7 +14,8 @@ export const dynamic = 'force-dynamic'
  * Claude + live preview for one offer, inside the CRM (like Lovable / Bolt). The terminal and the preview run on the
  * admin's Mac through the studio helper; this page just connects to them (see components/admin/StudioConnect).
  */
-export default async function StudioPage({ params }: { params: { slug: string } }): Promise<React.ReactElement> {
+export default async function StudioPage(props: { params: Promise<{ slug: string }> }): Promise<React.ReactElement> {
+  const params = await props.params;
   const user = await requireUser(['ADMIN'])
   const slug = params.slug
   if (slugProblem(slug)) notFound()

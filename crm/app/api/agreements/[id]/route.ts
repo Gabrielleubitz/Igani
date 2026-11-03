@@ -7,7 +7,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /** Download an agreement: admins any, a salesperson only their own. Anything else looks like "not found". */
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   const user = await currentUserOrNull()
   if (!user) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
   const a = await prisma.agreement.findUnique({ where: { id: params.id } })

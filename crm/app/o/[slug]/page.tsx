@@ -8,9 +8,11 @@ import { getSetting } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
 
-type Props = { params: { slug: string }; searchParams: { lang?: string } }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string }> }
 
-export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const data = await loadPublicOffer(params.slug)
   if (!data) return { title: 'Not found', robots: { index: false, follow: false } }
   const lang = pickLang(searchParams.lang, data.definition?.content.defaultLang)
@@ -19,9 +21,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   return { title: { absolute: `${title} · Igani` }, robots: { index: false, follow: false } }
 }
 
-export default async function Page({ params, searchParams }: Props): Promise<React.ReactElement> {
+export default async function Page(props: Props): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const data = await loadPublicOffer(params.slug)
   if (!data) notFound()
   const lang = pickLang(searchParams.lang, data.definition?.content.defaultLang)
-  return <OfferPage data={data} lang={lang} base={offerBase(params.slug)} supportEmail={await getSetting('brand.supportEmail')} />
+  return <OfferPage data={data} lang={lang} base={await offerBase(params.slug)} supportEmail={await getSetting('brand.supportEmail')} />
 }

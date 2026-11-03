@@ -9,7 +9,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /** Anyone who can see this lead (admins, or the salesperson it is assigned to) can attach a document to it. */
-export async function POST(req: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function POST(req: NextRequest, props: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   const user = await currentUserOrNull()
   if (!user) return NextResponse.json({ error: 'Sign in first.' }, { status: 401 })
   const lead = await prisma.lead.findUnique({ where: { id: params.id }, select: { id: true, assignedToId: true } })

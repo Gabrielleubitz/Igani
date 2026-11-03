@@ -17,6 +17,8 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <div className="flex gap-2">
             <Button onClick={reset}>Try again</Button>
             <Button variant="outline" asChild>
+              {/* A full page load on purpose: it resets whatever state broke the page */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
               <a href="/">Home</a>
             </Button>
           </div>

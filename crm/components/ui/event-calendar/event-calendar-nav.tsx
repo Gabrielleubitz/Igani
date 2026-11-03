@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 // Title: Event Calendar Nav
 // Description: Composable navigation - Today, prev/next, period title, view switcher dropdown, and a free toolbar slot.
 

@@ -45,9 +45,9 @@ d('client documents: who can add and open them', async () => {
     const form = new FormData()
     form.set('title', 'Brief')
     form.set('file', file)
-    return upload.POST(new NextRequest(`http://localhost/api/leads/${leadId}/documents`, { method: 'POST', body: form }), { params: { id: leadId } })
+    return upload.POST(new NextRequest(`http://localhost/api/leads/${leadId}/documents`, { method: 'POST', body: form }), { params: Promise.resolve({ id: leadId }) })
   }
-  const get = (id: string): Promise<Response> => download.GET(new NextRequest(`http://localhost/api/lead-documents/${id}`), { params: { id } })
+  const get = (id: string): Promise<Response> => download.GET(new NextRequest(`http://localhost/api/lead-documents/${id}`), { params: Promise.resolve({ id }) })
   const pdf = (): File => new File([new Uint8Array([37, 80, 68, 70, 45])], 'brief.pdf', { type: 'application/pdf' })
 
   it('the salesperson who owns the lead, and admins, can add a document; nobody else can', async () => {

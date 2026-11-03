@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 60
 
 /** Admin preview of the contract as the client will see it (HTML), or the real PDF with ?format=pdf. */
-export async function GET(req: Request, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   const user = await currentUserOrNull()
   if (user?.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const o = await prisma.offer.findUnique({ where: { id: params.id }, include: { lead: { select: { firstName: true, lastName: true, email: true, phone: true, company: true } } } })

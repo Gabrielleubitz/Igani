@@ -15,7 +15,8 @@ export const maxDuration = 60
  * current module choice) and downloads as PDF (?download=1); an uploaded PDF is served as-is. Live/signed offers only,
  * drafts for admins (or locally).
  */
-export async function GET(req: Request, { params }: { params: { slug: string } }): Promise<NextResponse> {
+export async function GET(req: Request, props: { params: Promise<{ slug: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   const offer = await prisma.offer.findUnique({ where: { slug: params.slug }, include: { lead: { select: { firstName: true, lastName: true, email: true, phone: true, company: true } } } })
   if (!offer || offer.status === 'ARCHIVED') return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (offer.status === 'DRAFT' && !isLocalDev() && (await currentUserOrNull())?.role !== 'ADMIN') return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 /** Downloads the agreed UI as a Next.js project + BUILD.md. Admins only; published (live or signed) offers only. ?ai=0 skips the AI plan. */
-export async function GET(req: Request, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function GET(req: Request, props: { params: Promise<{ id: string }> }): Promise<NextResponse> {
+  const params = await props.params;
   const user = await currentUserOrNull()
   if (user?.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const offer = await prisma.offer.findUnique({ where: { id: params.id }, include: { lead: { select: { firstName: true, lastName: true, email: true, phone: true, company: true, website: true } } } })

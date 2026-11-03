@@ -13,7 +13,8 @@ export const dynamic = 'force-dynamic'
 // The AI draft takes up to a couple of minutes
 export const maxDuration = 180
 
-export default async function ContractPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
+export default async function ContractPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
+  const params = await props.params;
   const user = await requireUser(['ADMIN'])
   const offer = await prisma.offer.findUnique({ where: { id: params.id }, select: { id: true, slug: true, title: true, contractDoc: true, contractLang: true, contractApprovedAt: true, signedAt: true, createdById: true, memberIds: true } })
   if (!offer || !canSeeOffer(user, offer)) notFound()

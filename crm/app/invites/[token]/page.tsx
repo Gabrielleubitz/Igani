@@ -23,7 +23,8 @@ function Shell({ title, description, children }: { title: string; description: s
   )
 }
 
-export default async function InvitePage({ params }: { params: { token: string } }): Promise<React.ReactElement> {
+export default async function InvitePage(props: { params: Promise<{ token: string }> }): Promise<React.ReactElement> {
+  const params = await props.params;
   const token = decodeURIComponent(params.token)
   const verified = verifyInviteToken(token)
   const booking = verified.ok

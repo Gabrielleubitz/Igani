@@ -12,7 +12,10 @@ const MESSAGES: Record<string, string> = {
   AccessDenied: 'This Google account is not on the Igani team list.',
 }
 
-export default function UnauthorizedPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }): React.ReactElement {
+export default async function UnauthorizedPage(
+  props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
+): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const reason = typeof searchParams.reason === 'string' ? searchParams.reason : typeof searchParams.error === 'string' ? searchParams.error : ''
   return (
     <BrandedPage wide>

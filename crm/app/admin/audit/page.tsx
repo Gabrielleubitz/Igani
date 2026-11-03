@@ -31,7 +31,10 @@ function summarize(meta: unknown): string {
     .slice(0, 300)
 }
 
-export default async function AuditPage({ searchParams }: { searchParams: { type?: string; entityId?: string; q?: string; page?: string } }): Promise<React.ReactElement> {
+export default async function AuditPage(
+  props: { searchParams: Promise<{ type?: string; entityId?: string; q?: string; page?: string }> }
+): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const admin = await requireUser(['ADMIN'])
   const type = Object.values(EntityTypes).includes(searchParams.type as EntityType) ? (searchParams.type as EntityType) : undefined
   const page = Math.max(1, Number.parseInt(searchParams.page ?? '1', 10) || 1)

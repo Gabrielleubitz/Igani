@@ -25,7 +25,8 @@ type Scope = 'mine' | 'assigned' | 'all'
 /** One list for contact tasks and team tasks, so they sort and group together. */
 type Item = { kind: 'lead'; task: CrmTask } | { kind: 'team'; task: TeamTask }
 
-export default async function TasksPage({ searchParams }: { searchParams: Record<string, string | undefined> }): Promise<React.ReactElement> {
+export default async function TasksPage(props: { searchParams: Promise<Record<string, string | undefined>> }): Promise<React.ReactElement> {
+  const searchParams = await props.searchParams;
   const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
   const showDone = searchParams.status === 'done'
