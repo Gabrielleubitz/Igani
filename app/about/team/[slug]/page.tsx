@@ -92,20 +92,21 @@ export default async function FounderProfilePage({ params }: PageProps) {
           {SITE_NAME} · Co-Founder
         </p>
 
-        <h1 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-          {founder.name}
-        </h1>
-        <p className="mt-3 text-lg font-medium text-[#4080E0]">{founder.position}</p>
-
-        {founder.imageUrl && (
-          <div className="mt-10 overflow-hidden rounded-2xl border border-[#4080E0]/20">
+        <div className="flex items-center gap-5 sm:gap-7">
+          {founder.imageUrl && (
             <img
               src={founder.imageUrl}
               alt={founder.name}
-              className="aspect-[4/3] w-full object-cover object-[50%_22%]"
+              width={144}
+              height={144}
+              className="h-24 w-24 shrink-0 rounded-full object-cover object-[50%_20%] ring-1 ring-[#4080E0]/30 sm:h-36 sm:w-36"
             />
+          )}
+          <div className="min-w-0">
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl">{founder.name}</h1>
+            <p className="!mt-2 text-lg font-medium text-[#4080E0]">{founder.position}</p>
           </div>
-        )}
+        </div>
 
         <article className="mt-10 space-y-4 text-lg leading-relaxed text-white/80">
           <p>{founder.bio}</p>

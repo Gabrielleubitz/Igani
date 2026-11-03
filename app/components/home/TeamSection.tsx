@@ -24,10 +24,16 @@ export function TeamSection({ team, loading }: { team: TeamMember[]; loading: bo
       />
       <ChapterBody className="bg-[#030814] pb-24 pt-14 sm:pb-32 sm:pt-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-3">
             {loading && people.length === 0
               ? [0, 1, 2].map((i) => (
-                  <div key={i} className="aspect-[3/4] animate-pulse rounded-[28px] border border-white/[0.06] bg-white/[0.02]" />
+                  <div key={i} className="flex animate-pulse items-center gap-5 rounded-[28px] border border-white/[0.06] bg-white/[0.02] p-5">
+                    <div className="h-20 w-20 shrink-0 rounded-full bg-white/[0.05] sm:h-24 sm:w-24" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-5 w-2/3 rounded bg-white/[0.05]" />
+                      <div className="h-4 w-1/2 rounded bg-white/[0.04]" />
+                    </div>
+                  </div>
                 ))
               : people.map((m, i) => (
                   <motion.div
@@ -39,30 +45,28 @@ export function TeamSection({ team, loading }: { team: TeamMember[]; loading: bo
                   >
                     <Link
                       href={`/about/team/${slug(m.name)}`}
-                      className="group block overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#061225]/80 transition-colors hover:border-white/20"
+                      className="group flex items-center gap-5 rounded-[28px] border border-white/[0.08] bg-[#061225]/80 p-5 transition-colors hover:border-white/20"
                     >
-                      <div className="aspect-[4/5] w-full overflow-hidden bg-[#081833]">
+                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[#081833] ring-1 ring-white/15 sm:h-24 sm:w-24">
                         {m.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={m.imageUrl}
                             alt={m.name}
                             loading="lazy"
-                            className="h-full w-full object-cover transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.03]"
+                            className="h-full w-full object-cover object-[50%_20%]"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center">
-                            <User className="h-20 w-20 text-[#9ec0f5]/70" />
+                            <User className="h-9 w-9 text-[#9ec0f5]/70" />
                           </div>
                         )}
                       </div>
-                      <div className="flex items-end justify-between gap-4 p-6">
-                        <div>
-                          <h3 className="text-2xl font-semibold tracking-[-0.02em] text-white">{m.name}</h3>
-                          <p className="font-display !mt-1 text-lg leading-snug text-[#dbe6ff]">{m.position}</p>
-                        </div>
-                        <ArrowRight className="mb-1 h-5 w-5 shrink-0 text-white/40 transition-transform group-hover:translate-x-0.5 group-hover:text-white" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-xl font-semibold tracking-[-0.02em] text-white">{m.name}</h3>
+                        <p className="font-display !mt-1 text-base leading-snug text-[#dbe6ff]">{m.position}</p>
                       </div>
+                      <ArrowRight className="h-5 w-5 shrink-0 text-white/40 transition-transform group-hover:translate-x-0.5 group-hover:text-white" />
                     </Link>
                   </motion.div>
                 ))}
