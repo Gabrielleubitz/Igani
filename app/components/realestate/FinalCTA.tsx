@@ -61,6 +61,8 @@ export function FinalCTA() {
     <section id="build" className="relative scroll-mt-20">
       <SettleHeadline
         className="pt-20"
+        stageHeight={70}
+        screens={0.3}
         backdrop={
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-1/2 flex -translate-y-1/2 overflow-hidden whitespace-nowrap">
             {[0, 1].map((i) => (

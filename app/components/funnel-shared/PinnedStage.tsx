@@ -14,6 +14,8 @@ export function statWindow(i: number, count: number): [number, number] {
 type PinnedStageProps = {
   /** How many extra screens of scrolling the stage stays pinned for. */
   screens?: number
+  /** Height of the pinned frame in svh (100 = a full screen). Smaller frames leave less empty scrolling around short content. */
+  stageHeight?: number
   className?: string
   children: (progress: MotionValue<number>, pinned: boolean) => ReactNode
 }
@@ -23,15 +25,15 @@ type PinnedStageProps = {
  * the children a 0–1 progress value to drive the reveal. With reduced motion
  * it renders unpinned with progress fixed at 1.
  */
-export function PinnedStage({ screens = 1.5, className = '', children }: PinnedStageProps) {
+export function PinnedStage({ screens = 1.5, stageHeight = 100, className = '', children }: PinnedStageProps) {
   const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotionSafe()
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end end'] })
   const done = useTransform(scrollYProgress, () => 1)
 
   return (
-    <div ref={ref} style={reduce ? undefined : { height: `${100 + screens * 100}svh` }}>
-      <div className={`${reduce ? '' : 'sticky top-0 min-h-[100svh]'} flex flex-col justify-center ${className}`}>
+    <div ref={ref} style={reduce ? undefined : { height: `${stageHeight + screens * 100}svh` }}>
+      <div className={`${reduce ? '' : 'sticky top-0'} flex flex-col justify-center ${className}`} style={reduce ? undefined : { minHeight: `${stageHeight}svh` }}>
         {reduce ? children(done, false) : children(scrollYProgress, true)}
       </div>
     </div>

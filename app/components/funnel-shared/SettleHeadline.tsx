@@ -33,15 +33,21 @@ export function SettleHeadline({
   cue,
   backdrop,
   className = '',
+  stageHeight,
+  screens = 0.7,
 }: {
   children: ReactNode
   cue?: ReactNode
   /** Decoration held behind the headline while it is pinned (e.g. a marquee). */
   backdrop?: ReactNode
   className?: string
+  /** Pinned frame height in svh (default: a full screen) */
+  stageHeight?: number
+  /** Extra screens of scrolling while pinned */
+  screens?: number
 }) {
   return (
-    <PinnedStage screens={0.7} className={`relative overflow-clip ${className}`}>
+    <PinnedStage screens={screens} stageHeight={stageHeight} className={`relative overflow-clip ${className}`}>
       {(progress) => (
         <>
           {backdrop}
