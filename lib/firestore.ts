@@ -875,17 +875,30 @@ export const deleteAboutUsSection = async (id: string): Promise<void> => {
 
 // Team Members (About page)
 /**
- * The three co-founders' official photos live in /public/team (matched on first name, so a small spelling difference in the
- * admin does not matter). They take priority over any photo saved in the admin; to change a founder's photo, replace the file.
+ * The three co-founders' official photo, title and short bio. They are set here (matched on first name, so a small spelling
+ * difference in the admin does not matter) and take priority over what is saved in the admin for these three people;
+ * to change one of them, edit this list (photos are the files in /public/team).
  */
-const FOUNDER_PHOTOS: Record<string, string> = {
-  ilan: '/team/ilan-leubitz.jpg',
-  amitay: '/team/amitay-hanson.jpg',
-  gabriel: '/team/gabriel-leubitz.jpg',
+const FOUNDER_PROFILES: Record<string, { imageUrl: string; position: string; bio: string }> = {
+  ilan: {
+    imageUrl: '/team/ilan-leubitz.jpg',
+    position: 'Co-Founder, Operations',
+    bio: 'Ilan Leubitz is a Co-Founder of IGANI and oversees operations. He makes sure every project runs smoothly from the first call to delivery, keeping clients informed and the team focused on getting the details right.',
+  },
+  amitay: {
+    imageUrl: '/team/amitay-hanson.jpg',
+    position: 'Co-Founder, Sales',
+    bio: 'Amitay Hanson is a Co-Founder of IGANI and oversees sales. He works with new clients to understand their goals and shape a solution that fits their business, with a focus on clear communication and lasting relationships.',
+  },
+  gabriel: {
+    imageUrl: '/team/gabriel-leubitz.jpg',
+    position: 'Co-Founder, Development',
+    bio: 'Gabriel Leubitz is a Co-Founder of IGANI and oversees development. He leads the design and build of every website and system we deliver, with a focus on performance, security and getting the details right.',
+  },
 };
-export const withFounderPhoto = <T extends { name: string; imageUrl?: string }>(m: T): T => {
-  const photo = FOUNDER_PHOTOS[m.name.trim().split(/\s+/)[0]?.toLowerCase() ?? ''];
-  return photo ? { ...m, imageUrl: photo } : m;
+export const withFounderProfile = <T extends { name: string; position?: string; bio?: string; imageUrl?: string }>(m: T): T => {
+  const profile = FOUNDER_PROFILES[m.name.trim().split(/\s+/)[0]?.toLowerCase() ?? ''];
+  return profile ? { ...m, ...profile } : m;
 };
 
 /** Team order on the site: Ilan, Gabriel, Amitay (matched on first name); anyone else follows in their admin order. Set here, so it overrides the admin order for these three. */
@@ -907,7 +920,7 @@ export const getTeamMembers = async (): Promise<TeamMember[]> => {
     const snapshot = await getDocs(q);
     return orderFounders(snapshot.docs.map((d) => {
       const data = d.data();
-      return withFounderPhoto({
+      return withFounderProfile({
         id: d.id,
         name: data.name ?? '',
         position: data.position ?? '',

@@ -1,4 +1,4 @@
-import { getTeamMembers, withFounderPhoto } from '@/lib/firestore'
+import { getTeamMembers, withFounderProfile } from '@/lib/firestore'
 import { TeamMember } from '@/types'
 import { siteContent } from '@/lib/i18n'
 import { SITE_URL } from '@/lib/seo/site'
@@ -9,8 +9,8 @@ const about = siteContent.aboutPage
 export const STATIC_FOUNDERS: Pick<TeamMember, 'name' | 'position' | 'bio'>[] = [
   {
     name: 'Ilan Leubitz',
-    position: 'Founder & CEO',
-    bio: 'Ilan Leubitz is the Founder & CEO of IGANI, leading product, engineering, and brand across web development and digital products.',
+    position: 'Co-Founder, Operations',
+    bio: 'Ilan Leubitz is a Co-Founder of IGANI and oversees operations.',
   },
   {
     name: about.gabrielName.en,
@@ -49,7 +49,7 @@ export async function getFounderProfiles(): Promise<FounderProfile[]> {
   } catch {
     // fall through to static list
   }
-  return STATIC_FOUNDERS.map(withFounderPhoto)
+  return STATIC_FOUNDERS.map(withFounderProfile)
 }
 
 export function founderSlug(name: string): string {
