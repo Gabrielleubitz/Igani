@@ -38,7 +38,7 @@ export function OurWork({ onWant }: { onWant: () => void }) {
         />
       </div>
 
-      <WorkGallery theme={THEME} onWant={onWant} projects={realEstateProjects} />
+      <WorkGallery theme={THEME} onWant={onWant} projects={realEstateProjects} wantLabel="I want a site like this" />
 
       <LogoTicker className="mt-10 sm:mt-14 lg:mt-6" />
     </section>

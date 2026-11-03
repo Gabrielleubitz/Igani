@@ -53,6 +53,15 @@ export function Tour3D() {
   const [src, setSrc] = useState('/work/tour-3d.mp4')
   const [active, setActive] = useState(0)
   const [progress, setProgress] = useState(0)
+  // Some phones (e.g. iPhone in Low Power Mode) refuse to start a video by themselves: then a tap on Play does it
+  const [blocked, setBlocked] = useState(false)
+  const inView = useRef(false)
+
+  const tryPlay = () => {
+    const v = videoRef.current
+    if (!v || reduce) return
+    v.play().then(() => setBlocked(false)).catch(() => setBlocked(true))
+  }
 
   const { scrollYProgress } = useScroll({ target: sectionRef, offset: ['start end', 'center center'] })
   const rotateX = useTransform(scrollYProgress, [0, 1], [24, 0])
@@ -66,17 +75,31 @@ export function Tour3D() {
     if (!el) return
     const io = new IntersectionObserver(
       ([e]) => {
+        inView.current = e.isIntersecting
         if (e.isIntersecting) setLoad(true)
         const v = videoRef.current
         if (!v || reduce) return
-        if (e.isIntersecting) v.play().catch(() => {})
-        else v.pause()
+        if (e.isIntersecting) {
+          // Before the file is attached there is nothing to play yet; the effect below starts it once it is
+          if (v.getAttribute('src')) tryPlay()
+        } else v.pause()
       },
       { rootMargin: '200px' }
     )
     io.observe(el)
     return () => io.disconnect()
   }, [reduce])
+
+  // The file is attached only when the section is near, and a video with no data yet does not start on its own on phones:
+  // start it explicitly as soon as it has been attached, and again once it can play.
+  useEffect(() => {
+    if (!load || reduce) return
+    const v = videoRef.current
+    if (!v) return
+    v.load()
+    if (inView.current) tryPlay()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [load, src, reduce])
 
   const onTime = () => {
     const v = videoRef.current
@@ -112,12 +135,28 @@ export function Tour3D() {
                 muted
                 loop
                 playsInline
-                preload="none"
+                preload={load ? 'auto' : 'none'}
                 controls={reduce}
                 onTimeUpdate={onTime}
+                onCanPlay={() => inView.current && videoRef.current?.paused && tryPlay()}
+                onPlaying={() => setBlocked(false)}
                 aria-label="A Matterport 3D walkthrough of a home: kitchen, dining, living room and terrace"
                 className="absolute inset-0 h-full w-full object-cover"
               />
+              {blocked && !reduce && (
+                <button
+                  type="button"
+                  onClick={tryPlay}
+                  aria-label="Play the 3D tour"
+                  className="absolute inset-0 z-10 flex items-center justify-center bg-black/25"
+                >
+                  <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-[#04101e] shadow-lg">
+                    <svg viewBox="0 0 24 24" className="ml-1 h-7 w-7" fill="currentColor" aria-hidden>
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </span>
+                </button>
+              )}
               {/* HUD */}
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30" />
               <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2 sm:left-5 sm:top-5">

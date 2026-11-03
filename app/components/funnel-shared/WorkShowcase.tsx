@@ -139,7 +139,7 @@ function Showpiece({ project, theme, active, load, onOpen }: { project: WorkProj
   )
 }
 
-function Caption({ project, theme, onOpen, index, total }: { project: WorkProject; theme: WorkTheme; onOpen: () => void; index: number; total: number }) {
+function Caption({ project, theme, onOpen, index, total, wantLabel, onWant }: { project: WorkProject; theme: WorkTheme; onOpen: () => void; index: number; total: number; wantLabel?: string; onWant?: () => void }) {
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
       <div className="max-w-xl">
@@ -157,10 +157,17 @@ function Caption({ project, theme, onOpen, index, total }: { project: WorkProjec
         </h3>
         <p className={`!mt-1.5 text-[15px] leading-relaxed ${theme.body}`}>{project.line}</p>
       </div>
-      <button type="button" onClick={onOpen} className={`inline-flex shrink-0 items-center gap-1.5 self-start text-sm font-semibold sm:self-auto ${theme.link}`}>
-        Take a look
-        <ArrowUpRight className="h-4 w-4" />
-      </button>
+      <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-3 self-start sm:self-auto">
+        <button type="button" onClick={onOpen} className={`inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold ${theme.link}`}>
+          Take a look
+          <ArrowUpRight className="h-4 w-4" />
+        </button>
+        {wantLabel && onWant && (
+          <button type="button" onClick={onWant} className={`inline-flex shrink-0 items-center justify-center px-5 py-2.5 text-sm font-semibold ${theme.button}`}>
+            {wantLabel}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -260,7 +267,7 @@ function Glow({ color }: { color: string }) {
 }
 
 /** Desktop: the stage holds while scrolling moves the row of sites sideways, one per step. */
-function PinnedRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme: WorkTheme; onOpen: (p: WorkProject) => void }) {
+function PinnedRow({ projects, theme, onOpen, wantLabel, onWant }: { projects: WorkProject[]; theme: WorkTheme; onOpen: (p: WorkProject) => void; wantLabel?: string; onWant?: () => void }) {
   const n = projects.length
   const [active, setActive] = useState(0)
   const firstRef = useRef<HTMLDivElement>(null)
@@ -285,7 +292,7 @@ function PinnedRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme
   return (
     // Extra room at the bottom on phones for the sticky button bar
     <PinnedStage screens={n - 1} className="overflow-clip pb-24 pt-28 lg:pb-6">
-      {(progress) => <PinnedTrack projects={projects} progress={progress} size={size} active={active} setActive={setActive} firstRef={firstRef} theme={theme} onOpen={onOpen} />}
+      {(progress) => <PinnedTrack projects={projects} progress={progress} size={size} active={active} setActive={setActive} firstRef={firstRef} theme={theme} onOpen={onOpen} wantLabel={wantLabel} onWant={onWant} />}
     </PinnedStage>
   )
 }
@@ -299,6 +306,8 @@ function PinnedTrack({
   firstRef,
   theme,
   onOpen,
+  wantLabel,
+  onWant,
 }: {
   projects: WorkProject[]
   progress: import('framer-motion').MotionValue<number>
@@ -308,6 +317,8 @@ function PinnedTrack({
   firstRef: React.RefObject<HTMLDivElement>
   theme: WorkTheme
   onOpen: (p: WorkProject) => void
+  wantLabel?: string
+  onWant?: () => void
 }) {
   const n = projects.length
   // Small dead zones at both ends so the first and last sites get a beat on their own
@@ -336,7 +347,7 @@ function PinnedTrack({
       <div className="relative mx-auto mt-10 w-[86%] lg:mt-14 lg:w-[min(66%,calc((100svh-380px)*1.5))]">
         <AnimatePresence mode="wait">
           <motion.div key={project.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
-            <Caption project={project} theme={theme} index={active} total={n} onOpen={() => onOpen(project)} />
+            <Caption project={project} theme={theme} index={active} total={n} onOpen={() => onOpen(project)} wantLabel={wantLabel} onWant={onWant} />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -345,7 +356,7 @@ function PinnedTrack({
 }
 
 /** Phones (and reduced motion): swipeable cards, one site per screen. */
-function SwipeRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme: WorkTheme; onOpen: (p: WorkProject) => void }) {
+function SwipeRow({ projects, theme, onOpen, wantLabel, onWant }: { projects: WorkProject[]; theme: WorkTheme; onOpen: (p: WorkProject) => void; wantLabel?: string; onWant?: () => void }) {
   const ref = useRef<HTMLDivElement>(null)
   const [active, setActive] = useState(0)
   const [seen, setSeen] = useState(false)
@@ -380,7 +391,7 @@ function SwipeRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme:
               <Showpiece project={p} theme={theme} active={seen && i === active} load={seen && Math.abs(i - active) <= 1} onOpen={() => onOpen(p)} />
             </div>
             <div className="mt-2">
-              <Caption project={p} theme={theme} index={i} total={projects.length} onOpen={() => onOpen(p)} />
+              <Caption project={p} theme={theme} index={i} total={projects.length} onOpen={() => onOpen(p)} wantLabel={wantLabel} onWant={onWant} />
             </div>
           </div>
         ))}
@@ -401,7 +412,7 @@ function SwipeRow({ projects, theme, onOpen }: { projects: WorkProject[]; theme:
  * phones as well as desktop (swipe cards only when the visitor prefers reduced
  * motion), and a full-screen look ends on the call to action.
  */
-export function WorkGallery({ theme, onWant, projects = workProjects }: { theme: WorkTheme; onWant: () => void; projects?: WorkProject[] }) {
+export function WorkGallery({ theme, onWant, projects = workProjects, wantLabel }: { theme: WorkTheme; onWant: () => void; projects?: WorkProject[]; wantLabel?: string }) {
   const reduce = useReducedMotionSafe()
   const [open, setOpen] = useState<WorkProject | null>(null)
   const [mounted, setMounted] = useState(false)
@@ -409,7 +420,7 @@ export function WorkGallery({ theme, onWant, projects = workProjects }: { theme:
 
   return (
     <>
-      {reduce ? <SwipeRow projects={projects} theme={theme} onOpen={setOpen} /> : <PinnedRow projects={projects} theme={theme} onOpen={setOpen} />}
+      {reduce ? <SwipeRow projects={projects} theme={theme} onOpen={setOpen} wantLabel={wantLabel} onWant={onWant} /> : <PinnedRow projects={projects} theme={theme} onOpen={setOpen} wantLabel={wantLabel} onWant={onWant} />}
       {mounted && (
         <AnimatePresence>
           {open && (

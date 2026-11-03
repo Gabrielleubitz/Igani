@@ -1,11 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ArrowDown } from 'lucide-react'
-import { WhatsAppGlyph } from '@/components/SocialGlyphs'
+import { ArrowDown, ArrowRight } from 'lucide-react'
 import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
 import { FocusIn } from '@/app/components/funnel-shared/FocusIn'
-import { WHATSAPP_HREF } from './contact'
 
 const EASE = [0.22, 1, 0.36, 1] as const
 
@@ -15,17 +13,11 @@ const fadeUp = (delay: number) => ({
   transition: { duration: 0.8, ease: EASE, delay },
 })
 
-/** Brand-blue opener: an agent's website is their first listing presentation. */
-export function Hero({ onSeeWork }: { onSeeWork: () => void }) {
+/** Opener: an agent's website is their first listing presentation. */
+export function Hero({ onSeeWork, onStart }: { onSeeWork: () => void; onStart: () => void }) {
   return (
     <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI for real estate">
-      <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-white/15 blur-[140px]" />
-
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 pb-24 pt-32 text-center [text-shadow:0_1px_20px_rgba(8,32,100,0.55)] sm:px-6 lg:px-8">
-        <motion.p {...fadeUp(0)} className="mb-8 text-sm text-white/75">
-          IGANI · Websites for real estate agents &amp; brokerages
-        </motion.p>
-
         <FocusIn>
           <h1 className="text-balance text-[clamp(2.6rem,8vw,6.5rem)] font-semibold leading-[0.96] tracking-[-0.035em] text-white">
             Buyers tour your{' '}
@@ -44,9 +36,9 @@ export function Hero({ onSeeWork }: { onSeeWork: () => void }) {
             See what we&rsquo;ve built
             <ArrowDown className="h-4 w-4" />
           </MagneticButton>
-          <MagneticButton variant="ghost" href={WHATSAPP_HREF} external>
-            <WhatsAppGlyph className="h-4 w-4" />
-            Talk to us on WhatsApp
+          <MagneticButton variant="ghost" onClick={onStart}>
+            Build a website with Igani
+            <ArrowRight className="h-4 w-4" />
           </MagneticButton>
         </motion.div>
       </div>

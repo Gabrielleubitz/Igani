@@ -19,7 +19,8 @@ export function Screenshot({ src, mobileSrc, video, alt }: { src: string; mobile
         if (e.isIntersecting) v.play().catch(() => {})
         else v.pause()
       },
-      { threshold: 0.25 }
+      // Start a little before it is on screen so it is already playing when it arrives
+      { threshold: 0, rootMargin: '300px' }
     )
     io.observe(v)
     return () => io.disconnect()
@@ -34,7 +35,8 @@ export function Screenshot({ src, mobileSrc, video, alt }: { src: string; mobile
         muted
         loop
         playsInline
-        preload="metadata"
+        autoPlay
+        preload="auto"
         aria-label={alt}
         className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover object-top"
       />

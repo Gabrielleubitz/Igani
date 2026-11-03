@@ -13,7 +13,7 @@ import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
 import { SectionRail } from '@/app/components/landing/fx/SectionRail'
 import { displaySerif } from '@/app/components/landing/fx/fonts'
 import { Hero } from '@/app/components/realestate/Hero'
-import { HeroBackdrop } from '@/app/components/realestate/HeroBackdrop'
+import { HeroCanvas } from '@/app/components/landing/hero/HeroCanvas'
 import { CompareSlider } from '@/app/components/funnel3/CompareSlider'
 import { Proof } from '@/app/components/funnel3/Proof'
 import { OurWork } from '@/app/components/realestate/OurWork'
@@ -126,7 +126,7 @@ export default function RealEstatePage() {
               onClick={scrollToForm}
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#2f6fd8] px-3.5 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-[#4080E0] sm:gap-2 sm:px-5 sm:text-sm"
             >
-              I want a site like this
+              Get in touch
               <ArrowRight className="hidden h-4 w-4 sm:block" />
             </button>
           </div>
@@ -163,11 +163,13 @@ export default function RealEstatePage() {
 
       {/* Each section is a sheet that slides over the last, alternating surfaces so every chapter reads as a stop */}
       <main className="relative">
-        {/* Opening screen shares the closing section's brand blue so the page starts on its boldest note */}
-        <div className="relative bg-[radial-gradient(120%_80%_at_50%_0%,#5b95ee_0%,#2f6fd8_40%,#1a4fae_100%)]">
-          <HeroBackdrop />
+        {/* Opening screen: the same animated background as the home page */}
+        <div className="relative isolate bg-[#030814]">
+          <HeroCanvas />
+          <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_45%,transparent_0%,rgba(2,8,18,0.55)_100%)]" />
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#061225] to-transparent" />
           <FunnelBanner className="mt-[76px] sm:mt-[92px]" />
-          <Hero onSeeWork={scrollTo('reason')} />
+          <Hero onSeeWork={scrollTo('reason')} onStart={scrollToForm} />
         </div>
         <SectionSheet id="sheet-reason" layer={1} className="bg-[#061225]">
           <CompareSlider

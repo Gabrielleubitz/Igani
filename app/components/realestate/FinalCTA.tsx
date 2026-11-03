@@ -15,7 +15,7 @@ const MARQUEE = 'win the listing · capture the lead · own your brand · '
 const INPUT =
   'w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-white placeholder-white/25 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]'
 
-const EMPTY = { website: '', name: '', market: '', phone: '' }
+const EMPTY = { website: '', name: '', email: '', phone: '' }
 
 /** 06 — The bottom line: ask for a call back (or message us on WhatsApp), with who we are right below it. */
 export function FinalCTA() {
@@ -37,12 +37,11 @@ export function FinalCTA() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name,
+          email: form.email,
           phone: form.phone,
           source: 'landing_page',
           sourceDetails: { page: '/realestate', form: 'call_back', campaign: 'real_estate' },
-          message: `Call-back request (real estate agent) — market: ${form.market.trim() || 'not given'}; website: ${
-            form.website.trim() || 'none yet'
-          }. Call them back.`,
+          message: `Call-back request (real estate agent) — website: ${form.website.trim()}. Call them back.`,
         }),
       })
       if (response.ok) {
@@ -100,7 +99,7 @@ export function FinalCTA() {
             Leave your number. <span className="font-display font-normal text-[#e9f0ff]">We&rsquo;ll call you back.</span>
           </h3>
           <p className="!mt-4 text-lg leading-relaxed text-white/85">
-            Tell us where you work and we&rsquo;ll call you within one business day to talk through what a site that wins listings would look
+            Leave your details and we&rsquo;ll call you within one business day to talk through what a site that wins listings would look
             like for you.
           </p>
           <a
@@ -152,16 +151,16 @@ export function FinalCTA() {
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-market">
-                    Your market <span className="font-normal text-white/40">(optional)</span>
+                  <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-email">
+                    Email
                   </label>
-                  <input id="re-market" name="market" value={form.market} onChange={onChange} placeholder="City or area" autoComplete="address-level2" className={INPUT} />
+                  <input id="re-email" name="email" type="email" value={form.email} onChange={onChange} required autoComplete="email" className={INPUT} />
                 </div>
                 <div>
                   <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-website">
-                    Your website <span className="font-normal text-white/40">(optional)</span>
+                    Your website
                   </label>
-                  <input id="re-website" name="website" inputMode="url" autoComplete="url" placeholder="youragentsite.com" value={form.website} onChange={onChange} className={INPUT} />
+                  <input id="re-website" name="website" inputMode="url" autoComplete="url" placeholder="youragentsite.com" value={form.website} onChange={onChange} required className={INPUT} />
                 </div>
               </div>
               {status === 'error' && (
