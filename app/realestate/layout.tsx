@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { SITE_URL } from '@/lib/seo/site'
 
 const TITLE = 'IGANI | Websites for Real Estate Agents'
 const DESCRIPTION =
@@ -6,7 +7,9 @@ const DESCRIPTION =
 
 // The social tags are set here too: without them Facebook and X show the main site's title and description
 export const metadata: Metadata = {
-  metadataBase: new URL('https://funnels.igani.co'),
+  // www.igani.co/realestate is the official address; the funnels host serves the same page and points search engines here
+  metadataBase: new URL(SITE_URL),
+  alternates: { canonical: '/realestate' },
   title: TITLE,
   description: DESCRIPTION,
   openGraph: {
