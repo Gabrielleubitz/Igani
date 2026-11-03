@@ -16,9 +16,10 @@ if (!existsSync(join(STUDIO, 'node_modules', 'node-pty'))) {
 
 const children = [
   spawn('node', ['server.mjs'], { cwd: STUDIO, stdio: 'inherit' }),
-  spawn('npx', ['next', 'dev', '-p', '3100'], { cwd: CRM, stdio: 'inherit' }),
+  // Dev login on: Google sign-in needs an OAuth client set up for localhost, the dev login doesn't (it never works in production)
+  spawn('npx', ['next', 'dev', '-p', '3100'], { cwd: CRM, stdio: 'inherit', env: { ...process.env, DEV_LOGIN: process.env.DEV_LOGIN ?? '1' } }),
 ]
-console.log('\n[studio] CRM:     http://localhost:3100/admin/offers\n[studio] Offers:  http://<slug>.localhost:3100\n')
+console.log('\n[studio] CRM:     http://localhost:3100/admin/offers  (sign in with "Dev login" and your email)\n[studio] Offers:  http://<slug>.localhost:3100\n')
 
 const stop = () => {
   for (const c of children) c.kill('SIGTERM')
