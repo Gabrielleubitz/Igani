@@ -2,7 +2,7 @@ import { timingSafeEqual } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
-import { loadDefinition } from '@/lib/offers'
+import { advanceLeadOnPublish, loadDefinition } from '@/lib/offers'
 import { prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
@@ -59,6 +59,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     await prisma.$transaction(async (tx) => {
       await tx.offer.update({ where: { id: o.id }, data: { status: 'LIVE', publishedAt: o.publishedAt ?? new Date() } })
       await logActivity({ entityType: 'LEAD', entityId: o.leadId, action: 'offer.live', metadata: { offerId: o.id, from: 'DRAFT', to: 'LIVE', via: 'studio' } }, tx)
+      await advanceLeadOnPublish(tx, o.leadId, o.id, null, 'studio')
     })
   }
   return NextResponse.json({ ok: true, status: 'LIVE' })

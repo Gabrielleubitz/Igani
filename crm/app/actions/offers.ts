@@ -11,7 +11,7 @@ import { BILLING_PERIODS, MODULE_GROUPS, parseModules, slugProblem } from '@/lib
 import { MAX_TRANSCRIPT_CHARS, modulesFromTranscript, type TranscriptModules } from '@/lib/offer-transcript-ai'
 import { canSeeLead } from '@/lib/lead-access'
 import { OFFERS_FOR_SALES, canAdministerOffer, canSeeOffer } from '@/lib/offer-access'
-import { loadDefinition } from '@/lib/offers'
+import { advanceLeadOnPublish, loadDefinition } from '@/lib/offers'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
@@ -121,6 +121,7 @@ export async function setOfferStatus(input: z.input<typeof StatusInput>): Promis
     await prisma.$transaction(async (tx) => {
       await tx.offer.update({ where: { id: data.id }, data: { status: data.status, ...(data.status === 'LIVE' && !offer.publishedAt ? { publishedAt: new Date() } : {}) } })
       await logActivity({ entityType: 'LEAD', entityId: offer.leadId, action: `offer.${data.status.toLowerCase()}`, actorId: user.id, metadata: { offerId: data.id, from: offer.status, to: data.status } }, tx)
+      if (data.status === 'LIVE') await advanceLeadOnPublish(tx, offer.leadId, data.id, user.id, 'admin')
     })
     refresh(data.id, offer.leadId)
     return { ok: true, data: undefined }

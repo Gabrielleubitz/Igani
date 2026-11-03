@@ -1,7 +1,8 @@
 import 'server-only'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { Offer, OfferStatus } from '@prisma/client'
+import type { Offer, OfferStatus, Prisma } from '@prisma/client'
+import { logActivity } from './audit'
 import { OFFERS } from '@/offers/registry'
 import type { OfferDefinition } from '@/offers/types'
 import { currentUserOrNull } from './auth'
@@ -84,6 +85,22 @@ export async function loadPublicOffer(slug: string): Promise<PublicOffer | null>
 /** The address a client uses: the subdomain in production, <slug>.localhost when running locally. */
 export function publicOfferUrl(slug: string): string {
   return isLocalDev() ? localOfferUrl(slug) : liveOfferUrl(slug)
+}
+
+/** Lead stages publishing an offer moves forward to Proposal sent (later stages are never pulled back). */
+export const BEFORE_PROPOSAL_STAGES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT'] as const
+
+/**
+ * When an offer goes live, its lead has been sent a proposal: move it to Proposal sent if it is still earlier in the
+ * pipeline. Runs inside the publish transaction; returns whether the lead moved.
+ */
+export async function advanceLeadOnPublish(tx: Prisma.TransactionClient, leadId: string, offerId: string, actorId: string | null, via: 'admin' | 'studio'): Promise<boolean> {
+  const lead = await tx.lead.findUnique({ where: { id: leadId }, select: { status: true } })
+  if (!lead || !(BEFORE_PROPOSAL_STAGES as readonly string[]).includes(lead.status)) return false
+  const moved = await tx.lead.updateMany({ where: { id: leadId, status: lead.status }, data: { status: 'PROPOSAL_SENT' } })
+  if (!moved.count) return false
+  await logActivity({ entityType: 'LEAD', entityId: leadId, action: 'lead.status_changed', actorId, metadata: { from: lead.status, to: 'PROPOSAL_SENT', auto: 'offer-published', offerId, via } }, tx)
+  return true
 }
 
 /** Lead stages an online signature may move forward to Signed (never pulls a Won or Lost lead back). */
