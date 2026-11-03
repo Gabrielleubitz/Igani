@@ -8,6 +8,7 @@ import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { isOwnCloudinaryUrl } from '@/lib/cloudinary'
 import { MODULE_GROUPS, parseModules, slugProblem } from '@/lib/offer-modules'
+import { MAX_TRANSCRIPT_CHARS, modulesFromTranscript, type TranscriptModules } from '@/lib/offer-transcript-ai'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
@@ -52,6 +53,7 @@ const ModuleInput = z.object({
   price: z.number().int().min(0).max(100_000_000),
   required: z.boolean(),
   included: z.boolean(),
+  summary: z.string().trim().max(500).optional(),
 })
 const UpdateInput = z.object({
   id: z.string().cuid(),
@@ -151,6 +153,29 @@ export async function deleteDraftOffer(id: string): Promise<ActionResult> {
     })
     refresh(offerId, offer.leadId)
     return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const TranscriptInput = z.object({ id: z.string().cuid(), transcript: z.string().min(1).max(MAX_TRANSCRIPT_CHARS * 2) })
+
+/** Reads a call transcript with OpenAI and suggests modules. Nothing is saved: the admin picks, prices and saves. */
+export async function suggestModulesFromTranscript(input: z.input<typeof TranscriptInput>): Promise<ActionResult<TranscriptModules>> {
+  try {
+    const user = await requireUser(['ADMIN'])
+    const data = TranscriptInput.parse(input)
+    const offer = await prisma.offer.findUnique({ where: { id: data.id }, select: { status: true, modules: true } })
+    if (!offer) throw new BookingError('Offer not found.', 'NOT_FOUND')
+    if (offer.status === 'SIGNED') throw new BookingError('This offer is signed. Its modules can no longer change.', 'INVALID_STATE')
+    let result: TranscriptModules
+    try {
+      result = await modulesFromTranscript(data.transcript, parseModules(offer.modules))
+    } catch (err) {
+      throw new BookingError(err instanceof Error ? err.message : 'The AI step failed.', 'INVALID_STATE')
+    }
+    await logActivity({ entityType: 'OFFER', entityId: data.id, action: 'offer.modules_suggested', actorId: user.id, metadata: { chars: data.transcript.length, suggested: result.modules.length } })
+    return { ok: true, data: result }
   } catch (err) {
     return toActionError(err)
   }

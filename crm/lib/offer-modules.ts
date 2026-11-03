@@ -23,6 +23,8 @@ export interface OfferModuleItem {
   required: boolean
   /** Pre-selected in the recommended package (the client can still remove it) */
   included: boolean
+  /** Optional one-line description (e.g. from the call transcript); the offer page uses it when Claude's copy has none */
+  summary?: string
 }
 
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/
@@ -63,7 +65,8 @@ export function parseModules(json: unknown): OfferModuleItem[] {
     seen.add(id)
     const group = isGroup(r.group) ? r.group : 'main'
     const required = group === 'core' ? true : r.required === true
-    out.push({ id, group, name, price, required, included: required || r.included === true })
+    const summary = typeof r.summary === 'string' && r.summary.trim() ? r.summary.trim().slice(0, 500) : undefined
+    out.push({ id, group, name, price, required, included: required || r.included === true, ...(summary ? { summary } : {}) })
   }
   return out
 }

@@ -9,10 +9,13 @@ import { leadName } from '@/lib/format'
 import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE } from '@/lib/offer-admin'
 import { formatPrice, parseModules } from '@/lib/offer-modules'
 import { isLocalDev, liveOfferUrl, loadDefinition, localOfferUrl, studioUrl } from '@/lib/offers'
+import { transcriptAiEnabled } from '@/lib/offer-transcript-ai'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Offer' }
 export const dynamic = 'force-dynamic'
+// The transcript → modules AI step can take a while on long calls
+export const maxDuration = 180
 
 export default async function OfferAdminPage({ params }: { params: { id: string } }): Promise<React.ReactElement> {
   await requireUser(['ADMIN'])
@@ -134,6 +137,7 @@ export default async function OfferAdminPage({ params }: { params: { id: string 
         </CardHeader>
         <CardContent>
           <OfferEditor
+            aiEnabled={transcriptAiEnabled()}
             value={{ id: offer.id, title: offer.title, slug: offer.slug, status: offer.status, currency: offer.currency, monthlyPrice: offer.monthlyPrice, timelineMonths: offer.timelineMonths, modules }}
           />
         </CardContent>

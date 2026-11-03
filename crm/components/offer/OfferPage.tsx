@@ -65,7 +65,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
   const copy: Record<string, ModuleCopy> = Object.fromEntries(
     modules.map((m) => {
       const c = content?.modules[m.id]
-      return [m.id, { title: c ? t(c.title, lang) : m.name, summary: c ? t(c.summary, lang) : '', bullets: c?.bullets?.map((b) => t(b, lang)) ?? [] }]
+      return [m.id, { title: c ? t(c.title, lang) : m.name, summary: c ? t(c.summary, lang) : (m.summary ?? ''), bullets: c?.bullets?.map((b) => t(b, lang)) ?? [] }]
     }),
   )
   const editable = offer.status === 'LIVE' && !preview
