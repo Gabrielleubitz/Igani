@@ -19,6 +19,23 @@ function deny(req: NextRequest, status: 401 | 403, reason: string): NextResponse
   return NextResponse.redirect(url)
 }
 
+/**
+ * Security headers on every response. Framing: the CRM itself is never framed by another site; offer pages may be
+ * framed only by the CRM (the studio preview); the contract preview only by the CRM's own pages.
+ */
+type Framing = 'none' | 'self' | 'crm'
+function secure(res: NextResponse, framing: Framing = 'none'): NextResponse {
+  const ancestors = framing === 'crm' ? "'self' https://app.igani.co http://localhost:3100" : framing === 'self' ? "'self'" : "'none'"
+  res.headers.set('Content-Security-Policy', `frame-ancestors ${ancestors}; base-uri 'self'; object-src 'none'; form-action 'self' https://accounts.google.com`)
+  if (framing === 'none') res.headers.set('X-Frame-Options', 'DENY')
+  else if (framing === 'self') res.headers.set('X-Frame-Options', 'SAMEORIGIN')
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.headers.set('Permissions-Policy', 'geolocation=(), payment=(), usb=(), interest-cohort=()')
+  res.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
+  return res
+}
+
 /** Paths that go through the session check below (everything else, e.g. /login, /book, /o, is public). */
 const GUARDED = /^\/(admin|sales|marketing|api)(\/|$)/
 
@@ -32,27 +49,24 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     url.pathname = `/o/${offerSlug}${pathname === '/' ? '' : pathname}`
     const headers = new Headers(req.headers)
     headers.set('x-offer-base', '')
-    return NextResponse.rewrite(url, { request: { headers } })
+    return secure(NextResponse.rewrite(url, { request: { headers } }), 'crm')
   }
 
-  if (pathname !== '/' && !GUARDED.test(pathname)) return NextResponse.next()
-  if (isPublicPath(pathname)) return NextResponse.next()
+  // The offer's own contract and APIs are framed by the offer page itself (same host)
+  const framing: Framing = pathname.startsWith('/o/') ? 'crm' : pathname.startsWith('/api/public/offers/') || /^\/api\/admin\/offers\/[^/]+\/contract\/preview$/.test(pathname) ? 'self' : 'none'
+  if (pathname !== '/' && !GUARDED.test(pathname)) return secure(NextResponse.next(), framing)
+  if (isPublicPath(pathname)) return secure(NextResponse.next(), framing)
 
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-  if (!token) return deny(req, 401, 'signed-out')
+  if (!token) return secure(deny(req, 401, 'signed-out'))
   const role = isRole(token.role) ? token.role : null
-  if (!role) return deny(req, 403, 'not-whitelisted')
+  if (!role) return secure(deny(req, 403, 'not-whitelisted'))
   // The role inside the cookie can be stale (it only refreshes when the session is re-read), so for pages the
   // real role check happens in each layout/server action against the database (requireUser). Here we only gate
   // APIs by the cookie role, and let pages through so a just-promoted teammate isn't wrongly blocked.
-  if (pathname.startsWith('/api/') && !canAccess(role, pathname)) return deny(req, 403, 'forbidden')
+  if (pathname.startsWith('/api/') && !canAccess(role, pathname)) return secure(deny(req, 403, 'forbidden'))
 
-  const res = NextResponse.next()
-  // Never framed by other sites. The contract preview is framed by the CRM's own contract editor, so same-origin only there.
-  res.headers.set('X-Frame-Options', /^\/api\/admin\/offers\/[^/]+\/contract\/preview$/.test(pathname) ? 'SAMEORIGIN' : 'DENY')
-  res.headers.set('X-Content-Type-Options', 'nosniff')
-  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  return res
+  return secure(NextResponse.next(), framing)
 }
 
 export const config = {
