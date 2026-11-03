@@ -5,7 +5,7 @@ import { MotionConfig, motion } from 'framer-motion'
 
 /**
  * On load, eases a block from slightly large and blurred into sharp focus —
- * the hero version of SettleHeadline. With reduced motion only the fade runs.
+ * the hero headline reveal. With reduced motion only the fade runs.
  */
 export function FocusIn({ children, delay = 0.1, className = '' }: { children: ReactNode; delay?: number; className?: string }) {
   return (
