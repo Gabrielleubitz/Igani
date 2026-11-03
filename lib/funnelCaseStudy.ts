@@ -36,8 +36,8 @@ export const caseStudy: CaseStudy = {
   industry: 'Real estate agency',
   location: 'Jerusalem',
   url: 'https://www.gabairealestate.com',
-  before: { image: '/case-studies/gabai-before.jpg', caption: 'Their old site' },
-  after: { image: '/case-studies/gabai-after.jpg', video: '/work/gabai-after.mp4', caption: 'The site we built' },
+  before: { image: '/case-studies/old-site.jpg', caption: 'Their old site' },
+  after: { image: '/case-studies/new-site.jpg', video: '/work/new-site.mp4', caption: 'The site we built' },
   backend: {
     before: { image: '/case-studies/backend-before.jpg', caption: 'A typical WordPress admin' },
     after: { caption: 'Your own dashboard' },
