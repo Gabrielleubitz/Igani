@@ -15,7 +15,7 @@ export function PromoBanner() {
 
   useEffect(() => {
     // Don't show banner on admin or funnels pages
-    if (window.location.pathname.startsWith('/admin') || window.location.pathname.startsWith('/funnel')) {
+    if (window.location.pathname.startsWith('/backend-admin') || window.location.pathname.startsWith('/funnel')) {
       setIsLoading(false)
       return
     }

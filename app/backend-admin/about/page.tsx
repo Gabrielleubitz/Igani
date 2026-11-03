@@ -7,7 +7,7 @@ export default function AdminAboutRedirectPage() {
   const router = useRouter()
 
   useEffect(() => {
-    router.replace('/admin?tab=about')
+    router.replace('/backend-admin?tab=about')
   }, [router])
 
   return (

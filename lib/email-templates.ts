@@ -41,7 +41,7 @@ function wrapIganiLayout(innerContent: string, title: string): string {
           </tr>
           <tr>
             <td style="padding: 16px 32px; background-color: ${BRAND.ink}; color: #94a3b8; font-size: 12px; text-align: center;">
-              This is an automated notification from IGANI. View in <a href="${SITE_URL}/admin" style="color: ${BRAND.accentSoft};">Admin Panel</a>.
+              This is an automated notification from IGANI. View in <a href="${SITE_URL}/backend-admin" style="color: ${BRAND.accentSoft};">Admin Panel</a>.
             </td>
           </tr>
         </table>
