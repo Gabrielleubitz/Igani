@@ -11,9 +11,8 @@ import {
   INSTAGRAM_URL,
   getWhatsAppChatHref,
   teamPhones,
-  tiktokHrefFromSettings,
 } from '@/lib/siteSocial'
-import { TikTokGlyph, WhatsAppGlyph } from '@/components/SocialGlyphs'
+import { WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { Linkedin, Instagram, Facebook, Twitter, Github, MapPin } from 'lucide-react'
 
 export default function Footer() {
@@ -23,7 +22,6 @@ export default function Footer() {
   const { settings } = useSiteSettings()
 
   const instagramHref = INSTAGRAM_URL
-  const tiktokHref = tiktokHrefFromSettings(settings.tiktokUrl)
   const whatsappHref = getWhatsAppChatHref(settings, nav.whatsappPrefillMessage[language])
 
   type IconComp = ComponentType<{ className?: string }>
@@ -33,7 +31,6 @@ export default function Footer() {
     socialItems.push({ href: settings.linkedinUrl.trim(), label: 'LinkedIn', Icon: Linkedin })
   }
   socialItems.push({ href: instagramHref, label: 'Instagram', Icon: Instagram })
-  socialItems.push({ href: tiktokHref, label: 'TikTok', Icon: TikTokGlyph })
   if (settings.facebookUrl?.trim()) {
     socialItems.push({ href: settings.facebookUrl.trim(), label: 'Facebook', Icon: Facebook })
   }

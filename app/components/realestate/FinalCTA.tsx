@@ -17,7 +17,7 @@ const INPUT =
 
 const EMPTY = { website: '', name: '', market: '', phone: '' }
 
-/** 06 — The bottom line: ask for a call back (or message us on WhatsApp), with the founders right above it. */
+/** 06 — The bottom line: ask for a call back (or message us on WhatsApp), with who we are right below it. */
 export function FinalCTA() {
   const [form, setForm] = useState(EMPTY)
   const [submittedName, setSubmittedName] = useState('')
@@ -83,15 +83,13 @@ export function FinalCTA() {
         </h2>
       </SettleHeadline>
 
-      <WhoWeAre />
-
       <motion.div
         id="build-form"
         initial={{ y: 24 }}
         whileInView={{ y: 0 }}
         viewport={{ once: true, margin: '-80px' }}
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="relative mx-auto grid max-w-5xl scroll-mt-28 gap-8 px-4 pb-28 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-12 lg:px-8"
+        className="relative mx-auto grid max-w-5xl scroll-mt-28 gap-8 px-4 pb-16 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:items-center lg:gap-12 lg:px-8"
       >
         <div className="text-center lg:text-left">
           <div className="flex items-baseline justify-center gap-3 text-[13px] text-white/75 lg:justify-start">
@@ -184,6 +182,8 @@ export function FinalCTA() {
           )}
         </div>
       </motion.div>
+
+      <WhoWeAre />
     </section>
   )
 }
