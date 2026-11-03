@@ -898,7 +898,8 @@ const FOUNDER_PROFILES: Record<string, { imageUrl: string; position: string; bio
 };
 export const withFounderProfile = <T extends { name: string; position?: string; bio?: string; imageUrl?: string }>(m: T): T => {
   const profile = FOUNDER_PROFILES[m.name.trim().split(/\s+/)[0]?.toLowerCase() ?? ''];
-  return profile ? { ...m, ...profile } : m;
+  // The founders' personal Instagram accounts are deliberately not shown on the site (the company's own Instagram stays in the header and footer).
+  return profile ? { ...m, ...profile, instagramUrl: undefined } : m;
 };
 
 /** Team order on the site: Ilan, Gabriel, Amitay (matched on first name); anyone else follows in their admin order. Set here, so it overrides the admin order for these three. */
