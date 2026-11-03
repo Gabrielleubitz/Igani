@@ -50,6 +50,8 @@ export async function generateMetadata(): Promise<Metadata> {
       images: [DEFAULT_OG_IMAGE.url],
     },
     robots: { index: true, follow: true },
+    // Proves to Google Search Console that this site is ours (an invisible tag; changes nothing visitors see)
+    verification: { google: 'fYQK9i1QFEGz_RO2kdCMrIXSa6sIzT8CpqsKiSt81cM' },
   }
 }
 
