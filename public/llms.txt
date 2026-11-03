@@ -1,6 +1,6 @@
 # IGANI
 
-> IGANI designs and builds websites for service businesses and real estate agents. Based in Netanya, Israel.
+> IGANI designs and builds websites and software solutions that help companies grow and operate more effectively, with a focus on service businesses and real estate professionals. Based in Netanya, Israel.
 
 IGANI builds custom websites meant to win the first impression: clients judge a service business by its site before they ever call. Work includes real estate agent websites (with home-valuation and showing-request forms and Matterport 3D tours), brand-led sites for service businesses, and landing pages.
 

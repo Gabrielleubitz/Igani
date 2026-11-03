@@ -17,7 +17,7 @@ export async function SiteJsonLd() {
         name: SITE_NAME,
         url: SITE_URL,
         logo: `${SITE_URL}/igani-logo.png`,
-        description: 'IGANI designs and builds websites for service businesses and real estate agents.',
+        description: 'IGANI designs and builds websites and software solutions that help companies grow and operate more effectively, with a focus on service businesses and real estate professionals.',
         email: 'info@igani.co',
         address: { '@type': 'PostalAddress', addressLocality: 'Netanya', addressCountry: 'IL' },
         areaServed: 'IL',
