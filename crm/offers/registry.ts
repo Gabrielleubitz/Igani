@@ -6,4 +6,5 @@ import type { OfferDefinition } from './types'
  */
 export const OFFERS: Record<string, () => Promise<OfferDefinition>> = {
   cryo: () => import('./cryo/content').then((m) => m.default),
+  testing: () => import('./testing/content').then((m) => m.default),
 }
