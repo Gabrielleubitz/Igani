@@ -14,5 +14,8 @@ if (!process.env.DATABASE_URL) {
   console.error('[migrate] DATABASE_URL is not set for this deployment; cannot apply migrations.')
   process.exit(1)
 }
-console.log('[migrate] applying pending migrations…')
-execSync('npx prisma migrate deploy', { stdio: 'inherit' })
+// Neon's pooled address (…-pooler.…) runs through PgBouncer, which Prisma migrations don't support reliably.
+// Migrations use the direct address (same host without "-pooler"); the app itself keeps using the pooler.
+const directUrl = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL.replace(/-pooler\./, '.')
+console.log(`[migrate] applying pending migrations${directUrl !== process.env.DATABASE_URL ? ' (direct connection)' : ''}…`)
+execSync('npx prisma migrate deploy', { stdio: 'inherit', env: { ...process.env, DATABASE_URL: directUrl } })
