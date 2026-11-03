@@ -50,7 +50,7 @@ export function loadAssets(slug: string): OfferAssets {
 }
 
 export interface PublicOffer {
-  offer: Offer & { lead: { firstName: string | null; lastName: string | null; company: string | null; email: string | null } }
+  offer: Offer & { lead: { firstName: string | null; lastName: string | null; company: string | null; email: string | null; phone: string | null } }
   modules: OfferModuleItem[]
   definition: OfferDefinition | null
   assets: OfferAssets
@@ -64,7 +64,7 @@ const PUBLIC: readonly OfferStatus[] = ['LIVE', 'SIGNED']
 export async function loadPublicOffer(slug: string): Promise<PublicOffer | null> {
   const offer = await prisma.offer.findUnique({
     where: { slug },
-    include: { lead: { select: { firstName: true, lastName: true, company: true, email: true } } },
+    include: { lead: { select: { firstName: true, lastName: true, company: true, email: true, phone: true } } },
   })
   if (!offer || offer.status === 'ARCHIVED') return null
   let preview = false

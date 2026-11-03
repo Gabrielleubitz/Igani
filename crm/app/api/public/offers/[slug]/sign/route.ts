@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { downloadContract } from '@/lib/cloudinary'
+import { approvedContract, initials, renderContract } from '@/lib/contract-data'
+import { htmlToPdf } from '@/lib/pdf-render'
+import { getSetting } from '@/lib/settings'
 import { sendOfferSignedEmail } from '@/lib/email'
 import { appUrl, env } from '@/lib/env'
 import { formatModulePrice, formatPrice, normalizeSelection, parseModules, recurringTotals, selectionTotal } from '@/lib/offer-modules'
@@ -21,6 +24,8 @@ const Body = z.object({
   agree: z.literal(true),
   modules: z.array(z.string().max(80)).max(60),
   lang: z.enum(['he', 'en']).default('he'),
+  title: z.string().trim().max(120).optional(),
+  phone: z.string().trim().max(40).optional(),
 })
 
 function clientIp(req: Request): string {
@@ -43,11 +48,12 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
 
   const offer = await prisma.offer.findUnique({
     where: { slug: params.slug },
-    include: { lead: { select: { id: true, status: true, firstName: true, lastName: true, company: true, assignedToId: true } } },
+    include: { lead: { select: { id: true, status: true, firstName: true, lastName: true, email: true, phone: true, company: true, assignedToId: true } } },
   })
   if (!offer || offer.status === 'DRAFT' || offer.status === 'ARCHIVED') return NextResponse.json({ error: 'Offer not found' }, { status: 404 })
   if (offer.status === 'SIGNED') return NextResponse.json({ error: 'This offer was already signed.' }, { status: 409 })
-  if (!offer.contractPublicId) return NextResponse.json({ error: 'The agreement is not attached yet. Please contact us.' }, { status: 409 })
+  const built = approvedContract(offer)
+  if (!built && !offer.contractPublicId) return NextResponse.json({ error: 'The agreement is not attached yet. Please contact us.' }, { status: 409 })
 
   const modules = parseModules(offer.modules)
   const selected = normalizeSelection(modules, body.modules)
@@ -62,8 +68,14 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
 
   let pdf: Uint8Array
   try {
-    pdf = await buildSignedPdf({
-      contract: await downloadContract(offer.contractPublicId),
+    if (built) {
+      // Contract built in the CRM: the client's details go straight into the signature boxes, Igani is already signed
+      const signing = { name: body.name, title: body.title || null, email: body.email, phone: body.phone || null, signaturePng: body.signature, signedAt, ip }
+      const html = await renderContract(offer, built, { status: 'signed', selected, signing })
+      const signer = await getSetting('contract.signer')
+      pdf = await htmlToPdf(html, { footer: `${body.lang === 'he' ? 'ראשי תיבות' : 'Initials'}: ${initials(body.name)} · Igani ${initials(signer.name || 'Igani')} · ${offer.slug.toUpperCase()}` })
+    } else pdf = await buildSignedPdf({
+      contract: await downloadContract(offer.contractPublicId!),
       offerTitle: offer.title,
       clientName,
       offerUrl,
@@ -87,7 +99,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
     // Only one signature per offer, even if two tabs submit at once
     const { count } = await tx.offer.updateMany({
       where: { id: offer.id, status: 'LIVE' },
-      data: { status: 'SIGNED', signedAt, signerName: body.name, signerEmail: body.email, signerIp: ip, signedTotal: total, selectedModules: selected },
+      data: { status: 'SIGNED', signedAt, signerName: body.name, signerEmail: body.email, signerIp: ip, signerTitle: body.title || null, signerPhone: body.phone || null, signedTotal: total, selectedModules: selected },
     })
     if (count === 0) return false
     const doc = await tx.leadDocument.create({

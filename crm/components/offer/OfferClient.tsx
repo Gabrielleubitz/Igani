@@ -337,6 +337,7 @@ export interface SignPanelProps {
   contractUrl: string | null
   defaultName: string
   defaultEmail: string
+  defaultPhone?: string
   /** null = open for signing */
   signed: { name: string; at: string } | null
   preview: boolean
@@ -391,10 +392,12 @@ function StepTitle({ n, children }: { n: number; children: ReactNode }): React.R
   )
 }
 
-export function SignPanel({ slug, lang, currency, modules, moduleTitles, contractUrl, defaultName, defaultEmail, signed, preview }: SignPanelProps): React.ReactElement {
+export function SignPanel({ slug, lang, currency, modules, moduleTitles, contractUrl, defaultName, defaultEmail, defaultPhone = '', signed, preview }: SignPanelProps): React.ReactElement {
   const { selected, total, recurring } = useSelection()
   const [name, setName] = useState(defaultName)
   const [email, setEmail] = useState(defaultEmail)
+  const [title, setTitle] = useState('')
+  const [phone, setPhone] = useState(defaultPhone)
   const [signature, setSignature] = useState<string | null>(null)
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -430,7 +433,7 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
       const res = await fetch(`/api/public/offers/${encodeURIComponent(slug)}/sign`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name, email, signature, agree, modules: selected, lang }),
+        body: JSON.stringify({ name, email, title: title || undefined, phone: phone || undefined, signature, agree, modules: selected, lang }),
       })
       const data = (await res.json().catch(() => ({}))) as { error?: string; signedAt?: string }
       if (!res.ok) throw new Error(data.error ?? `Error ${res.status}`)
@@ -508,6 +511,14 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
           <label className="block text-[13px] font-medium text-slate-600">
             {ui('email', lang)}
             <input required type="email" maxLength={200} value={email} onChange={(e) => setEmail(e.target.value)} disabled={disabled} dir="ltr" className={input} autoComplete="email" />
+          </label>
+          <label className="block text-[13px] font-medium text-slate-600">
+            {ui('roleTitle', lang)} <span className="font-normal text-slate-400">({ui('optional', lang)})</span>
+            <input maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} disabled={disabled} className={input} autoComplete="organization-title" />
+          </label>
+          <label className="block text-[13px] font-medium text-slate-600">
+            {ui('phoneLabel', lang)} <span className="font-normal text-slate-400">({ui('optional', lang)})</span>
+            <input type="tel" maxLength={40} value={phone} onChange={(e) => setPhone(e.target.value)} disabled={disabled} dir="ltr" className={input} autoComplete="tel" />
           </label>
         </div>
       </div>

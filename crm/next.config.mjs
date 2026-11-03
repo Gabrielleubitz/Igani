@@ -4,9 +4,14 @@ const nextConfig = {
   poweredByHeader: false,
   images: { remotePatterns: [{ protocol: 'https', hostname: 'lh3.googleusercontent.com' }] },
   experimental: {
-    // The signing route reads the Hebrew-capable fonts from disk to build the signed PDF
+    // Headless Chrome for contract PDFs: keep it out of the bundle so its binary is used as-is
+    serverComponentsExternalPackages: ['@sparticuz/chromium', 'puppeteer-core'],
     outputFileTracingIncludes: {
-      '/api/public/offers/[slug]/sign': ['./lib/fonts/**'],
+      // Contract routes: Chrome binary, fonts and logos embedded into the PDF
+      '/api/public/offers/[slug]/sign': ['./lib/fonts/**', './node_modules/@sparticuz/chromium/bin/**', './public/igani-logo 2.png', './public/offers/**', './offers/*/assets.json'],
+      '/api/public/offers/[slug]/contract': ['./lib/fonts/**', './node_modules/@sparticuz/chromium/bin/**', './public/igani-logo 2.png', './public/offers/**', './offers/*/assets.json'],
+      '/api/studio/pdf-check': ['./lib/fonts/**', './node_modules/@sparticuz/chromium/bin/**'],
+      '/api/admin/offers/[id]/contract/preview': ['./lib/fonts/**', './node_modules/@sparticuz/chromium/bin/**', './public/igani-logo 2.png', './public/offers/**', './offers/*/assets.json'],
       // The export zips the offer's source files (screens, blocks, images) as they are in the repo
       '/api/admin/offers/[id]/export': ['./offers/**/*', './public/offers/**/*'],
       // The offer pages read offers/<slug>/assets.json (uploaded logo) at request time

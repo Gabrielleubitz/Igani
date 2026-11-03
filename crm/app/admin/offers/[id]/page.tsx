@@ -100,10 +100,27 @@ export default async function OfferAdminPage({ params }: { params: { id: string 
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Contract (PDF)</CardTitle>
+            <CardTitle className="text-base">Contract</CardTitle>
           </CardHeader>
-          <CardContent>
-            <ContractUpload offerId={offer.id} current={offer.contractPublicId ? { url: `/api/public/offers/${offer.slug}/contract`, fileName: offer.contractFileName ?? 'Contract.pdf' } : null} locked={offer.status === 'SIGNED'} />
+          <CardContent className="space-y-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${offer.signedAt ? 'bg-teal-500/15 text-teal-300' : offer.contractApprovedAt ? 'bg-emerald-500/15 text-emerald-400' : offer.contractDoc ? 'bg-amber-500/15 text-amber-300' : 'bg-muted text-muted-foreground'}`}
+              >
+                {offer.signedAt ? 'Signed' : offer.contractApprovedAt ? 'Approved · ready to sign' : offer.contractDoc ? 'Draft' : 'Not drafted'}
+              </span>
+              <Link href={`/admin/offers/${offer.id}/contract`} className={buttonVariants({ size: 'sm', variant: offer.contractDoc ? 'outline' : 'default' })}>
+                {offer.contractDoc ? 'Edit contract' : 'Build contract with AI'}
+              </Link>
+            </div>
+            <p className="text-xs text-muted-foreground">Built from Igani&apos;s standard terms and this offer, with both logos and signature boxes. Once approved, it is what the client signs.</p>
+            <details className="text-xs">
+              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Or use your own PDF</summary>
+              <div className="mt-2">
+                <ContractUpload offerId={offer.id} current={offer.contractPublicId ? { url: `/api/public/offers/${offer.slug}/contract`, fileName: offer.contractFileName ?? 'Contract.pdf' } : null} locked={offer.status === 'SIGNED'} />
+                {offer.contractApprovedAt ? <p className="mt-2 text-amber-400">An approved built contract takes priority over an uploaded PDF.</p> : null}
+              </div>
+            </details>
           </CardContent>
         </Card>
       </div>

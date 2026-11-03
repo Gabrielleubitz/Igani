@@ -17,6 +17,10 @@ export const SETTING_SCHEMAS = {
   'notifications.newLead': z.boolean(),
   /** Email guests a reminder ~24 hours before a confirmed meeting */
   'reminders.meetingEmails': z.boolean(),
+  /** Who signs contracts for Igani (shown in the signature box) */
+  'contract.signer': z.object({ name: z.string().trim().max(120), title: z.string().trim().max(120), email: z.union([z.literal(''), z.string().trim().email().max(254)]), phone: z.string().trim().max(40) }),
+  /** Igani's drawn signature (PNG data URL), put on every contract when an admin approves it */
+  'contract.signature': z.union([z.literal(''), z.string().startsWith('data:image/png;base64,').max(400_000)]),
 } as const
 
 export type SettingKey = keyof typeof SETTING_SCHEMAS
@@ -32,6 +36,8 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'leads.staleDays': 7,
   'notifications.newLead': true,
   'reminders.meetingEmails': true,
+  'contract.signer': { name: '', title: '', email: '', phone: '' },
+  'contract.signature': '',
 }
 
 export function isSettingKey(key: string): key is SettingKey {

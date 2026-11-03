@@ -75,6 +75,8 @@ const UI = {
   download: { he: 'הורדה', en: 'Download' },
   openTab: { he: 'פתיחה בכרטיסייה', en: 'Open in a tab' },
   close: { he: 'סגירה', en: 'Close' },
+  roleTitle: { he: 'תפקיד', en: 'Title' },
+  phoneLabel: { he: 'טלפון', en: 'Phone' },
   yourDetails: { he: 'הפרטים שלכם', en: 'Your details' },
   secureNote: { he: 'עותק חתום יישלח אליכם ואלינו באימייל', en: 'A signed copy is emailed to you and to us' },
   loading: { he: 'טוען…', en: 'Loading…' },

@@ -211,7 +211,7 @@ export async function saveSettings(values: Record<string, unknown>): Promise<Act
       for (const [key, value] of parsed) {
         await tx.siteSetting.upsert({ where: { key }, create: { key, value }, update: { value } })
       }
-      await logActivity({ entityType: 'SETTING', entityId: 'site', action: 'settings.updated', actorId: admin.id, metadata: Object.fromEntries(parsed) }, tx)
+      await logActivity({ entityType: 'SETTING', entityId: 'site', action: 'settings.updated', actorId: admin.id, metadata: Object.fromEntries(parsed.map(([k, v]) => [k, k === 'contract.signature' ? (v ? '(signature updated)' : '(signature removed)') : v])) }, tx)
     })
     revalidatePath('/admin/settings')
     return { ok: true, data: undefined }

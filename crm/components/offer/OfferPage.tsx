@@ -473,7 +473,8 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
                 currency={offer.currency}
                 modules={modules}
                 moduleTitles={Object.fromEntries(Object.entries(copy).map(([k, v]) => [k, v.title]))}
-                contractUrl={offer.contractPublicId ? `/api/public/offers/${offer.slug}/contract` : null}
+                contractUrl={offer.contractApprovedAt || offer.contractPublicId ? `/api/public/offers/${offer.slug}/contract` : null}
+                defaultPhone={offer.lead.phone ?? ''}
                 defaultName={[offer.lead.firstName, offer.lead.lastName].filter(Boolean).join(' ')}
                 defaultEmail={offer.lead.email ?? ''}
                 signed={offer.signedAt && offer.signerName ? { name: offer.signerName, at: offer.signedAt.toISOString() } : null}

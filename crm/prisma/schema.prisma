@@ -522,38 +522,48 @@ enum OfferStatus {
 /// One proposal for one existing lead. The numbers and contract live here (entered by admins);
 /// the written content and mockup screens live in the repo under offers/<slug>/ (written by Claude in the studio).
 model Offer {
-  id               String      @id @default(cuid())
+  id                   String      @id @default(cuid())
   /// Subdomain and folder name: honey → honey.app.igani.co and offers/honey/
-  slug             String      @unique
-  leadId           String
-  title            String
-  status           OfferStatus @default(DRAFT)
-  currency         String      @default("ILS")
-  monthlyPrice     Int?
-  timelineMonths   Int?
+  slug                 String      @unique
+  leadId               String
+  title                String
+  status               OfferStatus @default(DRAFT)
+  currency             String      @default("ILS")
+  monthlyPrice         Int?
+  timelineMonths       Int?
   /// Priced modules entered by an admin: [{ id, group, name, price, required, included }]
-  modules          Json        @default("[]")
+  modules              Json        @default("[]")
   /// Contract PDF the client signs (Cloudinary)
-  contractUrl      String?
-  contractPublicId String?
-  contractFileName String?
+  contractUrl          String?
+  contractPublicId     String?
+  contractFileName     String?
+  /// Contract built in the CRM (title, intro, sections), drafted with AI and edited by an admin. Used instead of an
+  /// uploaded PDF once approved.
+  contractDoc          Json?
+  /// he | en
+  contractLang         String?
+  /// Approval locks the text and adds Igani's signature; the client can then sign
+  contractApprovedAt   DateTime?
+  contractApprovedById String?
   /// Module ids the client chose on the page (required ones are always in)
-  selectedModules  String[]    @default([])
-  signedAt         DateTime?
-  signerName       String?
-  signerEmail      String?
-  signerIp         String?
+  selectedModules      String[]    @default([])
+  signedAt             DateTime?
+  signerName           String?
+  signerEmail          String?
+  signerIp             String?
+  signerTitle          String?
+  signerPhone          String?
   /// One-time total at the moment of signing, whole currency units
-  signedTotal      Int?
+  signedTotal          Int?
   /// The signed PDF, stored on the lead as a LeadDocument
-  signedDocumentId String?
-  publishedAt      DateTime?
+  signedDocumentId     String?
+  publishedAt          DateTime?
   /// Latest call-transcript analysis (client summary, suggested modules, what was left out, open questions); feeds BUILD.md
-  brief            Json?
-  briefAt          DateTime?
-  createdById      String?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  brief                Json?
+  briefAt              DateTime?
+  createdById          String?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
 
   lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
