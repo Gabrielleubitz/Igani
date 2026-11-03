@@ -2,6 +2,7 @@
 
 import { Check, Download, ExternalLink, FileText, Lock, PenLine, ShieldCheck, X } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { GROUP_LABEL, MODULE_GROUPS, allModulesTotal, formatModulePrice, formatPrice, normalizeSelection, periodOf, recurringTotals, selectionTotal, type OfferModuleItem } from '@/lib/offer-modules'
 import { cn } from '@/lib/utils'
 import type { Lang } from '@/offers/types'
@@ -343,8 +344,11 @@ export interface SignPanelProps {
   preview: boolean
 }
 
-/** The agreement in a popup on the page (served by /api/public/offers/<slug>/contract), with download and open-in-tab. */
-function ContractViewer({ href, title, onClose, labels }: { href: string; title: string; onClose: () => void; labels: { download: string; open: string; close: string } }): React.ReactElement {
+/**
+ * The agreement in a popup over the whole page (served by /api/public/offers/<slug>/contract), with download and open-in-tab.
+ * Rendered into <body> (portal): inside the animated section, a "fixed" popup would be trapped in that section.
+ */
+function ContractViewer({ href, title, onClose, labels, rtl }: { href: string; title: string; onClose: () => void; labels: { download: string; open: string; close: string }; rtl: boolean }): React.ReactElement {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') onClose()
@@ -357,9 +361,9 @@ function ContractViewer({ href, title, onClose, labels }: { href: string; title:
       window.removeEventListener('keydown', onKey)
     }
   }, [onClose])
-  return (
-    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-6" onClick={onClose}>
-      <div className="flex h-full max-h-[920px] w-full max-w-4xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-900/10" onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label={title} dir={rtl ? 'rtl' : 'ltr'} className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-6" onClick={onClose}>
+      <div className="flex h-[calc(100dvh-1rem)] w-full max-w-4xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-900/10 sm:h-[calc(100dvh-3rem)]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b border-slate-900/[0.06] px-4 py-3">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--offer-accent)_10%,white)] text-[var(--offer-accent)]">
             <FileText className="h-4 w-4" aria-hidden />
@@ -379,7 +383,8 @@ function ContractViewer({ href, title, onClose, labels }: { href: string; title:
         </div>
         <iframe src={`${href}#view=FitH`} title={title} className="min-h-0 w-full flex-1 bg-slate-100" />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -556,7 +561,7 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
         <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
         {ui('secureNote', lang)}
       </p>
-      {viewing && contractUrl ? <ContractViewer href={contractUrl} title={ui('contract', lang)} onClose={closeViewer} labels={{ download: ui('download', lang), open: ui('openTab', lang), close: ui('close', lang) }} /> : null}
+      {viewing && contractUrl ? <ContractViewer href={contractUrl} title={ui('contract', lang)} onClose={closeViewer} labels={{ download: ui('download', lang), open: ui('openTab', lang), close: ui('close', lang) }} rtl={lang === 'he'} /> : null}
     </form>
   )
 }
