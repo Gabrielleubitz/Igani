@@ -37,6 +37,7 @@ export function SettingsForm({ initial }: { initial: typeof SETTING_DEFAULTS }):
         start(async () => {
           const res = await saveSettings({
             'roundRobin.enabled': v['roundRobin.enabled'],
+            'leads.defaultOwnerEmail': v['leads.defaultOwnerEmail'].trim(),
             'notifications.emails': v.emails
               .split(/[,\s]+/)
               .map((s) => s.trim())
@@ -60,6 +61,11 @@ export function SettingsForm({ initial }: { initial: typeof SETTING_DEFAULTS }):
         </CardHeader>
         <CardContent className="space-y-4">
           <Toggle checked={v['roundRobin.enabled']} onChange={(x) => set({ 'roundRobin.enabled': x })} label="Auto-assign new leads (round-robin)" hint="Each new website lead goes to the next active sales rep in turn. Off = leads wait unassigned for someone to claim." />
+          <div className="max-w-md space-y-1">
+            <Label htmlFor="owner">Website leads go to (teammate login email)</Label>
+            <Input id="owner" type="email" placeholder="gabriel@igani.co" value={v['leads.defaultOwnerEmail']} onChange={(e) => set({ 'leads.defaultOwnerEmail': e.target.value })} />
+            <p className="text-xs text-muted-foreground">Every new website lead is assigned to this person. Leave empty to use the round-robin above. If they are not an active teammate, round-robin is used so no lead is left without an owner.</p>
+          </div>
           <div className="max-w-xs space-y-1">
             <Label htmlFor="stale">Flag a deal as “needs follow-up” after (days)</Label>
             <Input id="stale" type="number" min={1} max={365} value={v['leads.staleDays']} onChange={(e) => set({ 'leads.staleDays': Number(e.target.value) })} />

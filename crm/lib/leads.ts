@@ -170,6 +170,34 @@ export async function assignLeadRoundRobin(leadId: string, opts: { force?: boole
   return repId
 }
 
+/**
+ * New website leads: give the lead to the teammate chosen in Settings ("Website leads go to"), if there is one and they are
+ * an active ADMIN/SALES teammate. Otherwise fall back to round-robin so a lead is never left without an owner.
+ * Returns the assignee id (or null when nobody could be assigned or the lead already had an owner).
+ */
+export async function assignLeadToDefaultOwner(leadId: string): Promise<string | null> {
+  const email = (await getSetting('leads.defaultOwnerEmail')).trim().toLowerCase()
+  if (!email) return assignLeadRoundRobin(leadId)
+  const owner = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' }, role: { in: ['ADMIN', 'SALES'] } },
+    select: { id: true, email: true },
+  })
+  const allowed = owner ? await prisma.allowedUser.findFirst({ where: { email: { equals: owner.email ?? email, mode: 'insensitive' }, active: true }, select: { email: true } }) : null
+  if (!owner || !allowed) {
+    console.warn('[leads] default owner is not an active teammate; using round-robin', email)
+    return assignLeadRoundRobin(leadId)
+  }
+  const claimed = await prisma.$transaction(async (tx) => {
+    const res = await tx.lead.updateMany({ where: { id: leadId, assignedToId: null }, data: { assignedToId: owner.id } })
+    if (res.count === 0) return false
+    await logActivity({ entityType: 'LEAD', entityId: leadId, action: 'lead.assigned', metadata: { assignedToId: owner.id, strategy: 'default-owner' } }, tx)
+    return true
+  })
+  if (!claimed) return null
+  await notifyLeadAssigned(leadId, owner.id)
+  return owner.id
+}
+
 /** Best-effort email to the rep a lead was just assigned to; a mail outage never blocks assignment. */
 export async function notifyLeadAssigned(leadId: string, repId: string): Promise<void> {
   try {

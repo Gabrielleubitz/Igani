@@ -5,6 +5,8 @@ import { prisma } from './prisma'
 /** Known settings with validation + defaults. Unknown keys are rejected. */
 export const SETTING_SCHEMAS = {
   'roundRobin.enabled': z.boolean(),
+  /** Every new website lead goes to this teammate (login email). Empty, or not an active teammate = round-robin. */
+  'leads.defaultOwnerEmail': z.union([z.literal(''), z.string().trim().toLowerCase().email().max(254)]),
   'notifications.emails': z.array(z.string().trim().email()).max(20),
   'booking.defaultDurationMinutes': z.number().int().min(15).max(240),
   'booking.bufferMinutes': z.number().int().min(0).max(120),
@@ -21,6 +23,7 @@ export type SettingKey = keyof typeof SETTING_SCHEMAS
 
 export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHEMAS)[K]> } = {
   'roundRobin.enabled': true,
+  'leads.defaultOwnerEmail': '',
   'notifications.emails': [],
   'booking.defaultDurationMinutes': 30,
   'booking.bufferMinutes': 0,
