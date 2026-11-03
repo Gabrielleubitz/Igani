@@ -610,3 +610,32 @@ model OfferVisit {
   @@index([offerId, startedAt])
   @@index([ipHash, startedAt])
 }
+
+/// A visit to a page on the main website (igani.co): the same measurements as OfferVisit, keyed by page
+/// ("home", "realestate"). Sent by the site's tracker to /api/public/site/track; viewed under Admin → Website.
+model SiteVisit {
+  id           String   @id @default(cuid())
+  page         String
+  key          String   @unique
+  visitorId    String
+  startedAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  durationMs   Int      @default(0)
+  maxScrollPct Int      @default(0)
+  device       String
+  viewportW    Int
+  viewportH    Int
+  lang         String?
+  country      String?
+  referrer     String?
+  /// utm_source / utm_campaign from the landing URL, when present
+  utmSource    String?
+  utmCampaign  String?
+  ipHash       String
+  sections     Json     @default("{}")
+  clicks       Json     @default("[]")
+  moves        Json     @default("[]")
+
+  @@index([page, startedAt])
+  @@index([ipHash, startedAt])
+}

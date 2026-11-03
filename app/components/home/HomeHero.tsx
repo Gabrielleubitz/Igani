@@ -17,7 +17,7 @@ const fadeUp = (delay: number) => ({
 /** Opening: why a site matters for a service business, then straight to the proof. */
 export function HomeHero({ onCheckWork, onStart }: { onCheckWork: () => void; onStart: () => void }) {
   return (
-    <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI">
+    <section id="hero" className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI">
       <HeroCanvas />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_45%,transparent_0%,rgba(2,8,18,0.55)_100%)]" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#030814] to-transparent" />

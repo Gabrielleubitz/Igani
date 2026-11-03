@@ -4,6 +4,7 @@ import { Flame, Monitor, MousePointerClick, Smartphone } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { HeatDevice, OfferInsights } from '@/lib/offer-insights'
 import { sectionLabel } from '@/lib/offer-tracking'
+import { siteSectionLabel } from '@/lib/site-pages'
 import { cn } from '@/lib/utils'
 
 const fmtSecs = (s: number): string => (s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`)
@@ -17,12 +18,24 @@ function Bar({ pct, tone = 'bg-primary' }: { pct: number; tone?: string }): Reac
   )
 }
 
-/** What clients did on this offer page: reach, attention per section, clicks, recent visits, and a heatmap. */
-export function OfferInsightsPanel({ slug, lang, data }: { slug: string; lang: string; data: OfferInsights }): React.ReactElement {
+/**
+ * Where the heatmap is drawn. Offers: the CRM's own /o/<slug> page (same origin, the layer is injected directly).
+ * Website pages: igani.co in a frame, which draws the layer itself when the CRM posts it the points.
+ */
+export type HeatTarget = { kind: 'local'; url: string } | { kind: 'remote'; url: string; origin: string }
+
+/** What visitors did on a page: reach, attention per section, clicks, recent visits, and a heatmap. */
+export function OfferInsightsPanel({ slug, lang, data, target, site = false }: { slug?: string; lang?: string; data: OfferInsights; target?: HeatTarget; site?: boolean }): React.ReactElement {
   const { stats, recent } = data
   const [heatOpen, setHeatOpen] = useState(false)
+  const label = site ? siteSectionLabel : sectionLabel
+  const heatTarget: HeatTarget = target ?? { kind: 'local', url: `/o/${encodeURIComponent(slug ?? '')}?notrack=1&lang=${lang ?? 'he'}` }
   if (!stats.visits) {
-    return <p className="text-sm text-muted-foreground">No client visits yet. Once the client opens their link, you&apos;ll see how far they read, what they looked at longest and where they clicked. Your own visits from the CRM are never counted.</p>
+    return site ? (
+      <p className="text-sm text-muted-foreground">No visits in this period yet. As soon as people open the page you&apos;ll see how far they read, what they looked at longest and where they clicked.</p>
+    ) : (
+      <p className="text-sm text-muted-foreground">No client visits yet. Once the client opens their link, you&apos;ll see how far they read, what they looked at longest and where they clicked. Your own visits from the CRM are never counted.</p>
+    )
   }
   const maxSecs = Math.max(1, ...stats.sections.map((s) => s.avgSeconds))
   return (
@@ -58,7 +71,7 @@ export function OfferInsightsPanel({ slug, lang, data }: { slug: string; lang: s
           {stats.sections.length ? (
             stats.sections.map((s) => (
               <div key={s.id} className="grid grid-cols-[9rem_1fr_4.5rem] items-center gap-3 text-sm" title={`${s.seenPct}% of visits looked at this for 2s or more`}>
-                <span className="truncate text-muted-foreground">{sectionLabel(s.id)}</span>
+                <span className="truncate text-muted-foreground">{label(s.id)}</span>
                 <Bar pct={(s.avgSeconds / maxSecs) * 100} tone="bg-violet-400" />
                 <span className="text-end tabular-nums">{fmtSecs(s.avgSeconds)}</span>
               </div>
@@ -119,7 +132,7 @@ export function OfferInsightsPanel({ slug, lang, data }: { slug: string; lang: s
             </button>
           ) : null}
         </div>
-        {heatOpen ? <Heatmap slug={slug} lang={lang} heat={data.heat} /> : <p className="text-sm text-muted-foreground">See where clients clicked and moved the mouse, drawn on top of the offer page.</p>}
+        {heatOpen ? <Heatmap target={heatTarget} heat={data.heat} /> : <p className="text-sm text-muted-foreground">See where {site ? 'visitors' : 'clients'} clicked and moved the mouse, drawn on top of the {site ? 'page' : 'offer page'}.</p>}
       </div>
     </div>
   )
@@ -150,7 +163,7 @@ function palette(): Uint8ClampedArray {
  * The live offer page in a frame (same origin, ?notrack=1) with a heat layer injected into it, so it scrolls with the
  * page. Each point is placed inside the section it was recorded in, at the same fraction of that section.
  */
-function Heatmap({ slug, lang, heat }: { slug: string; lang: string; heat: OfferInsights['heat'] }): React.ReactElement {
+function Heatmap({ target, heat }: { target: HeatTarget; heat: OfferInsights['heat'] }): React.ReactElement {
   const [device, setDevice] = useState<HeatDevice>(heat.desktop.visits || !heat.phone.visits ? 'desktop' : 'phone')
   const [kind, setKind] = useState<'clicks' | 'moves'>('clicks')
   const [ready, setReady] = useState(false)
@@ -169,7 +182,19 @@ function Heatmap({ slug, lang, heat }: { slug: string; lang: string; heat: Offer
   }, [device])
 
   useEffect(() => {
-    if (!ready) return
+    if (!ready || target.kind !== 'remote') return
+    // The website draws the layer itself; send it the points (again after late layout, like the local case)
+    const post = (): void => frame.current?.contentWindow?.postMessage({ type: 'igani-heat', kind, ...heat[device][kind] }, target.origin)
+    const t1 = window.setTimeout(post, 900)
+    const t2 = window.setTimeout(post, 3000)
+    return () => {
+      window.clearTimeout(t1)
+      window.clearTimeout(t2)
+    }
+  }, [ready, device, kind, heat, target])
+
+  useEffect(() => {
+    if (!ready || target.kind !== 'local') return
     const doc = frame.current?.contentDocument
     if (!doc?.body) return
     const draw = (): void => {
@@ -229,7 +254,7 @@ function Heatmap({ slug, lang, heat }: { slug: string; lang: string; heat: Offer
       window.clearTimeout(t1)
       window.clearTimeout(t2)
     }
-  }, [ready, device, kind, heat])
+  }, [ready, device, kind, heat, target])
 
   const count = heat[device][kind].points.length
   const tab = (active: boolean): string => cn('inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm', active ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground')
@@ -260,7 +285,7 @@ function Heatmap({ slug, lang, heat }: { slug: string; lang: string; heat: Offer
             key={device}
             ref={frame}
             title="Offer page heatmap"
-            src={`/o/${encodeURIComponent(slug)}?notrack=1&lang=${lang}`}
+            src={target.url}
             onLoad={() => setReady(true)}
             style={{ width: WIDTH[device], height: VIEW_H[device], transform: `scale(${scale})`, transformOrigin: '0 0', border: 0 }}
           />

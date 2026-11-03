@@ -16,7 +16,7 @@ const fadeUp = (delay: number) => ({
 /** Opener: an agent's website is their first listing presentation. */
 export function Hero({ onSeeWork, onStart }: { onSeeWork: () => void; onStart: () => void }) {
   return (
-    <section className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI for real estate">
+    <section id="hero" className="relative isolate flex min-h-[100svh] flex-col overflow-hidden" aria-label="IGANI for real estate">
       <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center px-4 pb-24 pt-32 text-center [text-shadow:0_1px_20px_rgba(8,32,100,0.55)] sm:px-6 lg:px-8">
         <FocusIn>
           <h1 className="text-balance text-[clamp(2.6rem,8vw,6.5rem)] font-semibold leading-[0.96] tracking-[-0.035em] text-white">

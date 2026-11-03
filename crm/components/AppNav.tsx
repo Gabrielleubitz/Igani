@@ -19,6 +19,7 @@ import {
   TrendingUp,
   UserCog,
   Video,
+  Globe,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -46,6 +47,7 @@ const ICONS: Record<string, LucideIcon> = {
   audit: ScrollText,
   offers: FileSignature,
   teamMeetings: Video,
+  website: Globe,
   settings: Settings,
 }
 

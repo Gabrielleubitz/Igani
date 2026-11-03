@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import { HomepageTracker } from '@/components/HomepageTracker'
+import { SiteTracker } from '@/components/SiteTracker'
 import { SectionRail } from '@/app/components/landing/fx/SectionRail'
 import { GrainOverlay } from '@/app/components/landing/fx/GrainOverlay'
 import { CursorGlow } from '@/app/components/landing/fx/CursorGlow'
@@ -82,6 +83,7 @@ export function NewHome({ initialTeam, initialSettings }: { initialTeam?: TeamMe
   return (
     <div id="home" className={`relative min-h-screen bg-[#030814] text-white ${displaySerif.variable}`}>
       <HomepageTracker />
+      <SiteTracker page="home" />
       <GrainOverlay />
       <CursorGlow />
       <SectionRail items={RAIL} />

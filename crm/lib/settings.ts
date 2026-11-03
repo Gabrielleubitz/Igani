@@ -19,6 +19,8 @@ export const SETTING_SCHEMAS = {
   'reminders.meetingEmails': z.boolean(),
   /** Email every admin a summary of the week on Sunday morning */
   'notifications.weeklySummary': z.boolean(),
+  /** Visitor analytics (scroll, clicks, heatmap) on the main website's pages, switched per page under Admin → Website */
+  'website.tracking': z.object({ home: z.boolean(), realestate: z.boolean() }),
   /** Who signs contracts for Igani (shown in the signature box) */
   'contract.signer': z.object({ name: z.string().trim().max(120), title: z.string().trim().max(120), email: z.union([z.literal(''), z.string().trim().email().max(254)]), phone: z.string().trim().max(40) }),
   /** Igani's drawn signature (PNG data URL), put on every contract when an admin approves it */
@@ -39,6 +41,7 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'notifications.newLead': true,
   'reminders.meetingEmails': true,
   'notifications.weeklySummary': true,
+  'website.tracking': { home: true, realestate: true },
   'contract.signer': { name: '', title: '', email: '', phone: '' },
   'contract.signature': '',
 }

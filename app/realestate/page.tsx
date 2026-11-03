@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import Script from 'next/script'
+import { SiteTracker } from '@/components/SiteTracker'
 import { ArrowRight } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
 import { ADDRESS, PHONE_DISPLAY, PHONE_TEL, WHATSAPP_HREF } from '@/app/components/realestate/contact'
@@ -86,6 +87,8 @@ export default function RealEstatePage() {
 
   return (
     <div className={`perf-touch relative min-h-screen bg-[#030814] text-white ${displaySerif.variable}`}>
+      {/* Our own visitor analytics, viewed in the CRM under Admin → Website */}
+      <SiteTracker page="realestate" />
       {/* Hotjar Tracking Code for igani.co */}
       <Script
         id="hotjar"

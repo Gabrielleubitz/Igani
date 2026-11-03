@@ -28,7 +28,11 @@ export async function middleware(request: NextRequest) {
 
   // Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'DENY')
+  // The CRM (Admin → Website) shows the home and real estate pages in a frame to draw its heatmap. Only those two pages,
+  // only with ?igani-heatmap=1 (where the tracker records nothing), and only inside app.igani.co. Everything else: DENY.
+  const heatmapFrame = request.nextUrl.searchParams.get('igani-heatmap') === '1' && ['/', '/realestate'].includes(request.nextUrl.pathname)
+  if (heatmapFrame) response.headers.set('Content-Security-Policy', "frame-ancestors https://app.igani.co http://localhost:3100")
+  else response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
