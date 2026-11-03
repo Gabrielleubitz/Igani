@@ -2,7 +2,7 @@ import {
   founderProfileUrl,
   getFounderBySlug,
 } from '@/lib/seo/founders'
-import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
+import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo/site'
 
 type FounderPersonJsonLdProps = {
   slug: string
@@ -25,7 +25,7 @@ export async function FounderPersonJsonLd({ slug }: FounderPersonJsonLdProps) {
         jobTitle: founder.position,
         description: founder.bio,
         url: profileUrl,
-        ...(founder.imageUrl ? { image: founder.imageUrl } : {}),
+        ...(founder.imageUrl ? { image: absoluteUrl(founder.imageUrl) } : {}),
         worksFor: { '@id': orgId },
         ...(founder.linkedinUrl ? { sameAs: [founder.linkedinUrl] } : {}),
       },

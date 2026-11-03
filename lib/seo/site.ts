@@ -25,3 +25,8 @@ export function getSiteUrl(): string {
 }
 
 export const SITE_URL = getSiteUrl()
+
+/** Structured data wants full URLs: turn a site path such as /team/x.jpg into https://www.igani.co/team/x.jpg (full URLs pass through). */
+export function absoluteUrl(u: string): string {
+  return /^https?:\/\//i.test(u) ? u : `${SITE_URL}${u.startsWith('/') ? '' : '/'}${u}`
+}

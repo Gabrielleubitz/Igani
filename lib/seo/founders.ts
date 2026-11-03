@@ -1,4 +1,4 @@
-import { getTeamMembers } from '@/lib/firestore'
+import { getTeamMembers, withFounderPhoto } from '@/lib/firestore'
 import { TeamMember } from '@/types'
 import { siteContent } from '@/lib/i18n'
 import { SITE_URL } from '@/lib/seo/site'
@@ -49,7 +49,7 @@ export async function getFounderProfiles(): Promise<FounderProfile[]> {
   } catch {
     // fall through to static list
   }
-  return STATIC_FOUNDERS
+  return STATIC_FOUNDERS.map(withFounderPhoto)
 }
 
 export function founderSlug(name: string): string {

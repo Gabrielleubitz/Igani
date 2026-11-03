@@ -4,7 +4,7 @@ import {
   founderProfileUrl,
   getFounderProfiles,
 } from '@/lib/seo/founders'
-import { SITE_NAME, SITE_URL } from '@/lib/seo/site'
+import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo/site'
 
 export async function AboutJsonLd() {
   const [settings, founders] = await Promise.all([
@@ -49,7 +49,7 @@ export async function AboutJsonLd() {
       jobTitle: f.position,
       description: f.bio,
       url: founderProfileUrl(f.name),
-      ...(f.imageUrl ? { image: f.imageUrl } : {}),
+      ...(f.imageUrl ? { image: absoluteUrl(f.imageUrl) } : {}),
       worksFor: { '@id': orgId },
       ...(f.linkedinUrl ? { sameAs: [f.linkedinUrl] } : {}),
     })),

@@ -874,6 +874,20 @@ export const deleteAboutUsSection = async (id: string): Promise<void> => {
 };
 
 // Team Members (About page)
+/**
+ * The three co-founders' official photos live in /public/team (matched on first name, so a small spelling difference in the
+ * admin does not matter). They take priority over any photo saved in the admin; to change a founder's photo, replace the file.
+ */
+const FOUNDER_PHOTOS: Record<string, string> = {
+  ilan: '/team/ilan-leubitz.jpg',
+  amitay: '/team/amitay-hanson.jpg',
+  gabriel: '/team/gabriel-leubitz.jpg',
+};
+export const withFounderPhoto = <T extends { name: string; imageUrl?: string }>(m: T): T => {
+  const photo = FOUNDER_PHOTOS[m.name.trim().split(/\s+/)[0]?.toLowerCase() ?? ''];
+  return photo ? { ...m, imageUrl: photo } : m;
+};
+
 export const getTeamMembers = async (): Promise<TeamMember[]> => {
   try {
     const q = query(
@@ -883,7 +897,7 @@ export const getTeamMembers = async (): Promise<TeamMember[]> => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map((d) => {
       const data = d.data();
-      return {
+      return withFounderPhoto({
         id: d.id,
         name: data.name ?? '',
         position: data.position ?? '',
@@ -897,7 +911,7 @@ export const getTeamMembers = async (): Promise<TeamMember[]> => {
         published: data.published ?? true,
         createdAt: data.createdAt?.toDate?.()?.toISOString?.() ?? data.createdAt,
         updatedAt: data.updatedAt?.toDate?.()?.toISOString?.() ?? data.updatedAt
-      } as TeamMember;
+      } as TeamMember);
     });
   } catch (error) {
     console.error('Error getting team members:', error);

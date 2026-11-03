@@ -102,7 +102,7 @@ export default async function FounderProfilePage({ params }: PageProps) {
             <img
               src={founder.imageUrl}
               alt={founder.name}
-              className="aspect-[4/3] w-full object-cover"
+              className="aspect-[4/3] w-full object-cover object-[50%_22%]"
             />
           </div>
         )}
