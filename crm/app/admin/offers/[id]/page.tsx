@@ -64,7 +64,8 @@ export default async function OfferAdminPage({ params }: { params: { id: string 
             <div className="break-all font-mono text-xs">{live}</div>
             <div className="flex flex-wrap gap-2">
               <CopyButton text={live} />
-              <a href={`/o/${offer.slug}`} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              {/* Published: the real client address. Drafts only render for a signed-in admin, which the subdomain can't see */}
+              <a href={offer.status === 'DRAFT' ? `/o/${offer.slug}` : live} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 {offer.status === 'DRAFT' ? 'Preview draft' : 'Open'}
               </a>
             </div>
