@@ -47,9 +47,10 @@ working sample: **read it before writing a screen**.
   2. the **back office** (desktop, `DashboardShell`): what the client's team sees and manages (2–4 screens).
   Add a third flow when the project has another user type (drivers, partners, restaurants...).
 - Realistic data in the client's language and market (names, prices, places), never lorem ipsum.
-- **Client logo and images**: `offer-data.json` → `logo` and `images` (uploaded by the admin in the studio). Use `logo` as
-  `content.client.logo` and in the mockups (headers, sign-in screens, `DashboardShell logo`). Use `images` for photos,
-  `gallery`, `DetailHero`, product grids. If there is no logo yet, use the client name as text and say so.
+- **Client logo and images**: uploaded by the admin in the studio strip, listed in `offer-data.json` (`logo`, `images`).
+  The offer page shows the uploaded logo **by itself** (header and summary card, via `assets.json`); you don't need to set
+  `content.client.logo`. Use the logo inside the mockups where a real product would show it (app headers, sign-in screens,
+  `DashboardShell logo`) and `images` for photos, `gallery`, `DetailHero`, product grids.
 - **Recurring payments**: modules in `offer-data.json` can have `period: "month" | "year"` (hosting, maintenance, licences).
   The page prices them automatically; mention what the recurring payment covers in that module's copy.
 

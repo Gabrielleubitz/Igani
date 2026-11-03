@@ -16,7 +16,8 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const CRM = join(HERE, '..')
 const PORT = Number(process.env.STUDIO_PORT ?? 3199)
 const APP_PORT = Number(process.env.STUDIO_APP_PORT ?? 3100)
-const ALLOWED_ORIGINS = new Set([`http://localhost:${APP_PORT}`, `http://127.0.0.1:${APP_PORT}`])
+// The studio page lives in the live CRM; localhost stays allowed for local testing
+const ALLOWED_ORIGINS = new Set(['https://app.igani.co', `http://localhost:${APP_PORT}`, `http://127.0.0.1:${APP_PORT}`, ...(process.env.STUDIO_ORIGINS ?? '').split(',').filter(Boolean)])
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/
 const SCROLLBACK = 400_000
 

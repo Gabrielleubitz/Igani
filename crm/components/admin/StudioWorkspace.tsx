@@ -27,6 +27,12 @@ export function StudioWorkspace({ slug, token, previewUrl }: { slug: string; tok
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  // A new logo or image was uploaded: show it
+  useEffect(() => {
+    const reload = (): void => frame.current?.contentWindow?.location.reload()
+    window.addEventListener('studio:assets', reload)
+    return () => window.removeEventListener('studio:assets', reload)
+  }, [])
   useEffect(() => {
     try {
       const saved = localStorage.getItem('studio-layout')

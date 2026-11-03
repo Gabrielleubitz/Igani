@@ -184,3 +184,18 @@ export function listAssets(slug: string): { name: string; path: string; size: nu
     return []
   }
 }
+
+/**
+ * offers/<slug>/assets.json: the uploaded logo and images, read by the offer page itself (no Claude needed).
+ * Committed with the offer on "push", so the live page shows the same logo. `?v=` busts caches when the logo changes.
+ */
+export function writeAssetsManifest(slug: string): void {
+  const all = listAssets(slug)
+  const dir = offersDir(slug)
+  if (!all.length && !existsSync(join(dir, 'assets.json'))) return
+  mkdirSync(dir, { recursive: true })
+  const logo = all.find((x) => x.logo)
+  const version = (p: string): number => Math.round(statSync(join(CRM_DIR, 'public', p)).mtimeMs)
+  const manifest = { logo: logo ? `${logo.path}?v=${version(logo.path)}` : null, images: all.filter((x) => !x.logo).map((x) => x.path) }
+  writeFileSync(join(dir, 'assets.json'), JSON.stringify(manifest, null, 2) + '\n')
+}

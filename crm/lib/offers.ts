@@ -1,4 +1,6 @@
 import 'server-only'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Offer, OfferStatus } from '@prisma/client'
 import { OFFERS } from '@/offers/registry'
 import type { OfferDefinition } from '@/offers/types'
@@ -17,9 +19,6 @@ export function liveOfferUrl(slug: string): string {
 export function localOfferUrl(slug: string): string {
   return `http://${slug}.localhost:${STUDIO_APP_PORT}`
 }
-export function studioUrl(slug: string): string {
-  return `http://localhost:${STUDIO_APP_PORT}/admin/offers/studio/${slug}`
-}
 
 export const isLocalDev = (): boolean => process.env.NODE_ENV === 'development'
 
@@ -34,10 +33,27 @@ export async function loadDefinition(slug: string): Promise<OfferDefinition | nu
   }
 }
 
+export interface OfferAssets {
+  /** Uploaded client logo (studio), shown by the template without Claude */
+  logo: string | null
+  images: string[]
+}
+
+/** offers/<slug>/assets.json, written by the studio when the admin uploads a logo or images. */
+export function loadAssets(slug: string): OfferAssets {
+  try {
+    const raw = JSON.parse(readFileSync(join(process.cwd(), 'offers', slug, 'assets.json'), 'utf8')) as Partial<OfferAssets>
+    return { logo: typeof raw.logo === 'string' ? raw.logo : null, images: Array.isArray(raw.images) ? raw.images.filter((x): x is string => typeof x === 'string') : [] }
+  } catch {
+    return { logo: null, images: [] }
+  }
+}
+
 export interface PublicOffer {
   offer: Offer & { lead: { firstName: string | null; lastName: string | null; company: string | null; email: string | null } }
   modules: OfferModuleItem[]
   definition: OfferDefinition | null
+  assets: OfferAssets
   /** True when an admin (or localhost) is looking at a draft */
   preview: boolean
 }
@@ -60,7 +76,7 @@ export async function loadPublicOffer(slug: string): Promise<PublicOffer | null>
       preview = true
     }
   }
-  return { offer, modules: parseModules(offer.modules), definition: await loadDefinition(slug), preview }
+  return { offer, modules: parseModules(offer.modules), definition: await loadDefinition(slug), assets: loadAssets(slug), preview }
 }
 
 /** The address a client uses: the subdomain in production, <slug>.localhost when running locally. */

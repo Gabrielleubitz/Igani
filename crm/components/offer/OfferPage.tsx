@@ -83,7 +83,8 @@ function ClientMark({ name, logo, size = 'md' }: { name: string; logo?: string; 
   const box = size === 'sm' ? 'h-8 min-w-8 px-1.5' : 'h-12 min-w-12 px-2'
   return logo ? (
     <span className={cn('flex shrink-0 items-center justify-center rounded-xl bg-white ring-1 ring-slate-900/[0.07]', box)}>
-      <Image src={logo} alt={name} width={size === 'sm' ? 72 : 112} height={size === 'sm' ? 24 : 36} className={cn('w-auto object-contain', size === 'sm' ? 'h-5' : 'h-8')} />
+      {/* eslint-disable-next-line @next/next/no-img-element -- logos are small, often SVG, and carry a ?v= version */}
+      <img src={logo} alt={name} className={cn('w-auto max-w-[9rem] object-contain', size === 'sm' ? 'h-5' : 'h-8')} />
     </span>
   ) : (
     <span className={cn('flex shrink-0 items-center justify-center rounded-xl bg-[var(--offer-accent)] font-semibold text-white', box, size === 'sm' ? 'text-xs' : 'text-base')}>
@@ -105,7 +106,8 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
   const Forward = rtl ? ArrowLeft : ArrowRight
   const accent = content?.client.accent ?? DEFAULT_ACCENT
   const clientName = content ? t(content.client.name, lang) : offer.lead.company || [offer.lead.firstName, offer.lead.lastName].filter(Boolean).join(' ') || offer.title
-  const clientLogo = content?.client.logo
+  // The logo uploaded in the studio wins; Claude's content.client.logo is the fallback
+  const clientLogo = data.assets.logo ?? content?.client.logo
   const initial = offer.selectedModules.length ? normalizeSelection(modules, offer.selectedModules) : defaultSelection(modules)
   const screensCount = content?.flows.reduce((sum, f) => sum + f.steps.length, 0) ?? 0
   const copy: Record<string, ModuleCopy> = Object.fromEntries(
@@ -471,7 +473,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
                 currency={offer.currency}
                 modules={modules}
                 moduleTitles={Object.fromEntries(Object.entries(copy).map(([k, v]) => [k, v.title]))}
-                contractUrl={offer.contractUrl}
+                contractUrl={offer.contractPublicId ? `/api/public/offers/${offer.slug}/contract` : null}
                 defaultName={[offer.lead.firstName, offer.lead.lastName].filter(Boolean).join(' ')}
                 defaultEmail={offer.lead.email ?? ''}
                 signed={offer.signedAt && offer.signerName ? { name: offer.signerName, at: offer.signedAt.toISOString() } : null}

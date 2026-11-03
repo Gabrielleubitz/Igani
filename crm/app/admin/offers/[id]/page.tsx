@@ -8,7 +8,7 @@ import { requireUser } from '@/lib/auth'
 import { leadName } from '@/lib/format'
 import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE } from '@/lib/offer-admin'
 import { formatPrice, parseModules } from '@/lib/offer-modules'
-import { isLocalDev, liveOfferUrl, loadDefinition, localOfferUrl, studioUrl } from '@/lib/offers'
+import { isLocalDev, liveOfferUrl, loadDefinition, localOfferUrl } from '@/lib/offers'
 import { transcriptAiEnabled } from '@/lib/offer-transcript-ai'
 import { prisma } from '@/lib/prisma'
 
@@ -79,12 +79,10 @@ export default async function OfferAdminPage({ params }: { params: { id: string 
             <CardTitle className="text-base">Studio (Claude)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <p className="text-muted-foreground">
-              Claude writes the text and builds the mockups on your Mac. Run <code className="rounded bg-muted px-1">npm run studio</code> in the <code className="rounded bg-muted px-1">crm</code> folder, then open the studio.
-            </p>
-            <a href={studioUrl(offer.slug)} target={local ? undefined : '_blank'} rel="noreferrer" className={buttonVariants({ size: 'sm' })}>
+            <p className="text-muted-foreground">Claude writes the text and builds the mockups. The studio opens right here and starts itself on your Mac.</p>
+            <Link href={`/admin/offers/studio/${offer.slug}`} className={buttonVariants({ size: 'sm' })}>
               Open studio
-            </a>
+            </Link>
             <p className="text-xs text-muted-foreground">
               Content in this deployment: {definition ? <span className="text-emerald-400">ready</span> : <span className="text-amber-400">not pushed yet</span>}
               {local ? (
@@ -105,7 +103,7 @@ export default async function OfferAdminPage({ params }: { params: { id: string 
             <CardTitle className="text-base">Contract (PDF)</CardTitle>
           </CardHeader>
           <CardContent>
-            <ContractUpload offerId={offer.id} current={offer.contractUrl ? { url: offer.contractUrl, fileName: offer.contractFileName ?? 'Contract.pdf' } : null} locked={offer.status === 'SIGNED'} />
+            <ContractUpload offerId={offer.id} current={offer.contractPublicId ? { url: `/api/public/offers/${offer.slug}/contract`, fileName: offer.contractFileName ?? 'Contract.pdf' } : null} locked={offer.status === 'SIGNED'} />
           </CardContent>
         </Card>
       </div>

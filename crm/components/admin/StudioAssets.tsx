@@ -15,13 +15,12 @@ interface Asset {
  * The client's logo and images for this offer (studio only). Files land in public/offers/<slug>/, ship with "push",
  * and show up in offer-data.json so Claude can use them. Tell Claude in the terminal when you've added something.
  */
-export function StudioAssets({ slug }: { slug: string }): React.ReactElement {
+export function StudioAssets({ slug, api }: { slug: string; api: string }): React.ReactElement {
   const [assets, setAssets] = useState<Asset[]>([])
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const logoRef = useRef<HTMLInputElement>(null)
   const imgRef = useRef<HTMLInputElement>(null)
-  const api = `/api/admin/offers/studio/${encodeURIComponent(slug)}/assets`
 
   useEffect(() => {
     void fetch(api).then(async (r) => r.ok && setAssets(((await r.json()) as { assets: Asset[] }).assets))
@@ -31,22 +30,33 @@ export function StudioAssets({ slug }: { slug: string }): React.ReactElement {
     if (!files?.length) return
     setBusy(true)
     setMsg(null)
-    const form = new FormData()
-    form.set('kind', kind)
-    for (const f of Array.from(files)) form.append('file', f)
-    const r = await fetch(api, { method: 'POST', body: form })
-    const data = (await r.json().catch(() => ({}))) as { assets?: Asset[]; error?: string }
+    // One request per file, sent as-is to the studio helper on this Mac (saved into public/offers/<slug>/)
+    let latest: Asset[] | null = null
+    for (const f of Array.from(files).slice(0, kind === 'logo' ? 1 : 20)) {
+      const r = await fetch(api, { method: 'POST', headers: { 'content-type': f.type || 'application/octet-stream', 'x-file-name': encodeURIComponent(f.name), 'x-kind': kind }, body: f })
+      const data = (await r.json().catch(() => ({}))) as { assets?: Asset[]; error?: string }
+      if (!r.ok || !data.assets) {
+        setBusy(false)
+        return setMsg({ ok: false, text: data.error ?? 'Upload failed' })
+      }
+      latest = data.assets
+    }
     setBusy(false)
-    if (!r.ok || !data.assets) return setMsg({ ok: false, text: data.error ?? 'Upload failed' })
-    setAssets(data.assets)
-    setMsg({ ok: true, text: kind === 'logo' ? 'Logo saved. Tell Claude: "use the client logo".' : 'Saved. Tell Claude which images to use (they are listed in offer-data.json).' })
+    if (latest) setAssets(latest)
+    window.dispatchEvent(new Event('studio:assets')) // the preview reloads with the new logo
+    setMsg({ ok: true, text: kind === 'logo' ? 'Logo saved: it is on the offer now (header and summary card). Claude can also use it in the mockups.' : 'Saved. Tell Claude which images to use (they are listed in offer-data.json).' })
   }
 
   async function remove(name: string): Promise<void> {
     const r = await fetch(`${api}?name=${encodeURIComponent(name)}`, { method: 'DELETE' })
-    if (r.ok) setAssets(((await r.json()) as { assets: Asset[] }).assets)
+    if (r.ok) {
+      setAssets(((await r.json()) as { assets: Asset[] }).assets)
+      window.dispatchEvent(new Event('studio:assets'))
+    }
   }
 
+  // Thumbnails are served by the local preview server (the files live on this Mac until "push")
+  const preview = `http://${slug}.localhost:3100`
   const logo = assets.find((a) => a.logo)
   const images = assets.filter((a) => !a.logo)
   return (
@@ -55,7 +65,7 @@ export function StudioAssets({ slug }: { slug: string }): React.ReactElement {
       <button type="button" onClick={() => logoRef.current?.click()} disabled={busy} className="flex h-10 min-w-[7rem] items-center justify-center rounded-md border border-dashed border-border bg-white px-2" title={logo ? 'Replace the logo' : 'Upload the logo'}>
         {logo ? (
           // eslint-disable-next-line @next/next/no-img-element -- local preview of a just-uploaded file
-          <img src={`${logo.path}?v=${logo.size}`} alt="Client logo" className="max-h-8 max-w-[9rem] object-contain" />
+ <img src={`${preview}${logo.path}?v=${logo.size}`} alt="Client logo" className="max-h-8 max-w-[9rem] object-contain" />
         ) : (
           <span className="flex items-center gap-1 text-xs text-slate-500">
             <ImagePlus className="h-4 w-4" aria-hidden /> Upload
@@ -69,7 +79,7 @@ export function StudioAssets({ slug }: { slug: string }): React.ReactElement {
         {images.map((a) => (
           <span key={a.name} className="group relative" title={a.path}>
             {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
-            <img src={a.path} alt={a.name} className="h-10 w-14 rounded border border-border object-cover" />
+ <img src={`${preview}${a.path}`} alt={a.name} className="h-10 w-14 rounded border border-border object-cover" />
             <button type="button" onClick={() => void remove(a.name)} aria-label={`Remove ${a.name}`} className="absolute -end-1.5 -top-1.5 hidden rounded-full bg-rose-600 p-0.5 text-white group-hover:block">
               <Trash2 className="h-3 w-3" />
             </button>

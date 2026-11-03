@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, FileText, Lock, PenLine, ShieldCheck } from 'lucide-react'
+import { Check, Download, ExternalLink, FileText, Lock, PenLine, ShieldCheck, X } from 'lucide-react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { GROUP_LABEL, MODULE_GROUPS, allModulesTotal, formatModulePrice, formatPrice, normalizeSelection, periodOf, recurringTotals, selectionTotal, type OfferModuleItem } from '@/lib/offer-modules'
 import { cn } from '@/lib/utils'
@@ -342,6 +342,46 @@ export interface SignPanelProps {
   preview: boolean
 }
 
+/** The agreement in a popup on the page (served by /api/public/offers/<slug>/contract), with download and open-in-tab. */
+function ContractViewer({ href, title, onClose, labels }: { href: string; title: string; onClose: () => void; labels: { download: string; open: string; close: string } }): React.ReactElement {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose()
+    }
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [onClose])
+  return (
+    <div role="dialog" aria-modal="true" aria-label={title} className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 p-2 backdrop-blur-sm sm:p-6" onClick={onClose}>
+      <div className="flex h-full max-h-[920px] w-full max-w-4xl flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl ring-1 ring-slate-900/10" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 border-b border-slate-900/[0.06] px-4 py-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--offer-accent)_10%,white)] text-[var(--offer-accent)]">
+            <FileText className="h-4 w-4" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">{title}</span>
+          <a href={`${href}?download=1`} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium text-slate-600 ring-1 ring-slate-900/10 hover:text-slate-900">
+            <Download className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">{labels.download}</span>
+          </a>
+          <a href={href} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium text-slate-600 ring-1 ring-slate-900/10 hover:text-slate-900">
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+            <span className="hidden sm:inline">{labels.open}</span>
+          </a>
+          <button type="button" onClick={onClose} aria-label={labels.close} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900/[0.05] text-slate-600 hover:bg-slate-900/10">
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+        <iframe src={`${href}#view=FitH`} title={title} className="min-h-0 w-full flex-1 bg-slate-100" />
+      </div>
+    </div>
+  )
+}
+
 function StepTitle({ n, children }: { n: number; children: ReactNode }): React.ReactElement {
   return (
     <div className="mb-3 flex items-center gap-2.5 text-[13px] font-semibold text-slate-900">
@@ -360,6 +400,8 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState<{ name: string; at: string } | null>(signed)
+  const [viewing, setViewing] = useState(false)
+  const closeViewer = useCallback(() => setViewing(false), [])
 
   if (done) {
     return (
@@ -409,13 +451,13 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
       {/* 1. The agreement */}
       <StepTitle n={1}>{ui('contract', lang)}</StepTitle>
       {contractUrl ? (
-        <a href={contractUrl} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-2xl bg-slate-50 p-3.5 ring-1 ring-slate-900/[0.06] transition hover:ring-[var(--offer-accent)]">
+        <button type="button" onClick={() => setViewing(true)} className="group flex w-full items-center gap-3 rounded-2xl bg-slate-50 p-3.5 text-start ring-1 ring-slate-900/[0.06] transition hover:ring-[var(--offer-accent)]">
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[var(--offer-accent)] ring-1 ring-slate-900/[0.06]">
             <FileText className="h-5 w-5" aria-hidden />
           </span>
           <span className="flex-1 text-sm font-semibold text-slate-900">{ui('readContract', lang)}</span>
-          <span className="text-slate-400 transition group-hover:text-[var(--offer-accent)]">↗</span>
-        </a>
+          <span className="rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold text-[var(--offer-accent)] ring-1 ring-slate-900/[0.06] transition group-hover:ring-[var(--offer-accent)]">{ui('view', lang)}</span>
+        </button>
       ) : (
         <div className="rounded-2xl bg-slate-50 p-3.5 text-sm text-slate-500 ring-1 ring-slate-900/[0.06]">{ui('noContract', lang)}</div>
       )}
@@ -503,6 +545,7 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
         <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
         {ui('secureNote', lang)}
       </p>
+      {viewing && contractUrl ? <ContractViewer href={contractUrl} title={ui('contract', lang)} onClose={closeViewer} labels={{ download: ui('download', lang), open: ui('openTab', lang), close: ui('close', lang) }} /> : null}
     </form>
   )
 }

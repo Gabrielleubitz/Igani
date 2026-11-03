@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
-import { isOwnCloudinaryUrl } from '@/lib/cloudinary'
+import { downloadContract } from '@/lib/cloudinary'
 import { sendOfferSignedEmail } from '@/lib/email'
 import { appUrl, env } from '@/lib/env'
 import { formatModulePrice, formatPrice, normalizeSelection, parseModules, recurringTotals, selectionTotal } from '@/lib/offer-modules'
@@ -22,19 +22,11 @@ const Body = z.object({
   modules: z.array(z.string().max(80)).max(60),
   lang: z.enum(['he', 'en']).default('he'),
 })
-const MAX_CONTRACT_BYTES = 15 * 1024 * 1024
 
 function clientIp(req: Request): string {
   return req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
 }
 
-async function fetchContract(url: string): Promise<Uint8Array> {
-  const res = await fetch(url, { signal: AbortSignal.timeout(15_000), cache: 'no-store' })
-  if (!res.ok) throw new Error(`contract download failed (${res.status})`)
-  const buf = new Uint8Array(await res.arrayBuffer())
-  if (buf.byteLength > MAX_CONTRACT_BYTES) throw new Error('contract is too large')
-  return buf
-}
 
 /**
  * The client signs a live offer: the contract gets a signature page, the signed PDF is saved on the lead,
@@ -55,7 +47,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   })
   if (!offer || offer.status === 'DRAFT' || offer.status === 'ARCHIVED') return NextResponse.json({ error: 'Offer not found' }, { status: 404 })
   if (offer.status === 'SIGNED') return NextResponse.json({ error: 'This offer was already signed.' }, { status: 409 })
-  if (!offer.contractUrl || !isOwnCloudinaryUrl(offer.contractUrl)) return NextResponse.json({ error: 'The agreement is not attached yet. Please contact us.' }, { status: 409 })
+  if (!offer.contractPublicId) return NextResponse.json({ error: 'The agreement is not attached yet. Please contact us.' }, { status: 409 })
 
   const modules = parseModules(offer.modules)
   const selected = normalizeSelection(modules, body.modules)
@@ -71,7 +63,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   let pdf: Uint8Array
   try {
     pdf = await buildSignedPdf({
-      contract: await fetchContract(offer.contractUrl),
+      contract: await downloadContract(offer.contractPublicId),
       offerTitle: offer.title,
       clientName,
       offerUrl,

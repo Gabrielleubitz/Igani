@@ -40,3 +40,17 @@ export function isOwnCloudinaryUrl(url: string): boolean {
     return false
   }
 }
+
+/**
+ * The contract's bytes, through Cloudinary's authenticated download API. Public delivery of PDFs is blocked on many
+ * accounts ("deny or ACL failure"), so we never rely on the public URL: the server signs a short-lived download.
+ */
+export async function downloadContract(publicId: string): Promise<Uint8Array> {
+  if (!cloudinaryConfigured()) throw new Error('Cloudinary is not set up for the CRM.')
+  const url = client().utils.private_download_url(publicId, '', { resource_type: 'raw', type: 'upload', expires_at: Math.floor(Date.now() / 1000) + 300 })
+  const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(20_000) })
+  if (!res.ok) throw new Error(`Cloudinary download failed (${res.status} ${res.headers.get('x-cld-error') ?? ''})`.trim())
+  const buf = new Uint8Array(await res.arrayBuffer())
+  if (buf.byteLength > 20 * 1024 * 1024) throw new Error('The contract is too large.')
+  return buf
+}
