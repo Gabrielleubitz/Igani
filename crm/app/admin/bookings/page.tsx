@@ -82,7 +82,36 @@ export default async function BookingsPage({ searchParams }: { searchParams: { f
             ))}
           </div>
         </div>
-        <div className="overflow-x-auto rounded-lg border">
+        {/* Phones: a card per booking */}
+        <ul className="divide-y overflow-hidden rounded-lg border sm:hidden">
+          {recent.map((b) => (
+            <li key={b.id} className="space-y-1 px-3 py-3 text-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  {b.leadId ? (
+                    <Link href={`/sales/leads/${b.leadId}`} className="block truncate font-medium underline-offset-4 hover:underline">
+                      {b.guestName}
+                    </Link>
+                  ) : (
+                    <span className="block truncate font-medium">{b.guestName}</span>
+                  )}
+                  <div className="truncate text-xs text-muted-foreground">{b.guestEmail}</div>
+                </div>
+                <Badge variant={b.status === 'CONFIRMED' ? 'success' : b.status === 'PENDING' ? 'warning' : 'outline'}>{b.status === 'CONFIRMED' ? (b.endTime < now ? 'Held' : 'Confirmed') : b.status === 'PENDING' ? 'Pending' : 'Cancelled'}</Badge>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {formatDateTime(b.startTime, me.timeZone)} · {b.host.name ?? b.host.email} · {b.source === 'PUBLIC_PAGE' ? 'Booking page' : 'Sales invite'}
+              </div>
+              {b.meetUrl && b.status === 'CONFIRMED' && b.endTime >= now ? (
+                <a href={b.meetUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline-offset-4 hover:underline">
+                  Meet link
+                </a>
+              ) : null}
+            </li>
+          ))}
+          {recent.length === 0 ? <li className="p-6 text-center text-sm text-muted-foreground">No bookings here yet.</li> : null}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-lg border sm:block">
           <table className="w-full min-w-[640px] text-left text-sm">
             <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>

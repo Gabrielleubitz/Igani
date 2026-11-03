@@ -483,7 +483,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent className="pt-[var(--card-pad)]">
               <LeadActions leadId={lead.id} archived={archivedByMe} canArchive={canArchive && user.role !== 'MARKETING'} isAdmin={isAdmin} name={leadName(lead)} />
             </CardContent>
           </Card>
@@ -491,7 +491,7 @@ export default async function LeadPage({ params }: { params: { id: string } }): 
 
         <div className="space-y-6 lg:col-span-2">
           <Card>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-4 pt-[var(--card-pad)]">
               <LogTouchButtons leadId={lead.id} />
               <AddNoteForm leadId={lead.id} />
             </CardContent>

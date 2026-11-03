@@ -20,7 +20,7 @@ export default async function TeamPerformancePage(): Promise<React.ReactElement>
   return (
     <div className="space-y-6">
       <PageIntro title="Sales team" hint="Who is closing the most, what is on their plate, and a place to keep their details up to date. Click a name for the full picture." />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           { label: 'Top performer', value: best && best.wonValue > 0 ? best.name : '—', sub: best && best.wonValue > 0 ? `₪${formatMoney(best.wonValue)} won` : 'No wins yet' },
           { label: 'Deals won (all reps)', value: String(totals.won), sub: `₪${formatMoney(totals.value)} in total` },
@@ -28,7 +28,7 @@ export default async function TeamPerformancePage(): Promise<React.ReactElement>
           { label: 'Salespeople', value: String(reps.length), sub: `${reps.filter((r) => r.active).length} active` },
         ].map((c) => (
           <Card key={c.label}>
-            <CardContent className="pt-6">
+            <CardContent className="pt-[var(--card-pad)]">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">{c.label}</div>
               <div className="mt-1 truncate text-2xl font-semibold">{c.value}</div>
               <div className="text-xs text-muted-foreground">{c.sub}</div>

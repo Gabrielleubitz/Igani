@@ -56,10 +56,10 @@ export default async function TeamMemberPage({ params }: { params: { id: string 
         ← Sales team
       </Link>
       <PageIntro title={display} hint={`${user.email ?? ''} · ${user.role === 'ADMIN' ? 'Admin' : 'Sales'} · ${user.timeZone.replaceAll('_', ' ')}`} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {cards.map((c) => (
           <Card key={c.label}>
-            <CardContent className="pt-6">
+            <CardContent className="pt-[var(--card-pad)]">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">{c.label}</div>
               <div className="mt-1 text-2xl font-semibold">{c.value}</div>
               <div className="text-xs text-muted-foreground">{c.sub}</div>

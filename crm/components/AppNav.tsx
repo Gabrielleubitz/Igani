@@ -18,6 +18,7 @@ import {
   FileSignature,
   TrendingUp,
   UserCog,
+  Video,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -44,6 +45,7 @@ const ICONS: Record<string, LucideIcon> = {
   performance: TrendingUp,
   audit: ScrollText,
   offers: FileSignature,
+  teamMeetings: Video,
   settings: Settings,
 }
 
@@ -120,7 +122,7 @@ export function MobileMenu({ groups }: { groups: NavGroup[] }): React.ReactEleme
         <span aria-hidden>{open ? '✕' : '☰'}</span> Menu
       </button>
       {open ? (
-        <div id="mobile-menu" className="absolute inset-x-0 top-full z-40 max-h-[calc(100vh-4rem)] overflow-y-auto border-b bg-background p-4 shadow-lg">
+        <div id="mobile-menu" className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-4rem)] overflow-y-auto border-b bg-background p-4 shadow-lg">
           <AppNav groups={groups} expanded />
         </div>
       ) : null}

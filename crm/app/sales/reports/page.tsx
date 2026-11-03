@@ -78,7 +78,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
 
   const Tile = ({ label, value, sub }: { label: string; value: string | number; sub?: string }): React.ReactElement => (
     <Card>
-      <CardContent className="pt-6">
+      <CardContent className="pt-[var(--card-pad)]">
         <div className="text-3xl font-semibold">{value}</div>
         <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
         {sub ? <div className="mt-1 text-xs text-muted-foreground">{sub}</div> : null}
@@ -101,7 +101,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
           </div>
         ) : null}
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Tile label="Total leads" value={r.total} />
         <Tile label="New (last 30 days)" value={last30} />
         <Tile label="Won" value={r.byStatus.WON ?? 0} />
@@ -117,7 +117,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: { sc
         </div>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {user.role === 'ADMIN' ? (
           <>
             <Tile label="Pipeline value" value={`₪${formatMoney(totalPipeline)}`} sub={`Quoted price added (30d): ₪${formatMoney(cur.added)} · ${delta(cur.added, prev.added)}`} />

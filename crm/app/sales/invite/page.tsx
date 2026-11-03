@@ -47,7 +47,7 @@ export default async function InvitePage({ searchParams }: { searchParams: { lea
         </div>
       ) : null}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-[var(--card-pad)]">
           <InviteForm
             defaultDuration={defaultDuration}
             leads={all.map((l) => ({ id: l.id, email: l.email ?? '', name: leadName(l), company: l.company }))}

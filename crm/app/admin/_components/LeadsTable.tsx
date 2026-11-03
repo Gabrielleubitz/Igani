@@ -181,7 +181,7 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
         <Input aria-label="Instant search" placeholder="Search name, email, company, phone…" value={search} onChange={(e) => setSearch(e.target.value)} className="h-9 w-full sm:w-72" />
-        <details className="relative text-sm">
+        <details className="relative hidden text-sm sm:block">
           <summary className="cursor-pointer rounded-md border px-3 py-1.5">Columns</summary>
           <div className="absolute z-10 mt-1 space-y-1 rounded-md border bg-card p-3 shadow">
             {table.getAllLeafColumns().filter((c) => c.getCanHide()).map((c) => (
@@ -241,7 +241,66 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
         {msg ? <span className="text-xs text-muted-foreground">{msg}</span> : null}
       </div>
       ) : null}
-      <div className="overflow-x-auto rounded-lg border">
+      {/* Phones: one card per contact, with the same stage / owner controls */}
+      <ul className="divide-y overflow-hidden rounded-lg border sm:hidden">
+        {rows.length > 1 ? (
+          <li className="flex items-center gap-2 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <input type="checkbox" aria-label="Select all on this page" checked={rows.length > 0 && sel.size === rows.length} onChange={(e) => setSel(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())} />
+            Select all
+          </li>
+        ) : null}
+        {rows.map((l) => {
+          const canMove = isAdmin || l.assignedToId === currentUserId
+          return (
+            <li key={l.id} className={`space-y-2 px-3 py-3 ${sel.has(l.id) ? 'bg-primary/5' : ''}`}>
+              <div className="flex items-start gap-3">
+                <input type="checkbox" className="mt-1" aria-label={`Select ${l.name}`} checked={sel.has(l.id)} onChange={() => toggle(l.id)} />
+                <div className="min-w-0 flex-1">
+                  <Link href={`/sales/leads/${l.id}`} className="block truncate font-medium underline-offset-4 hover:underline">
+                    {l.name}
+                  </Link>
+                  <div className="truncate text-xs text-muted-foreground">{[l.company, l.email].filter(Boolean).join(' · ') || 'no email'}</div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted-foreground">
+                    {l.tags.map((t) => (
+                      <Badge key={t} variant="secondary">
+                        {t}
+                      </Badge>
+                    ))}
+                    <span>{l.source}</span>
+                    <span>· {l.createdAt.slice(0, 10)}</span>
+                    {isAdmin && l.quotedPrice != null ? <span>· {formatMoney(l.quotedPrice)}</span> : null}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 ps-7">
+                <StageSelect
+                  leadId={l.id}
+                  status={l.status}
+                  quotedPrice={l.quotedPrice}
+                  isAdmin={isAdmin}
+                  disabled={!canMove}
+                  className="h-8 w-full"
+                  title={canMove ? 'Change stage' : l.assignedToId ? 'Only the owner can change the stage' : 'Open the contact and claim it to change the stage'}
+                />
+                {isAdmin ? (
+                  <Select aria-label={`Owner of ${l.name}`} className="h-8 w-full" disabled={pending} value={l.assignedToId ?? ''} onChange={(e) => run(() => assignLead(l.id, e.target.value || null), 'Owner updated.')}>
+                    <option value="">Unassigned</option>
+                    {reps.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </Select>
+                ) : (
+                  <span className="self-center truncate text-xs text-muted-foreground">{l.owner ?? 'Unassigned'}</span>
+                )}
+              </div>
+            </li>
+          )
+        })}
+        {rows.length === 0 ? <li className="p-8 text-center text-sm text-muted-foreground">No contacts match. Try clearing the search or filters.</li> : null}
+      </ul>
+      <div className="hidden overflow-x-auto rounded-lg border sm:block">
         <table className="w-full text-left text-sm">
           <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
             {table.getHeaderGroups().map((hg) => (

@@ -35,7 +35,7 @@ export default async function TeamMeetingPage(): Promise<React.ReactElement> {
         <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">There is nobody you can add yet.</p>
       ) : (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-[var(--card-pad)]">
             <TeamMeetingForm teammates={teammates.map((t) => ({ id: t.id, label: t.name ?? t.email }))} adminsOnly={user.role !== 'ADMIN'} defaultDuration={defaultDuration} timeZone={me.timeZone} />
           </CardContent>
         </Card>

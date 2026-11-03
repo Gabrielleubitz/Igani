@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 @layer base {
+  /* Card padding: 16px on phones, 24px from tablet up (see components/ui/card.tsx) */
+  :root {
+    --card-pad: 1rem;
+  }
+  @media (min-width: 640px) {
+    :root {
+      --card-pad: 1.5rem;
+    }
+  }
   :root {
     /* Igani brand: ink #002040, surface #204060, accent #4080E0 */
     --background: 210 100% 6%;

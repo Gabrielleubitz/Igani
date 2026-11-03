@@ -202,12 +202,75 @@ export function OfferEditor({ value, aiEnabled = false }: { value: OfferEditorVa
       ) : null}
 
       <div className="space-y-2">
-        <div className="flex items-baseline justify-between">
-          <h3 className="font-semibold">Modules and prices</h3>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h3 className="shrink-0 font-semibold">Modules and prices</h3>
           <span className="text-xs text-muted-foreground">Key = how Claude refers to the module in the written content. Core modules are always required.</span>
         </div>
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full min-w-[760px] text-sm">
+        {/* Phones: one card per module, same fields */}
+        <ul className="space-y-2 md:hidden">
+          {modules.map((m, i) => (
+            <li key={i} className="space-y-2 rounded-md border border-border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-muted-foreground">Module {i + 1}</span>
+                <div className="flex items-center">
+                  <button type="button" className="px-2 py-1 text-muted-foreground hover:text-foreground" onClick={() => move(i, -1)} disabled={locked} aria-label="Move up">
+                    ↑
+                  </button>
+                  <button type="button" className="px-2 py-1 text-muted-foreground hover:text-foreground" onClick={() => move(i, 1)} disabled={locked} aria-label="Move down">
+                    ↓
+                  </button>
+                  <button type="button" className="px-2 py-1 text-rose-400 hover:text-rose-300" onClick={() => setModules((ms) => ms.filter((_, n) => n !== i))} disabled={locked} aria-label="Remove">
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <Input value={m.name} onChange={(e) => set(i, { name: e.target.value, ...(m.id.startsWith('module-') && e.target.value ? { id: slugify(e.target.value).slice(0, 30) || m.id } : {}) })} disabled={locked} placeholder="Name, e.g. Back office" aria-label="Name" />
+              <Input value={m.summary ?? ''} onChange={(e) => set(i, { summary: e.target.value || undefined })} disabled={locked} placeholder="One-line description (optional)" className="h-8 text-xs text-muted-foreground" aria-label="Description" />
+              <div className="grid grid-cols-2 gap-2">
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  Price
+                  <Input inputMode="numeric" value={m.price || ''} onChange={(e) => set(i, { price: toInt(e.target.value) ?? 0 })} disabled={locked} placeholder="Set price" className={`tabular-nums text-foreground ${m.price ? '' : 'border-amber-500/60'}`} />
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  Billing
+                  <select value={m.period ?? 'once'} onChange={(e) => set(i, { period: e.target.value === 'once' ? undefined : (e.target.value as BillingPeriod) })} disabled={locked} className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground">
+                    {BILLING_PERIODS.map((p) => (
+                      <option key={p} value={p}>
+                        {PERIOD_LABEL[p].en}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  Group
+                  <select value={m.group} onChange={(e) => set(i, { group: e.target.value as ModuleGroup })} disabled={locked} className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground">
+                    {MODULE_GROUPS.map((g) => (
+                      <option key={g} value={g}>
+                        {GROUP_LABEL[g].en}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1 text-xs text-muted-foreground">
+                  Key
+                  <Input value={m.id} onChange={(e) => set(i, { id: slugify(e.target.value) })} disabled={locked} className="font-mono text-xs text-foreground" />
+                </label>
+              </div>
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={m.group === 'core' || m.required} disabled={locked || m.group === 'core'} onChange={(e) => set(i, { required: e.target.checked })} />
+                  Required
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={m.group === 'core' || m.required || m.included} disabled={locked || m.group === 'core' || m.required} onChange={(e) => set(i, { included: e.target.checked })} />
+                  In package
+                </label>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden overflow-x-auto rounded-md border border-border md:block">
+          <table className="w-full min-w-[820px] text-sm">
             <thead className="bg-muted/40 text-xs text-muted-foreground">
               <tr>
                 <th className="px-2 py-2 text-start font-medium">Name</th>
@@ -223,7 +286,7 @@ export function OfferEditor({ value, aiEnabled = false }: { value: OfferEditorVa
             <tbody>
               {modules.map((m, i) => (
                 <tr key={i} className="border-t border-border">
-                  <td className="space-y-1 p-1.5">
+                  <td className="min-w-[14rem] space-y-1 p-1.5">
                     <Input value={m.name} onChange={(e) => set(i, { name: e.target.value, ...(m.id.startsWith('module-') && e.target.value ? { id: slugify(e.target.value).slice(0, 30) || m.id } : {}) })} disabled={locked} placeholder="e.g. Back office" />
                     <Input value={m.summary ?? ''} onChange={(e) => set(i, { summary: e.target.value || undefined })} disabled={locked} placeholder="One-line description (optional)" className="h-8 text-xs text-muted-foreground" />
                   </td>
