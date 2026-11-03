@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { ADMIN_COOKIE, adminApiNeedsSession, adminSecret, verifyAdminToken } from '@/lib/admin-session'
 
 const FUNNEL_PATHS = ['/realestate']
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  // Admin APIs: require the server-issued admin session cookie (see /api/admin/session).
+  if (adminApiNeedsSession(request.nextUrl.pathname, request.method)) {
+    const ok = await verifyAdminToken(request.cookies.get(ADMIN_COOKIE)?.value, adminSecret())
+    if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   const hostname = request.headers.get('host') || ''
 
   // The funnels subdomain only serves the real estate page
@@ -25,18 +32,6 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-
-  // Admin route protection (basic protection - should be enhanced with proper auth)
-  if (request.nextUrl.pathname.startsWith('/admin')) {
-    const authHeader = request.headers.get('authorization')
-    const adminKey = process.env.ADMIN_SECRET_KEY
-    
-    if (!adminKey || authHeader !== `Bearer ${adminKey}`) {
-      // In production, implement proper authentication
-      // For now, just allow access - implement NextAuth or similar
-      console.warn('Admin access without proper authentication')
-    }
-  }
 
   // Rate limiting for API routes (basic implementation)
   if (request.nextUrl.pathname.startsWith('/api/')) {

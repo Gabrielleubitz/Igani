@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
     // Get dependencies dynamically
     const { OpenAI, prisma, GeneratedCopySchema } = await getDependencies()
 
+    // Only paid orders get copy generated (stops anyone on the internet spending OpenAI credits).
+    const order = typeof orderId === 'string' ? await prisma.order.findUnique({ where: { id: orderId }, select: { status: true } }) : null
+    if (!order || order.status !== 'PAID') {
+      return NextResponse.json({ error: 'Order not found or not paid' }, { status: 404 })
+    }
+
     const questionnaireData = answers as QuestionnaireData
 
     const systemPrompt = `You are a professional copywriter specializing in tech meetups and events. You create engaging, concise copy that resonates with builders, founders, and investors.

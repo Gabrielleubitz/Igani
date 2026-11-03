@@ -16,23 +16,26 @@ export default function AdminPage() {
   const [shake, setShake] = useState(false)
 
   useEffect(() => {
-    // Check if already authenticated in session
-    const auth = sessionStorage.getItem('adminAuth')
-    if (auth === 'true') {
-      setIsAuthenticated(true)
-    }
+    // The server decides: an httpOnly admin cookie is set only after the password is checked server-side.
+    fetch('/api/admin/session', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d: { authenticated?: boolean }) => setIsAuthenticated(Boolean(d.authenticated)))
+      .catch(() => setIsAuthenticated(false))
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ''
-    if (password === adminPassword && adminPassword) {
+    const res = await fetch('/api/admin/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    }).catch(() => null)
+    if (res?.ok) {
       setIsAuthenticated(true)
-      sessionStorage.setItem('adminAuth', 'true')
       setError('')
     } else {
-      setError('Incorrect password')
+      setError(res?.status === 503 ? 'Admin password is not configured on the server' : 'Incorrect password')
       setShake(true)
       setTimeout(() => setShake(false), 500)
       setPassword('')

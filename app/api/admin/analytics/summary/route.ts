@@ -33,15 +33,17 @@ export async function GET(request: Request) {
     const startISO = toISODate(dateDaysAgo(days))
     const endISO = toISODate(new Date())
 
+    // Range on one field only (served by Firestore's automatic index); pageKey is filtered here, so no
+    // composite index has to exist in the Firebase project.
     const q = query(
       collection(db, 'analytics_page_daily'),
-      where('pageKey', '==', pageKey),
       where('viewDate', '>=', startISO),
       where('viewDate', '<=', endISO)
     )
     const dailySnap = await getDocs(q)
 
     const dailyViews = dailySnap.docs
+      .filter((row) => (row.data() as { pageKey?: string }).pageKey === pageKey)
       .map((row) => {
         const data = row.data() as { viewDate?: string; views?: number }
         return {

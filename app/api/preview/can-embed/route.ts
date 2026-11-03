@@ -11,6 +11,11 @@ const PRIVATE_HOST_PATTERNS = [
   /^192\.168\./,
   /^172\.(1[6-9]|2\d|3[01])\./,
   /^\[::1\]$/,
+  /^0\./,
+  /^169\.254\./, // cloud metadata / link-local
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, // carrier-grade NAT
+  /^\[(fc|fd|fe80|::ffff)/i, // private / link-local / IPv4-mapped IPv6
+  /\.(local|internal|localhost)$/i,
 ]
 
 function isPublicHttpUrl(url: string): boolean {
