@@ -25,6 +25,21 @@ Module `id`s there are the keys for `content.modules`. If a module is missing or
   Use `next/image` with files from `/offers/<slug>/...` for photos and logos.
 - `flows[].steps[].screen` must match a key in `screens`.
 
+## Build screens from blocks (lego bricks)
+
+`offers/blocks/` is the shared component library (also browsable at http://localhost:3100/admin/offers/blocks).
+`offers/blocks/catalog.tsx` lists every block with its id, what it is for, which frame it fits (page / phone / desktop) and a
+working sample: **read it before writing a screen**.
+
+- Compose screens from blocks: `import { AppScreen, ItemList } from '../blocks/app'`, `'../blocks/dashboard'`, `'../blocks/marketing'`,
+  `'../blocks/base'` (Icon, Pill, Avatar, Picture, AccentButton). Wrap phone screens in `AppScreen`, admin screens in `DashboardShell`.
+- Change things through **props** (text, images, items, icons, tone). **Never edit files in `offers/blocks/`** to fit one offer:
+  every other offer uses them too. If a block can't do what's needed, write a small local component in `screens.tsx` next to it.
+- When the admin names blocks ("use HeroSplit and PricingTiers"), use exactly those ids.
+- Colours come from the offer accent (`client.accent` in content.tsx); don't hard-code brand colours in screens.
+- Small requests ("make the button say Book now", "add a third testimonial") are prop changes. Keep them small.
+- The agreed screens are exported later (Admin → offer → Export UI) as the starting point for the real build, so keep them clean.
+
 ## Writing style
 
 - Hebrew is the default for Israeli clients (`defaultLang: 'he'`), English for others. Always fill **both** languages.

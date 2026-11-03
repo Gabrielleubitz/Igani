@@ -548,6 +548,9 @@ model Offer {
   /// The signed PDF, stored on the lead as a LeadDocument
   signedDocumentId String?
   publishedAt      DateTime?
+  /// Latest call-transcript analysis (client summary, suggested modules, what was left out, open questions); feeds BUILD.md
+  brief            Json?
+  briefAt          DateTime?
   createdById      String?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt

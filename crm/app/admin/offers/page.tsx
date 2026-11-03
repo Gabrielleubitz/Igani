@@ -24,9 +24,14 @@ export default async function OffersPage({ searchParams }: { searchParams: { lea
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro title="Offers" hint="Proposal pages for leads, each at its own address (name.app.igani.co). You set the numbers and contract here; Claude writes the rest in the studio." />
-        <Popover label="+ New offer" panelClassName="sm:w-[min(92vw,34rem)]">
-          <NewOfferForm leads={leads} initialLeadId={searchParams.lead} />
-        </Popover>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/offers/blocks" className="text-sm text-muted-foreground hover:text-foreground">
+            Block library →
+          </Link>
+          <Popover label="+ New offer" panelClassName="sm:w-[min(92vw,34rem)]">
+            <NewOfferForm leads={leads} initialLeadId={searchParams.lead} />
+          </Popover>
+        </div>
       </div>
       {offers.length === 0 ? <EmptyState title="No offers yet" description="Create one for a lead, then open it in the studio and tell Claude what to build." /> : null}
       <div className="grid gap-3">

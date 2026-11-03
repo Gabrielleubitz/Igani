@@ -174,6 +174,8 @@ export async function suggestModulesFromTranscript(input: z.input<typeof Transcr
     } catch (err) {
       throw new BookingError(err instanceof Error ? err.message : 'The AI step failed.', 'INVALID_STATE')
     }
+    // Kept on the offer: the exported BUILD.md uses the client summary, what was left out and the open questions
+    await prisma.offer.update({ where: { id: data.id }, data: { brief: result as unknown as Prisma.InputJsonValue, briefAt: new Date() } })
     await logActivity({ entityType: 'OFFER', entityId: data.id, action: 'offer.modules_suggested', actorId: user.id, metadata: { chars: data.transcript.length, suggested: result.modules.length } })
     return { ok: true, data: result }
   } catch (err) {

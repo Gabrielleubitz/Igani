@@ -5,7 +5,11 @@ const nextConfig = {
   images: { remotePatterns: [{ protocol: 'https', hostname: 'lh3.googleusercontent.com' }] },
   experimental: {
     // The signing route reads the Hebrew-capable fonts from disk to build the signed PDF
-    outputFileTracingIncludes: { '/api/public/offers/[slug]/sign': ['./lib/fonts/**'] },
+    outputFileTracingIncludes: {
+      '/api/public/offers/[slug]/sign': ['./lib/fonts/**'],
+      // The export zips the offer's source files (screens, blocks, images) as they are in the repo
+      '/api/admin/offers/[id]/export': ['./offers/**/*', './public/offers/**/*'],
+    },
   },
 }
 

@@ -45,7 +45,14 @@ export default async function OfferAdminPage({ params }: { params: { id: string 
             </Link>
           </p>
         </div>
-        <OfferStatusActions offerId={offer.id} status={offer.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          {offer.status === 'LIVE' || offer.status === 'SIGNED' ? (
+            <a href={`/api/admin/offers/${offer.id}/export`} className={buttonVariants({ variant: offer.status === 'SIGNED' ? 'default' : 'outline', size: 'sm' })} title="A Next.js project with the agreed screens and BUILD.md (takes 1–2 minutes)">
+              Export UI (.zip)
+            </a>
+          ) : null}
+          <OfferStatusActions offerId={offer.id} status={offer.status} />
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
