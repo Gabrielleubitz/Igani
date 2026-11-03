@@ -6,7 +6,7 @@ import { createOffer, deleteDraftOffer, saveOfferContract, setOfferStatus, sugge
 import type { TranscriptModules } from '@/lib/offer-transcript-ai'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { GROUP_LABEL, MODULE_GROUPS, allModulesTotal, defaultSelection, formatPrice, selectionTotal, slugProblem, slugify, type ModuleGroup, type OfferModuleItem } from '@/lib/offer-modules'
+import { BILLING_PERIODS, GROUP_LABEL, MODULE_GROUPS, PERIOD_LABEL, allModulesTotal, defaultSelection, formatPrice, recurringTotals, selectionTotal, slugProblem, slugify, type BillingPeriod, type ModuleGroup, type OfferModuleItem } from '@/lib/offer-modules'
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }): React.ReactElement {
   return (
@@ -174,7 +174,7 @@ export function OfferEditor({ value, aiEnabled = false }: { value: OfferEditorVa
         <Field label="Web address" hint={value.status === 'DRAFT' ? undefined : 'Locked once published'}>
           <Input value={slug} onChange={(e) => setSlug(slugify(e.target.value))} disabled={locked || value.status !== 'DRAFT'} />
         </Field>
-        <Field label="Monthly fee">
+        <Field label="Fixed monthly fee" hint="Optional, on top of monthly modules">
           <Input inputMode="numeric" value={monthly} onChange={(e) => setMonthly(e.target.value)} placeholder="none" disabled={locked} />
         </Field>
         <div className="grid grid-cols-2 gap-3">
@@ -214,6 +214,7 @@ export function OfferEditor({ value, aiEnabled = false }: { value: OfferEditorVa
                 <th className="px-2 py-2 text-start font-medium">Key</th>
                 <th className="px-2 py-2 text-start font-medium">Group</th>
                 <th className="px-2 py-2 text-start font-medium">Price</th>
+                <th className="px-2 py-2 text-start font-medium">Billing</th>
                 <th className="px-2 py-2 text-center font-medium">Required</th>
                 <th className="px-2 py-2 text-center font-medium">In package</th>
                 <th className="px-2 py-2" />
@@ -240,6 +241,15 @@ export function OfferEditor({ value, aiEnabled = false }: { value: OfferEditorVa
                   </td>
                   <td className="p-1.5">
                     <Input inputMode="numeric" value={m.price || ''} onChange={(e) => set(i, { price: toInt(e.target.value) ?? 0 })} disabled={locked} placeholder="Set price" className={`w-28 tabular-nums ${m.price ? '' : 'border-amber-500/60'}`} />
+                  </td>
+                  <td className="p-1.5">
+                    <select value={m.period ?? 'once'} onChange={(e) => set(i, { period: e.target.value === 'once' ? undefined : (e.target.value as BillingPeriod) })} disabled={locked} className="h-10 rounded-md border border-input bg-background px-2 text-sm" aria-label="Billing">
+                      {BILLING_PERIODS.map((p) => (
+                        <option key={p} value={p}>
+                          {PERIOD_LABEL[p].en}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="p-1.5 text-center">
                     <input type="checkbox" checked={m.group === 'core' || m.required} disabled={locked || m.group === 'core'} onChange={(e) => set(i, { required: e.target.checked })} />
@@ -268,8 +278,17 @@ export function OfferEditor({ value, aiEnabled = false }: { value: OfferEditorVa
             + Add module
           </Button>
           <div className="text-sm text-muted-foreground">
-            Recommended package <span className="font-semibold tabular-nums text-foreground">{formatPrice(selectionTotal(modules, defaultSelection(modules)), currency)}</span> · All modules{' '}
-            <span className="tabular-nums">{formatPrice(allModulesTotal(modules), currency)}</span>
+            Recommended package <span className="font-semibold tabular-nums text-foreground">{formatPrice(selectionTotal(modules, defaultSelection(modules)), currency)}</span>
+            {(() => {
+              const r = recurringTotals(modules, defaultSelection(modules), toInt(monthly))
+              return (
+                <>
+                  {r.month ? <span className="tabular-nums"> + {formatPrice(r.month, currency)} / month</span> : null}
+                  {r.year ? <span className="tabular-nums"> + {formatPrice(r.year, currency)} / year</span> : null}
+                </>
+              )
+            })()}{' '}
+            · All one-time modules <span className="tabular-nums">{formatPrice(allModulesTotal(modules), currency)}</span>
           </div>
         </div>
       </div>

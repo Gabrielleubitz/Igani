@@ -4,7 +4,7 @@ import { logActivity } from '@/lib/audit'
 import { isOwnCloudinaryUrl } from '@/lib/cloudinary'
 import { sendOfferSignedEmail } from '@/lib/email'
 import { appUrl, env } from '@/lib/env'
-import { formatPrice, normalizeSelection, parseModules, selectionTotal } from '@/lib/offer-modules'
+import { formatModulePrice, formatPrice, normalizeSelection, parseModules, recurringTotals, selectionTotal } from '@/lib/offer-modules'
 import { SIGNABLE_LEAD_STAGES, publicOfferUrl } from '@/lib/offers'
 import { buildSignedPdf } from '@/lib/offer-sign'
 import { prisma } from '@/lib/prisma'
@@ -60,6 +60,9 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
   const modules = parseModules(offer.modules)
   const selected = normalizeSelection(modules, body.modules)
   const total = selectionTotal(modules, selected)
+  const recurring = recurringTotals(modules, selected, offer.monthlyPrice)
+  const monthlyText = recurring.month ? formatPrice(recurring.month, offer.currency) : null
+  const yearlyText = recurring.year ? formatPrice(recurring.year, offer.currency) : null
   const signedAt = new Date()
   const ip = clientIp(req)
   const clientName = offer.lead.company || [offer.lead.firstName, offer.lead.lastName].filter(Boolean).join(' ') || body.name
@@ -72,9 +75,10 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       offerTitle: offer.title,
       clientName,
       offerUrl,
-      modules: modules.filter((m) => selected.includes(m.id)).map((m) => ({ name: m.name, price: formatPrice(m.price, offer.currency) })),
+      modules: modules.filter((m) => selected.includes(m.id)).map((m) => ({ name: m.name, price: formatModulePrice(m, offer.currency) })),
       oneTimeTotal: formatPrice(total, offer.currency),
-      monthly: offer.monthlyPrice ? formatPrice(offer.monthlyPrice, offer.currency) : null,
+      monthly: monthlyText,
+      yearly: yearlyText,
       signerName: body.name,
       signerEmail: body.email,
       signedAt,
@@ -103,7 +107,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
       await tx.lead.update({ where: { id: offer.leadId }, data: { status: 'SIGNED' } })
       await tx.activityLog.create({ data: { entityType: 'LEAD', entityId: offer.leadId, action: 'lead.status_changed', metadata: { from: offer.lead.status, to: 'SIGNED', auto: 'offer-signed', offerId: offer.id } } })
     }
-    await logActivity({ entityType: 'LEAD', entityId: offer.leadId, action: 'offer.signed', metadata: { offerId: offer.id, slug: offer.slug, signerName: body.name, signerEmail: body.email, total, currency: offer.currency, modules: selected, ip } }, tx)
+    await logActivity({ entityType: 'LEAD', entityId: offer.leadId, action: 'offer.signed', metadata: { offerId: offer.id, slug: offer.slug, signerName: body.name, signerEmail: body.email, total, monthly: recurring.month, yearly: recurring.year, currency: offer.currency, modules: selected, ip } }, tx)
     await createAutoTask(
       {
         leadId: offer.leadId,
@@ -122,7 +126,7 @@ export async function POST(req: Request, { params }: { params: { slug: string } 
 
   // Emails go out after the signature is safely stored; a mail failure must not undo the signature.
   const when = new Intl.DateTimeFormat(body.lang === 'he' ? 'he-IL' : 'en-GB', { timeZone: 'Asia/Jerusalem', dateStyle: 'long', timeStyle: 'short' }).format(signedAt)
-  const common = { signerName: body.name, clientName, offerTitle: offer.title, total: formatPrice(total, offer.currency), monthly: offer.monthlyPrice ? formatPrice(offer.monthlyPrice, offer.currency) : null, signedAt: when, offerUrl }
+  const common = { signerName: body.name, clientName, offerTitle: offer.title, total: formatPrice(total, offer.currency), monthly: monthlyText, yearly: yearlyText, signedAt: when, offerUrl }
   const attachment = { filename: fileName, content: Buffer.from(pdf) }
   const team = await teamRecipients(offer.createdById, offer.lead.assignedToId)
   const results = await Promise.allSettled([

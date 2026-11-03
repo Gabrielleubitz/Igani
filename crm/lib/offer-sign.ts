@@ -14,6 +14,7 @@ export interface SignedPdfInput {
   modules: { name: string; price: string }[]
   oneTimeTotal: string
   monthly: string | null
+  yearly?: string | null
   signerName: string
   signerEmail: string
   signedAt: Date
@@ -91,9 +92,8 @@ export async function buildSignedPdf(input: SignedPdfInput): Promise<Uint8Array>
   const tw = bold.widthOfTextAtSize(input.oneTimeTotal, 11)
   page.drawText(input.oneTimeTotal, { x: 539 - tw, y, size: 11, font: bold, color: NAVY })
   y -= 18
-  if (input.monthly) {
-    row('Monthly', input.monthly)
-  }
+  if (input.monthly) row('Monthly payment', `${input.monthly} / month`)
+  if (input.yearly) row('Yearly payment', `${input.yearly} / year`)
   y -= 10
   rule(page)
   y -= 24

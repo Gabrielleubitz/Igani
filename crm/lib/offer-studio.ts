@@ -1,7 +1,7 @@
 import 'server-only'
 import type { Prisma } from '@prisma/client'
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { extname, join } from 'node:path'
 import { isLocalDev } from './offers'
 import { parseModules, slugProblem } from './offer-modules'
 import { prisma } from './prisma'
@@ -89,6 +89,9 @@ export async function writeOfferData(slug: string): Promise<void> {
     timelineMonths: o.timelineMonths,
     modules: parseModules(o.modules),
     hasContract: !!o.contractUrl,
+    // Uploaded in the studio: use `logo` as content.client.logo (and in the mockups); `images` are client photos/screenshots
+    logo: listAssets(slug).find((x) => x.logo)?.path ?? null,
+    images: listAssets(slug).filter((x) => !x.logo).map((x) => x.path),
     client: o.lead,
     crmNotes: notes.map((n) => ({ at: n.createdAt.toISOString().slice(0, 10), text: n.body })),
   }
@@ -163,5 +166,21 @@ export function studioToken(): string | null {
     return readFileSync(join(CRM_DIR, 'studio', '.token'), 'utf8').trim() || null
   } catch {
     return null
+  }
+}
+
+/** Image types the studio accepts for client assets (logo, photos, screenshots). */
+export const ASSET_TYPES: Record<string, string> = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/webp': '.webp', 'image/svg+xml': '.svg', 'image/gif': '.gif' }
+
+/** The client's files in public/offers/<slug>/ (logo first), as paths the offer can use. */
+export function listAssets(slug: string): { name: string; path: string; size: number; logo: boolean }[] {
+  const dir = join(CRM_DIR, 'public', 'offers', slug)
+  try {
+    return readdirSync(dir)
+      .filter((n) => Object.values(ASSET_TYPES).includes(extname(n).toLowerCase()))
+      .map((n) => ({ name: n, path: `/offers/${slug}/${n}`, size: statSync(join(dir, n)).size, logo: /^logo\./i.test(n) }))
+      .sort((a, b) => Number(b.logo) - Number(a.logo) || a.name.localeCompare(b.name))
+  } catch {
+    return []
   }
 }

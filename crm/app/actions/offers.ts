@@ -7,7 +7,7 @@ import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { isOwnCloudinaryUrl } from '@/lib/cloudinary'
-import { MODULE_GROUPS, parseModules, slugProblem } from '@/lib/offer-modules'
+import { BILLING_PERIODS, MODULE_GROUPS, parseModules, slugProblem } from '@/lib/offer-modules'
 import { MAX_TRANSCRIPT_CHARS, modulesFromTranscript, type TranscriptModules } from '@/lib/offer-transcript-ai'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
@@ -54,6 +54,7 @@ const ModuleInput = z.object({
   required: z.boolean(),
   included: z.boolean(),
   summary: z.string().trim().max(500).optional(),
+  period: z.enum(BILLING_PERIODS).optional(),
 })
 const UpdateInput = z.object({
   id: z.string().cuid(),

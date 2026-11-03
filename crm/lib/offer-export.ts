@@ -4,7 +4,7 @@ import { join, relative } from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
 import type { Offer } from '@prisma/client'
 import type { OfferContent } from '@/offers/types'
-import { formatPrice, normalizeSelection, parseModules, selectionTotal, type OfferModuleItem } from './offer-modules'
+import { formatModulePrice, formatPrice, normalizeSelection, parseModules, periodOf, recurringTotals, selectionTotal, type OfferModuleItem } from './offer-modules'
 import { liveOfferUrl, loadDefinition } from './offers'
 import type { TranscriptModules } from './offer-transcript-ai'
 
@@ -80,7 +80,7 @@ function buildFacts(offer: Offer & { lead: Lead }, content: OfferContent, module
   const mod = (m: OfferModuleItem): object => ({ id: m.id, name: m.name, group: m.group, summary: m.summary ?? en(content.modules[m.id]?.summary), bullets: content.modules[m.id]?.bullets?.map(en) ?? [] })
   return JSON.stringify({
     client: { company: offer.lead.company, website: offer.lead.website, summary: brief?.clientSummary },
-    offer: { title: offer.title, timelineMonths: offer.timelineMonths, monthlyFee: !!offer.monthlyPrice },
+    offer: { title: offer.title, timelineMonths: offer.timelineMonths, monthlyFee: !!offer.monthlyPrice, recurringModules: modules.filter((m) => chosen.includes(m.id) && periodOf(m) !== 'once').map((m) => ({ id: m.id, period: periodOf(m) })) },
     need: en(content.need.body),
     solution: en(content.solution.body),
     agreedModules: modules.filter((m) => chosen.includes(m.id)).map(mod),
@@ -97,10 +97,12 @@ function buildFacts(offer: Offer & { lead: Lead }, content: OfferContent, module
 function buildMarkdown(offer: Offer & { lead: Lead }, content: OfferContent, modules: OfferModuleItem[], chosen: string[], brief: TranscriptModules | null, plan: string | null): string {
   const money = (n: number): string => formatPrice(n, offer.currency)
   const total = selectionTotal(modules, chosen)
+  const rec = recurringTotals(modules, chosen, offer.monthlyPrice)
+  const recText = [rec.month ? `${money(rec.month)}/month` : '', rec.year ? `${money(rec.year)}/year` : ''].filter(Boolean).join(' + ')
   const lines: string[] = []
   const h = (s: string): void => void lines.push('', s, '')
   lines.push(`# ${offer.title}`, '', `Client: **${offer.lead.company || [offer.lead.firstName, offer.lead.lastName].filter(Boolean).join(' ')}**${offer.lead.website ? ` (${offer.lead.website})` : ''}  `, `Offer: ${liveOfferUrl(offer.slug)}  `)
-  lines.push(offer.signedAt ? `Signed: ${offer.signedAt.toISOString().slice(0, 10)} by ${offer.signerName} · ${money(offer.signedTotal ?? total)} one-time${offer.monthlyPrice ? ` + ${money(offer.monthlyPrice)}/month` : ''}` : `Status: ${offer.status.toLowerCase()} (not signed yet) · package ${money(total)}`)
+  lines.push(offer.signedAt ? `Signed: ${offer.signedAt.toISOString().slice(0, 10)} by ${offer.signerName} · ${money(offer.signedTotal ?? total)} one-time${recText ? ` + ${recText}` : ''}` : `Status: ${offer.status.toLowerCase()} (not signed yet) · package ${money(total)}${recText ? ` + ${recText}` : ''}`)
   if (offer.timelineMonths) lines.push(`Timeline: ${offer.timelineMonths} months`)
   lines.push('', '> The screens in `offers/' + offer.slug + '/` are the agreed design. Build the real product behind them without changing how they look. Blocks in `offers/blocks/` are shared UI pieces.')
 
@@ -114,7 +116,13 @@ function buildMarkdown(offer: Offer & { lead: Lead }, content: OfferContent, mod
 
   h('## Agreed modules')
   lines.push('| Module | Group | Price | What it covers |', '|---|---|---|---|')
-  for (const m of modules.filter((x) => chosen.includes(x.id))) lines.push(`| **${m.name}** \`${m.id}\` | ${m.group} | ${money(m.price)} | ${(m.summary ?? en(content.modules[m.id]?.summary)).replace(/\|/g, '/')} |`)
+  for (const m of modules.filter((x) => chosen.includes(x.id))) lines.push(`| **${m.name}** \`${m.id}\` | ${m.group} | ${formatModulePrice(m, offer.currency)} | ${(m.summary ?? en(content.modules[m.id]?.summary)).replace(/\|/g, '/')} |`)
+  const recurringMods = modules.filter((x) => chosen.includes(x.id) && periodOf(x) !== 'once')
+  if (recurringMods.length || offer.monthlyPrice) {
+    lines.push('', '**Recurring payments** (billing has to support these):')
+    for (const m of recurringMods) lines.push(`- ${m.name}: ${formatModulePrice(m, offer.currency)}`)
+    if (offer.monthlyPrice) lines.push(`- Fixed monthly fee: ${money(offer.monthlyPrice)} / month`)
+  }
   for (const m of modules.filter((x) => chosen.includes(x.id))) {
     const c = content.modules[m.id]
     if (!c?.bullets?.length) continue

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { offerHref } from '@/components/offer/OfferPage'
 import { visualOrder } from '@/lib/bidi'
 import { offerSlugFromHost } from '@/lib/offer-host'
-import { defaultSelection, formatPrice, normalizeSelection, parseModules, selectionTotal, slugProblem, slugify } from '@/lib/offer-modules'
+import { defaultSelection, formatModulePrice, formatPrice, normalizeSelection, parseModules, recurringTotals, selectionTotal, slugProblem, slugify } from '@/lib/offer-modules'
 import { buildSignedPdf } from '@/lib/offer-sign'
 
 const MODULES = parseModules([
@@ -30,6 +30,22 @@ describe('offer modules', () => {
   it('a client can not remove required modules or add unknown ones', () => {
     expect(normalizeSelection(MODULES, ['kyc', 'hacked'])).toEqual(['core', 'kyc'])
     expect(selectionTotal(MODULES, [])).toBe(20000)
+  })
+
+  it('keeps recurring modules out of the one-time total', () => {
+    const m = parseModules([
+      { id: 'core', group: 'core', name: 'Core', price: 20000 },
+      { id: 'hosting', group: 'core', name: 'Hosting', price: 250, period: 'month' },
+      { id: 'licence', group: 'addons', name: 'Licence', price: 3000, period: 'year', included: true },
+      { id: 'support', group: 'addons', name: 'Support', price: 1500, period: 'month' },
+    ])
+    const sel = defaultSelection(m)
+    expect(selectionTotal(m, sel)).toBe(20000)
+    expect(recurringTotals(m, sel, 100)).toEqual({ month: 350, year: 3000 })
+    expect(recurringTotals(m, [...sel, 'support'])).toEqual({ month: 1750, year: 3000 })
+    expect(formatModulePrice(m[1]!, 'ILS')).toBe('₪250 / month')
+    expect(formatModulePrice(m[2]!, 'ILS', 'he')).toBe('₪3,000 לשנה')
+    expect(parseModules([{ id: 'x', name: 'X', price: 1, period: 'weekly' }])[0]?.period).toBeUndefined()
   })
 
   it('formats prices', () => {

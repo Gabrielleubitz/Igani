@@ -23,6 +23,8 @@ const UI = {
   modulesCount: { he: 'מודולים', en: 'modules' },
   screensCount: { he: 'מסכים', en: 'screens' },
   perMonth: { he: 'לחודש', en: '/ month' },
+  perYear: { he: 'לשנה', en: '/ year' },
+  yearly: { he: 'עלות שנתית', en: 'Yearly' },
   need: { he: 'הצורך', en: 'The need' },
   system: { he: 'המערכת', en: 'The system' },
   howItConnects: { he: 'איך הכול מתחבר', en: 'How it all connects' },

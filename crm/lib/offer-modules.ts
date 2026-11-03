@@ -12,13 +12,24 @@ export const GROUP_LABEL: Record<ModuleGroup, { en: string; he: string }> = {
   addons: { en: 'Add-ons', he: 'תוספות' },
 }
 
+/** How a module is billed: once at setup, or as a recurring payment. */
+export const BILLING_PERIODS = ['once', 'month', 'year'] as const
+export type BillingPeriod = (typeof BILLING_PERIODS)[number]
+export const PERIOD_LABEL: Record<BillingPeriod, { en: string; he: string; short: { en: string; he: string } }> = {
+  once: { en: 'One-time', he: 'חד-פעמי', short: { en: '', he: '' } },
+  month: { en: 'Monthly', he: 'חודשי', short: { en: '/ month', he: 'לחודש' } },
+  year: { en: 'Yearly', he: 'שנתי', short: { en: '/ year', he: 'לשנה' } },
+}
+
 export interface OfferModuleItem {
   /** Stable key, also used by the written content (offers/<slug>/content.tsx → modules[id]) */
   id: string
   group: ModuleGroup
   name: string
-  /** One-time price in whole currency units */
+  /** Price in whole currency units, per `period` */
   price: number
+  /** once = setup price (default); month / year = recurring payment */
+  period?: BillingPeriod
   /** Always part of the deal; the client can't remove it */
   required: boolean
   /** Pre-selected in the recommended package (the client can still remove it) */
@@ -66,7 +77,8 @@ export function parseModules(json: unknown): OfferModuleItem[] {
     const group = isGroup(r.group) ? r.group : 'main'
     const required = group === 'core' ? true : r.required === true
     const summary = typeof r.summary === 'string' && r.summary.trim() ? r.summary.trim().slice(0, 500) : undefined
-    out.push({ id, group, name, price, required, included: required || r.included === true, ...(summary ? { summary } : {}) })
+    const period = r.period === 'month' || r.period === 'year' ? r.period : undefined
+    out.push({ id, group, name, price, required, included: required || r.included === true, ...(period ? { period } : {}), ...(summary ? { summary } : {}) })
   }
   return out
 }
@@ -82,17 +94,34 @@ export function defaultSelection(modules: OfferModuleItem[]): string[] {
   return modules.filter((m) => m.required || m.included).map((m) => m.id)
 }
 
+export const periodOf = (m: OfferModuleItem): BillingPeriod => m.period ?? 'once'
+
+/** One-time (setup) total of a selection. Recurring modules are not in it: see recurringTotals. */
 export function selectionTotal(modules: OfferModuleItem[], ids: readonly string[]): number {
   const chosen = new Set(normalizeSelection(modules, ids))
-  return modules.filter((m) => chosen.has(m.id)).reduce((sum, m) => sum + m.price, 0)
+  return modules.filter((m) => chosen.has(m.id) && periodOf(m) === 'once').reduce((sum, m) => sum + m.price, 0)
+}
+
+/** Recurring payments of a selection, plus the offer's fixed monthly fee (if any). */
+export function recurringTotals(modules: OfferModuleItem[], ids: readonly string[], fixedMonthly: number | null = null): { month: number; year: number } {
+  const chosen = new Set(normalizeSelection(modules, ids))
+  const sum = (p: BillingPeriod): number => modules.filter((m) => chosen.has(m.id) && periodOf(m) === p).reduce((s, m) => s + m.price, 0)
+  return { month: sum('month') + (fixedMonthly ?? 0), year: sum('year') }
+}
+
+/** "₪250 / month", "₪3,000 / year" or "₪20,000". */
+export function formatModulePrice(m: OfferModuleItem, currency: string, lang: 'en' | 'he' = 'en'): string {
+  const unit = PERIOD_LABEL[periodOf(m)].short[lang]
+  return unit ? `${formatPrice(m.price, currency)} ${unit}` : formatPrice(m.price, currency)
 }
 
 export function groupTotal(modules: OfferModuleItem[], group: ModuleGroup): number {
-  return modules.filter((m) => m.group === group).reduce((sum, m) => sum + m.price, 0)
+  return modules.filter((m) => m.group === group && periodOf(m) === 'once').reduce((sum, m) => sum + m.price, 0)
 }
 
+/** One-time total if every module were chosen. */
 export function allModulesTotal(modules: OfferModuleItem[]): number {
-  return modules.reduce((sum, m) => sum + m.price, 0)
+  return modules.filter((m) => periodOf(m) === 'once').reduce((sum, m) => sum + m.price, 0)
 }
 
 const SYMBOL: Record<string, string> = { ILS: '₪', USD: '$', EUR: '€', GBP: '£' }

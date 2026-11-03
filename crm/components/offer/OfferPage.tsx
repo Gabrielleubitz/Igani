@@ -7,7 +7,7 @@ import type { Lang, OfferContent, Section } from '@/offers/types'
 import { DeviceFrame } from './DeviceFrame'
 import { FlowPlayer } from './FlowPlayer'
 import { t, ui, monthYear } from './i18n'
-import { ModulePicker, OfferSelectionProvider, SelectedTotal, SignPanel, type ModuleCopy } from './OfferClient'
+import { ModulePicker, OfferSelectionProvider, SelectedRecurring, SelectedTotal, SignPanel, type ModuleCopy } from './OfferClient'
 
 const DEFAULT_ACCENT = '#2563eb'
 
@@ -101,7 +101,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
         </div>
       </header>
 
-      <OfferSelectionProvider slug={offer.slug} modules={modules} initial={initial} editable={editable}>
+      <OfferSelectionProvider slug={offer.slug} modules={modules} initial={initial} editable={editable} fixedMonthly={offer.monthlyPrice}>
         <main className="mx-auto max-w-6xl space-y-24 px-4 pb-24 pt-14 sm:px-6">
           {/* Hero + summary card */}
           <section id="overview" className="grid scroll-mt-24 gap-10 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-start">
@@ -135,7 +135,8 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
                     <SelectedTotal currency={offer.currency} />
                   </Fact>
                 ) : null}
-                {offer.monthlyPrice ? <Fact label={ui('monthly', lang)}>{formatPrice(offer.monthlyPrice, offer.currency)}</Fact> : null}
+                <SelectedRecurring currency={offer.currency} period="month" label={ui('monthly', lang)} />
+                <SelectedRecurring currency={offer.currency} period="year" label={ui('yearly', lang)} />
                 {offer.timelineMonths ? (
                   <Fact label={ui('timeline', lang)}>
                     {offer.timelineMonths} {ui('months', lang)}
@@ -254,7 +255,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
               <Heading id="modules" eyebrow={ui('seeModules', lang)}>
                 {ui('modules', lang)}
               </Heading>
-              <ModulePicker modules={modules} copy={copy} currency={offer.currency} monthlyPrice={offer.monthlyPrice} lang={lang} />
+              <ModulePicker modules={modules} copy={copy} currency={offer.currency} lang={lang} />
             </section>
           ) : null}
 

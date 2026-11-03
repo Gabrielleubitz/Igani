@@ -40,6 +40,19 @@ working sample: **read it before writing a screen**.
 - Small requests ("make the button say Book now", "add a third testimonial") are prop changes. Keep them small.
 - The agreed screens are exported later (Admin → offer → Export UI) as the starting point for the real build, so keep them clean.
 
+## What every offer must show (like https://shilan-trade.pancake.solutions)
+
+- **At least two flows of mockup screens**, built from blocks:
+  1. the **customer side** (phone app or website): the main thing the client's customers do, start to finish (4–6 screens);
+  2. the **back office** (desktop, `DashboardShell`): what the client's team sees and manages (2–4 screens).
+  Add a third flow when the project has another user type (drivers, partners, restaurants...).
+- Realistic data in the client's language and market (names, prices, places), never lorem ipsum.
+- **Client logo and images**: `offer-data.json` → `logo` and `images` (uploaded by the admin in the studio). Use `logo` as
+  `content.client.logo` and in the mockups (headers, sign-in screens, `DashboardShell logo`). Use `images` for photos,
+  `gallery`, `DetailHero`, product grids. If there is no logo yet, use the client name as text and say so.
+- **Recurring payments**: modules in `offer-data.json` can have `period: "month" | "year"` (hosting, maintenance, licences).
+  The page prices them automatically; mention what the recurring payment covers in that module's copy.
+
 ## Writing style
 
 - Hebrew is the default for Israeli clients (`defaultLang: 'he'`), English for others. Always fill **both** languages.

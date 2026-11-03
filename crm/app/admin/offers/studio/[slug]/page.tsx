@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { StudioAssets } from '@/components/admin/StudioAssets'
 import { StudioWorkspace } from '@/components/admin/StudioWorkspace'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,7 +26,7 @@ function Note({ title, children }: { title: string; children: React.ReactNode })
 export default async function StudioPage({ params }: { params: { slug: string } }): Promise<React.ReactElement> {
   await requireUser(['ADMIN'])
   const slug = params.slug
-  const header = <PageIntro title={`Studio · ${slug}`} hint='Tell Claude what to build. The preview on the right updates as it works. Say "push" when it is ready to go live.' />
+  const header = <PageIntro title={`Studio · ${slug}`} hint='Click into the terminal and tell Claude what to build. The preview updates as it works. Say "push" when it is ready to go live.' />
 
   if (!isLocalDev() || slugProblem(slug)) {
     return (
@@ -83,6 +84,7 @@ export default async function StudioPage({ params }: { params: { slug: string } 
         </Link>
       </div>
       {pullError ? <p className="text-sm text-amber-400">Could not refresh from the live CRM ({pullError}). Showing the local copy.</p> : null}
+      <StudioAssets slug={slug} />
       {token ? (
         <StudioWorkspace slug={slug} token={token} previewUrl={localOfferUrl(slug)} />
       ) : (

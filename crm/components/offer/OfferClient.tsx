@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { GROUP_LABEL, MODULE_GROUPS, allModulesTotal, formatPrice, normalizeSelection, selectionTotal, type OfferModuleItem } from '@/lib/offer-modules'
+import { GROUP_LABEL, MODULE_GROUPS, allModulesTotal, formatModulePrice, formatPrice, normalizeSelection, periodOf, recurringTotals, selectionTotal, type OfferModuleItem } from '@/lib/offer-modules'
 import { cn } from '@/lib/utils'
 import type { Lang } from '@/offers/types'
 import { ui } from './i18n'
@@ -12,6 +12,8 @@ interface SelectionState {
   selected: string[]
   toggle: (id: string) => void
   total: number
+  /** Recurring payments of the selection (monthly includes the offer's fixed monthly fee) */
+  recurring: { month: number; year: number }
   editable: boolean
   saveState: 'idle' | 'saving' | 'saved' | 'error'
 }
@@ -24,7 +26,7 @@ const useSelection = (): SelectionState => {
 }
 
 /** Holds the client's module choice for the whole page and saves it to the CRM (live offers only). */
-export function OfferSelectionProvider({ slug, modules, initial, editable, children }: { slug: string; modules: OfferModuleItem[]; initial: string[]; editable: boolean; children: ReactNode }): React.ReactElement {
+export function OfferSelectionProvider({ slug, modules, initial, editable, fixedMonthly = null, children }: { slug: string; modules: OfferModuleItem[]; initial: string[]; editable: boolean; fixedMonthly?: number | null; children: ReactNode }): React.ReactElement {
   const [selected, setSelected] = useState(() => normalizeSelection(modules, initial))
   const [saveState, setSaveState] = useState<SelectionState['saveState']>('idle')
   // What the CRM already has: only a real change is saved (never the initial render, never twice)
@@ -54,7 +56,10 @@ export function OfferSelectionProvider({ slug, modules, initial, editable, child
     return () => clearTimeout(timer)
   }, [selected, slug, editable])
 
-  const value = useMemo(() => ({ selected, toggle, total: selectionTotal(modules, selected), editable, saveState }), [selected, toggle, modules, editable, saveState])
+  const value = useMemo(
+    () => ({ selected, toggle, total: selectionTotal(modules, selected), recurring: recurringTotals(modules, selected, fixedMonthly), editable, saveState }),
+    [selected, toggle, modules, editable, saveState, fixedMonthly],
+  )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
@@ -62,6 +67,18 @@ export function OfferSelectionProvider({ slug, modules, initial, editable, child
 export function SelectedTotal({ currency }: { currency: string }): React.ReactElement {
   const { total } = useSelection()
   return <>{formatPrice(total, currency)}</>
+}
+
+/** The live recurring total for one period, or nothing when there is none. */
+export function SelectedRecurring({ currency, period, label }: { currency: string; period: 'month' | 'year'; label: string }): React.ReactElement | null {
+  const { recurring } = useSelection()
+  if (!recurring[period]) return null
+  return (
+    <div>
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className="mt-0.5 text-lg font-semibold tabular-nums text-slate-900">{formatPrice(recurring[period], currency)}</div>
+    </div>
+  )
 }
 
 // ─── Modules & pricing ───────────────────────────────────────────────────────
@@ -72,8 +89,8 @@ export interface ModuleCopy {
   bullets: string[]
 }
 
-export function ModulePicker({ modules, copy, currency, monthlyPrice, lang }: { modules: OfferModuleItem[]; copy: Record<string, ModuleCopy>; currency: string; monthlyPrice: number | null; lang: Lang }): React.ReactElement {
-  const { selected, toggle, total, editable, saveState } = useSelection()
+export function ModulePicker({ modules, copy, currency, lang }: { modules: OfferModuleItem[]; copy: Record<string, ModuleCopy>; currency: string; lang: Lang }): React.ReactElement {
+  const { selected, toggle, total, recurring, editable, saveState } = useSelection()
   const chosen = new Set(selected)
   return (
     <div className="space-y-10">
@@ -84,7 +101,7 @@ export function ModulePicker({ modules, copy, currency, monthlyPrice, lang }: { 
           <div key={g}>
             <div className="mb-4 flex items-baseline justify-between gap-4 border-b border-slate-200 pb-2">
               <h3 className="text-lg font-semibold text-slate-900">{GROUP_LABEL[g][lang]}</h3>
-              <span className="text-sm tabular-nums text-slate-500">{formatPrice(items.reduce((s, m) => s + m.price, 0), currency)}</span>
+              <span className="text-sm tabular-nums text-slate-500">{formatPrice(items.filter((m) => periodOf(m) === 'once').reduce((s, m) => s + m.price, 0), currency)}</span>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {items.map((m) => {
@@ -111,7 +128,7 @@ export function ModulePicker({ modules, copy, currency, monthlyPrice, lang }: { 
                       <span className="flex-1">
                         <span className="flex flex-wrap items-baseline justify-between gap-2">
                           <span className="font-semibold text-slate-900">{c?.title || m.name}</span>
-                          <span className="font-semibold tabular-nums text-slate-900">{formatPrice(m.price, currency)}</span>
+                          <span className="font-semibold tabular-nums text-slate-900">{formatModulePrice(m, currency, lang)}</span>
                         </span>
                         <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
                           {m.required ? ui('required', lang) : m.included ? ui('recommended', lang) : ui('optional', lang)}
@@ -141,9 +158,14 @@ export function ModulePicker({ modules, copy, currency, monthlyPrice, lang }: { 
           <div className="text-xs uppercase tracking-wider text-slate-400">{ui('yourPackage', lang)}</div>
           <div className="text-2xl font-semibold tabular-nums">
             {formatPrice(total, currency)}
-            {monthlyPrice ? (
+            {recurring.month ? (
               <span className="ms-2 text-sm font-normal text-slate-300">
-                {ui('plusMonthly', lang)} {formatPrice(monthlyPrice, currency)} {ui('perMonth', lang)}
+                {ui('plusMonthly', lang)} {formatPrice(recurring.month, currency)} {ui('perMonth', lang)}
+              </span>
+            ) : null}
+            {recurring.year ? (
+              <span className="ms-2 text-sm font-normal text-slate-300">
+                {ui('plusMonthly', lang)} {formatPrice(recurring.year, currency)} {ui('perYear', lang)}
               </span>
             ) : null}
           </div>
@@ -253,7 +275,7 @@ export interface SignPanelProps {
 }
 
 export function SignPanel({ slug, lang, currency, modules, moduleTitles, contractUrl, defaultName, defaultEmail, signed, preview }: SignPanelProps): React.ReactElement {
-  const { selected, total } = useSelection()
+  const { selected, total, recurring } = useSelection()
   const [name, setName] = useState(defaultName)
   const [email, setEmail] = useState(defaultEmail)
   const [signature, setSignature] = useState<string | null>(null)
@@ -316,7 +338,7 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
           {chosen.map((m) => (
             <li key={m.id} className="flex justify-between gap-4">
               <span>{moduleTitles[m.id] || m.name}</span>
-              <span className="tabular-nums">{formatPrice(m.price, currency)}</span>
+              <span className="tabular-nums">{formatModulePrice(m, currency, lang)}</span>
             </li>
           ))}
         </ul>
@@ -324,6 +346,18 @@ export function SignPanel({ slug, lang, currency, modules, moduleTitles, contrac
           <span>{ui('setupTotal', lang)}</span>
           <span className="tabular-nums">{formatPrice(total, currency)}</span>
         </div>
+        {recurring.month ? (
+          <div className="mt-1 flex justify-between font-medium text-slate-700">
+            <span>{ui('monthly', lang)}</span>
+            <span className="tabular-nums">{formatPrice(recurring.month, currency)} {ui('perMonth', lang)}</span>
+          </div>
+        ) : null}
+        {recurring.year ? (
+          <div className="mt-1 flex justify-between font-medium text-slate-700">
+            <span>{ui('yearly', lang)}</span>
+            <span className="tabular-nums">{formatPrice(recurring.year, currency)} {ui('perYear', lang)}</span>
+          </div>
+        ) : null}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block text-sm">

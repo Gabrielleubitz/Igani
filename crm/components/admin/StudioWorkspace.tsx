@@ -15,6 +15,30 @@ export function StudioWorkspace({ slug, token, previewUrl }: { slug: string; tok
   const [lang, setLang] = useState<'he' | 'en'>('he')
   const [attempt, setAttempt] = useState(0)
   const restart = useRef(false)
+  // Split / preview only / terminal only. Hiding the terminal keeps Claude running (the terminal just isn't shown).
+  const [layout, setLayout] = useState<'split' | 'preview' | 'terminal'>('split')
+  // The desktop preview renders at a real laptop width and is scaled down to fit, so nothing gets squeezed or cut off
+  const pane = useRef<HTMLDivElement>(null)
+  const [paneSize, setPaneSize] = useState({ w: 0, h: 0 })
+  useEffect(() => {
+    const el = pane.current
+    if (!el) return
+    const ro = new ResizeObserver(([e]) => e && setPaneSize({ w: e.contentRect.width, h: e.contentRect.height }))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('studio-layout')
+      if (saved === 'split' || saved === 'preview' || saved === 'terminal') setLayout(saved)
+    } catch {}
+  }, [])
+  const choose = (l: typeof layout): void => {
+    setLayout(l)
+    try {
+      localStorage.setItem('studio-layout', l)
+    } catch {}
+  }
 
   useEffect(() => {
     let disposed = false
@@ -42,6 +66,8 @@ export function StudioWorkspace({ slug, token, previewUrl }: { slug: string; tok
       ws.onclose = () => setState('closed')
       const input = term.onData((data) => send({ type: 'input', data }))
       const resize = new ResizeObserver(() => {
+        // Hidden (preview-only layout) or mid-layout: don't shrink Claude's terminal to nothing
+        if (!host.current || host.current.clientWidth < 200 || host.current.clientHeight < 80) return
         fit.fit()
         send({ type: 'resize', cols: term.cols, rows: term.rows })
       })
@@ -60,9 +86,26 @@ export function StudioWorkspace({ slug, token, previewUrl }: { slug: string; tok
   }, [slug, token, attempt])
 
   const src = `${previewUrl}?lang=${lang}`
+  const DESKTOP_W = 1280
+  const scale = paneSize.w ? Math.min(1, (paneSize.w - 2) / DESKTOP_W) : 1
   return (
-    <div className="grid h-[calc(100vh-11rem)] min-h-[560px] gap-4 xl:grid-cols-2">
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-[#0b1220]">
+    <div className="space-y-2">
+      <div className="flex items-center justify-end gap-1 text-xs">
+        <span className="me-1 text-muted-foreground">Layout</span>
+        {(
+          [
+            ['split', 'Split'],
+            ['preview', 'Preview only'],
+            ['terminal', 'Terminal only'],
+          ] as const
+        ).map(([id, label]) => (
+          <Button key={id} size="sm" variant={layout === id ? 'secondary' : 'ghost'} className="h-7 px-2 text-xs" onClick={() => choose(id)}>
+            {label}
+          </Button>
+        ))}
+      </div>
+    <div className={`grid h-[calc(100vh-14rem)] min-h-[560px] gap-4 ${layout === 'split' ? 'xl:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]' : ''}`}>
+      <div className={`min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-[#0b1220] ${layout === 'preview' ? 'hidden' : 'flex'}`}>
         <div className="flex items-center justify-between border-b border-white/10 px-3 py-2 text-xs text-slate-400">
           <span>
             claude · offers/{slug} ·{' '}
@@ -84,7 +127,7 @@ export function StudioWorkspace({ slug, token, previewUrl }: { slug: string; tok
         </div>
         <div ref={host} className="min-h-0 flex-1 p-2" />
       </div>
-      <div className="flex min-h-0 flex-col overflow-hidden rounded-lg border border-border">
+      <div className={`min-h-0 flex-col overflow-hidden rounded-lg border border-border ${layout === 'terminal' ? 'hidden' : 'flex'}`}>
         <div className="flex flex-wrap items-center gap-2 border-b border-border bg-muted/30 px-3 py-2 text-xs">
           <a href={src} target="_blank" rel="noreferrer" className="font-mono text-muted-foreground hover:text-foreground">
             {previewUrl.replace('http://', '')}
@@ -105,10 +148,24 @@ export function StudioWorkspace({ slug, token, previewUrl }: { slug: string; tok
             </Button>
           </span>
         </div>
-        <div className="flex min-h-0 flex-1 justify-center overflow-auto bg-[#e9edf3]">
-          <iframe ref={frame} key={src} src={src} title="Offer preview" className={device === 'phone' ? 'my-4 h-[760px] w-[390px] rounded-2xl border border-slate-300 bg-white shadow-xl' : 'h-full w-full bg-white'} />
+        <div ref={pane} className="relative flex min-h-0 flex-1 justify-center overflow-auto bg-[#e9edf3]">
+          {device === 'phone' ? (
+            <iframe ref={frame} key={src} src={src} title="Offer preview" className="my-4 h-[760px] w-[390px] shrink-0 rounded-2xl border border-slate-300 bg-white shadow-xl" />
+          ) : (
+            <div className="absolute start-0 top-0 overflow-hidden" style={{ width: DESKTOP_W * scale, height: paneSize.h }}>
+              <iframe
+                ref={frame}
+                key={src}
+                src={src}
+                title="Offer preview"
+                className="origin-top-left bg-white rtl:origin-top-right"
+                style={{ width: DESKTOP_W, height: scale ? paneSize.h / scale : '100%', transform: `scale(${scale})` }}
+              />
+            </div>
+          )}
         </div>
       </div>
+    </div>
     </div>
   )
 }

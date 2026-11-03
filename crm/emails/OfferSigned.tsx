@@ -10,6 +10,7 @@ export interface OfferSignedProps {
   offerTitle: string
   total: string
   monthly: string | null
+  yearly?: string | null
   signedAt: string
   offerUrl: string
   /** Team only: the lead in the CRM */
@@ -42,7 +43,8 @@ export function OfferSigned(p: OfferSignedProps): React.ReactElement {
             { label: 'Offer', value: p.offerTitle },
             { label: 'Signed by', value: p.signerName },
             { label: 'One-time total', value: p.total },
-            ...(p.monthly ? [{ label: 'Monthly', value: p.monthly }] : []),
+            ...(p.monthly ? [{ label: 'Monthly', value: `${p.monthly} / month` }] : []),
+            ...(p.yearly ? [{ label: 'Yearly', value: `${p.yearly} / year` }] : []),
             { label: 'Signed', value: p.signedAt },
           ]}
         />
@@ -68,7 +70,8 @@ export function OfferSigned(p: OfferSignedProps): React.ReactElement {
         rows={[
           { label: he ? 'הצעה' : 'Offer', value: p.offerTitle },
           { label: he ? 'סה״כ הקמה' : 'One-time total', value: p.total },
-          ...(p.monthly ? [{ label: he ? 'חודשי' : 'Monthly', value: p.monthly }] : []),
+          ...(p.monthly ? [{ label: he ? 'חודשי' : 'Monthly', value: he ? `${p.monthly} לחודש` : `${p.monthly} / month` }] : []),
+          ...(p.yearly ? [{ label: he ? 'שנתי' : 'Yearly', value: he ? `${p.yearly} לשנה` : `${p.yearly} / year` }] : []),
           { label: he ? 'נחתם' : 'Signed', value: p.signedAt },
         ]}
       />
