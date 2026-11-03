@@ -10,6 +10,7 @@ import { DeviceFrame } from './DeviceFrame'
 import { FlowPlayer } from './FlowPlayer'
 import { t, ui, monthYear } from './i18n'
 import { OfferNav, Reveal } from './OfferChrome'
+import { OfferTracker } from './OfferTracker'
 import { ModulePicker, OfferSelectionProvider, PackageRecurring, SelectedTotal, SignPanel, type ModuleCopy } from './OfferClient'
 
 const DEFAULT_ACCENT = '#2563eb'
@@ -99,7 +100,7 @@ function ClientMark({ name, logo, size = 'md' }: { name: string; logo?: string; 
 
 // ─── The page ────────────────────────────────────────────────────────────────
 
-export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffer; lang: Lang; base: string; supportEmail: string }): React.ReactElement {
+export function OfferPage({ data, lang, base, supportEmail, track = false }: { data: PublicOffer; lang: Lang; base: string; supportEmail: string; track?: boolean }): React.ReactElement {
   const { offer, modules, definition, preview } = data
   const content: OfferContent | undefined = definition?.content
   const rtl = lang === 'he'
@@ -176,6 +177,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
       </header>
 
       <OfferSelectionProvider slug={offer.slug} modules={modules} initial={initial} editable={editable} fixedMonthly={offer.monthlyPrice}>
+        {track ? <OfferTracker slug={offer.slug} lang={lang} /> : null}
         <main className="relative mx-auto max-w-6xl space-y-28 px-4 pb-28 pt-12 sm:space-y-36 sm:px-6 sm:pt-20">
           {/* ── Hero ── */}
           <section id="overview" className="grid scroll-mt-28 items-start gap-12 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.95fr)]">
@@ -326,7 +328,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
 
           {/* ── Need + system ── */}
           {content ? (
-            <Section n={num()} eyebrow={`${ui('need', lang)} · ${ui('system', lang)}`} title={t(content.solution.title, lang)}>
+            <Section id="solution" n={num()} eyebrow={`${ui('need', lang)} · ${ui('system', lang)}`} title={t(content.solution.title, lang)}>
               <div className="grid gap-5 lg:grid-cols-2">
                 <article className="rounded-[28px] bg-white p-7 ring-1 ring-slate-900/[0.06] sm:p-9">
                   <div className="text-[12px] font-semibold uppercase tracking-[0.16em] rtl:tracking-normal text-slate-400">{ui('need', lang)}</div>
@@ -349,7 +351,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
 
           {/* ── Architecture ── */}
           {content?.architecture ? (
-            <Section n={num()} eyebrow={ui('howItConnects', lang)} title={t(content.architecture.title, lang)} intro={content.architecture.intro ? t(content.architecture.intro, lang) : undefined}>
+            <Section id="architecture" n={num()} eyebrow={ui('howItConnects', lang)} title={t(content.architecture.title, lang)} intro={content.architecture.intro ? t(content.architecture.intro, lang) : undefined}>
               <div className="rounded-[28px] bg-white p-3 ring-1 ring-slate-900/[0.06] sm:p-5">
                 {content.architecture.layers.map((layer, k) => (
                   <div key={k}>
@@ -386,7 +388,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
 
           {/* ── Gallery ── */}
           {content?.gallery?.length ? (
-            <Section n={num()} eyebrow={ui('gallery', lang)} title={clientName}>
+            <Section id="gallery" n={num()} eyebrow={ui('gallery', lang)} title={clientName}>
               <div className="grid auto-rows-[220px] gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {content.gallery.map((g, k) => (
                   <figure key={k} className={cn('group relative overflow-hidden rounded-[24px] bg-slate-100 ring-1 ring-slate-900/[0.06]', k === 0 && 'sm:row-span-2')}>
@@ -425,7 +427,7 @@ export function OfferPage({ data, lang, base, supportEmail }: { data: PublicOffe
 
           {/* ── Decisions ── */}
           {content?.decisions?.length ? (
-            <Section n={num()} eyebrow={ui('decisions', lang)} title={ui('decisions', lang)}>
+            <Section id="decisions" n={num()} eyebrow={ui('decisions', lang)} title={ui('decisions', lang)}>
               <div className="grid gap-3 md:grid-cols-2">
                 {content.decisions.map((d, k) => (
                   <div key={k} className="flex flex-col rounded-[22px] bg-white p-5 ring-1 ring-slate-900/[0.06]">

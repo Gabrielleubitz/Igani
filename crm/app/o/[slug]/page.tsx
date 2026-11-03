@@ -3,12 +3,13 @@ import { notFound } from 'next/navigation'
 import { OfferPage } from '@/components/offer/OfferPage'
 import { t } from '@/components/offer/i18n'
 import { offerBase, pickLang } from '@/lib/offer-request'
+import { currentUserOrNull } from '@/lib/auth'
 import { loadPublicOffer } from '@/lib/offers'
 import { getSetting } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
 
-type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string }> }
+type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ lang?: string; notrack?: string }> }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const searchParams = await props.searchParams;
@@ -27,5 +28,7 @@ export default async function Page(props: Props): Promise<React.ReactElement> {
   const data = await loadPublicOffer(params.slug)
   if (!data) notFound()
   const lang = pickLang(searchParams.lang, data.definition?.content.defaultLang)
-  return <OfferPage data={data} lang={lang} base={await offerBase(params.slug)} supportEmail={await getSetting('brand.supportEmail')} />
+  // Analytics only for real client visits: never drafts/previews, never a signed-in teammate, never ?notrack=1
+  const track = !data.preview && searchParams.notrack !== '1' && !(await currentUserOrNull())
+  return <OfferPage data={data} lang={lang} base={await offerBase(params.slug)} supportEmail={await getSetting('brand.supportEmail')} track={track} />
 }

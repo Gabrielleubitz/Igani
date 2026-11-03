@@ -567,8 +567,46 @@ model Offer {
   createdAt            DateTime    @default(now())
   updatedAt            DateTime    @updatedAt
 
-  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  lead   Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  visits OfferVisit[]
 
   @@index([leadId])
   @@index([status])
+}
+
+/// One client visit to an offer page (our own Hotjar): how far they scrolled, how long each section was on screen,
+/// where they clicked and where the mouse went. Positions are relative to the page section they happened in, so the
+/// heatmap lines up on any screen size. Admin/teammate views are never recorded.
+model OfferVisit {
+  id           String   @id @default(cuid())
+  offerId      String
+  /// Random id the browser makes for this page load (upsert key for batched updates)
+  key          String   @unique
+  /// Random id kept in the browser across visits: tells repeat visits from new people
+  visitorId    String
+  startedAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  /// Time the page was actually visible
+  durationMs   Int      @default(0)
+  maxScrollPct Int      @default(0)
+  /// phone | tablet | desktop
+  device       String
+  viewportW    Int
+  viewportH    Int
+  lang         String?
+  country      String?
+  referrer     String?
+  /// Salted hash of the IP, only to rate-limit abuse
+  ipHash       String
+  /// { sectionId: ms on screen }
+  sections     Json     @default("{}")
+  /// [{ s: sectionId, x, y (0–1 inside the section), t: ms since start, l: label of what was clicked }]
+  clicks       Json     @default("[]")
+  /// [{ s, x, y }] sampled mouse positions
+  moves        Json     @default("[]")
+
+  offer Offer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@index([offerId, startedAt])
+  @@index([ipHash, startedAt])
 }

@@ -13,6 +13,8 @@ import { transcriptAiEnabled } from '@/lib/offer-transcript-ai'
 import { OFFERS_FOR_SALES, canSeeOffer } from '@/lib/offer-access'
 import { prisma } from '@/lib/prisma'
 import { OfferMembers } from '@/components/admin/OfferMembers'
+import { OfferInsightsPanel } from '@/components/admin/OfferInsightsPanel'
+import { loadOfferInsights } from '@/lib/offer-insights'
 
 export const metadata = { title: 'Offer' }
 export const dynamic = 'force-dynamic'
@@ -31,6 +33,7 @@ export default async function OfferAdminPage(props: { params: Promise<{ id: stri
   const live = liveOfferUrl(offer.slug)
   const local = isLocalDev()
   const chosen = modules.filter((m) => offer.selectedModules.includes(m.id))
+  const insights = offer.status === 'DRAFT' ? null : await loadOfferInsights(offer.id)
 
   return (
     <div className="space-y-6">
@@ -70,7 +73,7 @@ export default async function OfferAdminPage(props: { params: Promise<{ id: stri
             <div className="flex flex-wrap gap-2">
               <CopyButton text={live} />
               {/* Published: the real client address. Drafts only render for a signed-in admin, which the subdomain can't see */}
-              <a href={offer.status === 'DRAFT' ? `/o/${offer.slug}` : live} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              <a href={offer.status === 'DRAFT' ? `/o/${offer.slug}` : `${live}/?team=1`} target="_blank" rel="noreferrer" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
                 {offer.status === 'DRAFT' ? 'Preview draft' : 'Open'}
               </a>
             </div>
@@ -130,6 +133,18 @@ export default async function OfferAdminPage(props: { params: Promise<{ id: stri
           </CardContent>
         </Card>
       </div>
+
+      {insights ? (
+        <Card id="visits" className="scroll-mt-6">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Client visits</CardTitle>
+            <p className="text-sm text-muted-foreground">How the client read this offer: how far they scrolled, what held their attention and where they clicked. Visits by the team are never counted.</p>
+          </CardHeader>
+          <CardContent>
+            <OfferInsightsPanel slug={offer.slug} lang={definition?.content.defaultLang ?? 'he'} data={insights} />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader className="pb-2">
