@@ -23,7 +23,7 @@ export default async function OffersPage({ searchParams }: { searchParams: { lea
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <PageIntro title="Offers" hint="Proposal pages for leads, each on its own subdomain. Claude writes the text and mockups in the local studio; you set the numbers and the contract here. Admins only." />
+        <PageIntro title="Offers" hint="Proposal pages for leads, each at its own address (name.app.igani.co). You set the numbers and contract here; Claude writes the rest in the studio." />
         <Popover label="+ New offer" panelClassName="sm:w-[min(92vw,34rem)]">
           <NewOfferForm leads={leads} initialLeadId={searchParams.lead} />
         </Popover>
