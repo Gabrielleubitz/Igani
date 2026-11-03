@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { SectionHeading } from '@/app/components/landing/fx/SectionHeading'
-import { ArrowRight, Maximize2, X } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useCaseStudy } from '@/app/components/funnel-shared/useCaseStudy'
 import { Screenshot } from '@/app/components/funnel-shared/Screenshot'
@@ -75,38 +75,15 @@ const DEFAULT_HEADING: Heading = {
 
 type Side = 'old' | 'new'
 
-/** A larger look at one side, so small text is readable. Escape or a click outside closes it. */
-function Lightbox({ label, onClose, children }: { label: string; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
-  return (
-    <div role="dialog" aria-modal="true" aria-label={label} className="fixed inset-0 z-[90] flex items-center justify-center bg-[#02060f]/90 p-3 backdrop-blur-sm sm:p-8" onClick={onClose}>
-      <div className="w-full max-w-6xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-3 flex items-center justify-between text-sm text-white/80">
-          <span>{label}</span>
-          <button type="button" onClick={onClose} aria-label="Close" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 hover:bg-white/20">
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <div className="relative aspect-[16/9] overflow-hidden rounded-2xl border border-white/10">{children}</div>
-      </div>
-    </div>
-  )
-}
-
 /**
  * Before and after, side by side. On a wide screen both designs are always fully visible; on a phone one shows at a time
- * with a big Old / New switch that cross-fades. Tapping a design opens a larger view.
+ * with an Old / New switch that cross-fades.
  * `heading` and `caption` let other funnels tell it their way.
  */
 export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?: Heading; caption?: string } = {}) {
   const cs = useCaseStudy()
   const [tab, setTab] = useState<'front' | 'back'>('front')
   const [mobileSide, setMobileSide] = useState<Side>('new')
-  const [open, setOpen] = useState<Side | null>(null)
   const [wide, setWide] = useState(false)
   const backend = cs?.backend
   const showBack = tab === 'back' && Boolean(backend)
@@ -163,24 +140,17 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
           <span className="font-display text-lg leading-none">{side === 'new' ? 'After' : 'Before'}</span>
           <span className={side === 'new' ? 'text-white/70' : 'text-white/45'}>· {captions[side]}</span>
         </div>
-        <button
-          type="button"
-          tabIndex={active ? 0 : -1}
-          onClick={() => setOpen(side)}
-          aria-label={`Open a larger view: ${side === 'new' ? 'after' : 'before'}, ${captions[side]}`}
-          className={`relative block aspect-[16/9] w-full cursor-zoom-in overflow-hidden rounded-2xl border text-left ${
+        <div
+          className={`relative block aspect-[16/9] w-full overflow-hidden rounded-2xl border text-left ${
             side === 'new' ? 'border-[#4080E0]/50 shadow-[0_0_0_1px_rgba(64,128,224,0.25),0_30px_90px_-30px_rgba(64,128,224,0.55)]' : 'border-white/[0.1] shadow-[0_30px_80px_-40px_rgba(0,0,0,0.9)]'
           }`}
         >
           {nodes[side]}
-          {/* Phones: the label sits on the picture itself, and a small icon says it can be enlarged */}
+          {/* Phones: the label sits on the picture itself */}
           <span className="pointer-events-none absolute left-2.5 top-2.5 z-10 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-0.5 text-[11px] font-semibold text-white backdrop-blur-md lg:hidden">
             {side === 'new' ? 'After' : 'Before'}
           </span>
-          <span className="pointer-events-none absolute right-2.5 top-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white/85 backdrop-blur-md">
-            <Maximize2 className="h-3.5 w-3.5" />
-          </span>
-        </button>
+        </div>
       </div>
     )
   }
@@ -294,11 +264,6 @@ export function CompareSlider({ heading = DEFAULT_HEADING, caption }: { heading?
         )}
       </div>
 
-      {open && (
-        <Lightbox label={`${open === 'new' ? 'After' : 'Before'} · ${captions[open]}`} onClose={() => setOpen(null)}>
-          {nodes[open]}
-        </Lightbox>
-      )}
     </section>
   )
 }
