@@ -48,7 +48,8 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (pathname.startsWith('/api/') && !canAccess(role, pathname)) return deny(req, 403, 'forbidden')
 
   const res = NextResponse.next()
-  res.headers.set('X-Frame-Options', 'DENY')
+  // Never framed by other sites. The contract preview is framed by the CRM's own contract editor, so same-origin only there.
+  res.headers.set('X-Frame-Options', /^\/api\/admin\/offers\/[^/]+\/contract\/preview$/.test(pathname) ? 'SAMEORIGIN' : 'DENY')
   res.headers.set('X-Content-Type-Options', 'nosniff')
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   return res
