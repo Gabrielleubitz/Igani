@@ -3,7 +3,7 @@ import { screens } from './screens'
 
 /**
  * Offer "testing": produce boxes for home subscribers and restaurants, with delivery and a back office.
- * Client: Altius (name taken from the uploaded logo). logo.svg is the original (white letters, for dark backgrounds);
+ * Client: Altius (name taken from the uploaded logo). logo.svg has black letters (shown on the offer page); logo-on-dark.svg keeps the white letters for dark screens;
  * logo-on-light.svg is the same mark with dark letters for white backgrounds.
  */
 const offer: OfferDefinition = {

@@ -11,7 +11,7 @@ import { Icon, cx } from '../blocks/base'
 
 const tx = (lang: Lang, he: string, en: string): string => (lang === 'he' ? he : en)
 const BRAND = { he: 'Altius', en: 'Altius' }
-const LOGO = '/offers/testing/logo.svg'
+const LOGO = '/offers/testing/logo-on-dark.svg'
 const LOGO_ON_LIGHT = '/offers/testing/logo-on-light.svg'
 
 // ─── Local parts ─────────────────────────────────────────────────────────────
