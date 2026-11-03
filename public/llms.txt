@@ -8,6 +8,7 @@ IGANI builds custom websites meant to win the first impression: clients judge a 
 - [Home](https://www.igani.co/): what IGANI builds, selected work, the process and how to get in touch
 - [Websites for real estate agents](https://www.igani.co/realestate): sites for agents and brokerages
 - [About IGANI](https://www.igani.co/about): the studio and its founders
+- [Frequently asked questions](https://www.igani.co/faq): timelines, pricing, what is included, languages, the process and after-delivery support
 - [Get in touch](https://www.igani.co/#contact): the contact form, section 5 of the home page
 
 ## How a project works

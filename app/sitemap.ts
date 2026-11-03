@@ -7,6 +7,7 @@ const CHANGED = {
   home: new Date('2026-11-02'),
   about: new Date('2026-11-02'),
   legal: new Date('2026-10-30'),
+  faq: new Date('2026-11-03'),
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -22,6 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: SITE_URL, lastModified: CHANGED.home, changeFrequency: 'weekly', priority: 1 },
     { url: `${SITE_URL}/about`, lastModified: CHANGED.about, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${SITE_URL}/faq`, lastModified: CHANGED.faq, changeFrequency: 'monthly', priority: 0.8 },
     ...founderPages,
     { url: `${SITE_URL}/privacy`, lastModified: CHANGED.legal, changeFrequency: 'yearly', priority: 0.3 },
     { url: `${SITE_URL}/terms`, lastModified: CHANGED.legal, changeFrequency: 'yearly', priority: 0.3 },

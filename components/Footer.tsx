@@ -90,6 +90,9 @@ export default function Footer() {
               {settings.copyrightText || `© 2026 IGANI. ${footer.allRightsReserved[language]}`}
             </p>
             <div className="flex gap-4 justify-center md:justify-end flex-wrap items-center">
+              <a href="/faq" className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
+                {footer.faq[language]}
+              </a>
               <a href="/privacy" className="text-white/50 hover:text-[#80A0E0] transition-colors text-sm">
                 {footer.privacy[language]}
               </a>
