@@ -51,7 +51,7 @@ const NAV: Entry[] = [
       { id: 'invite', label: 'Book meeting with client', icon: 'invite', href: '/sales/invite', roles: SELLERS },
     ],
   },
-  { id: 'training', label: 'Training', icon: 'videos', roles: ALL, children: [{ id: 'videos', label: 'Videos', icon: 'videos', href: '/sales/videos', roles: ALL }] },
+  { id: 'straight-line', label: 'The Straight Line', icon: 'videos', href: '/sales/videos', roles: ALL },
   {
     id: 'tools',
     label: 'Tools',
