@@ -127,6 +127,9 @@ async function run(): Promise<Record<string, number>> {
     return { checked: 0, failed: 1 }
   })
   await backfillMeetingTasks().catch((err: unknown) => console.error('[cron] meeting task backfill failed', err))
+  // Dialer: calls Twilio never picked up (closed tab) and calls whose last callback never came are closed
+  await prisma.call.updateMany({ where: { status: 'INITIATED', startedAt: { lt: new Date(Date.now() - 10 * 60_000) } }, data: { status: 'FAILED', endedAt: new Date() } }).catch((err: unknown) => console.error('[cron] stale call sweep failed', err))
+  await prisma.call.updateMany({ where: { status: { in: ['RINGING', 'IN_PROGRESS'] }, startedAt: { lt: new Date(Date.now() - 4 * 3600_000) } }, data: { status: 'COMPLETED', endedAt: new Date() } }).catch((err: unknown) => console.error('[cron] stale call sweep failed', err))
   const followUps = await createFollowUps()
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()

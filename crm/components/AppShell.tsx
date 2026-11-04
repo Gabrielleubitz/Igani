@@ -7,6 +7,8 @@ import { prisma } from '@/lib/prisma'
 import { SignOutButton } from './AuthButtons'
 import { SessionKeepAlive } from './SessionKeepAlive'
 import { AppNav, GlobalSearch, MobileMenu, type NavGroup } from './AppNav'
+import { DialerProvider } from './dialer/Dialer'
+import { dialerDemo } from '@/lib/twilio'
 
 type Role = SessionUser['role']
 const ALL: Role[] = ['ADMIN', 'SALES', 'MARKETING']
@@ -48,6 +50,7 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
       { href: '/admin/team-meetings', label: 'Team meetings', icon: 'teamMeetings', roles: ['ADMIN'] },
       { href: '/admin/offers', label: 'Offers', icon: 'offers', roles: ['ADMIN'] },
       { href: '/admin/website', label: 'Website', icon: 'website', roles: ['ADMIN'] },
+      { href: '/admin/phone', label: 'Phone', icon: 'phone', roles: ['ADMIN'] },
       { href: '/admin/booking-pages', label: 'Booking pages', icon: 'pages', roles: ['ADMIN'] },
       { href: '/admin/team', label: 'Sales team', icon: 'performance', roles: ['ADMIN'] },
       { href: '/admin/users', label: 'Team access', icon: 'team', roles: ['ADMIN'] },
@@ -61,6 +64,11 @@ const ROLE_LABEL: Record<Role, string> = { ADMIN: 'Admin', SALES: 'Sales', MARKE
 
 export async function AppShell({ user, children }: { user: SessionUser; children: ReactNode }): Promise<React.ReactElement> {
   const pendingApprovals = user.role === 'ADMIN' ? await prisma.booking.count({ where: { status: 'PENDING', source: 'PUBLIC_PAGE', startTime: { gt: new Date() } } }) : 0
+  // The floating phone: admins and salespeople with an active line (or anyone who can call, in development demo mode)
+  const canCall = user.role === 'ADMIN' || user.role === 'SALES'
+  const line = canCall ? await prisma.phoneLine.findUnique({ where: { userId: user.id }, select: { number: true, active: true } }) : null
+  const demo = canCall && dialerDemo()
+  const dialer = demo || Boolean(line?.active)
   const groups: NavGroup[] = NAV.map((g) => ({
     title: g.title,
     items: g.items
@@ -74,7 +82,7 @@ export async function AppShell({ user, children }: { user: SessionUser; children
     .map((s) => s[0]?.toUpperCase())
     .join('')
 
-  return (
+  const shell = (
     <div className="min-h-screen lg:flex">
       <SessionKeepAlive />
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">
@@ -118,5 +126,12 @@ export async function AppShell({ user, children }: { user: SessionUser; children
         </div>
       </main>
     </div>
+  )
+  return dialer ? (
+    <DialerProvider number={line?.active ? line.number : null} demo={demo}>
+      {shell}
+    </DialerProvider>
+  ) : (
+    shell
   )
 }

@@ -2,6 +2,8 @@ import { aiTidyEnabled } from '@/lib/meeting-ai'
 import { organizedFor } from '@/lib/organize-notes'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { CallLink } from '@/components/dialer/Dialer'
+import { formatPhone } from '@/lib/phone-numbers'
 import { notFound } from 'next/navigation'
 import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { EditContactForm } from '@/components/crm/EditContactForm'
@@ -190,6 +192,14 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
         return { title: `Gemini notes: ${s(m.title)}`, body: s(m.summary) ? s(m.summary).slice(0, 400) + (s(m.summary).length > 400 ? '…' : '') : 'Notes doc linked under Meetings' }
       case 'meeting.cancelled':
         return { title: `Meeting cancelled: ${s(m.title)}`, body: m.start ? formatDateTime(new Date(s(m.start)), tz) : undefined }
+      case 'call.ended': {
+        const secs = Number(m.durationSec ?? 0)
+        const talk = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
+        const how = m.answered ? `talked ${talk}` : ({ BUSY: 'busy', NO_ANSWER: 'no answer', FAILED: 'didn’t go through', CANCELED: 'hung up before they answered' } as Record<string, string>)[s(m.status)] ?? 'not answered'
+        return { title: `📞 ${m.direction === 'INBOUND' ? 'Call from' : 'Called'} ${formatPhone(s(m.direction === 'INBOUND' ? m.from : m.to))} · ${how}` }
+      }
+      case 'call.outcome':
+        return { title: `Call outcome: ${({ connected: 'Connected', voicemail: 'Left voicemail', no_answer: 'No answer', busy: 'Busy', callback: 'Call back later', not_interested: 'Not interested', wrong_number: 'Wrong number' } as Record<string, string>)[s(m.outcome)] ?? s(m.outcome)}`, body: s(m.notes) || undefined }
       case 'task.created':
         return { title: `Task added: ${s(m.title)}`, body: m.auto === 'invoice' ? 'Created when the client signed the offer' : m.auto ? 'Created automatically around a meeting' : undefined }
       case 'task.completed':
@@ -271,7 +281,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
   const facts: [string, React.ReactNode][] = (
     [
       ['Email', lead.email ? <a key="e" href={`mailto:${lead.email}`} className="break-all underline-offset-4 hover:underline">{lead.email}</a> : <span key="e" className="text-muted-foreground">No email yet</span>],
-      ['Phone', lead.phone ? <a key="p" href={`tel:${lead.phone}`} className="underline-offset-4 hover:underline">{lead.phone}</a> : null],
+      ['Phone', lead.phone ? <CallLink key="p" phone={lead.phone} lead={{ id: lead.id, name: leadName(lead) }} className="underline-offset-4 hover:underline">{lead.phone}</CallLink> : null],
       ['Company', lead.company],
       ['Website', lead.website ? <a key="w" href={/^https?:\/\//.test(lead.website) ? lead.website : `https://${lead.website}`} target="_blank" rel="noreferrer" className="break-all underline-offset-4 hover:underline">{lead.website.replace(/^https?:\/\//, '')}</a> : null],
       ['Owner', lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : 'Unassigned'],
@@ -326,9 +336,9 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
           <div className="flex flex-wrap items-center gap-2">
             {lead.email ? <EmailComposer leadId={lead.id} email={lead.email} firstName={lead.firstName} company={lead.company} senderName={me.name ?? user.email} bookingUrl={anyPage ? appUrl(`/book/${anyPage.slug}`) : null} /> : null}
             {lead.phone ? (
-              <a href={`tel:${lead.phone}`} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
+              <CallLink phone={lead.phone} lead={{ id: lead.id, name: leadName(lead) }} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
                 📞 Call
-              </a>
+              </CallLink>
             ) : null}
             {user.role !== 'MARKETING' ? (
               <Link href={`/sales/invite?leadId=${lead.id}`} className={buttonVariants({ size: 'sm', variant: 'outline' })}>

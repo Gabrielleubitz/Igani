@@ -107,6 +107,8 @@ model User {
   agreements      Agreement[]
   leadArchives    LeadArchive[]
   leadNotes       LeadNote[]
+  phoneLine       PhoneLine?
+  calls           Call[]
   mailboxEmails   EmailMessage[]
   mailboxSync     MailboxSync?
 
@@ -207,6 +209,7 @@ model Lead {
   documents  LeadDocument[]
   archives   LeadArchive[]
   offers     Offer[]
+  calls      Call[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -638,4 +641,72 @@ model SiteVisit {
 
   @@index([page, startedAt])
   @@index([ipHash, startedAt])
+}
+
+enum CallDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum CallStatus {
+  /// created by the CRM, Twilio not reached yet
+  INITIATED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  BUSY
+  NO_ANSWER
+  FAILED
+  CANCELED
+}
+
+/// A teammate's Twilio number: the caller id for their calls (and, from step 2, where their calls ring).
+model PhoneLine {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  /// E.164, e.g. +972501234567
+  number    String   @unique
+  /// Twilio IncomingPhoneNumber SID (PN...), when picked from the account
+  twilioSid String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// One phone call made (or, from step 2, received) in the CRM. See docs/DIALER.md.
+model Call {
+  id              String        @id @default(cuid())
+  userId          String
+  leadId          String?
+  direction       CallDirection
+  status          CallStatus    @default(INITIATED)
+  /// The user's line and the other party, both E.164
+  fromNumber      String
+  toNumber        String
+  /// The browser leg (parent) and the phone leg (child) in Twilio
+  twilioCallSid   String?       @unique
+  childCallSid    String?
+  startedAt       DateTime      @default(now())
+  answeredAt      DateTime?
+  endedAt         DateTime?
+  /// Talk time once answered (seconds)
+  durationSec     Int?
+  recordingSid    String?
+  recordingStatus String?
+  recordingSec    Int?
+  /// Wrap-up chosen after the call: connected, voicemail, no_answer, busy, wrong_number, callback, not_interested
+  outcome         String?
+  notes           String?
+  /// Step 3: CallMap analysis (pending | ready | failed)
+  analysisStatus  String?
+  /// true for calls made in the development demo mode (never in production)
+  simulated       Boolean       @default(false)
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([userId, startedAt])
+  @@index([leadId, startedAt])
 }

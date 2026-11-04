@@ -20,6 +20,7 @@ import {
   UserCog,
   Video,
   Globe,
+  Phone,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -48,6 +49,7 @@ const ICONS: Record<string, LucideIcon> = {
   offers: FileSignature,
   teamMeetings: Video,
   website: Globe,
+  phone: Phone,
   settings: Settings,
 }
 
