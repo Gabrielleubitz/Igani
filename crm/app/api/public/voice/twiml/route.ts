@@ -1,7 +1,7 @@
 import { FINAL_STATUSES, MAX_CALL_MIN, advanceCall } from '@/lib/calls'
 import { dialProblem } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
-import { SETTING_DEFAULTS, getSetting } from '@/lib/settings'
+import { getSetting } from '@/lib/settings'
 import { readTwilioWebhook, twiml, userIdFromClient, voiceUrl } from '@/lib/twilio'
 
 export const dynamic = 'force-dynamic'
@@ -52,9 +52,7 @@ export async function POST(req: Request): Promise<Response> {
   }
   if (claim !== 'ok') return refuse()
 
-  const [record, consentSetting] = await Promise.all([getSetting('voice.record'), getSetting('voice.consentMessage')])
-  // Recording is never silent: an empty message falls back to the default notice
-  const consent = consentSetting.trim() || SETTING_DEFAULTS['voice.consentMessage']
+  const record = await getSetting('voice.record')
   const r = twiml()
   const dial = r.dial({
     callerId: line.number,
@@ -70,8 +68,6 @@ export async function POST(req: Request): Promise<Response> {
       statusCallback: voiceUrl('status', call.id),
       statusCallbackMethod: 'POST',
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-      // Recording consent: the person called hears it right after answering, before the two sides are connected
-      ...(record ? { url: voiceUrl('whisper', call.id), method: 'POST' as const } : {}),
     },
     call.toNumber,
   )

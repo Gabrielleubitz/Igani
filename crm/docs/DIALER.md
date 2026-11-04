@@ -17,7 +17,7 @@ We build it in steps. Each step ships on its own, is tested, and leaves the next
       (timer, mute, keypad tones, hang up), and a wrap-up after the call (outcome + note, saved on the lead).
 - [x] Click-to-call: the lead page "Call" button and phone numbers open the dialer instead of `tel:`.
 - [x] Calls on the lead's timeline (call ended + duration, outcome + note).
-- [x] Admin → Phone: Twilio setup checklist, assign a number to each teammate, recording + consent message, recent calls.
+- [x] Admin → Phone: Twilio setup checklist, assign a number to each teammate, recording on/off, allowed countries, recent calls.
 - [x] Demo mode (development only): the whole dialer works without Twilio, so UI and logging are testable.
 
 Twilio setup (one time, by the admin): see "Setup" below.
@@ -71,7 +71,7 @@ Twilio setup (one time, by the admin): see "Setup" below.
    a `Call` row (INITIATED) and returns its id.
 2. Browser (Twilio Voice SDK) connects with `{ callId }`. Twilio asks `/api/public/voice/twiml`.
 3. The webhook verifies Twilio's signature, loads the call (must belong to the token's user, be INITIATED and fresh),
-   and answers with `<Dial callerId="their number">` (+ recording and status callbacks; consent message if set).
+   and answers with `<Dial callerId="their number">` (+ recording and status callbacks).
 4. `/api/public/voice/status` follows the call (ringing, answered, completed) and logs "call ended" on the lead.
 5. `/api/public/voice/recording` stores the recording reference (used from step 3).
 6. Wrap-up in the dialer saves outcome + note on the call and the lead.

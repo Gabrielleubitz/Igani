@@ -2,7 +2,7 @@ import { LIVE_STATUSES, leadForNumber } from '@/lib/calls'
 import { leadScope } from '@/lib/lead-access'
 import { toE164 } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
-import { SETTING_DEFAULTS, getSetting } from '@/lib/settings'
+import { getSetting } from '@/lib/settings'
 import { identityFor, readTwilioWebhook, twiml, voiceUrl } from '@/lib/twilio'
 
 export const dynamic = 'force-dynamic'
@@ -34,9 +34,8 @@ export async function POST(req: Request): Promise<Response> {
     (await prisma.call.create({ data: { userId: owner.id, leadId: lead?.id ?? null, direction: 'INBOUND', status: 'RINGING', fromNumber: from || 'unknown', toNumber: to, twilioCallSid: p.CallSid ?? null } }))
 
   const busy = await prisma.call.findFirst({ where: { userId: owner.id, id: { not: call.id }, status: { in: [...LIVE_STATUSES] }, twilioCallSid: { not: null }, startedAt: { gt: new Date(Date.now() - 2 * 3600_000) } }, select: { id: true } })
-  const [record, consentSetting] = await Promise.all([getSetting('voice.record'), getSetting('voice.consentMessage')])
+  const record = await getSetting('voice.record')
   const r = twiml()
-  if (record) r.say((consentSetting.trim() || SETTING_DEFAULTS['voice.consentMessage']).slice(0, 300))
   if (busy) {
     // already on another call: straight to voicemail
     r.redirect({ method: 'POST' }, voiceUrl('incoming-done', call.id))

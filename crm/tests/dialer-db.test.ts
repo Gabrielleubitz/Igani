@@ -68,7 +68,7 @@ d('dialer: webhooks and call state', async () => {
     expect(xml).toContain('<Number')
     expect(xml).toContain('+972501234567</Number>')
     expect(xml).toContain('record="record-from-answer-dual"')
-    expect(xml).toContain('/api/public/voice/whisper?callId=') // consent message before connecting
+    expect(xml).not.toContain('<Say') // no message before connecting
     // the same request replayed can't dial again
     expect(await (await twimlRoute.POST(signed('twiml', { ...params, CallSid: 'CA' + 'b'.repeat(32) }))).text()).toContain('<Hangup/>')
   })
@@ -127,14 +127,6 @@ d('dialer: webhooks and call state', async () => {
     expect(await (await twimlRoute.POST(signed('twiml', { CallSid: 'CA' + '1'.repeat(32), From: `client:u_${userId}`, callId: first.id }))).text()).toContain('<Dial')
     expect(await (await twimlRoute.POST(signed('twiml', { CallSid: 'CA' + '2'.repeat(32), From: `client:u_${userId}`, callId: second.id }))).text()).toContain('already on another call')
     expect((await prisma.call.findUniqueOrThrow({ where: { id: second.id } })).status).toBe('FAILED')
-  })
-
-  it('recording is never silent: an empty consent message still plays the default notice', async () => {
-    await prisma.siteSetting.create({ data: { key: 'voice.consentMessage', value: '' } })
-    const call = await newCall()
-    expect(await (await twimlRoute.POST(signed('twiml', { CallSid: 'CA' + '3'.repeat(32), From: `client:u_${userId}`, callId: call.id }))).text()).toContain('/api/public/voice/whisper')
-    const whisper = await import('@/app/api/public/voice/whisper/route')
-    expect(await (await whisper.POST(signed('whisper', {}, `?callId=${call.id}`))).text()).toContain('may be recorded')
   })
 
   it('a call that still looks live is closed with Twilio’s own result (no lock-out), a live one stays live', async () => {

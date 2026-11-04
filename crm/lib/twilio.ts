@@ -49,7 +49,7 @@ export function voiceToken(c: TwilioConfig, userId: string, ttlSec = 3600): stri
   return token.toJwt()
 }
 
-export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'whisper' | 'incoming' | 'incoming-done' | 'voicemail-done'
+export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done'
 
 /** Public URL of one of our voice webhooks (what Twilio calls, and what its signature is computed over). */
 export function voiceUrl(path: VoicePath, callId?: string): string {

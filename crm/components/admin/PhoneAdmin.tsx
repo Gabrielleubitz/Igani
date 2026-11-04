@@ -59,8 +59,8 @@ export function PhoneLineRow({ userId, name, role, current, numbers, takenBy }: 
   )
 }
 
-/** Recording, the consent message the other side hears, and which countries can be called. */
-export function VoiceSettingsForm({ initial }: { initial: { record: boolean; consent: string; countries: DialCountry[] } }): React.ReactElement {
+/** Recording, and which countries can be called. */
+export function VoiceSettingsForm({ initial }: { initial: { record: boolean; countries: DialCountry[] } }): React.ReactElement {
   const router = useRouter()
   const [v, setV] = useState(initial)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -68,7 +68,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; con
   const save = (): void =>
     start(async () => {
       setMsg(null)
-      const r = await saveSettings({ 'voice.record': v.record, 'voice.consentMessage': v.consent, 'voice.countries': v.countries })
+      const r = await saveSettings({ 'voice.record': v.record, 'voice.countries': v.countries })
       setMsg(r.ok ? { ok: true, text: 'Saved' } : { ok: false, text: r.error })
       if (r.ok) router.refresh()
     })
@@ -79,13 +79,6 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; con
         <span>
           <span className="font-medium">Record calls</span>
           <span className="block text-xs text-muted-foreground">Both sides, from the moment they answer. Needed later for transcripts, coaching and reviews (CallMap).</span>
-        </span>
-      </label>
-      <label className="block space-y-1">
-        <span className="font-medium">Message the other side hears first</span>
-        <Input value={v.consent} onChange={(e) => setV({ ...v, consent: e.target.value })} maxLength={300} disabled={!v.record} placeholder="e.g. This call may be recorded for quality and training." />
-        <span className={`block text-xs ${v.record && !v.consent.trim() ? 'text-amber-400' : 'text-muted-foreground'}`}>
-          {v.record && !v.consent.trim() ? 'Required while recording is on: people must be told a call is recorded.' : 'Played as they answer, before you’re connected. Required by law in many places (incl. several US states).'}
         </span>
       </label>
       <fieldset className="space-y-1">
@@ -105,7 +98,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; con
         <span className="block text-xs text-muted-foreground">Premium-rate numbers are always blocked. Twilio’s own geo permissions must allow these countries too.</span>
       </fieldset>
       <div className="flex items-center gap-3">
-        <Button onClick={save} disabled={pending || v.countries.length === 0 || (v.record && !v.consent.trim())}>
+        <Button onClick={save} disabled={pending || v.countries.length === 0}>
           {pending ? 'Saving…' : 'Save'}
         </Button>
         {msg ? <span className={`text-xs ${msg.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{msg.text}</span> : null}
