@@ -3,6 +3,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { env } from '@/lib/env'
 import { assignLeadToDefaultOwner, ingestLead, leadPayloadSchema, notifyTeamOfNewLead } from '@/lib/leads'
 import { safeEqual } from '@/lib/tokens'
+import { logActivity } from '@/lib/audit'
+import { checkSubmission } from '@/lib/spam-check'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,6 +29,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const parsed = leadPayloadSchema.safeParse(body)
   if (!parsed.success) {
     return NextResponse.json({ error: 'Validation failed', issues: parsed.error.flatten().fieldErrors }, { status: 422 })
+  }
+
+  // Fake sign-ups never become leads (second line of defence; the website filters first). Answered like a normal
+  // lead so whoever sends them learns nothing; recorded so an admin can see what was blocked.
+  const verdict = checkSubmission({ firstName: parsed.data.firstName, lastName: parsed.data.lastName, email: parsed.data.email, company: parsed.data.company, message: parsed.data.message })
+  if (verdict.spam && !parsed.data.backfill) {
+    await logActivity({ entityType: 'SETTING', entityId: 'spam-blocked', action: 'lead.spam_blocked', metadata: { email: parsed.data.email ?? null, name: [parsed.data.firstName, parsed.data.lastName].filter(Boolean).join(' ') || null, reasons: verdict.reasons, score: verdict.score } }).catch(() => undefined)
+    return NextResponse.json({ id: null, duplicate: false }, { status: 201 })
   }
 
   try {

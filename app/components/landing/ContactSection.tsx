@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, Mail, MapPin, Phone, Send } from 'lucide-react'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -43,6 +43,13 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
     setFormData({ ...formData, [e.target.name]: e.target.value })
   }
 
+  // Spam signals sent with the form: the hidden trap field and how long the form was open before sending
+  const [trap, setTrap] = useState('')
+  const openedAt = useRef(0)
+  useEffect(() => {
+    openedAt.current = Date.now()
+  }, [])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const localNumber = formData.phone.replace(/^\+\d+\s*/, '')
@@ -57,7 +64,7 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, page: window.location.pathname, utm: Object.fromEntries(Array.from(new URLSearchParams(window.location.search)).filter(([k]) => k.startsWith('utm_')).map(([k, v]) => [k.slice(4), v])) }),
+        body: JSON.stringify({ ...formData, website_url: trap, _elapsed: openedAt.current ? Date.now() - openedAt.current : null, page: window.location.pathname, utm: Object.fromEntries(Array.from(new URLSearchParams(window.location.search)).filter(([k]) => k.startsWith('utm_')).map(([k, v]) => [k.slice(4), v])) }),
       })
       await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -160,7 +167,14 @@ export function ContactSection({ settings }: { settings: SiteSettings }) {
             className="order-1 scroll-mt-24 lg:order-2"
           >
             <SpotlightCard intensity={0.12} className="relative">
-              <form onSubmit={handleSubmit} className="space-y-5 p-7 sm:p-9">
+              <form onSubmit={handleSubmit} className="relative space-y-5 p-7 sm:p-9">
+                {/* Bot trap: hidden from people and screen readers; bots that fill every field give themselves away */}
+                <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: 1, height: 1, overflow: 'hidden' }}>
+                  <label>
+                    Website URL
+                    <input type="text" name="website_url" tabIndex={-1} autoComplete="off" value={trap} onChange={(e) => setTrap(e.target.value)} />
+                  </label>
+                </div>
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <div>
                     <label className="mb-2 block text-sm font-medium text-white/80">{content.firstName[language]}</label>

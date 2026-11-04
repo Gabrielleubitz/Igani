@@ -5,6 +5,16 @@ import { sendAdminNotification } from '@/lib/mailjet'
 import { buildLeadNotificationEmail } from '@/lib/email-templates'
 import { appendLeadToSheet } from '@/lib/googleSheet'
 import { crmLeadFromSiteLead, forwardLeadToCrm } from '@/lib/crm'
+import { checkSubmission } from '@/lib/spam-check'
+import { ADMIN_COOKIE, adminSecret, verifyAdminToken } from '@/lib/admin-session'
+
+/** Reading, editing and deleting leads is for the website admin only (the signed admin cookie). Only POST is public. */
+async function isAdmin(request: Request): Promise<boolean> {
+  const cookie = request.headers.get('cookie') ?? ''
+  const token = cookie.split(/;\s*/).find((c) => c.startsWith(`${ADMIN_COOKIE}=`))?.slice(ADMIN_COOKIE.length + 1)
+  return verifyAdminToken(token ? decodeURIComponent(token) : null, adminSecret())
+}
+const unauthorized = () => NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
 interface Lead {
   id: string
@@ -73,7 +83,8 @@ async function saveLead(lead: Omit<Lead, 'id'>): Promise<string> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  if (!(await isAdmin(request))) return unauthorized()
   try {
     console.log('API request from', process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'server', ': /api/leads')
 
@@ -81,7 +92,7 @@ export async function GET() {
     return NextResponse.json(leads, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
       }
     })
@@ -93,7 +104,7 @@ export async function GET() {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
       }
@@ -124,6 +135,13 @@ export async function POST(request: Request) {
       second: '2-digit',
       timeZoneName: 'short'
     })
+
+    // Fake sign-ups: answered like a real one (bots learn nothing), but never stored, emailed or sent to the CRM
+    const verdict = checkSubmission({ name, email, message, honeypot: typeof body.website_url === 'string' ? body.website_url : null, elapsedMs: typeof body._elapsed === 'number' ? body._elapsed : null })
+    if (verdict.spam) {
+      console.warn('[leads] blocked fake sign-up', { email: String(email ?? '').slice(0, 80), reasons: verdict.reasons })
+      return NextResponse.json({ success: true }, { status: 201 })
+    }
 
     const leadData: Omit<Lead, 'id'> = {
       name,
@@ -172,7 +190,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, lead: { ...leadData, id: leadId } }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
       }
     })
@@ -184,7 +202,7 @@ export async function POST(request: Request) {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
       }
@@ -193,6 +211,7 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  if (!(await isAdmin(request))) return unauthorized()
   try {
     console.log('API request from', process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'server', ': /api/leads (PUT)')
 
@@ -221,7 +240,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
       }
     })
@@ -233,7 +252,7 @@ export async function PUT(request: Request) {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
       }
@@ -242,6 +261,7 @@ export async function PUT(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  if (!(await isAdmin(request))) return unauthorized()
   try {
     console.log('API request from', process.env.NODE_ENV === 'development' ? '127.0.0.1' : 'server', ': /api/leads (DELETE)')
 
@@ -263,7 +283,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true }, {
       headers: {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type'
       }
     })
@@ -275,7 +295,7 @@ export async function DELETE(request: Request) {
         status: 500,
         headers: {
           'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type'
         }
       }
@@ -288,7 +308,7 @@ export async function OPTIONS() {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type'
     }
   })

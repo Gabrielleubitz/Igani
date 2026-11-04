@@ -3,6 +3,7 @@ import { saveContactSubmission } from '@/lib/firestore'
 import { sendAdminNotification } from '@/lib/mailjet'
 import { buildContactNotificationEmail } from '@/lib/email-templates'
 import { crmLeadFromContactSubmission, forwardLeadToCrm } from '@/lib/crm'
+import { checkSubmission } from '@/lib/spam-check'
 
 const utmFrom = (body: Record<string, unknown>) => {
   const u = (body.utm ?? {}) as Record<string, unknown>
@@ -20,6 +21,13 @@ export async function POST(request: NextRequest) {
         { error: 'Email and message are required.' },
         { status: 400 }
       )
+    }
+
+    // Fake sign-ups: answered like a real one (bots learn nothing), but never stored, emailed or sent to the CRM
+    const verdict = checkSubmission({ firstName, lastName, email, message, honeypot: typeof body.website_url === 'string' ? body.website_url : null, elapsedMs: typeof body._elapsed === 'number' ? body._elapsed : null })
+    if (verdict.spam) {
+      console.warn('[contact] blocked fake sign-up', { email: String(email).slice(0, 80), reasons: verdict.reasons })
+      return NextResponse.json({ success: true, message: 'Thank you. We will get back to you soon.' }, { status: 200 })
     }
 
     const submissionData = {

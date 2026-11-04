@@ -1,6 +1,6 @@
 'use client'
 
-import { ChangeEvent, FormEvent, ReactNode, useState } from 'react'
+import { ChangeEvent, FormEvent, ReactNode, useEffect, useRef, useState } from 'react'
 import { MotionValue, motion, useMotionValueEvent, useTransform } from 'framer-motion'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { WhatsAppGlyph } from '@/components/SocialGlyphs'
@@ -86,6 +86,12 @@ export function FinalCTA() {
   const quote = caseStudy.quote
 
   const onChange = (e: ChangeEvent<HTMLInputElement>) => setForm({ ...form, [e.target.name]: e.target.value })
+  // Spam signals sent with the form: the hidden trap field and how long the form was open before sending
+  const [trap, setTrap] = useState('')
+  const openedAt = useRef(0)
+  useEffect(() => {
+    openedAt.current = Date.now()
+  }, [])
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -101,6 +107,8 @@ export function FinalCTA() {
           email: form.email,
           phone: form.phone,
           source: 'landing_page',
+          website_url: trap,
+          _elapsed: openedAt.current ? Date.now() - openedAt.current : null,
           sourceDetails: { page: '/realestate', form: 'call_back', campaign: 'real_estate' },
           message: `Call-back request (real estate agent) — website: ${form.website.trim()}. Call them back.`,
         }),
@@ -141,7 +149,14 @@ export function FinalCTA() {
               <div className="mt-2 max-w-xs text-white/65">We&rsquo;ll call you back within one business day.</div>
             </div>
           ) : (
-            <form onSubmit={onSubmit} className="space-y-3 p-5 sm:p-7">
+            <form onSubmit={onSubmit} className="relative space-y-3 p-5 sm:p-7">
+              {/* Bot trap: hidden from people and screen readers; bots that fill every field give themselves away */}
+              <div aria-hidden="true" style={{ position: 'absolute', left: '-10000px', top: 'auto', width: 1, height: 1, overflow: 'hidden' }}>
+                <label>
+                  Website URL
+                  <input type="text" name="website_url" tabIndex={-1} autoComplete="off" value={trap} onChange={(e) => setTrap(e.target.value)} />
+                </label>
+              </div>
               <div className="grid gap-4 grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-medium text-white/80" htmlFor="re-name">
