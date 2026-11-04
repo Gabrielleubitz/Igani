@@ -1,8 +1,9 @@
 'use client'
 
-import { ArrowUpRight, Check, ChevronDown, Delete, Grid3x3, History, Mic, MicOff, Search, Users, X } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronDown, ChevronLeft, Delete, Grid3x3, History, ListChecks, Mic, MicOff, Search, Users, X } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect } from '@/app/actions/call-lists'
 import { abandonCall, clearStuckCalls, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { cn } from '@/lib/utils'
 import { formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
@@ -35,8 +36,21 @@ const OUTCOMES: { key: string; label: string }[] = [
   { key: 'wrong_number', label: 'Wrong number' },
 ]
 
+type ProspectRef = { id: string; name: string }
+
+/** Wrap-up choices for a business on a call list: "Interested" makes it a lead. */
+const PROSPECT_OUTCOMES: { key: string; label: string }[] = [
+  { key: 'interested', label: 'Interested → make lead' },
+  { key: 'callback', label: 'Call back later' },
+  { key: 'no_answer', label: 'No answer' },
+  { key: 'voicemail', label: 'Left voicemail' },
+  { key: 'busy', label: 'Busy' },
+  { key: 'not_interested', label: 'Not interested' },
+  { key: 'wrong_number', label: 'Wrong number' },
+]
+
 interface DialerApi {
-  dial: (phone: string, lead?: { id: string; name: string } | null) => void
+  dial: (phone: string, lead?: { id: string; name: string } | null, prospect?: ProspectRef | null) => void
   open: () => void
 }
 const DialerContext = createContext<DialerApi | null>(null)
@@ -115,7 +129,9 @@ export function DialerRoot({ children }: { children: React.ReactNode }): React.R
 export function DialerProvider({ enabled, visible, number, demo, children }: { enabled: boolean; visible: boolean; number: string | null; demo: boolean; children: React.ReactNode }): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<'keypad' | 'contacts' | 'recent'>('keypad')
+  const [tab, setTab] = useState<'keypad' | 'contacts' | 'lists' | 'recent'>('keypad')
+  /** the call list open in the Lists tab (kept while a call and its wrap-up run) */
+  const [listId, setListId] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
   const [session, setSession] = useState<Session | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -233,7 +249,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     const c = call.accept()
     active.current = c
     const display = caller?.display ?? formatPhone(call.from)
-    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ? { id: caller.lead.id, name: caller.lead.name } : null, record: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in' })
+    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ? { id: caller.lead.id, name: caller.lead.name } : null, prospect: null, record: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in' })
     const finish = (): void => {
       active.current = null
       setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'answered' } : s))
@@ -254,7 +270,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   }
 
   const dial = useCallback(
-    async (phone: string, lead?: { id: string; name: string } | null) => {
+    async (phone: string, lead?: { id: string; name: string } | null, prospect?: ProspectRef | null) => {
       if (busy.current || (session && session.phase !== 'wrapup')) {
         setOpen(true)
         return
@@ -271,7 +287,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
       setOpen(true)
       setShowPad(false)
       try {
-        const res = await startCall({ to: phone, leadId: lead?.id ?? null })
+        const res = await startCall({ to: phone, leadId: lead?.id ?? null, prospectId: prospect?.id ?? null })
         if (!res.ok) {
           setError(res.error)
           return
@@ -324,7 +340,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     [getEngine, resetEngine, session],
   )
 
-  const api = useMemo<DialerApi>(() => ({ dial: (p, l) => void dial(p, l), open: () => setOpen(true) }), [dial])
+  const api = useMemo<DialerApi>(() => ({ dial: (p, l, pr) => void dial(p, l, pr), open: () => setOpen(true) }), [dial])
 
   const hangup = (): void => {
     if (active.current) active.current.hangup()
@@ -340,10 +356,10 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     setSession({ ...session, muted: !session.muted })
   }
 
-  const onWrapped = (leadName: string | null): void => {
+  const onWrapped = (leadName: string | null, madeLead = false): void => {
     setSession(null)
     setTyped('')
-    setNotice(leadName ? `Saved on ${leadName}’s timeline` : 'Call saved')
+    setNotice(madeLead ? `${leadName ?? 'They'} ${leadName ? 'is' : 'are'} now a lead` : leadName ? `Saved on ${leadName}’s timeline` : 'Call saved')
     router.refresh()
   }
 
@@ -398,11 +414,12 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
             <WrapUp session={session} onDone={onWrapped} />
           ) : (
             <>
-              <nav className="mx-4 mt-4 grid shrink-0 grid-cols-3 gap-1 rounded-xl border border-[#22344f] bg-[#0b1728] p-1" aria-label="Phone views">
+              <nav className="mx-4 mt-4 grid shrink-0 grid-cols-4 gap-1 rounded-xl border border-[#22344f] bg-[#0b1728] p-1" aria-label="Phone views">
                 {(
                   [
                     ['keypad', 'Keypad', Grid3x3],
                     ['contacts', 'Contacts', Users],
+                    ['lists', 'Lists', ListChecks],
                     ['recent', 'Recent', History],
                   ] as const
                 ).map(([k, label, Icon]) => (
@@ -449,6 +466,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {tab === 'keypad' ? <Keypad value={typed} onChange={setTyped} onCall={(p, lead) => void dial(p, lead)} /> : null}
                 {tab === 'contacts' ? <Contacts onCall={(c) => void dial(c.phone, { id: c.id, name: c.name })} /> : null}
+                {tab === 'lists' ? <Lists listId={listId} setListId={setListId} onCall={(p) => void dial(p.phone, null, { id: p.id, name: p.name })} /> : null}
                 {tab === 'recent' ? <Recent onCall={(r) => void dial(r.to, r.lead)} /> : null}
               </div>
             </>
@@ -746,7 +764,111 @@ function Contacts({ onCall }: { onCall: (c: DialerContact) => void }): React.Rea
   )
 }
 
-const OUTCOME_LABEL = Object.fromEntries(OUTCOMES.map((o) => [o.key, o.label]))
+function Lists({ listId, setListId, onCall }: { listId: string | null; setListId: (id: string | null) => void; onCall: (p: DialerProspect) => void }): React.ReactElement {
+  const [lists, setLists] = useState<DialerList[] | null>(null)
+  const [loaded, setLoaded] = useState<{ listId: string; name: string; prospects: DialerProspect[]; done: number } | null>(null)
+  // only the open list's own data counts (no flash of the previous list)
+  const open = loaded && loaded.listId === listId ? loaded : null
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    if (listId) return
+    void dialerCallLists().then((r) => setLists(r.ok ? r.data : []))
+  }, [listId])
+  useEffect(() => {
+    if (!listId) return
+    void dialerProspects(listId).then((r) => {
+      if (r.ok) setLoaded({ listId, ...r.data })
+      else {
+        setError(r.error)
+        setListId(null)
+      }
+    })
+  }, [listId, setListId])
+
+  if (listId) {
+    if (!open) return <p className="py-10 text-center text-xs text-muted-foreground">Loading…</p>
+    return (
+      <div className="flex h-full flex-col gap-3 p-4">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setListId(null)} aria-label="All call lists" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#2b4060] bg-[#132540] text-muted-foreground transition hover:border-[#3a5884] hover:text-foreground">
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div dir="auto" className="truncate text-sm font-semibold">{open.name}</div>
+            <div className="text-xs text-muted-foreground">
+              {open.prospects.length} to call{open.done ? ` · ${open.done} done` : ''}
+            </div>
+          </div>
+          <a href={`/sales/call-lists/${listId}`} className="shrink-0 text-xs text-[#8fb5ff] hover:underline">
+            Open list
+          </a>
+        </div>
+        {open.prospects.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+            <Check className="h-6 w-6 text-emerald-400" aria-hidden />
+            <p className="text-sm text-muted-foreground">Everyone on this list has been called.</p>
+          </div>
+        ) : (
+          <ul className={cn('min-h-0 overflow-y-auto', LIST)}>
+            {open.prospects.map((p) => (
+              <li key={p.id}>
+                <button type="button" onClick={() => onCall(p)} className="group flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[#132540]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#2b4263] bg-[#1d3354] text-xs font-semibold text-[#9cc0ff]">{initials(p.name, '#')}</span>
+                  <span className="min-w-0 flex-1">
+                    <span dir="auto" className="block truncate text-sm font-medium">{p.name}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {[p.status === 'CALLBACK' ? 'Call back' : null, p.attempts ? `Tried ${p.attempts}×` : null, p.category, p.display].filter(Boolean).join(' · ')}
+                    </span>
+                  </span>
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#22c55e]/30 bg-[#16a34a]/15 text-[#4ade80] transition group-hover:bg-[#16a34a] group-hover:text-white">
+                    <Handset className="h-4 w-4" />
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
+  if (lists === null) return <p className="py-10 text-center text-xs text-muted-foreground">Loading…</p>
+  return (
+    <div className="flex h-full flex-col gap-3 p-4">
+      {error ? <p className="text-xs text-rose-300">{error}</p> : null}
+      {lists.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
+          <ListChecks className="h-6 w-6 text-[#5d7392]" aria-hidden />
+          <p className="text-sm text-muted-foreground">No call lists yet.</p>
+          <p className="text-xs text-muted-foreground">
+            Leads → <span className="text-foreground">Find businesses</span> to make one.
+          </p>
+        </div>
+      ) : (
+        <ul className={cn('min-h-0 overflow-y-auto', LIST)}>
+          {lists.map((l) => (
+            <li key={l.id}>
+              <button type="button" onClick={() => setListId(l.id)} className="flex w-full items-center gap-3 px-3 py-3 text-left transition hover:bg-[#132540]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#2b4263] bg-[#172b47] text-[#8fb5ff]">
+                  <ListChecks className="h-4 w-4" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span dir="auto" className="block truncate text-sm font-medium">{l.name}</span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {l.toCall ? `${l.toCall} to call` : 'All called'} · {l.total} total{l.owner ? ` · ${l.owner}` : ''}
+                  </span>
+                </span>
+                {l.toCall ? <span className="shrink-0 rounded-full bg-[#3b78db] px-2 py-0.5 text-[11px] font-semibold tabular-nums text-white">{l.toCall}</span> : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+const OUTCOME_LABEL = Object.fromEntries([...OUTCOMES, ...PROSPECT_OUTCOMES].map((o) => [o.key, o.label]))
 const timeAgo = (iso: string): string => {
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
   if (m < 1) return 'just now'
@@ -804,7 +926,7 @@ function Recent({ onCall }: { onCall: (r: RecentCall) => void }): React.ReactEle
 
 function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }: { session: Session; now: number; showPad: boolean; setShowPad: (v: boolean) => void; onMute: () => void; onHangup: () => void; onDigit: (d: string) => void }): React.ReactElement {
   const { call, phase } = session
-  const name = call.lead?.name
+  const name = call.lead?.name ?? call.prospect?.name
   const [tones, setTones] = useState('')
   const status = phase === 'connecting' ? 'Calling…' : phase === 'ringing' ? 'Ringing…' : session.answeredAt ? fmt(now - session.answeredAt) : ''
   return (
@@ -875,21 +997,25 @@ function RoundAction({ label, active, onClick, disabled, children }: { label: st
 
 /* ───────────────────────── wrap-up ───────────────────────── */
 
-function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: string | null) => void }): React.ReactElement {
+function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: string | null, madeLead?: boolean) => void }): React.ReactElement {
   const answered = session.ended === 'answered'
   const talked = answered && session.answeredAt && session.endedAt ? session.endedAt - session.answeredAt : 0
-  const [outcome, setOutcome] = useState<string>(answered ? 'connected' : session.ended === 'busy' ? 'busy' : 'no_answer')
+  const prospect = session.call.prospect
+  const choices = prospect ? PROSPECT_OUTCOMES : OUTCOMES
+  // A list call that was answered needs a real answer (did it go well?), so nothing is picked for you.
+  const [outcome, setOutcome] = useState<string | null>(answered ? (prospect ? null : 'connected') : session.ended === 'busy' ? 'busy' : 'no_answer')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const name = session.call.lead?.name ?? null
+  const name = session.call.lead?.name ?? prospect?.name ?? null
   const save = async (): Promise<void> => {
+    if (!outcome) return setError('Pick how it went.')
     setSaving(true)
     setError(null)
     const r = await saveCallWrapUp({ callId: session.call.callId, outcome: outcome as never, notes: notes.trim() || undefined })
     setSaving(false)
     if (!r.ok) return setError(r.error)
-    onDone(name)
+    onDone(name, r.data.madeLead || (prospect !== null && outcome === 'interested'))
   }
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
@@ -901,13 +1027,22 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
       <fieldset>
         <legend className="mb-2 text-sm font-medium">How did it go?</legend>
         <div className="flex flex-wrap gap-2">
-          {OUTCOMES.map((o) => (
+          {choices.map((o) => (
             <button
               key={o.key}
               type="button"
               onClick={() => setOutcome(o.key)}
               aria-pressed={outcome === o.key}
-              className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition', outcome === o.key ? 'border-[#4a7bd0] bg-[#3b78db] text-white' : 'border-[#2b4263] bg-[#172b47] hover:border-[#3a5884]')}
+              className={cn(
+                'rounded-full border px-3 py-1.5 text-xs font-medium transition',
+                outcome === o.key
+                  ? o.key === 'interested'
+                    ? 'border-emerald-400/60 bg-emerald-600 text-white'
+                    : 'border-[#4a7bd0] bg-[#3b78db] text-white'
+                  : o.key === 'interested'
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:border-emerald-400/70'
+                    : 'border-[#2b4263] bg-[#172b47] hover:border-[#3a5884]',
+              )}
             >
               {o.label}
             </button>
@@ -915,14 +1050,21 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
         </div>
       </fieldset>
       <label className="block">
-        <span className="mb-1.5 block text-sm font-medium">Note {name ? <span className="font-normal text-muted-foreground">(goes on {name}’s timeline)</span> : null}</span>
+        <span className="mb-1.5 block text-sm font-medium">
+          Note{' '}
+          {session.call.lead ? <span className="font-normal text-muted-foreground">(goes on {name}’s timeline)</span> : prospect ? <span className="font-normal text-muted-foreground">{outcome === 'interested' ? '(goes on the new lead)' : '(saved on the call list)'}</span> : null}
+        </span>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} maxLength={2000} placeholder="What did you agree? What’s next?" className={cn('resize-none px-3 py-2', FIELD)} />
       </label>
-      {!session.call.lead ? <p className="text-xs text-muted-foreground">This number isn’t on a contact, so the call is saved in your call history only.</p> : null}
+      {prospect ? (
+        <p className="text-xs text-muted-foreground">{outcome === 'interested' ? `${prospect.name} becomes your lead (Contacted), with this call, its recording and coaching.` : 'From your call list. Pick “Interested” if it went well and it becomes a lead.'}</p>
+      ) : !session.call.lead ? (
+        <p className="text-xs text-muted-foreground">This number isn’t on a contact, so the call is saved in your call history only.</p>
+      ) : null}
       {error ? <p className="text-xs text-rose-300">{error}</p> : null}
       <div className="mt-auto flex gap-2">
         <button type="button" onClick={() => void save()} disabled={saving} className="flex-1 rounded-xl border border-white/10 bg-[#3b78db] py-3 text-sm font-semibold text-white transition hover:bg-[#4685e6] disabled:opacity-60">
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? 'Saving…' : prospect && outcome === 'interested' ? 'Save and make lead' : 'Save'}
         </button>
       </div>
     </div>
@@ -932,7 +1074,7 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
 /* ───────────────────────── click-to-call ───────────────────────── */
 
 /** A phone number that opens the CRM dialer (or the device's phone app when the dialer isn't available). */
-export function CallLink({ phone, lead, className, children }: { phone: string; lead?: { id: string; name: string }; className?: string; children?: React.ReactNode }): React.ReactElement {
+export function CallLink({ phone, lead, prospect, className, children }: { phone: string; lead?: { id: string; name: string }; prospect?: ProspectRef; className?: string; children?: React.ReactNode }): React.ReactElement {
   const dialer = useDialer()
   return (
     <a
@@ -941,7 +1083,7 @@ export function CallLink({ phone, lead, className, children }: { phone: string; 
       onClick={(e) => {
         if (!dialer) return
         e.preventDefault()
-        dialer.dial(phone, lead ?? null)
+        dialer.dial(phone, lead ?? null, prospect ?? null)
       }}
     >
       {children ?? phone}

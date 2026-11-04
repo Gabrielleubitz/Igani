@@ -5,14 +5,22 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser, type SessionUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
+import { PROSPECT_STATUS_LABEL, assertCanUseList } from '@/lib/call-lists'
 import { phoneKey } from '@/lib/leads'
 import { PLACES_LIMITS, PLACES_MAX_PAGES, PlacesError, placesKey, placesQuery, searchPlaces, websiteHost, type PlaceResult } from '@/lib/places'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
-/** Who already has this business as a lead. `id` only when the person may open it. */
-export type ExistingLead = { id: string | null; owner: string | null }
-export type FoundPlace = PlaceResult & { existing: ExistingLead | null }
+const callers = ['ADMIN', 'SALES'] as const
+
+/**
+ * The CRM already knows this business: it's a lead (`id` only when the person may open it), or it's on a call list
+ * (`listId` only when the person may open that list).
+ */
+export type Known =
+  | { kind: 'lead'; id: string | null; owner: string | null }
+  | { kind: 'list'; listId: string | null; list: string; owner: string | null; status: string }
+export type FoundPlace = PlaceResult & { existing: Known | null }
 
 const SEARCH = 'places.search'
 
@@ -30,28 +38,49 @@ async function assertSearchAllowed(user: SessionUser): Promise<void> {
 }
 
 /**
- * Which of these businesses are already leads (same phone or same website). Phones match on the last 8 digits:
- * Google lists +972 2-123-4567 where a lead may have 02-123-4567, and an Israeli landline has only 8 digits after the 0.
+ * Which of these businesses the CRM already has: as a lead (same phone or same website) or on any call list (same
+ * phone). Phones match on the last 8 digits: Google lists +972 2-123-4567 where a lead may have 02-123-4567, and an
+ * Israeli landline has only 8 digits after the 0.
  */
-async function matchExisting(places: PlaceResult[], user: SessionUser): Promise<Map<string, ExistingLead>> {
+async function matchKnown(places: PlaceResult[], user: SessionUser): Promise<Map<string, Known>> {
   const keys = [...new Set(places.map((p) => phoneKey(p.phone)?.slice(-8)).filter((k): k is string => Boolean(k)))]
   const hosts = [...new Set(places.map((p) => websiteHost(p.website)).filter((h): h is string => Boolean(h)))]
   if (!keys.length && !hosts.length) return new Map()
-  const rows = await prisma.$queryRaw<{ id: string; assignedToId: string | null; ownerName: string | null; ownerEmail: string | null; pkey: string | null; host: string | null }[]>`
-    SELECT l.id, l."assignedToId", u.name AS "ownerName", u.email AS "ownerEmail",
-      CASE WHEN l.phone IS NULL THEN NULL ELSE right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 8) END AS pkey,
-      CASE WHEN l.website IS NULL THEN NULL ELSE regexp_replace(lower(l.website), '^(https?://)?(www\\.)?([^/:?#]+).*$', '\\3') END AS host
-    FROM "Lead" l LEFT JOIN "User" u ON u.id = l."assignedToId"
-    WHERE (l.phone IS NOT NULL AND right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 8) = ANY(${keys}::text[]))
-       OR (l.website IS NOT NULL AND regexp_replace(lower(l.website), '^(https?://)?(www\\.)?([^/:?#]+).*$', '\\3') = ANY(${hosts}::text[]))`
-  const out = new Map<string, ExistingLead>()
+  const [leads, prospects] = await Promise.all([
+    prisma.$queryRaw<{ id: string; assignedToId: string | null; ownerName: string | null; ownerEmail: string | null; pkey: string | null; host: string | null }[]>`
+      SELECT l.id, l."assignedToId", u.name AS "ownerName", u.email AS "ownerEmail",
+        CASE WHEN l.phone IS NULL THEN NULL ELSE right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 8) END AS pkey,
+        CASE WHEN l.website IS NULL THEN NULL ELSE regexp_replace(lower(l.website), '^(https?://)?(www\\.)?([^/:?#]+).*$', '\\3') END AS host
+      FROM "Lead" l LEFT JOIN "User" u ON u.id = l."assignedToId"
+      WHERE (l.phone IS NOT NULL AND right(regexp_replace(l.phone, '[^0-9]', '', 'g'), 8) = ANY(${keys}::text[]))
+         OR (l.website IS NOT NULL AND regexp_replace(lower(l.website), '^(https?://)?(www\\.)?([^/:?#]+).*$', '\\3') = ANY(${hosts}::text[]))`,
+    prisma.$queryRaw<{ listId: string; listName: string; ownerId: string | null; ownerName: string | null; ownerEmail: string | null; status: keyof typeof PROSPECT_STATUS_LABEL; pkey: string }[]>`
+      SELECT p."listId", c.name AS "listName", c."ownerId", u.name AS "ownerName", u.email AS "ownerEmail", p.status::text AS status,
+        right(regexp_replace(p.phone, '[^0-9]', '', 'g'), 8) AS pkey
+      FROM "Prospect" p JOIN "CallList" c ON c.id = p."listId" LEFT JOIN "User" u ON u.id = c."ownerId"
+      WHERE p.status <> 'CONVERTED' AND right(regexp_replace(p.phone, '[^0-9]', '', 'g'), 8) = ANY(${keys}::text[])`,
+  ])
+  const out = new Map<string, Known>()
   for (const p of places) {
     const k = phoneKey(p.phone)?.slice(-8)
     const h = websiteHost(p.website)
-    const row = rows.find((r) => (k && r.pkey === k) || (h && r.host === h))
-    if (!row) continue
-    const visible = user.role === 'ADMIN' || row.assignedToId === user.id
-    out.set(p.placeId, { id: visible ? row.id : null, owner: row.assignedToId ? (row.ownerName ?? row.ownerEmail) : null })
+    const lead = leads.find((r) => (k && r.pkey === k) || (h && r.host === h))
+    if (lead) {
+      const visible = user.role === 'ADMIN' || lead.assignedToId === user.id
+      out.set(p.placeId, { kind: 'lead', id: visible ? lead.id : null, owner: lead.assignedToId ? (lead.ownerName ?? lead.ownerEmail) : null })
+      continue
+    }
+    const onList = k ? prospects.find((r) => r.pkey === k) : undefined
+    if (onList) {
+      const mine = onList.ownerId === user.id
+      out.set(p.placeId, {
+        kind: 'list',
+        listId: mine || user.role === 'ADMIN' ? onList.listId : null,
+        list: onList.listName,
+        owner: mine ? null : onList.ownerId ? (onList.ownerName ?? onList.ownerEmail) : null,
+        status: PROSPECT_STATUS_LABEL[onList.status] ?? onList.status,
+      })
+    }
   }
   return out
 }
@@ -63,17 +92,17 @@ const searchSchema = z.object({
   page: z.number().int().min(1).max(PLACES_MAX_PAGES).default(1),
 })
 
-/** One page of Google Maps results for "what" in "where", each marked if it's already a lead. */
+/** One page of Google Maps results for "what" in "where", each marked if the CRM already has it. */
 export async function findBusinesses(input: z.input<typeof searchSchema>): Promise<ActionResult<{ query: string; places: FoundPlace[]; nextPageToken: string | null; page: number }>> {
   try {
-    const user = await requireUser()
+    const user = await requireUser([...callers])
     const { what, where, pageToken, page } = searchSchema.parse(input)
     if (!placesKey()) throw new PlacesError('Google search isn’t set up yet: add GOOGLE_MAPS_API_KEY to the CRM’s environment variables.')
     await assertSearchAllowed(user)
     const query = placesQuery(what, where)
     const res = await searchPlaces(query, pageToken)
     await logActivity({ entityType: 'USER', entityId: user.id, actorId: user.id, action: SEARCH, metadata: { query, page, results: res.places.length } })
-    const existing = await matchExisting(res.places, user)
+    const existing = await matchKnown(res.places, user)
     return {
       ok: true,
       data: {
@@ -101,57 +130,58 @@ const placeSchema = z.object({
   category: z.string().trim().max(80).nullable(),
 })
 
-const importSchema = z.object({
-  query: z.string().trim().min(1).max(220),
-  places: z.array(placeSchema).min(1).max(PLACES_MAX_PAGES * 20),
-})
+const addSchema = z
+  .object({
+    query: z.string().trim().min(1).max(220),
+    places: z.array(placeSchema).min(1).max(PLACES_MAX_PAGES * 20),
+    /** add to this list… */
+    listId: z.string().cuid().optional(),
+    /** …or start a new one (admins can make it for a teammate) */
+    newList: z.object({ name: z.string().trim().min(1).max(120), ownerId: z.string().cuid().optional() }).optional(),
+  })
+  .refine((d) => Boolean(d.listId) !== Boolean(d.newList), { message: 'Pick a call list or name a new one', path: ['listId'] })
 
-/** Add the ticked businesses as leads. Ones that are already leads (or have no phone) are skipped. */
-export async function importBusinesses(input: z.input<typeof importSchema>): Promise<ActionResult<{ added: number; skipped: number }>> {
+/**
+ * Put the ticked businesses on a call list. Skipped: no phone, already a lead, already on a call list, or ticked twice.
+ */
+export async function addToCallList(input: z.input<typeof addSchema>): Promise<ActionResult<{ listId: string; listName: string; added: number; skipped: number }>> {
   try {
-    const user = await requireUser()
-    const { query, places } = importSchema.parse(input)
-    const withPhone = places.filter((p) => phoneKey(p.phone))
+    const user = await requireUser([...callers])
+    const data = addSchema.parse(input)
+    let ownerId = user.id
+    if (data.newList?.ownerId && data.newList.ownerId !== user.id) {
+      if (user.role !== 'ADMIN') throw new BookingError('Only admins can make a list for someone else.', 'FORBIDDEN')
+      const owner = await prisma.user.findUnique({ where: { id: data.newList.ownerId }, select: { role: true } })
+      if (!owner || owner.role === 'MARKETING') throw new BookingError('Pick a salesperson or admin.', 'INVALID_STATE')
+      ownerId = data.newList.ownerId
+    }
+    if (data.listId) await assertCanUseList(data.listId, user)
+    const withPhone = data.places.filter((p) => phoneKey(p.phone))
     const result = await prisma.$transaction(
       async (tx) => {
-        // One import at a time, so two people importing the same search can't both add a business.
+        // One at a time, so two people adding the same search can't both get a business.
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('places.import'))`
-        const existing = await matchExisting(withPhone, user)
+        const list = data.listId
+          ? await tx.callList.update({ where: { id: data.listId }, data: { updatedAt: new Date() }, select: { id: true, name: true } })
+          : await tx.callList.create({ data: { name: data.newList!.name, ownerId, query: data.query }, select: { id: true, name: true } })
+        const known = await matchKnown(withPhone, user)
         const seen = new Set<string>()
-        let added = 0
-        for (const p of withPhone) {
+        const rows = withPhone.filter((p) => {
           const key = phoneKey(p.phone)!.slice(-8)
-          if (existing.has(p.placeId) || seen.has(key)) continue
+          if (known.has(p.placeId) || seen.has(key)) return false
           seen.add(key)
-          const details = [
-            p.category,
-            p.address,
-            p.rating != null ? `Google rating ${p.rating}${p.reviews != null ? ` (${p.reviews} reviews)` : ''}` : null,
-            p.mapsUrl ? `Google Maps: ${p.mapsUrl}` : null,
-          ].filter(Boolean)
-          const lead = await tx.lead.create({
-            data: {
-              company: p.name,
-              phone: p.phone,
-              website: p.website,
-              message: details.length ? `Found on Google Maps (“${query}”).\n${details.join('\n')}` : `Found on Google Maps (“${query}”).`,
-              source: 'Google Places',
-              sourceDetail: `Google Maps · ${query}`.slice(0, 300),
-              tags: ['google-places', 'cold'],
-              // Reps own what they add; admins/marketing leave it unassigned, like adding a lead by hand.
-              assignedToId: user.role === 'SALES' ? user.id : null,
-            },
-          })
-          await logActivity({ entityType: 'LEAD', entityId: lead.id, action: 'lead.created', actorId: user.id, metadata: { source: 'Google Places', sourceDetail: lead.sourceDetail, placeId: p.placeId } }, tx)
-          added++
-        }
-        return { added, skipped: places.length - added }
+          return true
+        })
+        const created = await tx.prospect.createMany({
+          data: rows.map((p) => ({ listId: list.id, placeId: p.placeId, name: p.name, phone: p.phone!, website: p.website, address: p.address, category: p.category, rating: p.rating, reviews: p.reviews, mapsUrl: p.mapsUrl })),
+          skipDuplicates: true,
+        })
+        return { listId: list.id, listName: list.name, added: created.count, skipped: data.places.length - created.count }
       },
       { timeout: 30_000 },
     )
-    await logActivity({ entityType: 'USER', entityId: user.id, actorId: user.id, action: 'places.import', metadata: { query, ...result } })
-    revalidatePath('/sales', 'layout')
-    revalidatePath('/admin/leads')
+    await logActivity({ entityType: 'USER', entityId: user.id, actorId: user.id, action: 'places.to_call_list', metadata: { query: data.query, ...result } })
+    revalidatePath('/sales/call-lists')
     return { ok: true, data: result }
   } catch (err) {
     return toActionError(err)

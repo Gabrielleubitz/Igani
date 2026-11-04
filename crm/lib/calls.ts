@@ -39,6 +39,8 @@ export function fromTwilioStatus(s: string | undefined | null): CallStatus | nul
 
 /** Wrap-up outcomes a salesperson picks after a call. */
 export const CALL_OUTCOMES = {
+  /** call lists: the call went well, the business becomes a lead */
+  interested: 'Interested · made a lead',
   connected: 'Connected',
   voicemail: 'Left voicemail',
   no_answer: 'No answer',

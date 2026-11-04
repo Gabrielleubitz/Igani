@@ -21,6 +21,7 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
       { href: '/sales/board', label: 'Board', icon: 'board', roles: ALL },
       { href: '/sales/tasks', label: 'Tasks', icon: 'tasks', roles: ALL },
       { href: '/sales/calls', label: 'Calls', icon: 'calls', roles: SELLERS },
+      { href: '/sales/call-lists', label: 'Call lists', icon: 'callLists', roles: SELLERS },
       {
         href: '/sales',
         label: 'Meetings',

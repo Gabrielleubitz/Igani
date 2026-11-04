@@ -201,7 +201,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
       case 'call.analyzed':
         return { title: `Call summary${m.outcome ? `: ${s(m.outcome)}` : ''}`, body: [s(m.summary), m.nextStep ? `Next step: ${s(m.nextStep)}` : ''].filter(Boolean).join('\n') || undefined }
       case 'call.outcome':
-        return { title: `Call outcome: ${({ connected: 'Connected', voicemail: 'Left voicemail', no_answer: 'No answer', busy: 'Busy', callback: 'Call back later', not_interested: 'Not interested', wrong_number: 'Wrong number' } as Record<string, string>)[s(m.outcome)] ?? s(m.outcome)}`, body: s(m.notes) || undefined }
+        return { title: `Call outcome: ${({ interested: 'Interested', connected: 'Connected', voicemail: 'Left voicemail', no_answer: 'No answer', busy: 'Busy', callback: 'Call back later', not_interested: 'Not interested', wrong_number: 'Wrong number' } as Record<string, string>)[s(m.outcome)] ?? s(m.outcome)}`, body: s(m.notes) || undefined }
       case 'task.created':
         return { title: `Task added: ${s(m.title)}`, body: m.auto === 'invoice' ? 'Created when the client signed the offer' : m.auto ? 'Created automatically around a meeting' : undefined }
       case 'task.completed':

@@ -1,13 +1,14 @@
 'use client'
 
-import { Check, ExternalLink, Globe, Loader2, MapPin, Phone, Search, Star } from 'lucide-react'
+import { Check, ExternalLink, Globe, ListChecks, Loader2, MapPin, Phone, Search, Star } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
-import { findBusinesses, importBusinesses, type FoundPlace } from '@/app/actions/places'
+import { useEffect, useState, useTransition } from 'react'
+import { callListChoices, type ListChoice } from '@/app/actions/call-lists'
+import { addToCallList, findBusinesses, type FoundPlace } from '@/app/actions/places'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
-import { Input, Label } from '@/components/ui/input'
+import { Input, Label, Select } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
 const host = (url: string): string => {
@@ -18,7 +19,10 @@ const host = (url: string): string => {
   }
 }
 
-/** "Find businesses": search Google Maps (e.g. real estate in Jerusalem), tick results, add them as leads. */
+/**
+ * "Find businesses": search Google Maps (e.g. real estate in Jerusalem), tick results and put them on a call list.
+ * They show up in the dialer's Lists tab; a call that goes well makes the business a lead.
+ */
 export function FindBusinesses(): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -33,6 +37,22 @@ export function FindBusinesses(): React.ReactElement {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [searching, startSearch] = useTransition()
   const [importing, startImport] = useTransition()
+  const [choices, setChoices] = useState<ListChoice | null>(null)
+  /** an existing list's id, or 'new' */
+  const [target, setTarget] = useState('new')
+  const [listName, setListName] = useState('')
+  const [owner, setOwner] = useState('')
+  const [added, setAdded] = useState<{ listId: string; listName: string } | null>(null)
+
+  useEffect(() => {
+    if (!open || choices) return
+    void callListChoices().then((r) => {
+      if (r.ok) {
+        setChoices(r.data)
+        setOwner(r.data.me)
+      }
+    })
+  }, [open, choices])
 
   const canPick = (p: FoundPlace): boolean => !p.existing && Boolean(p.phone)
   const pickable = (places ?? []).filter(canPick)
@@ -49,6 +69,11 @@ export function FindBusinesses(): React.ReactElement {
       const fresh = r.data.places
       setQuery(r.data.query)
       setLast(terms)
+      if (!more) {
+        setAdded(null)
+        // a new list is named after the search, unless you've typed a name
+        setListName((n) => (n && n !== query ? n : r.data.query))
+      }
       setPlaces((prev) => {
         const base = more && prev ? prev : []
         const ids = new Set(base.map((p) => p.placeId))
@@ -63,18 +88,29 @@ export function FindBusinesses(): React.ReactElement {
   const add = (): void => {
     const chosen = (places ?? []).filter((p) => picked.has(p.placeId) && canPick(p))
     if (!chosen.length) return
+    if (target === 'new' && !listName.trim()) {
+      setMsg({ ok: false, text: 'Name the new call list.' })
+      return
+    }
     setMsg(null)
     startImport(async () => {
-      const r = await importBusinesses({ query, places: chosen.map(({ existing: _e, ...p }) => p) })
+      const r = await addToCallList({
+        query,
+        places: chosen.map(({ existing: _e, ...p }) => p),
+        ...(target === 'new' ? { newList: { name: listName.trim(), ...(owner ? { ownerId: owner } : {}) } } : { listId: target }),
+      })
       if (!r.ok) {
         setMsg({ ok: false, text: r.error })
         return
       }
-      const { added, skipped } = r.data
-      setMsg({ ok: true, text: `✓ Added ${added} lead${added === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped: already leads)` : ''}.` })
-      // Mark them so they can't be added twice.
-      setPlaces((prev) => (prev ?? []).map((p) => (picked.has(p.placeId) ? { ...p, existing: p.existing ?? { id: null, owner: null } } : p)))
+      const { added: n, skipped, listId, listName: name } = r.data
+      setMsg({ ok: true, text: `✓ Added ${n} to “${name}”${skipped ? ` (${skipped} skipped: already known)` : ''}.` })
+      setAdded({ listId, listName: name })
+      // Mark them so they can't be added twice, and keep adding to the same list.
+      setPlaces((prev) => (prev ?? []).map((p) => (picked.has(p.placeId) && !p.existing ? { ...p, existing: { kind: 'list', listId, list: name, owner: null, status: 'To call' } } : p)))
       setPicked(new Set())
+      setTarget(listId)
+      setChoices((c) => (c && !c.lists.some((l) => l.id === listId) ? { ...c, lists: [{ id: listId, name, owner: null }, ...c.lists] } : c))
       router.refresh()
     })
   }
@@ -90,7 +126,7 @@ export function FindBusinesses(): React.ReactElement {
         open={open}
         onClose={() => setOpen(false)}
         title="Find businesses on Google"
-        description="Search Google Maps by type and city, tick the ones you want, and add them as leads. Only each business’s listed phone and website are added."
+        description="Search Google Maps by type and city, tick the ones you want, and put them on a call list. Call them from the dialer’s Lists tab; when a call goes well, the business becomes a lead."
         className="w-[min(96vw,46rem)]"
       >
         <form
@@ -183,7 +219,7 @@ export function FindBusinesses(): React.ReactElement {
                             <MapPin className="h-3 w-3 shrink-0" aria-hidden /> <span className="truncate">{p.address}</span>
                           </span>
                         ) : null}
-                        {p.existing ? (
+                        {p.existing?.kind === 'lead' ? (
                           <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
                             <Check className="h-3 w-3" aria-hidden />
                             {p.existing.id ? (
@@ -194,6 +230,19 @@ export function FindBusinesses(): React.ReactElement {
                               'Already a lead'
                             )}
                             {p.existing.owner ? ` · ${p.existing.owner}` : ''}
+                          </span>
+                        ) : p.existing?.kind === 'list' ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-sky-300">
+                            <ListChecks className="h-3 w-3" aria-hidden />
+                            On call list{' '}
+                            {p.existing.listId ? (
+                              <Link href={`/sales/call-lists/${p.existing.listId}`} className="underline underline-offset-2">
+                                {p.existing.list}
+                              </Link>
+                            ) : (
+                              p.existing.list
+                            )}
+                            {p.existing.owner ? ` · ${p.existing.owner}` : ''} · {p.existing.status}
                           </span>
                         ) : null}
                       </span>
@@ -208,18 +257,59 @@ export function FindBusinesses(): React.ReactElement {
         {msg ? <p className={cn('text-sm', msg.ok ? 'text-emerald-400' : 'text-rose-400')}>{msg.text}</p> : null}
 
         {places && places.length ? (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {next ? (
-              <Button type="button" variant="outline" disabled={searching} onClick={() => run(true)}>
-                {searching ? <Loader2 className="me-1.5 h-4 w-4 animate-spin" /> : null} Load 20 more
-              </Button>
-            ) : (
-              <span className="text-xs text-muted-foreground">Google shows up to 60 results per search.</span>
-            )}
-            <Button type="button" disabled={importing || picked.size === 0} onClick={add}>
-              {importing ? <Loader2 className="me-1.5 h-4 w-4 animate-spin" /> : null}
-              {importing ? 'Adding…' : `Add ${picked.size} as lead${picked.size === 1 ? '' : 's'}`}
-            </Button>
+          <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="fb-list">Call list</Label>
+                <Select id="fb-list" value={target} onChange={(e) => setTarget(e.target.value)}>
+                  <option value="new">+ New list</option>
+                  {(choices?.lists ?? []).map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                      {l.owner ? ` (${l.owner})` : ''}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              {target === 'new' ? (
+                <div className="space-y-1">
+                  <Label htmlFor="fb-list-name">List name</Label>
+                  <Input id="fb-list-name" value={listName} onChange={(e) => setListName(e.target.value)} maxLength={120} dir="auto" placeholder="e.g. Real estate · Jerusalem" />
+                </div>
+              ) : null}
+              {target === 'new' && choices && choices.teammates.length > 1 ? (
+                <div className="space-y-1">
+                  <Label htmlFor="fb-owner">Who calls it</Label>
+                  <Select id="fb-owner" value={owner} onChange={(e) => setOwner(e.target.value)}>
+                    {choices.teammates.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.id === choices.me ? `Me (${t.name})` : t.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {next ? (
+                <Button type="button" variant="outline" disabled={searching} onClick={() => run(true)}>
+                  {searching ? <Loader2 className="me-1.5 h-4 w-4 animate-spin" /> : null} Load 20 more
+                </Button>
+              ) : (
+                <span className="text-xs text-muted-foreground">Google shows up to 60 results per search.</span>
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                {added ? (
+                  <Link href={`/sales/call-lists/${added.listId}`} className="text-sm text-primary hover:underline">
+                    Open “{added.listName}” →
+                  </Link>
+                ) : null}
+                <Button type="button" disabled={importing || picked.size === 0} onClick={add}>
+                  {importing ? <Loader2 className="me-1.5 h-4 w-4 animate-spin" /> : <ListChecks className="me-1.5 h-4 w-4" />}
+                  {importing ? 'Adding…' : `Add ${picked.size} to call list`}
+                </Button>
+              </div>
+            </div>
           </div>
         ) : null}
       </Dialog>

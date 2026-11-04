@@ -7,6 +7,7 @@ import {
   Clock,
   LayoutDashboard,
   Link as LinkIcon,
+  ListChecks,
   Megaphone,
   ScrollText,
   Send,
@@ -52,6 +53,7 @@ const ICONS: Record<string, LucideIcon> = {
   website: Globe,
   phone: Phone,
   calls: PhoneCall,
+  callLists: ListChecks,
   settings: Settings,
 }
 

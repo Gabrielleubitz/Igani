@@ -109,6 +109,7 @@ model User {
   leadNotes       LeadNote[]
   phoneLine       PhoneLine?
   calls           Call[]
+  callLists       CallList[]
   mailboxEmails   EmailMessage[]
   mailboxSync     MailboxSync?
 
@@ -210,6 +211,7 @@ model Lead {
   archives   LeadArchive[]
   offers     Offer[]
   calls      Call[]
+  prospects  Prospect[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -711,10 +713,75 @@ model Call {
   analysisAttempts Int           @default(0)
   /// true for calls made in the development demo mode (never in production)
   simulated        Boolean       @default(false)
+  /// A call to a business on a call list (before it is a lead)
+  prospectId       String?
 
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
 
   @@index([userId, startedAt])
   @@index([leadId, startedAt])
+  @@index([prospectId])
+}
+
+// ─── Call lists (cold calling) ───────────────────────────────────────────────
+
+enum ProspectStatus {
+  TO_CALL
+  CALLBACK
+  CONVERTED
+  NOT_INTERESTED
+  BAD_NUMBER
+}
+
+/// Businesses to cold-call (e.g. from "Find businesses"). A prospect becomes a lead when a call goes well.
+model CallList {
+  id        String   @id @default(cuid())
+  name      String
+  /// Who calls this list (null if that teammate was removed: admins can still see it)
+  ownerId   String?
+  /// The Google search it came from, if any
+  query     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner     User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  prospects Prospect[]
+
+  @@index([ownerId, createdAt])
+}
+
+model Prospect {
+  id           String         @id @default(cuid())
+  listId       String
+  /// Google place id (dedupe within a list)
+  placeId      String?
+  name         String
+  phone        String
+  website      String?
+  address      String?
+  category     String?
+  rating       Float?
+  reviews      Int?
+  mapsUrl      String?
+  status       ProspectStatus @default(TO_CALL)
+  /// Calls made to it from the list
+  attempts     Int            @default(0)
+  lastCalledAt DateTime?
+  /// Last wrap-up outcome (see CALL_OUTCOMES)
+  lastOutcome  String?
+  notes        String?        @db.Text
+  /// The lead it became
+  leadId       String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  list  CallList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  lead  Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  calls Call[]
+
+  @@unique([listId, placeId])
+  @@index([listId, status])
+  @@index([phone])
 }
