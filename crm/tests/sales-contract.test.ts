@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_FIGURES, agreementBodyHtml, basePayout, validate, type ContractData } from '@/lib/sales-contract-core'
+import { DEFAULT_FIGURES, agreementHtml as html, basePayout, validate, type ContractData } from '@/lib/sales-contract-core'
 import { createLinkToken, usedKey, verifyLinkToken, type LinkPayload } from '@/lib/sales-contract-token'
 
 const KEY = 'test-secret-test-secret'
@@ -10,16 +10,20 @@ const NOW = new Date('2026-11-01T00:00:00Z')
 const future = Math.floor(NOW.getTime() / 1000) + 3600
 
 describe('commission wording', () => {
-  const text = agreementBodyHtml(data).replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
+  const view = { logo: '/igani-logo%202.png', status: 'pending' as const, reference: 'ABC12345', admin: { name: 'Gabriel', email: 'g@igani.co', signature: null, signedAt: null }, rep: { name: 'Ariel Tzadok', email: 'a@b.co', signature: null, signedAt: null } }
+  const agreementHtml = (d: ContractData): string => html(d, view)
+  const text = agreementHtml(data).replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
   it('matches the reference agreement for Ariel’s figures', () => {
     expect(basePayout(data.figures)).toBe(4500)
     expect(text).toContain('Representative: Ariel Tzadok | Effective Date: October 31, 2026')
+    expect(agreementHtml(data)).toContain('class="logo"')
+    expect(text).toContain('Awaiting signature')
     expect(text).toContain('Deals up to 15,000 ILS: Representative receives 30% total commission.')
     expect(text).toContain('Base payout of 4,500 ILS (30% of 15,000 ILS) plus an additional 1,000 ILS bonus for every completed 5,000 ILS increment above 15,000 ILS.')
     expect(text).toContain('the representative receives 30% of the collected downpayment amount')
   })
   it('changes only the injected values and escapes them', () => {
-    const t = agreementBodyHtml({ ...data, name: '<b>X</b>', figures: { ...data.figures, threshold: 20000, basePercent: 25 } })
+    const t = agreementHtml({ ...data, name: '<b>X</b>', figures: { ...data.figures, threshold: 20000, basePercent: 25 } })
     expect(t).toContain('&lt;b&gt;X&lt;/b&gt;')
     expect(t).toContain('5,000 ILS (25% of 20,000 ILS)')
   })

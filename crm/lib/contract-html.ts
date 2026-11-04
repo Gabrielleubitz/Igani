@@ -38,7 +38,7 @@ export interface ContractRenderInput {
 const ROOT = process.cwd()
 const b64 = (path: string): string => readFileSync(path).toString('base64')
 let fontCss: string | null = null
-function fonts(): string {
+export function fonts(): string {
   fontCss ??= `@font-face{font-family:Heebo;font-weight:400;src:url(data:font/ttf;base64,${b64(join(ROOT, 'lib', 'fonts', 'Heebo-Regular.ttf'))}) format('truetype')}
 @font-face{font-family:Heebo;font-weight:700;src:url(data:font/ttf;base64,${b64(join(ROOT, 'lib', 'fonts', 'Heebo-Bold.ttf'))}) format('truetype')}`
   return fontCss

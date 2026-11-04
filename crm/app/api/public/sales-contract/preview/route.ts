@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { readContractLink } from '@/lib/sales-contract'
-import { agreementBodyHtml, formatDate } from '@/lib/sales-contract-core'
+import { pendingView, readContractLink } from '@/lib/sales-contract'
+import { agreementHtml } from '@/lib/sales-contract-core'
 import { REASON_TEXT, clientIp, limited } from '@/lib/sales-contract-http'
 
 export const runtime = 'nodejs'
@@ -15,13 +15,6 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (!parsed.success) return NextResponse.json({ error: REASON_TEXT.malformed }, { status: 400 })
   const r = await readContractLink(parsed.data.token)
   if (!r.ok) return NextResponse.json({ error: REASON_TEXT[r.reason] ?? REASON_TEXT.malformed }, { status: r.reason === 'used' ? 409 : 400 })
-  const { data, admin, exp } = r.payload
-  return NextResponse.json({
-    html: agreementBodyHtml(data),
-    repName: data.name,
-    adminName: admin.name,
-    effectiveDate: formatDate(data.effectiveDate),
-    expiresAt: new Date(exp * 1000).toISOString(),
-    adminSignature: admin.signature,
-  })
+  const { data, exp } = r.payload
+  return NextResponse.json({ html: agreementHtml(data, pendingView(r.payload, '/igani-logo%202.png')), repName: data.name, expiresAt: new Date(exp * 1000).toISOString() })
 }

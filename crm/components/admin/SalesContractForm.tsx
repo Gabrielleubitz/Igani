@@ -7,11 +7,11 @@ import { SignaturePad } from '@/components/SignaturePad'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { AGREEMENT_CSS, DEFAULT_FIGURES, agreementBodyHtml, basePayout, validate, type Figures } from '@/lib/sales-contract-core'
+import { AGREEMENT_CSS, DEFAULT_FIGURES, agreementHtml, basePayout, validate, type Figures } from '@/lib/sales-contract-core'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
-export function SalesContractForm({ adminName }: { adminName: string }): React.ReactElement {
+export function SalesContractForm({ adminName, adminEmail }: { adminName: string; adminEmail: string }): React.ReactElement {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [date, setDate] = useState(today())
@@ -23,7 +23,20 @@ export function SalesContractForm({ adminName }: { adminName: string }): React.R
   const [pending, start] = useTransition()
 
   const data = { name, email, effectiveDate: date, figures: f }
-  const preview = useMemo(() => agreementBodyHtml({ name: name.trim() || '[Representative name]', email, effectiveDate: date || today(), figures: f }), [name, email, date, f])
+  const preview = useMemo(
+    () =>
+      agreementHtml(
+        { name: name.trim() || '[Representative name]', email: email || 'representative@email', effectiveDate: date || today(), figures: f },
+        {
+          logo: '/igani-logo%202.png',
+          status: 'preview',
+          reference: 'PREVIEW',
+          admin: { name: adminName, email: adminEmail, signature: sig || null, signedAt: null },
+          rep: { name: name.trim(), email, signature: null, signedAt: null },
+        },
+      ),
+    [name, email, date, f, sig, adminName, adminEmail],
+  )
 
   const num = (key: keyof Figures, label: string, suffix: string): React.ReactElement => (
     <label className="block space-y-1 text-sm">
@@ -113,7 +126,7 @@ export function SalesContractForm({ adminName }: { adminName: string }): React.R
         <CardContent>
           <style>{AGREEMENT_CSS}</style>
           <div className="rounded-lg bg-white p-6 text-neutral-900">
-            <div className="agr" dangerouslySetInnerHTML={{ __html: preview }} />
+            <div dangerouslySetInnerHTML={{ __html: preview }} />
           </div>
         </CardContent>
       </Card>
