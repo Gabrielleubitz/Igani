@@ -1,7 +1,7 @@
 /** Private videos: records, limits, access rule and Range parsing. Pure (no server imports) so it can be unit-tested. */
 
 export const VIDEO_PREFIX = 'video:'
-export const MAX_VIDEO_BYTES = 150 * 1024 * 1024
+export const MAX_VIDEO_BYTES = 250 * 1024 * 1024
 export const TOTAL_VIDEO_BYTES = 1024 * 1024 * 1024
 export const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'] as const
 
@@ -68,7 +68,7 @@ export function usedBytes(videos: VideoRecord[]): number {
 
 export function fitsLimits(size: number, type: string, used: number): string | null {
   if (!(VIDEO_TYPES as readonly string[]).includes(type)) return 'Upload an MP4, WebM or MOV video.'
-  if (size > MAX_VIDEO_BYTES) return 'This file is over 150 MB. Export it at 720p and try again.'
+  if (size > MAX_VIDEO_BYTES) return 'This file is over 250 MB. Compress it first (720p, quality 28) and try again.'
   if (used + size > TOTAL_VIDEO_BYTES) return 'Not enough space: the library is limited to 1 GB. Delete a video first.'
   return null
 }

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 /** Team videos for every signed-in teammate. */
 export default async function TeamVideosPage(): Promise<React.ReactElement> {
   await requireUser()
-  const videos = (await listVideos()).filter((v) => v.visibility === 'team')
+  const videos = (await listVideos()).filter((v) => v.visibility === 'team').sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }))
   return (
     <div className="space-y-5">
       <PageIntro title="Videos" hint="Internal videos for the team. They only play while you are signed in." />

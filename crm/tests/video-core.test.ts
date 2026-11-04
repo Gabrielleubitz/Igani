@@ -32,7 +32,7 @@ describe('records and limits', () => {
   it('enforces type, per-file and total size', () => {
     expect(fitsLimits(1000, 'video/mp4', 0)).toBeNull()
     expect(fitsLimits(1000, 'application/pdf', 0)).toMatch(/MP4/)
-    expect(fitsLimits(MAX_VIDEO_BYTES + 1, 'video/mp4', 0)).toMatch(/150 MB/)
+    expect(fitsLimits(MAX_VIDEO_BYTES + 1, 'video/mp4', 0)).toMatch(/250 MB/)
     expect(fitsLimits(MAX_VIDEO_BYTES, 'video/mp4', TOTAL_VIDEO_BYTES - 10)).toMatch(/1 GB/)
   })
 })
