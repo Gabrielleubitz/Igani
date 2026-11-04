@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_FIGURES, agreementHtml as html, basePayout, validate, type ContractData } from '@/lib/sales-contract-core'
+import { DEFAULT_FIGURES, namesMatch, agreementHtml as html, basePayout, validate, type ContractData } from '@/lib/sales-contract-core'
 import { createLinkToken, usedKey, verifyLinkToken, type LinkPayload } from '@/lib/sales-contract-token'
 
 const KEY = 'test-secret-test-secret'
@@ -52,5 +52,13 @@ describe('signing link token', () => {
   })
   it('keys the used mark by link id only', () => {
     expect(usedKey('abc123')).toBe('salesContractUsed:abc123')
+  })
+})
+
+describe('name confirmation', () => {
+  it('requires the exact name, ignoring only stray spaces', () => {
+    expect(namesMatch('  Ariel   Tzadok ', 'Ariel Tzadok')).toBe(true)
+    expect(namesMatch('ariel tzadok', 'Ariel Tzadok')).toBe(false)
+    expect(namesMatch('Ariel', 'Ariel Tzadok')).toBe(false)
   })
 })

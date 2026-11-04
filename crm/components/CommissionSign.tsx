@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { SignaturePad } from '@/components/SignaturePad'
-import { AGREEMENT_CSS } from '@/lib/sales-contract-core'
+import { AGREEMENT_CSS, namesMatch } from '@/lib/sales-contract-core'
 
 const LOGO = '/igani-logo%202.png'
 
@@ -40,7 +40,7 @@ export function CommissionSign(): React.ReactElement {
 
   async function submit(): Promise<void> {
     setError(null)
-    if (name.trim().length < 2) return setError('Please type your full name.')
+    if (!namesMatch(name, pv?.repName ?? '')) return setError(`Please type your name exactly as written in the agreement: ${pv?.repName ?? ''}`)
     if (!sig) return setError('Please draw your signature.')
     if (!agree) return setError('Please accept the agreement.')
     setBusy(true)
@@ -100,8 +100,9 @@ export function CommissionSign(): React.ReactElement {
         <h2 className="mt-1 text-xl font-bold">Sign the agreement</h2>
         <div className="mt-5 space-y-4">
           <label className="block space-y-1 text-sm">
-            <span className="font-medium">Your full name</span>
-            <input className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20" value={name} onChange={(e) => setName(e.target.value)} placeholder={pv.repName} autoComplete="name" />
+            <span className="font-medium">Type your full name exactly as written above</span>
+            <input className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20" value={name} onChange={(e) => setName(e.target.value)} placeholder={pv.repName} autoComplete="off" />
+            {name.trim() && !namesMatch(name, pv.repName) ? <span className="block text-xs text-amber-600">Must match exactly: {pv.repName}</span> : null}
           </label>
           <SignaturePad label="Your signature" onChange={setSig} />
           <label className="flex items-start gap-2 text-sm">
@@ -109,7 +110,7 @@ export function CommissionSign(): React.ReactElement {
             <span>I have read this agreement and agree to its terms. I understand that typing my name and drawing my signature is my legal electronic signature.</span>
           </label>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button type="button" onClick={() => void submit()} disabled={busy} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto">
+          <button type="button" onClick={() => void submit()} disabled={busy || !namesMatch(name, pv.repName) || !sig || !agree} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto">
             {busy ? 'Signing…' : 'Sign and submit'}
           </button>
           <p className="text-xs text-slate-500">After you sign, the final PDF is emailed to you and to Igani. Nothing is stored on the website.</p>

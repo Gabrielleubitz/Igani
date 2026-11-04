@@ -43,6 +43,10 @@ export function validate(d: ContractData): string | null {
   return null
 }
 
+/** Names must match exactly (only stray spaces around/between words are ignored). */
+export const normName = (s: string): string => s.normalize('NFC').trim().replace(/\s+/g, ' ')
+export const namesMatch = (typed: string, expected: string): boolean => normName(typed) === normName(expected)
+
 export const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
 const ils = (n: number): string => `${new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(n)} ILS`

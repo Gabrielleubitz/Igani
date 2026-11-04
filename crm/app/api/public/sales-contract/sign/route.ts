@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendSalesContractSignedEmail } from '@/lib/email'
 import { buildSignedContractPdf, claimLink, readContractLink, releaseLink } from '@/lib/sales-contract'
-import { formatDate } from '@/lib/sales-contract-core'
+import { formatDate, namesMatch } from '@/lib/sales-contract-core'
 import { REASON_TEXT, clientIp, limited } from '@/lib/sales-contract-http'
 import { MAX_SIGNATURE_CHARS, PNG_DATA_URL } from '@/lib/sales-contract-token'
 
@@ -32,6 +32,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   const r = await readContractLink(body.token)
   if (!r.ok) return NextResponse.json({ error: REASON_TEXT[r.reason] ?? REASON_TEXT.malformed }, { status: r.reason === 'used' ? 409 : 400 })
   const { payload } = r
+  if (!namesMatch(body.name, payload.data.name)) return NextResponse.json({ error: `Please type your name exactly as written in the agreement: ${payload.data.name}` }, { status: 400 })
 
   const signedAt = new Date()
   let built
