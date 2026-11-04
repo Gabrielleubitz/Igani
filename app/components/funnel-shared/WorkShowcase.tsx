@@ -289,6 +289,9 @@ function PinnedRow({ projects, theme, onOpen, wantLabel, onWant }: { projects: W
   const [active, setActive] = useState(0)
   const firstRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ step: 0, offset: 0 })
+  // Touch screens step the row one site at a time with a CSS transition instead of tying it to every scroll frame
+  const [coarse, setCoarse] = useState(false)
+  useEffect(() => setCoarse(window.matchMedia('(pointer: coarse)').matches), [])
 
   useEffect(() => {
     const el = firstRef.current
@@ -298,18 +301,30 @@ function PinnedRow({ projects, theme, onOpen, wantLabel, onWant }: { projects: W
     // Step = one slide plus the gap after it (the gap differs on phones); offset centres a slide in the row
     const measure = () => {
       const gap = parseFloat(getComputedStyle(track).columnGap) || 0
-      setSize({ step: el.offsetWidth + gap, offset: (box.clientWidth - el.offsetWidth) / 2 })
+      const next = { step: el.offsetWidth + gap, offset: (box.clientWidth - el.offsetWidth) / 2 }
+      setSize((s) => (s.step === next.step && s.offset === next.offset ? s : next))
     }
     measure()
     const ro = new ResizeObserver(measure)
     ro.observe(box)
-    return () => ro.disconnect()
-  }, [])
+    ro.observe(el)
+    window.addEventListener('resize', measure)
+    window.visualViewport?.addEventListener('resize', measure)
+    // Fonts and pictures can change the width after the first measurement
+    const t = window.setTimeout(measure, 800)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', measure)
+      window.visualViewport?.removeEventListener('resize', measure)
+      window.clearTimeout(t)
+    }
+    // The row's elements are replaced when the layout switches between phone and desktop, so measure them again
+  }, [coarse])
 
   return (
     // Extra room at the bottom on phones for the sticky button bar
-    <PinnedStage screens={n - 1} className="overflow-clip pb-24 pt-28 lg:pb-6">
-      {(progress) => <PinnedTrack projects={projects} progress={progress} size={size} active={active} setActive={setActive} firstRef={firstRef} theme={theme} onOpen={onOpen} wantLabel={wantLabel} onWant={onWant} />}
+    <PinnedStage live screens={n - 1} className="overflow-clip pb-24 pt-28 lg:pb-6">
+      {(progress) => <PinnedTrack projects={projects} progress={progress} size={size} coarse={coarse} active={active} setActive={setActive} firstRef={firstRef} theme={theme} onOpen={onOpen} wantLabel={wantLabel} onWant={onWant} />}
     </PinnedStage>
   )
 }
@@ -318,6 +333,7 @@ function PinnedTrack({
   projects,
   progress,
   size,
+  coarse,
   active,
   setActive,
   firstRef,
@@ -329,6 +345,7 @@ function PinnedTrack({
   projects: WorkProject[]
   progress: import('framer-motion').MotionValue<number>
   size: { step: number; offset: number }
+  coarse: boolean
   active: number
   setActive: (i: number) => void
   firstRef: React.RefObject<HTMLDivElement>
@@ -349,7 +366,12 @@ function PinnedTrack({
   return (
     <div className="relative w-full">
       <Glow color={project.accent} />
-      <motion.div style={{ x }} className="relative flex gap-5 lg:gap-16">
+      {coarse ? (
+        // Phones: a plain element (framer would rewrite a hand-written transform), stepping one site at a time on the GPU
+        <div
+          style={{ transform: `translate3d(${size.offset - active * size.step}px, 0, 0)`, transition: 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)' }}
+          className="relative flex gap-5 lg:gap-16"
+        >
         {projects.map((p, i) => (
           <div
             key={p.id}
@@ -360,7 +382,21 @@ function PinnedTrack({
             <Showpiece project={p} theme={theme} active={i === active} load={Math.abs(i - active) <= 1} onOpen={() => onOpen(p)} />
           </div>
         ))}
-      </motion.div>
+        </div>
+      ) : (
+        <motion.div style={{ x }} className="relative flex gap-5 lg:gap-16">
+        {projects.map((p, i) => (
+          <div
+            key={p.id}
+            ref={i === 0 ? firstRef : undefined}
+            className="w-[86%] shrink-0 transition-[opacity,transform] duration-500 lg:w-[min(66%,calc((100svh-380px)*1.5))]"
+            style={{ opacity: i === active ? 1 : 0.35, transform: `scale(${i === active ? 1 : 0.94})` }}
+          >
+            <Showpiece project={p} theme={theme} active={i === active} load={Math.abs(i - active) <= 1} onOpen={() => onOpen(p)} />
+          </div>
+        ))}
+        </motion.div>
+      )}
       <div className="relative mx-auto mt-10 w-[86%] lg:mt-14 lg:w-[min(66%,calc((100svh-380px)*1.5))]">
         <AnimatePresence mode="wait">
           <motion.div key={project.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.3 }}>
