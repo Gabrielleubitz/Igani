@@ -16,8 +16,6 @@ export function clientIp(req: Request): string {
 }
 
 export const REASON_TEXT: Record<string, string> = {
-  malformed: 'This signing link is not valid. Please ask Igani for a new one.',
-  'bad-signature': 'This signing link is not valid. Please ask Igani for a new one.',
+  invalid: 'This signing link is not valid, has expired, or the agreement was already signed. Please ask Igani for a new link.',
   expired: 'This signing link has expired. Please ask Igani for a new one.',
-  used: 'This agreement has already been signed. The signed copy was emailed to both parties.',
 }

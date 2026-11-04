@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendSalesContractSignedEmail } from '@/lib/email'
-import { buildSignedContractPdf, claimLink, readContractLink, releaseLink } from '@/lib/sales-contract'
+import { buildSignedContractPdf, claimLink, readContractLink, restoreLink } from '@/lib/sales-contract'
 import { formatDate, namesMatch } from '@/lib/sales-contract-core'
 import { REASON_TEXT, clientIp, limited } from '@/lib/sales-contract-http'
 import { MAX_SIGNATURE_CHARS, PNG_DATA_URL } from '@/lib/sales-contract-token'
@@ -10,7 +10,7 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 const Body = z.object({
-  token: z.string().min(20).max(400_000),
+  code: z.string().length(12),
   name: z.string().trim().min(2).max(120),
   signature: z.string().max(MAX_SIGNATURE_CHARS).regex(PNG_DATA_URL),
   agree: z.literal(true),
@@ -29,8 +29,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ error: f === 'agree' ? 'Please accept the agreement.' : f === 'signature' ? 'Please draw your signature.' : f === 'name' ? 'Please type your full name.' : 'Invalid request' }, { status: 400 })
   }
   const body = parsed.data
-  const r = await readContractLink(body.token)
-  if (!r.ok) return NextResponse.json({ error: REASON_TEXT[r.reason] ?? REASON_TEXT.malformed }, { status: r.reason === 'used' ? 409 : 400 })
+  const r = await readContractLink(body.code)
+  if (!r.ok) return NextResponse.json({ error: REASON_TEXT[r.reason] }, { status: 410 })
   const { payload } = r
   if (!namesMatch(body.name, payload.data.name)) return NextResponse.json({ error: `Please type your name exactly as written in the agreement: ${payload.data.name}` }, { status: 400 })
 
@@ -44,7 +44,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   }
 
   // Claim the link before sending, so two tabs cannot both succeed; give it back if the emails fail
-  if (!(await claimLink(payload.id, signedAt))) return NextResponse.json({ error: REASON_TEXT.used }, { status: 409 })
+  if (!(await claimLink(payload.id))) return NextResponse.json({ error: REASON_TEXT.invalid }, { status: 409 })
 
   const when = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', dateStyle: 'long', timeStyle: 'short' }).format(signedAt)
   const common = { repName: payload.data.name, adminName: payload.admin.name, effectiveDate: formatDate(payload.data.effectiveDate), signedAt: when }
@@ -56,8 +56,8 @@ export async function POST(req: Request): Promise<NextResponse> {
   ])
   if (results.every((x) => x.status === 'rejected')) {
     console.error('[sales-contract] both emails failed', results)
-    await releaseLink(payload.id)
-    return NextResponse.json({ error: 'We could not email the signed agreement. Nothing was recorded; please try again.' }, { status: 502 })
+    await restoreLink(payload)
+    return NextResponse.json({ error: 'We could not email the signed agreement. Please try again.' }, { status: 502 })
   }
   results.forEach((x) => x.status === 'rejected' && console.error('[sales-contract] one email failed', x.reason))
   return NextResponse.json({ ok: true, emailed: { rep: results[0].status === 'fulfilled', admin: results[1].status === 'fulfilled' } })

@@ -1,43 +1,50 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { fonts, publicFileDataUrl } from './contract-html'
+import type { Prisma } from '@prisma/client'
 import { env } from './env'
 import { htmlToPdf } from './pdf-render'
 import { prisma } from './prisma'
 import { AGREEMENT_CSS, agreementHtml, agreementSectionsHtml, type ContractData, type AgreementView } from './sales-contract-core'
-import { createLinkToken, newLinkId, usedKey, verifyLinkToken, type LinkPayload, type LinkResult } from './sales-contract-token'
+import { LINK_HOURS, LINK_PREFIX, isLinkCode, linkKey, newLinkCode, parseLink, type LinkPayload } from './sales-contract-token'
 
-export const LINK_DAYS = 14
+const asJson = (v: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue
 
-const key = (): string => env().INVITE_TOKEN_SECRET ?? env().NEXTAUTH_SECRET
-
-export function createContractLink(data: ContractData, admin: { name: string; email: string; signature: string }, now = new Date()): { url: string; expiresAt: Date } {
-  const exp = Math.floor(now.getTime() / 1000) + LINK_DAYS * 86_400
-  const payload: LinkPayload = { id: newLinkId(), exp, data, admin: { ...admin, signedAt: now.toISOString() } }
+/**
+ * Keeps the agreement in the system under a short code until it is signed or 12 hours pass, then it is deleted.
+ * Expired rows are purged here, whenever a new link is made.
+ */
+export async function createContractLink(data: ContractData, admin: { name: string; email: string; signature: string }, now = new Date()): Promise<{ url: string; expiresAt: Date }> {
+  await prisma.siteSetting.deleteMany({ where: { key: { startsWith: LINK_PREFIX }, updatedAt: { lt: new Date(now.getTime() - (LINK_HOURS + 1) * 3_600_000) } } })
+  const code = newLinkCode()
+  const exp = Math.floor(now.getTime() / 1000) + LINK_HOURS * 3600
+  const record = { exp, data, admin: { ...admin, signedAt: now.toISOString() } }
+  await prisma.siteSetting.create({ data: { key: linkKey(code), value: asJson(record) } })
   const base = env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
-  return { url: `${base}/sign/commission#${createLinkToken(payload, key())}`, expiresAt: new Date(exp * 1000) }
+  return { url: `${base}/sign/${code}`, expiresAt: new Date(exp * 1000) }
 }
 
-export async function readContractLink(token: string): Promise<(LinkResult & { used?: boolean }) | { ok: false; reason: 'used' }> {
-  const r = verifyLinkToken(token, key())
-  if (!r.ok) return r
-  const used = await prisma.siteSetting.findUnique({ where: { key: usedKey(r.payload.id) } })
-  if (used) return { ok: false, reason: 'used' }
+export type ReadResult = { ok: true; payload: LinkPayload } | { ok: false; reason: 'invalid' | 'expired' }
+
+export async function readContractLink(code: string): Promise<ReadResult> {
+  if (!isLinkCode(code)) return { ok: false, reason: 'invalid' }
+  const row = await prisma.siteSetting.findUnique({ where: { key: linkKey(code) } })
+  if (!row) return { ok: false, reason: 'invalid' }
+  const r = parseLink(code, row.value)
+  if (!r.ok && r.reason === 'expired') await prisma.siteSetting.deleteMany({ where: { key: linkKey(code) } })
   return r
 }
 
-/** Atomically marks a link used (unique key). Returns false if it was already used. */
-export async function claimLink(id: string, at: Date): Promise<boolean> {
-  try {
-    await prisma.siteSetting.create({ data: { key: usedKey(id), value: { usedAt: at.toISOString() } } })
-    return true
-  } catch {
-    return false
-  }
+/** Takes the link for signing by deleting it: only one caller can win. */
+export async function claimLink(code: string): Promise<boolean> {
+  const { count } = await prisma.siteSetting.deleteMany({ where: { key: linkKey(code) } })
+  return count === 1
 }
 
-export async function releaseLink(id: string): Promise<void> {
-  await prisma.siteSetting.delete({ where: { key: usedKey(id) } }).catch(() => undefined)
+/** Puts a claimed link back (both emails failed) with its original expiry so the signer can retry. */
+export async function restoreLink(p: LinkPayload): Promise<void> {
+  const { id, ...record } = p
+  await prisma.siteSetting.create({ data: { key: linkKey(id), value: asJson(record) } }).catch(() => undefined)
 }
 
 // ─── Branded views and signed PDF ───────────────────────────────────────────

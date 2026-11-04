@@ -12,8 +12,7 @@ interface Preview {
 }
 
 /** Public signing page, styled like the offer pages: logo header, soft background, step labels, accent button. */
-export function CommissionSign(): React.ReactElement {
-  const [token, setToken] = useState('')
+export function CommissionSign({ code }: { code: string }): React.ReactElement {
   const [pv, setPv] = useState<Preview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -23,20 +22,14 @@ export function CommissionSign(): React.ReactElement {
   const [done, setDone] = useState(false)
 
   useEffect(() => {
-    const t = window.location.hash.slice(1)
-    if (!t) {
-      setError('This signing link is incomplete. Please use the full link you were sent.')
-      return
-    }
-    setToken(t)
-    fetch('/api/public/sales-contract/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: t }) })
+    fetch('/api/public/sales-contract/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })
       .then(async (r) => {
         const j = (await r.json()) as Preview & { error?: string }
         if (!r.ok) setError(j.error ?? 'This signing link is not valid.')
         else setPv(j)
       })
       .catch(() => setError('We could not load the agreement. Please check your connection and reload.'))
-  }, [])
+  }, [code])
 
   async function submit(): Promise<void> {
     setError(null)
@@ -45,12 +38,11 @@ export function CommissionSign(): React.ReactElement {
     if (!agree) return setError('Please accept the agreement.')
     setBusy(true)
     try {
-      const r = await fetch('/api/public/sales-contract/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token, name, signature: sig, agree: true }) })
+      const r = await fetch('/api/public/sales-contract/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name, signature: sig, agree: true }) })
       const j = (await r.json()) as { error?: string }
       if (!r.ok) setError(j.error ?? 'Something went wrong.')
       else {
         setDone(true)
-        history.replaceState(null, '', window.location.pathname) // drop the token from the address bar
       }
     } catch {
       setError('Network error. Please try again.')
@@ -83,7 +75,7 @@ export function CommissionSign(): React.ReactElement {
       <div className="rounded-2xl bg-white p-10 text-center shadow-[0_20px_60px_-30px_rgba(15,23,42,.35)]">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-2xl text-emerald-600">✓</div>
         <h1 className="mt-4 text-2xl font-bold">Thank you, it&apos;s signed</h1>
-        <p className="mx-auto mt-2 max-w-md text-slate-600">The signed agreement was emailed to you and to Igani. Please keep that email: it is not stored on our website.</p>
+        <p className="mx-auto mt-2 max-w-md text-slate-600">The signed agreement was emailed to you and to Igani. Please keep that email: we do not keep a copy on our website.</p>
       </div>,
     )
   if (!pv)
@@ -113,7 +105,7 @@ export function CommissionSign(): React.ReactElement {
           <button type="button" onClick={() => void submit()} disabled={busy || !namesMatch(name, pv.repName) || !sig || !agree} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto">
             {busy ? 'Signing…' : 'Sign and submit'}
           </button>
-          <p className="text-xs text-slate-500">After you sign, the final PDF is emailed to you and to Igani. Nothing is stored on the website.</p>
+          <p className="text-xs text-slate-500">After you sign, the final PDF is emailed to you and to Igani. The agreement is deleted from our system once you sign.</p>
         </div>
       </section>
     </div>,

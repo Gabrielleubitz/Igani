@@ -3,7 +3,7 @@
 import { Check, Copy } from 'lucide-react'
 import { useMemo, useState, useTransition } from 'react'
 import { generateContractLink } from '@/app/actions/sales-contracts'
-import { SignaturePad } from '@/components/SignaturePad'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,12 +11,12 @@ import { AGREEMENT_CSS, DEFAULT_FIGURES, agreementHtml, basePayout, validate, ty
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
-export function SalesContractForm({ adminName, adminEmail }: { adminName: string; adminEmail: string }): React.ReactElement {
+export function SalesContractForm({ adminName, adminEmail, signature }: { adminName: string; adminEmail: string; signature: string }): React.ReactElement {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [date, setDate] = useState(today())
   const [f, setF] = useState<Figures>(DEFAULT_FIGURES)
-  const [sig, setSig] = useState('')
+  const sig = signature
   const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -50,10 +50,10 @@ export function SalesContractForm({ adminName, adminEmail }: { adminName: string
 
   function generate(): void {
     setError(null)
-    const err = validate(data) ?? (sig ? null : 'Please draw your signature (Igani signs first).')
+    const err = validate(data) ?? (sig ? null : 'Save the Igani signature in Settings first.')
     if (err) return setError(err)
     start(async () => {
-      const res = await generateContractLink(data, sig)
+      const res = await generateContractLink(data)
       if (res.ok) setLink({ url: res.url, expiresAt: res.expiresAt })
       else setError(res.error)
     })
@@ -90,16 +90,14 @@ export function SalesContractForm({ adminName, adminEmail }: { adminName: string
               <p className="mt-2 text-lg font-semibold">{Number.isFinite(basePayout(f)) ? basePayout(f).toLocaleString('en-US') : '—'} ILS</p>
             </div>
           </div>
-          <div className="rounded-lg bg-white p-3 text-neutral-900">
-            <SignaturePad label={`Igani signature: ${adminName}`} onChange={(p) => (setLink(null), setSig(p))} />
-          </div>
+          {sig ? <p className="text-sm text-muted-foreground">Igani signs as <b>{adminName}</b> using the signature saved in Settings.</p> : <p className="text-sm text-amber-500">No Igani signature saved yet. <Link className="underline" href="/admin/settings">Save it in Settings → Contract signer</Link> first.</p>}
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
           <Button onClick={generate} disabled={pending}>
             {pending ? 'Generating…' : 'Sign and generate link'}
           </Button>
           {link ? (
             <div className="space-y-2 rounded-lg border border-border p-3 text-sm">
-              <p className="font-medium">Signing link (valid until {new Date(link.expiresAt).toLocaleDateString('en-GB')}, one use)</p>
+              <p className="font-medium">Signing link (valid until {new Date(link.expiresAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' })}, one use)</p>
               <div className="flex gap-2">
                 <Input readOnly value={link.url} onFocus={(e) => e.currentTarget.select()} />
                 <Button
@@ -113,7 +111,7 @@ export function SalesContractForm({ adminName, adminEmail }: { adminName: string
                   <span className="ml-1">{copied ? 'Copied' : 'Copy'}</span>
                 </Button>
               </div>
-              <p className="text-muted-foreground">Nothing is saved on the site: the agreement is inside this link. When {name.trim() || 'the representative'} signs, the final PDF is emailed to you and to them. Lose the link? Generate a new one.</p>
+              <p className="text-muted-foreground">The agreement is kept for 12 hours or until it is signed, then deleted. When {name.trim() || 'the representative'} signs, the final PDF is emailed to you and to them. Link expired or lost? Generate a new one.</p>
             </div>
           ) : null}
         </CardContent>

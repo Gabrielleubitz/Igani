@@ -1,13 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_FIGURES, namesMatch, agreementHtml as html, basePayout, validate, type ContractData } from '@/lib/sales-contract-core'
-import { createLinkToken, usedKey, verifyLinkToken, type LinkPayload } from '@/lib/sales-contract-token'
+import { isLinkCode, linkKey, newLinkCode, parseLink } from '@/lib/sales-contract-token'
 
-const KEY = 'test-secret-test-secret'
 const data: ContractData = { name: 'Ariel Tzadok', email: 'ariel@example.com', effectiveDate: '2026-10-31', figures: DEFAULT_FIGURES }
-const png = 'data:image/png;base64,iVBORw0KGgo='
-const payload = (exp: number): LinkPayload => ({ id: 'abc123', exp, data, admin: { name: 'Gabriel', email: 'g@igani.co', signature: png, signedAt: '2026-10-31T10:00:00Z' } })
 const NOW = new Date('2026-11-01T00:00:00Z')
-const future = Math.floor(NOW.getTime() / 1000) + 3600
 
 describe('commission wording', () => {
   const view = { logo: '/igani-logo%202.png', status: 'pending' as const, reference: 'ABC12345', admin: { name: 'Gabriel', email: 'g@igani.co', signature: null, signedAt: null }, rep: { name: 'Ariel Tzadok', email: 'a@b.co', signature: null, signedAt: null } }
@@ -36,23 +32,23 @@ describe('commission wording', () => {
   })
 })
 
-describe('signing link token', () => {
-  it('round-trips', () => {
-    const t = createLinkToken(payload(future), KEY)
-    expect(verifyLinkToken(t, KEY, NOW)).toMatchObject({ ok: true, payload: { id: 'abc123' } })
+describe('short signing link', () => {
+  const signature = 'data:image/png;base64,iVBORw0KGgo='
+  const record = { exp: Math.floor(NOW.getTime() / 1000) + 3600, data, admin: { name: 'Gabriel', email: 'g@igani.co', signature, signedAt: '2026-10-31T10:00:00Z' } }
+  it('makes short unguessable codes', () => {
+    const c = newLinkCode()
+    expect(c).toHaveLength(12)
+    expect(isLinkCode(c)).toBe(true)
+    expect(new Set(Array.from({ length: 50 }, newLinkCode)).size).toBe(50)
+    expect(isLinkCode('../etc/passwd')).toBe(false)
+    expect(linkKey(c)).toBe(`salesContractLink:${c}`)
   })
-  it('rejects tampering, wrong key, expiry and garbage', () => {
-    const t = createLinkToken(payload(future), KEY)
-    const [body, mac] = t.split('.')
-    const forged = Buffer.from(JSON.stringify({ ...payload(future), data: { ...data, figures: { ...data.figures, bonus: 99999 } } })).toString('base64url')
-    expect(verifyLinkToken(`${forged}.${mac}`, KEY, NOW)).toMatchObject({ ok: false, reason: 'bad-signature' })
-    expect(verifyLinkToken(t, 'another-secret-entirely', NOW)).toMatchObject({ ok: false, reason: 'bad-signature' })
-    expect(verifyLinkToken(createLinkToken(payload(future - 7200), KEY), KEY, NOW)).toMatchObject({ ok: false, reason: 'expired' })
-    expect(verifyLinkToken('garbage', KEY, NOW)).toMatchObject({ ok: false, reason: 'malformed' })
-    expect(body).toBeTruthy()
-  })
-  it('keys the used mark by link id only', () => {
-    expect(usedKey('abc123')).toBe('salesContractUsed:abc123')
+  it('accepts a good record and rejects expired or damaged ones', () => {
+    expect(parseLink('abc123abc123', record, NOW)).toMatchObject({ ok: true, payload: { id: 'abc123abc123' } })
+    expect(parseLink('abc123abc123', { ...record, exp: record.exp - 7200 }, NOW)).toMatchObject({ ok: false, reason: 'expired' })
+    expect(parseLink('abc123abc123', { ...record, admin: { ...record.admin, signature: 'javascript:1' } }, NOW)).toMatchObject({ ok: false, reason: 'invalid' })
+    expect(parseLink('abc123abc123', { ...record, data: { ...data, email: 'x' } }, NOW)).toMatchObject({ ok: false, reason: 'invalid' })
+    expect(parseLink('abc123abc123', null, NOW)).toMatchObject({ ok: false, reason: 'invalid' })
   })
 })
 
