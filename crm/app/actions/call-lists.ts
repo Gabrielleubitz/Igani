@@ -9,6 +9,7 @@ import { BookingError } from '@/lib/bookings'
 import { OPEN_PROSPECT, assertCanUseList, assertCanUseProspect, convertProspect, listScope } from '@/lib/call-lists'
 import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
+import { allPhones, asDetails, askFor, enrichProspect } from '@/lib/prospect-details'
 import { toActionError, type ActionResult } from './result'
 
 const callers = ['ADMIN', 'SALES'] as const
@@ -63,6 +64,10 @@ export interface DialerProspect {
   status: ProspectStatus
   attempts: number
   lastOutcome: string | null
+  /** the person to ask for, from their website */
+  askFor: string | null
+  /** other numbers we found (direct lines, WhatsApp) */
+  otherPhones: { e164: string; display: string; label: string | null }[]
 }
 
 /** One list in the dialer: who's left to call. Call-backs first, then the ones tried least. */
@@ -79,7 +84,10 @@ export async function dialerProspects(listId: string): Promise<ActionResult<{ na
       data: {
         name: list.name,
         done,
-        prospects: rows.map((p) => ({ id: p.id, name: p.name, phone: p.phone, display: formatPhone(p.phone), category: p.category, status: p.status, attempts: p.attempts, lastOutcome: p.lastOutcome })),
+        prospects: rows.map((p) => {
+          const d = asDetails(p.details)
+          return { id: p.id, name: p.name, phone: p.phone, display: formatPhone(p.phone), category: p.category, status: p.status, attempts: p.attempts, lastOutcome: p.lastOutcome, askFor: askFor(d), otherPhones: allPhones(p.phone, d).slice(1, 6) }
+        }),
       },
     }
   } catch (err) {
@@ -189,6 +197,23 @@ export async function deleteCallList(listId: string): Promise<ActionResult> {
     await logActivity({ entityType: 'USER', entityId: user.id, actorId: user.id, action: 'call_list.deleted', metadata: { listId: list.id, name: list.name } })
     refresh()
     return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Read the business's website again (new contacts, numbers, emails). Runs now, up to about a minute. */
+export async function refreshProspectDetails(prospectId: string): Promise<ActionResult<{ status: string | null }>> {
+  try {
+    const user = await requireUser([...callers])
+    const p = await assertCanUseProspect(z.string().cuid().parse(prospectId), user)
+    if (!p.website) throw new BookingError('This business has no website to read.', 'INVALID_STATE')
+    if (p.enrichStatus === 'processing' && p.updatedAt > new Date(Date.now() - 2 * 60_000)) throw new BookingError('Already looking. Give it a minute.', 'INVALID_STATE')
+    await prisma.prospect.update({ where: { id: p.id }, data: { enrichStatus: 'pending' } })
+    await enrichProspect(p.id)
+    const after = await prisma.prospect.findUnique({ where: { id: p.id }, select: { enrichStatus: true } })
+    refresh(p.listId)
+    return { ok: true, data: { status: after?.enrichStatus ?? null } }
   } catch (err) {
     return toActionError(err)
   }

@@ -126,7 +126,7 @@ export function FindBusinesses(): React.ReactElement {
         open={open}
         onClose={() => setOpen(false)}
         title="Find businesses on Google"
-        description="Search Google Maps by type and city, tick the ones you want, and put them on a call list. Call them from the dialer’s Lists tab; when a call goes well, the business becomes a lead."
+        description="Search Google Maps by type and city, tick the ones you want, and put them on a call list. We then read each business’s website for named contacts, other numbers, emails and social pages. Call them from the dialer’s Lists tab; when a call goes well, the business becomes a lead."
         className="w-[min(96vw,46rem)]"
       >
         <form

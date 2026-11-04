@@ -772,6 +772,12 @@ model Prospect {
   /// Last wrap-up outcome (see CALL_OUTCOMES)
   lastOutcome  String?
   notes        String?        @db.Text
+  /// Everything else we found: opening hours (Google), and from its website: other phones, emails, WhatsApp,
+  /// social pages, named contacts with roles, a short summary (see lib/prospect-details.ts)
+  details      Json?
+  /// Website lookup: pending → processing → done | failed | none (no website)
+  enrichStatus String?
+  enrichedAt   DateTime?
   /// The lead it became
   leadId       String?
   createdAt    DateTime       @default(now())

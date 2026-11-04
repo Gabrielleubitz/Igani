@@ -22,6 +22,7 @@ const FIELDS = [
   'places.googleMapsUri',
   'places.businessStatus',
   'places.primaryTypeDisplayName',
+  'places.regularOpeningHours.weekdayDescriptions',
   'nextPageToken',
 ].join(',')
 
@@ -35,6 +36,8 @@ export interface PlaceResult {
   reviews: number | null
   mapsUrl: string | null
   category: string | null
+  /** "Sunday: 9:00 AM – 6:00 PM", one line per day */
+  hours: string[] | null
 }
 
 export interface PlacesPage {
@@ -70,6 +73,7 @@ interface RawPlace {
   googleMapsUri?: string
   businessStatus?: string
   primaryTypeDisplayName?: { text?: string }
+  regularOpeningHours?: { weekdayDescriptions?: string[] }
 }
 
 /** Google's place → what we show and import. Closed businesses and places without a name are dropped. */
@@ -88,6 +92,7 @@ export function toPlaceResult(p: RawPlace): PlaceResult | null {
     reviews: typeof p.userRatingCount === 'number' ? p.userRatingCount : null,
     mapsUrl,
     category: p.primaryTypeDisplayName?.text?.slice(0, 80) ?? null,
+    hours: p.regularOpeningHours?.weekdayDescriptions?.length ? p.regularOpeningHours.weekdayDescriptions.slice(0, 7).map((h) => h.slice(0, 120)) : null,
   }
 }
 

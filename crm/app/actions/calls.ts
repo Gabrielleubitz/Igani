@@ -14,6 +14,7 @@ import { getSetting } from '@/lib/settings'
 import { dialerDemo } from '@/lib/twilio'
 import { analyzeCall } from '@/lib/call-analysis'
 import { assertCanUseProspect, convertProspect, prospectStatusFor } from '@/lib/call-lists'
+import { asDetails, askFor } from '@/lib/prospect-details'
 import { toActionError, type ActionResult } from './result'
 
 const callers = ['ADMIN', 'SALES'] as const
@@ -26,7 +27,7 @@ export interface StartedCall {
   display: string
   lead: { id: string; name: string } | null
   /** a business on a call list (not a lead yet) */
-  prospect: { id: string; name: string; listId: string } | null
+  prospect: { id: string; name: string; listId: string; askFor: string | null } | null
   record: boolean
   demo: boolean
 }
@@ -65,7 +66,7 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
       if (p.leadId) {
         const l = await prisma.lead.findUnique({ where: { id: p.leadId }, select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, assignedToId: true } })
         if (l && (user.role === 'ADMIN' || l.assignedToId === user.id)) lead = { id: l.id, name: leadName(l) }
-      } else prospect = { id: p.id, name: p.name, listId: p.listId }
+      } else prospect = { id: p.id, name: p.name, listId: p.listId, askFor: askFor(asDetails(p.details)) }
     } else if (data.leadId) {
       await assertCanSeeLead(data.leadId, user)
       const l = await prisma.lead.findUniqueOrThrow({ where: { id: data.leadId }, select: { id: true, firstName: true, lastName: true, email: true, phone: true } })

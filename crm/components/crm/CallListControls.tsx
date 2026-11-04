@@ -1,9 +1,9 @@
 'use client'
 
-import { Loader2, Trash2 } from 'lucide-react'
+import { Loader2, RefreshCw, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
-import { deleteCallList, makeProspectLead, removeProspect, setProspectStatus, updateCallList } from '@/app/actions/call-lists'
+import { useEffect, useState, useTransition } from 'react'
+import { deleteCallList, makeProspectLead, refreshProspectDetails, removeProspect, setProspectStatus, updateCallList } from '@/app/actions/call-lists'
 import { CallLink } from '@/components/dialer/Dialer'
 import { Button } from '@/components/ui/button'
 import { Input, Select } from '@/components/ui/input'
@@ -125,4 +125,44 @@ export function ProspectActions({ prospect }: { prospect: { id: string; name: st
       {error ? <span className="basis-full text-end text-xs text-rose-400">{error}</span> : null}
     </span>
   )
+}
+
+/** "Look again": re-read the business's website now. */
+export function RefreshDetails({ prospectId, label = 'Look again' }: { prospectId: string; label?: string }): React.ReactElement {
+  const router = useRouter()
+  const [pending, start] = useTransition()
+  const [msg, setMsg] = useState<string | null>(null)
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            setMsg(null)
+            const r = await refreshProspectDetails(prospectId)
+            if (!r.ok) setMsg(r.error)
+            else if (r.data.status === 'failed') setMsg('Their website couldn’t be read.')
+            router.refresh()
+          })
+        }
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground transition hover:text-foreground disabled:opacity-60"
+      >
+        {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+        {pending ? 'Reading their website…' : label}
+      </button>
+      {msg ? <span className="text-xs text-rose-400">{msg}</span> : null}
+    </span>
+  )
+}
+
+/** While websites are being read, check back every few seconds. */
+export function DetailsRefresher({ active }: { active: boolean }): null {
+  const router = useRouter()
+  useEffect(() => {
+    if (!active) return
+    const t = window.setInterval(() => router.refresh(), 8000)
+    return () => window.clearInterval(t)
+  }, [active, router])
+  return null
 }

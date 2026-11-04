@@ -816,8 +816,9 @@ function Lists({ listId, setListId, onCall }: { listId: string | null; setListId
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#2b4263] bg-[#1d3354] text-xs font-semibold text-[#9cc0ff]">{initials(p.name, '#')}</span>
                   <span className="min-w-0 flex-1">
                     <span dir="auto" className="block truncate text-sm font-medium">{p.name}</span>
+                    {p.askFor ? <span dir="auto" className="block truncate text-xs text-[#9cc0ff]">Ask for {p.askFor}</span> : null}
                     <span className="block truncate text-xs text-muted-foreground">
-                      {[p.status === 'CALLBACK' ? 'Call back' : null, p.attempts ? `Tried ${p.attempts}×` : null, p.category, p.display].filter(Boolean).join(' · ')}
+                      {[p.status === 'CALLBACK' ? 'Call back' : null, p.attempts ? `Tried ${p.attempts}×` : null, p.category, p.display, p.otherPhones.length ? `+${p.otherPhones.length} more number${p.otherPhones.length === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
                     </span>
                   </span>
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#22c55e]/30 bg-[#16a34a]/15 text-[#4ade80] transition group-hover:bg-[#16a34a] group-hover:text-white">
@@ -944,6 +945,11 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }
         {session.direction === 'in' ? <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Incoming call</div> : null}
         <div className="text-xl font-semibold">{name ?? call.display}</div>
         {name ? <div className="text-sm text-muted-foreground">{call.display}</div> : null}
+        {call.prospect?.askFor ? (
+          <div dir="auto" className="mt-2 inline-flex rounded-full border border-[#2b4263] bg-[#172b47] px-2.5 py-0.5 text-xs text-[#9cc0ff]">
+            Ask for {call.prospect.askFor}
+          </div>
+        ) : null}
         <div className={cn('mt-2 text-sm tabular-nums', phase === 'live' ? 'text-emerald-400' : 'text-muted-foreground')} aria-live="polite">
           {status}
         </div>

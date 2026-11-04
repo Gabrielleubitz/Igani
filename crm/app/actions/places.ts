@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser, type SessionUser } from '@/lib/auth'
@@ -9,6 +10,7 @@ import { PROSPECT_STATUS_LABEL, assertCanUseList } from '@/lib/call-lists'
 import { phoneKey } from '@/lib/leads'
 import { PLACES_LIMITS, PLACES_MAX_PAGES, PlacesError, placesKey, placesQuery, searchPlaces, websiteHost, type PlaceResult } from '@/lib/places'
 import { prisma } from '@/lib/prisma'
+import { enrichPending } from '@/lib/prospect-details'
 import { toActionError, type ActionResult } from './result'
 
 const callers = ['ADMIN', 'SALES'] as const
@@ -128,6 +130,7 @@ const placeSchema = z.object({
   reviews: z.number().int().min(0).nullable(),
   mapsUrl: z.string().trim().max(500).url().refine((u) => u.startsWith('https://')).nullable(),
   category: z.string().trim().max(80).nullable(),
+  hours: z.array(z.string().max(120)).max(7).nullable().default(null),
 })
 
 const addSchema = z
@@ -173,7 +176,21 @@ export async function addToCallList(input: z.input<typeof addSchema>): Promise<A
           return true
         })
         const created = await tx.prospect.createMany({
-          data: rows.map((p) => ({ listId: list.id, placeId: p.placeId, name: p.name, phone: p.phone!, website: p.website, address: p.address, category: p.category, rating: p.rating, reviews: p.reviews, mapsUrl: p.mapsUrl })),
+          data: rows.map((p) => ({
+            listId: list.id,
+            placeId: p.placeId,
+            name: p.name,
+            phone: p.phone!,
+            website: p.website,
+            address: p.address,
+            category: p.category,
+            rating: p.rating,
+            reviews: p.reviews,
+            mapsUrl: p.mapsUrl,
+            details: p.hours ? { hours: p.hours } : undefined,
+            // their website is read next for other numbers, emails and named contacts
+            enrichStatus: p.website ? 'pending' : 'none',
+          })),
           skipDuplicates: true,
         })
         return { listId: list.id, listName: list.name, added: created.count, skipped: data.places.length - created.count }
@@ -182,6 +199,15 @@ export async function addToCallList(input: z.input<typeof addSchema>): Promise<A
     )
     await logActivity({ entityType: 'USER', entityId: user.id, actorId: user.id, action: 'places.to_call_list', metadata: { query: data.query, ...result } })
     revalidatePath('/sales/call-lists')
+    if (result.added) {
+      // Read their websites after the response (the hourly job picks up anything left over).
+      const run = (): Promise<void> => enrichPending({ limit: 60, budgetMs: 240_000 }).then(() => undefined).catch((err: unknown) => console.error('[places] details lookup failed', err))
+      try {
+        after(run)
+      } catch {
+        void run()
+      }
+    }
     return { ok: true, data: result }
   } catch (err) {
     return toActionError(err)

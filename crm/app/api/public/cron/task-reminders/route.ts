@@ -13,6 +13,7 @@ import { syncAllMailboxes } from '@/lib/mail-sync'
 import { backfillMeetingTasks } from '@/lib/meeting-tasks'
 import { reconcileCall } from '@/lib/calls'
 import { analyzeCall } from '@/lib/call-analysis'
+import { enrichPending } from '@/lib/prospect-details'
 import { syncDueMeetings } from '@/lib/meetings'
 import { syncCalendarChanges } from '@/lib/calendar-sync'
 
@@ -146,6 +147,8 @@ async function run(): Promise<Record<string, number>> {
     take: 4,
   })
   for (const c of toAnalyse) await analyzeCall(c.id).catch((err: unknown) => console.error('[cron] call analysis failed', c.id, err))
+  // Call-list businesses whose website hasn't been read yet (the lookup after adding them ran out of time)
+  await enrichPending({ limit: 30, budgetMs: 60_000 }).catch((err: unknown) => console.error('[cron] prospect details failed', err))
   const followUps = await createFollowUps()
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()

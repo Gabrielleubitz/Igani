@@ -17,6 +17,28 @@ vi.mock('@/lib/places', async (orig) => {
   return { ...real, searchPlaces: async () => ({ places: google.places.map((p) => real.toPlaceResult(p as never)).filter(Boolean), nextPageToken: 'next' }) }
 })
 
+// Websites are never fetched: a fixed site for zion.co.il
+vi.mock('@/lib/site-scan', async (orig) => {
+  const real = await orig<typeof import('@/lib/site-scan')>()
+  return {
+    ...real,
+    scanSite: async (url: string) =>
+      url.includes('zion.co.il')
+        ? { phones: ['+97221234567', '+972529876543'], emails: ['office@zion.co.il', 'dana@zion.co.il'], whatsapp: ['+972501112233'], socials: [{ kind: 'facebook', url: 'https://www.facebook.com/zion' }], pages: [url], text: 'Zion Realty. Dana Levi, owner: 052-987-6543, dana@zion.co.il. Jerusalem apartments.' }
+        : null,
+  }
+})
+// OpenAI is never reached
+process.env.OPENAI_API_KEY = 'sk-test'
+const realFetch = globalThis.fetch
+globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+  if (String(input).startsWith('https://api.openai.com/')) {
+    const content = JSON.stringify({ summary: 'Jerusalem real estate agency.', services: ['Apartments for sale'], contacts: [{ name: 'Dana Levi', role: 'Owner', phone: '052-987-6543', email: 'dana@zion.co.il' }, { name: 'Ghost Person', role: 'CEO', phone: null, email: null }] })
+    return new Response(JSON.stringify({ choices: [{ message: { content } }] }))
+  }
+  return realFetch(input, init)
+}) as typeof fetch
+
 const d = testDb ? describe : describe.skip
 
 d('find businesses → call list → lead', async () => {
@@ -161,6 +183,34 @@ d('find businesses → call list → lead', async () => {
     expect((await deleteCallList(added.data.listId)).ok).toBe(true)
     // the lead it made stays
     expect(await prisma.lead.count()).toBe(1)
+  })
+
+  it('reads the website for contacts, numbers and emails, and the lead gets them', async () => {
+    const { enrichPending } = await import('@/lib/prospect-details')
+    const { askFor, asDetails } = await import('@/lib/prospect-details')
+    const r = await search()
+    const added = await addToCallList({ query: r.query, places: strip(r.places), newList: { name: 'RE' } })
+    if (!added.ok) throw new Error(added.error)
+    await enrichPending({ budgetMs: 20_000 })
+    // the lookup started by addToCallList may have claimed one first: wait for it
+    for (let i = 0; i < 50 && (await prisma.prospect.count({ where: { enrichStatus: { in: ['pending', 'processing'] } } })); i++) await new Promise((r) => setTimeout(r, 100))
+    const zion = await prisma.prospect.findFirstOrThrow({ where: { name: 'Zion Realty' } })
+    const homes = await prisma.prospect.findFirstOrThrow({ where: { name: 'Old City Homes' } })
+    expect(zion.enrichStatus).toBe('done')
+    expect(homes.enrichStatus).toBe('none') // no website
+    const det = asDetails(zion.details)
+    expect(det.phones).toEqual(['+972529876543']) // the main number isn't repeated
+    expect(det.contacts).toEqual([{ name: 'Dana Levi', role: 'Owner', phone: '+972529876543', email: 'dana@zion.co.il' }]) // invented person dropped
+    expect(askFor(det)).toBe('Dana Levi (Owner)')
+    const open = await dialerProspects(added.data.listId)
+    expect(open.ok && open.data.prospects.find((p) => p.id === zion.id)).toMatchObject({ askFor: 'Dana Levi (Owner)' })
+
+    const made = await makeProspectLead(zion.id)
+    if (!made.ok) throw new Error(made.error)
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { id: made.data.leadId } })
+    expect(lead).toMatchObject({ email: 'dana@zion.co.il', firstName: 'Dana', lastName: 'Levi', company: 'Zion Realty' })
+    expect(lead.message).toContain('WhatsApp: ')
+    expect(lead.message).toContain('Facebook: https://www.facebook.com/zion')
   })
 
   it('stops searching once the hourly allowance is used', async () => {
