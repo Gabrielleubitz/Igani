@@ -61,13 +61,17 @@ export function insightsFromRows(rows: Row[], sectionOrder: string[] = [], moveR
 
 /** Everything the admin offer page shows about client visits (last 500 visits). */
 const SUMMARY = { id: true, visitorId: true, startedAt: true, durationMs: true, maxScrollPct: true, device: true, country: true, referrer: true, sections: true, clicks: true } as const
+// Heatmap mouse data: the latest 300 visits, first 300 samples each (sliced in SQL), so ~90k points at most
 const MOVE_VISITS = 300
+// (300 samples per visit: the "0 to 299" slice in the queries below)
 
 export async function loadOfferInsights(offerId: string): Promise<OfferInsights> {
   const where = { offerId }
   const [rows, moveRows] = await Promise.all([
     prisma.offerVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: 500, select: SUMMARY }),
-    prisma.offerVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: MOVE_VISITS, select: { device: true, moves: true } }),
+    prisma.$queryRaw<{ device: string; moves: unknown }[]>`
+      SELECT device, jsonb_path_query_array(moves, '$[0 to 299]') AS moves FROM "OfferVisit"
+      WHERE "offerId" = ${offerId} ORDER BY "startedAt" DESC LIMIT ${MOVE_VISITS}`,
   ])
   return insightsFromRows(rows, SECTION_ORDER, moveRows)
 }
@@ -77,7 +81,9 @@ export async function loadSiteInsights(page: string, days: number): Promise<Offe
   const where = { page, startedAt: { gte: new Date(Date.now() - days * 86_400_000) } }
   const [rows, moveRows] = await Promise.all([
     prisma.siteVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: 2000, select: { ...SUMMARY, utmSource: true } }),
-    prisma.siteVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: MOVE_VISITS, select: { device: true, moves: true } }),
+    prisma.$queryRaw<{ device: string; moves: unknown }[]>`
+      SELECT device, jsonb_path_query_array(moves, '$[0 to 299]') AS moves FROM "SiteVisit"
+      WHERE page = ${page} AND "startedAt" >= ${where.startedAt.gte} ORDER BY "startedAt" DESC LIMIT ${MOVE_VISITS}`,
   ])
   return insightsFromRows(rows, [], moveRows)
 }

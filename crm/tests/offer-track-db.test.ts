@@ -20,7 +20,7 @@ d('offer tracking endpoint', async () => {
   afterAll(async () => prisma.$disconnect())
 
   const body = (over: object = {}) => ({ key: 'k-0123456789abcdef', visitorId: 'v-0123456789abcdef', device: 'desktop', vw: 1280, vh: 800, durationMs: 4000, maxScroll: 30, sections: { overview: 3000 }, clicks: [{ s: 'sign', x: 0.4, y: 0.6, t: 900, l: 'Sign' }], moves: [], ...over })
-  const send = (slug: string, b: unknown, ip = '1.2.3.4') => POST(new Request(`http://x/api/public/offers/${slug}/track`, { method: 'POST', body: typeof b === 'string' ? b : JSON.stringify(b), headers: { 'x-forwarded-for': ip } }), { params: Promise.resolve({ slug }) })
+  const send = (slug: string, b: unknown, ip = '1.2.3.4', origin = `https://${slug}.app.igani.co`) => POST(new Request(`http://x/api/public/offers/${slug}/track`, { method: 'POST', body: typeof b === 'string' ? b : JSON.stringify(b), headers: { 'x-forwarded-for': ip, origin } }), { params: Promise.resolve({ slug }) })
 
   it('records a visit on a live offer and folds later batches into it', async () => {
     await prisma.offer.create({ data: { slug: 'live-one', leadId, title: 'x', status: 'LIVE' } })
@@ -41,6 +41,15 @@ d('offer tracking endpoint', async () => {
     expect((await send('draft-one', { ...body(), device: 'fridge' })).status).toBe(400)
     expect((await send('draft-one', 'x'.repeat(60_000))).status).toBe(400)
     expect(await prisma.offerVisit.count()).toBe(0)
+  })
+
+  it('ignores beacons that do not come from an offer page', async () => {
+    await prisma.offer.create({ data: { slug: 'live-four', leadId, title: 'x', status: 'LIVE' } })
+    await send('live-four', body(), '1.2.3.4', 'https://evil.example')
+    await send('live-four', body(), '1.2.3.4', 'https://live-four.app.igani.co.evil.example')
+    expect(await prisma.offerVisit.count()).toBe(0)
+    await send('live-four', body(), '1.2.3.4', 'https://app.igani.co')
+    expect(await prisma.offerVisit.count()).toBe(1)
   })
 
   it('another IP cannot write into someone else’s visit', async () => {

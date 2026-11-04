@@ -72,13 +72,17 @@ d('weekly summary email', async () => {
     expect(html).toContain('to: boss@igani.co')
     expect(html).toContain('Your week at Igani, Gabriel')
     expect(html).toContain('Honey Ltd')
-    // a second run straight away (e.g. Cron retried) sends nothing
-    expect((await (await call()).json()).skipped).toMatch(/moments ago/)
-    expect(readdirSync(outbox)).toHaveLength(1)
-    // much later, a rerun still only reaches admins the first run missed (none here)
-    await prisma.siteSetting.update({ where: { key: `weekly-summary:${weekKey(new Date())}` }, data: { updatedAt: new Date(Date.now() - 3600_000) } })
+    // the next scheduled runs that morning (or a Cron retry) reach nobody twice
     expect((await (await call()).json()).skipped).toMatch(/already sent/)
     expect(readdirSync(outbox)).toHaveLength(1)
+    // a run still holding the lease makes a parallel run stand aside
+    await prisma.siteSetting.create({ data: { key: 'cron.weekly-lock', value: 'weekly-summary' } })
+    expect((await (await call()).json()).skipped).toMatch(/in progress/)
+    // an admin the earlier run missed is picked up by a later run, alone
+    await prisma.siteSetting.delete({ where: { key: 'cron.weekly-lock' } })
+    await prisma.allowedUser.create({ data: { email: 'second@igani.co', role: 'ADMIN' } })
+    expect(await (await call()).json()).toMatchObject({ sent: 1 })
+    expect(readdirSync(outbox)).toHaveLength(2)
     await prisma.siteSetting.deleteMany()
     await prisma.siteSetting.create({ data: { key: 'notifications.weeklySummary', value: false } })
     expect((await (await call()).json()).skipped).toMatch(/turned off/)

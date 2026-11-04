@@ -25,7 +25,9 @@ function deny(req: NextRequest, status: 401 | 403, reason: string): NextResponse
  */
 type Framing = 'none' | 'self' | 'crm'
 function secure(res: NextResponse, framing: Framing = 'none'): NextResponse {
-  const ancestors = framing === 'crm' ? "'self' https://app.igani.co http://localhost:3100" : framing === 'self' ? "'self'" : "'none'"
+  // The local studio (localhost:3100) frames offers only while developing; production allows the CRM alone
+  const crm = process.env.NODE_ENV === 'production' ? "'self' https://app.igani.co" : "'self' https://app.igani.co http://localhost:3100"
+  const ancestors = framing === 'crm' ? crm : framing === 'self' ? "'self'" : "'none'"
   res.headers.set('Content-Security-Policy', `frame-ancestors ${ancestors}; base-uri 'self'; object-src 'none'; form-action 'self' https://accounts.google.com`)
   if (framing === 'none') res.headers.set('X-Frame-Options', 'DENY')
   else if (framing === 'self') res.headers.set('X-Frame-Options', 'SAMEORIGIN')

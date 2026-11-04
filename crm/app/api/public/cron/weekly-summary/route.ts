@@ -25,24 +25,29 @@ export async function GET(req: Request): Promise<Response> {
   const week = weekKey(now)
   const dry = new URL(req.url).searchParams.get('dry') === '1'
   if (!dry && !(await getSetting('notifications.weeklySummary'))) return Response.json({ ok: true, skipped: 'turned off in Settings' })
-  // Claim the week before sending (the settings table's key is unique, so two overlapping runs can't both win).
-  // A run that already sent to some admins records them; a later run only retries the ones still missing.
-  const lockKey = `weekly-summary:${week}`
-  type Lock = { sent: string[] }
-  let already: string[] = []
-  if (!dry) {
-    const claimed = await prisma.siteSetting.create({ data: { key: lockKey, value: { sent: [] } } }).then(() => true).catch(() => false)
-    if (!claimed) {
-      const prev = await prisma.siteSetting.findUnique({ where: { key: lockKey } })
-      already = ((prev?.value as Lock | null)?.sent ?? []).filter((e) => typeof e === 'string')
-      // Another run touched it in the last 10 minutes (it may still be sending): leave it to that run.
-      // After that, a run only retries the admins the earlier one didn't reach.
-      if (prev && Date.now() - prev.updatedAt.getTime() < 10 * 60_000) return Response.json({ ok: true, skipped: `another run handled ${week} moments ago` })
-    }
-  }
+  if (dry) return Response.json({ ok: true, week, summary: await buildWeeklySummary(now, await getSetting('leads.staleDays')) })
 
+  // One run at a time (Cron retries, manual reruns): a lease row that expires after 10 minutes, same as the hourly job.
+  // UTC on both sides, like the timestamps Prisma writes (the column has no time zone).
+  const got = await prisma.$queryRaw<{ key: string }[]>`
+    INSERT INTO "SiteSetting" (key, value, "updatedAt") VALUES ('cron.weekly-lock', '"weekly-summary"'::jsonb, now() AT TIME ZONE 'UTC')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, "updatedAt" = now() AT TIME ZONE 'UTC'
+    WHERE "SiteSetting"."updatedAt" < (now() AT TIME ZONE 'UTC') - interval '10 minutes'
+    RETURNING key`
+  if (got.length === 0) return Response.json({ ok: true, skipped: 'another run is in progress' })
+  try {
+    return await sendWeek(now, week)
+  } finally {
+    await prisma.siteSetting.deleteMany({ where: { key: 'cron.weekly-lock' } })
+  }
+}
+
+/** Emails every admin not yet reached this week; who was reached is kept in SiteSetting "weekly-summary:<week>". */
+async function sendWeek(now: Date, week: string): Promise<Response> {
+  const recordKey = `weekly-summary:${week}`
+  const record = await prisma.siteSetting.findUnique({ where: { key: recordKey } })
+  const already = ((record?.value as { sent?: unknown } | null)?.sent as unknown[] | undefined)?.filter((e): e is string => typeof e === 'string') ?? []
   const s = await buildWeeklySummary(now, await getSetting('leads.staleDays'))
-  if (dry) return Response.json({ ok: true, week, summary: s })
 
   const admins = await prisma.allowedUser.findMany({ where: { role: 'ADMIN', active: true }, select: { email: true } })
   const names = new Map((await prisma.user.findMany({ where: { email: { in: admins.map((a) => a.email) } }, select: { email: true, name: true } })).map((u) => [u.email, u.name]))
@@ -78,14 +83,17 @@ export async function GET(req: Request): Promise<Response> {
     if (already.includes(a.email)) continue
     try {
       await sendWeeklySummaryEmail(a.email, { ...props, name: names.get(a.email)?.split(' ')[0] || 'there' }, subject)
-      sent.push(a.email)
-      await prisma.siteSetting.update({ where: { key: lockKey }, data: { value: { sent: [...already, ...sent] } } })
     } catch (err) {
       console.error('[weekly-summary] send failed', a.email, err)
       failed.push(a.email)
+      continue
     }
+    sent.push(a.email)
+    // Record right away (outside the send's try): a rerun never emails someone twice, even if this run dies later
+    const value = { sent: [...already, ...sent] }
+    await prisma.siteSetting.upsert({ where: { key: recordKey }, create: { key: recordKey, value }, update: { value } }).catch((err: unknown) => console.error('[weekly-summary] could not record', a.email, err))
   }
   if (!sent.length && !failed.length) return Response.json({ ok: true, skipped: `already sent for ${week}` })
-  if (sent.length) await logActivity({ entityType: 'SETTING', entityId: `weekly-summary:${week}`, action: 'summary.weekly_sent', metadata: { week, to: sent, failed } })
+  if (sent.length) await logActivity({ entityType: 'SETTING', entityId: recordKey, action: 'summary.weekly_sent', metadata: { week, to: sent, failed } })
   return Response.json({ ok: true, week, sent: sent.length, failed: failed.length })
 }

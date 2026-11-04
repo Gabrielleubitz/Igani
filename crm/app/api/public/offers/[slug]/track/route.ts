@@ -8,6 +8,14 @@ export const dynamic = 'force-dynamic'
 
 const ok = (): NextResponse => new NextResponse(null, { status: 204 })
 
+/** Offer pages live on app.igani.co/o/<slug> or <slug>.app.igani.co (and localhost while developing). */
+const ROOT = (process.env.OFFER_ROOT_DOMAIN ?? 'app.igani.co').replace(/\./g, '\\.')
+const ORIGIN_RE = new RegExp(`^https://([a-z0-9-]+\\.)?${ROOT}$`)
+function fromOfferPage(origin: string | null): boolean {
+  if (!origin) return false
+  return ORIGIN_RE.test(origin) || (process.env.NODE_ENV !== 'production' && /^http:\/\/([a-z0-9-]+\.)?localhost:\d+$/.test(origin))
+}
+
 function ipHash(req: Request): string {
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown'
   return createHash('sha256').update(`${ip}|${process.env.NEXTAUTH_SECRET ?? ''}`).digest('hex').slice(0, 24)
@@ -19,6 +27,7 @@ function ipHash(req: Request): string {
  */
 export async function POST(req: Request, props: { params: Promise<{ slug: string }> }): Promise<NextResponse> {
   const { slug } = await props.params
+  if (!fromOfferPage(req.headers.get('origin'))) return ok() // only our own offer pages send these
   const raw = await req.text().catch(() => '')
   if (!raw || raw.length > MAX_BODY_BYTES) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   let json: unknown
