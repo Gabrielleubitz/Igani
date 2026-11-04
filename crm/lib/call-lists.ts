@@ -3,7 +3,7 @@
  * goes well ("Interested" in the wrap-up, or "Make lead" on the list). Lists belong to the teammate who calls them;
  * admins see every list.
  */
-import type { Prisma, ProspectStatus } from '@prisma/client'
+import type { Prisma, ProspectStatus, LeadStatus } from '@prisma/client'
 import { logActivity } from '@/lib/audit'
 import type { SessionUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
@@ -49,7 +49,7 @@ export async function assertCanUseProspect(prospectId: string, user: Viewer, db:
 export async function convertProspect(
   prospectId: string,
   user: Viewer,
-  opts: { callId?: string | null; notes?: string | null } = {},
+  opts: { callId?: string | null; notes?: string | null; status?: LeadStatus } = {},
 ): Promise<{ leadId: string; created: boolean }> {
   return prisma.$transaction(async (tx) => {
     // Lock the row: a double click or two tabs must not create two leads.
@@ -85,7 +85,7 @@ export async function convertProspect(
           source: p.placeId ? 'Google Places' : 'Call list',
           sourceDetail: (p.list.query ? `Google Maps · ${p.list.query}` : `Call list · ${p.list.name}`).slice(0, 300),
           tags: ['cold-call', ...(p.placeId ? ['google-places'] : [])],
-          status: 'CONTACTED',
+          status: opts.status ?? 'CONTACTED',
           assignedToId: user.role === 'MARKETING' ? null : user.id,
         },
       })

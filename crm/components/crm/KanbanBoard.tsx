@@ -22,6 +22,13 @@ export interface BoardLead {
 
 const COLORS: Record<string, string> = {
   NEW: 'border-t-sky-400',
+  NO_ANSWER: 'border-t-slate-400',
+  CALL_BACK: 'border-t-orange-400',
+  VOICEMAIL: 'border-t-cyan-400',
+  BUSY: 'border-t-yellow-400',
+  INTERESTED: 'border-t-lime-400',
+  NOT_INTERESTED: 'border-t-zinc-400',
+  WRONG_NUMBER: 'border-t-stone-400',
   CONTACTED: 'border-t-indigo-400',
   DEMO_SCHEDULED: 'border-t-violet-400',
   DEMO_SENT: 'border-t-fuchsia-400',

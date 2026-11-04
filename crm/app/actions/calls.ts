@@ -13,6 +13,8 @@ import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { dialerDemo } from '@/lib/twilio'
 import { analyzeCall } from '@/lib/call-analysis'
+import { statusAfterCall } from '@/lib/call-status'
+import { leadForOutgoingCall } from '@/lib/call-lead'
 import { assertCanUseProspect, convertProspect, prospectStatusFor } from '@/lib/call-lists'
 import { asDetails, askFor } from '@/lib/prospect-details'
 import { toActionError, type ActionResult } from './result'
@@ -59,27 +61,23 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     if (today >= CALL_LIMITS.perDay) throw new BookingError(`You’ve reached the limit of ${CALL_LIMITS.perDay} calls in 24 hours. Ask an admin if you need more.`, 'SLOT_TAKEN')
 
     let lead: StartedCall['lead'] = null
-    let prospect: StartedCall['prospect'] = null
-    if (data.prospectId) {
-      const p = await assertCanUseProspect(data.prospectId, user)
-      // Already a lead: call it as the lead
-      if (p.leadId) {
-        const l = await prisma.lead.findUnique({ where: { id: p.leadId }, select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true, assignedToId: true } })
-        if (l && (user.role === 'ADMIN' || l.assignedToId === user.id)) lead = { id: l.id, name: leadName(l) }
-      } else prospect = { id: p.id, name: p.name, listId: p.listId, askFor: askFor(asDetails(p.details)) }
-    } else if (data.leadId) {
+    if (data.leadId && !data.prospectId) {
       await assertCanSeeLead(data.leadId, user)
       const l = await prisma.lead.findUniqueOrThrow({ where: { id: data.leadId }, select: { id: true, firstName: true, lastName: true, email: true, phone: true } })
       lead = { id: l.id, name: leadName(l) }
     } else {
-      lead = await leadForNumber(to, leadScope(user))
+      if (data.prospectId) await assertCanUseProspect(data.prospectId, user)
+      // Every call belongs to a lead: found by phone number, or created now and assigned to the caller
+      const made = await leadForOutgoingCall(to, user, data.prospectId)
+      const l = await prisma.lead.findUniqueOrThrow({ where: { id: made.id }, select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true } })
+      lead = { id: l.id, name: l.company || leadName(l) }
     }
     const record = await getSetting('voice.record')
     const call = await prisma.call.create({
-      data: { userId: user.id, leadId: lead?.id ?? null, prospectId: prospect?.id ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo },
+      data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo },
       select: { id: true },
     })
-    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, demo } }
+    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect: null, record, demo } }
   } catch (err) {
     return toActionError(err)
   }
@@ -152,7 +150,6 @@ export async function saveCallWrapUp(input: z.input<typeof WrapInput>): Promise<
     // never end a call that is still connected (that would also lift the one-call-at-a-time rule).
     if (!FINAL_STATUSES.includes(call.status)) await reconcileCall(call.id)
     const firstWrapUp = !call.outcome
-    if (data.outcome === 'interested' && !call.prospectId) throw new BookingError('“Interested” is for calls from a call list.', 'INVALID_STATE')
     await prisma.call.update({ where: { id: call.id }, data: { outcome: data.outcome, notes: data.notes || null } })
     let leadId = call.leadId
     let madeLead = false
@@ -180,9 +177,12 @@ export async function saveCallWrapUp(input: z.input<typeof WrapInput>): Promise<
     }
     if (leadId && firstWrapUp) {
       await logActivity({ entityType: 'LEAD', entityId: leadId, actorId: user.id, action: 'call.outcome', metadata: { callId: call.id, outcome: data.outcome, notes: data.notes || null } })
-      if (data.outcome === 'connected' || data.outcome === 'interested') {
-        const moved = await prisma.lead.updateMany({ where: { id: leadId, status: 'NEW' }, data: { status: 'CONTACTED' } })
-        if (moved.count) await logActivity({ entityType: 'LEAD', entityId: leadId, actorId: user.id, action: 'lead.status_changed', metadata: { from: 'NEW', to: 'CONTACTED', auto: 'call-connected', callId: call.id } })
+      // The lead gets the status the agent marked (never pulled back out of the deal stages)
+      const lead = await prisma.lead.findUnique({ where: { id: leadId }, select: { status: true } })
+      const next = lead ? statusAfterCall(lead.status, data.outcome) : null
+      if (lead && next) {
+        await prisma.lead.update({ where: { id: leadId }, data: { status: next } })
+        await logActivity({ entityType: 'LEAD', entityId: leadId, actorId: user.id, action: 'lead.status_changed', metadata: { from: lead.status, to: next, auto: 'call-outcome', callId: call.id } })
       }
       revalidatePath(`/sales/leads/${leadId}`)
     }

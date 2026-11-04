@@ -25,6 +25,14 @@ enum LeadSourceType {
 
 enum LeadStatus {
   NEW
+  /// Call results (set when an agent wraps up a call)
+  NO_ANSWER
+  CALL_BACK
+  VOICEMAIL
+  BUSY
+  INTERESTED
+  NOT_INTERESTED
+  WRONG_NUMBER
   CONTACTED
   DEMO_SCHEDULED
   DEMO_SENT

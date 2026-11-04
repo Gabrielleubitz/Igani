@@ -56,11 +56,18 @@ export const LEAD_SOURCES = [
   'Other',
 ] as const
 
-export const LEAD_STATUSES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED', 'WON', 'LOST'] as const satisfies readonly LeadStatus[]
+export const LEAD_STATUSES = ['NEW', 'NO_ANSWER', 'CALL_BACK', 'VOICEMAIL', 'BUSY', 'INTERESTED', 'NOT_INTERESTED', 'WRONG_NUMBER', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED', 'WON', 'LOST'] as const satisfies readonly LeadStatus[]
 
 /** Human labels for pipeline stages (used everywhere instead of raw enum values). */
 export const STATUS_LABEL: Record<LeadStatus, string> = {
   NEW: 'New',
+  NO_ANSWER: 'No answer (NA)',
+  CALL_BACK: 'Call back',
+  VOICEMAIL: 'Voicemail',
+  BUSY: 'Busy',
+  INTERESTED: 'Interested',
+  NOT_INTERESTED: 'Not interested',
+  WRONG_NUMBER: 'Wrong number',
   CONTACTED: 'Contacted',
   DEMO_SCHEDULED: 'Demo scheduled',
   DEMO_SENT: 'Demo sent',
@@ -73,6 +80,13 @@ export const STATUS_LABEL: Record<LeadStatus, string> = {
 /** Tailwind classes for a stage pill (dot + tint), shared by tables, cards and the board. */
 export const STATUS_TONE: Record<LeadStatus, string> = {
   NEW: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+  NO_ANSWER: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+  CALL_BACK: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+  VOICEMAIL: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30',
+  BUSY: 'bg-yellow-500/15 text-yellow-300 border-yellow-500/30',
+  INTERESTED: 'bg-lime-500/15 text-lime-300 border-lime-500/30',
+  NOT_INTERESTED: 'bg-zinc-500/15 text-zinc-300 border-zinc-500/30',
+  WRONG_NUMBER: 'bg-stone-500/15 text-stone-300 border-stone-500/30',
   CONTACTED: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
   DEMO_SCHEDULED: 'bg-violet-500/15 text-violet-300 border-violet-500/30',
   DEMO_SENT: 'bg-fuchsia-500/15 text-fuchsia-300 border-fuchsia-500/30',

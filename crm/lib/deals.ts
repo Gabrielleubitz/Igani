@@ -1,3 +1,4 @@
+import { EARLY_STATUSES } from './call-status'
 import 'server-only'
 import { Prisma } from '@prisma/client'
 import { calculateCommission, dealTerms, parseTerms, type CommissionTerms } from './commission'
@@ -14,7 +15,7 @@ export async function termsForAssignee(assignedToId: string | null, db: Db = pri
 }
 
 /** Stages before "Proposal sent": quoting a price puts the lead on the Proposal sent stage. */
-const BEFORE_PROPOSAL = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT'] as const
+const BEFORE_PROPOSAL = [...EARLY_STATUSES, 'DEMO_SCHEDULED', 'DEMO_SENT'] as const
 
 /**
  * Sets (or clears) the quoted price. Quoting a price on a lead that is still earlier in the pipeline moves it to

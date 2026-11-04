@@ -8,6 +8,7 @@ import type { OfferDefinition } from '@/offers/types'
 import { currentUserOrNull } from './auth'
 import { canSeeOffer } from './offer-access'
 import { parseModules, type OfferModuleItem } from './offer-modules'
+import { EARLY_STATUSES } from './call-status'
 import { offerVideos } from './video'
 import { prisma } from './prisma'
 
@@ -92,7 +93,7 @@ export function publicOfferUrl(slug: string): string {
 }
 
 /** Lead stages publishing an offer moves forward to Proposal sent (later stages are never pulled back). */
-export const BEFORE_PROPOSAL_STAGES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT'] as const
+export const BEFORE_PROPOSAL_STAGES = [...EARLY_STATUSES, 'DEMO_SCHEDULED', 'DEMO_SENT'] as const
 
 /**
  * When an offer goes live, its lead has been sent a proposal: move it to Proposal sent if it is still earlier in the
@@ -108,4 +109,4 @@ export async function advanceLeadOnPublish(tx: Prisma.TransactionClient, leadId:
 }
 
 /** Lead stages an online signature may move forward to Signed (never pulls a Won or Lost lead back). */
-export const SIGNABLE_LEAD_STAGES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT'] as const
+export const SIGNABLE_LEAD_STAGES = [...EARLY_STATUSES, 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT'] as const

@@ -1,3 +1,4 @@
+import { EARLY_STATUSES } from './call-status'
 import 'server-only'
 import type { Booking, BookingSource, Prisma } from '@prisma/client'
 import { logActivity } from './audit'
@@ -360,7 +361,7 @@ export async function confirmBooking(bookingId: string, actorId: string | null):
     const updated = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } })
     if (updated.leadId) {
       const lead = await tx.lead.findUnique({ where: { id: updated.leadId }, select: { status: true } })
-      if (lead && (lead.status === 'NEW' || lead.status === 'CONTACTED')) {
+      if (lead && (EARLY_STATUSES as readonly string[]).includes(lead.status)) {
         await tx.lead.update({ where: { id: updated.leadId }, data: { status: 'DEMO_SCHEDULED' } })
         await logActivity(
           { entityType: 'LEAD', entityId: updated.leadId, action: 'lead.status_changed', actorId, metadata: { from: lead.status, to: 'DEMO_SCHEDULED', bookingId } },

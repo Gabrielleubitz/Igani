@@ -2,7 +2,7 @@ import type { LeadStatus, Prisma } from '@prisma/client'
 import { archivedBy, notArchivedBy } from './lead-archive'
 
 export const PAGE_SIZE = 25
-const STATUSES: readonly string[] = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED', 'WON', 'LOST']
+const STATUSES: readonly string[] = ['NEW', 'NO_ANSWER', 'CALL_BACK', 'VOICEMAIL', 'BUSY', 'INTERESTED', 'NOT_INTERESTED', 'WRONG_NUMBER', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED', 'WON', 'LOST']
 
 export interface LeadFilters {
   q?: string

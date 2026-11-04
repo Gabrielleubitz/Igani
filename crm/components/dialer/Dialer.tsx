@@ -26,12 +26,14 @@ interface Session {
   direction: 'out' | 'in'
 }
 
+/** Wrap-up choices for every call. Each one becomes the lead's status. */
 const OUTCOMES: { key: string; label: string }[] = [
+  { key: 'interested', label: 'Interested' },
   { key: 'connected', label: 'Connected' },
-  { key: 'voicemail', label: 'Left voicemail' },
-  { key: 'no_answer', label: 'No answer' },
+  { key: 'callback', label: 'Call back' },
+  { key: 'no_answer', label: 'No answer (NA)' },
+  { key: 'voicemail', label: 'Voicemail' },
   { key: 'busy', label: 'Busy' },
-  { key: 'callback', label: 'Call back later' },
   { key: 'not_interested', label: 'Not interested' },
   { key: 'wrong_number', label: 'Wrong number' },
 ]
@@ -1017,9 +1019,9 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
   const answered = session.ended === 'answered'
   const talked = answered && session.answeredAt && session.endedAt ? session.endedAt - session.answeredAt : 0
   const prospect = session.call.prospect
-  const choices = prospect ? PROSPECT_OUTCOMES : OUTCOMES
+  const choices = OUTCOMES
   // A list call that was answered needs a real answer (did it go well?), so nothing is picked for you.
-  const [outcome, setOutcome] = useState<string | null>(answered ? (prospect ? null : 'connected') : session.ended === 'busy' ? 'busy' : 'no_answer')
+  const [outcome, setOutcome] = useState<string | null>(answered ? 'connected' : session.ended === 'busy' ? 'busy' : 'no_answer')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1068,19 +1070,15 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium">
           Note{' '}
-          {session.call.lead ? <span className="font-normal text-muted-foreground">(goes on {name}’s timeline)</span> : prospect ? <span className="font-normal text-muted-foreground">{outcome === 'interested' ? '(goes on the new lead)' : '(saved on the call list)'}</span> : null}
+          <span className="font-normal text-muted-foreground">(goes on {name ?? 'the lead'}’s timeline)</span>
         </span>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} maxLength={2000} placeholder="What did you agree? What’s next?" className={cn('resize-none px-3 py-2', FIELD)} />
       </label>
-      {prospect ? (
-        <p className="text-xs text-muted-foreground">{outcome === 'interested' ? `${prospect.name} becomes your lead (Contacted), with this call, its recording and coaching.` : 'From your call list. Pick “Interested” if it went well and it becomes a lead.'}</p>
-      ) : !session.call.lead ? (
-        <p className="text-xs text-muted-foreground">This number isn’t on a contact, so the call is saved in your call history only.</p>
-      ) : null}
+      <p className="text-xs text-muted-foreground">{name ? `${name} is a lead assigned to you. This result becomes their status.` : 'This result becomes the lead’s status.'}</p>
       {error ? <p className="text-xs text-rose-300">{error}</p> : null}
       <div className="mt-auto flex gap-2">
         <button type="button" onClick={() => void save()} disabled={saving} className="flex-1 rounded-xl border border-white/10 bg-[#3b78db] py-3 text-sm font-semibold text-white transition hover:bg-[#4685e6] disabled:opacity-60">
-          {saving ? 'Saving…' : prospect && outcome === 'interested' ? 'Save and make lead' : 'Save'}
+          {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
     </div>

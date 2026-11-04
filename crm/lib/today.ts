@@ -20,10 +20,10 @@ import { loadTeamTasks } from '@/lib/team-tasks'
 import { endOfLocalDay, startOfLocalDay } from '@/lib/time'
 
 const DAY = 864e5
-export const OPEN_STAGES = ['NEW', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED'] as const
+export const OPEN_STAGES = ['NEW', 'NO_ANSWER', 'CALL_BACK', 'VOICEMAIL', 'BUSY', 'INTERESTED', 'CONTACTED', 'DEMO_SCHEDULED', 'DEMO_SENT', 'PROPOSAL_SENT', 'SIGNED'] as const
 
 /** How far along a stage is, for the progress bar (Won = 100). */
-export const STAGE_PROGRESS: Record<string, number> = { NEW: 8, CONTACTED: 22, DEMO_SCHEDULED: 40, DEMO_SENT: 55, PROPOSAL_SENT: 72, SIGNED: 90, WON: 100, LOST: 0 }
+export const STAGE_PROGRESS: Record<string, number> = { NEW: 8, NO_ANSWER: 10, CALL_BACK: 14, VOICEMAIL: 12, BUSY: 11, INTERESTED: 18, NOT_INTERESTED: 0, WRONG_NUMBER: 0, CONTACTED: 22, DEMO_SCHEDULED: 40, DEMO_SENT: 55, PROPOSAL_SENT: 72, SIGNED: 90, WON: 100, LOST: 0 }
 
 export type AgendaItem = {
   id: string
