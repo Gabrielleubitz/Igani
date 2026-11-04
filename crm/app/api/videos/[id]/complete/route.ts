@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 
 const Body = z.object({ duration: z.number().positive().max(60 * 60 * 6), watched: z.number().min(0).max(60 * 60 * 6) })
 
-/** A salesperson reports that they finished a lesson. Counts only if it is unlocked, mostly played and not faster than real time. */
+/** A salesperson reports that they finished a lesson. Counts only if it is unlocked and was opened. */
 export async function POST(req: Request, props: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   const { id } = await props.params
   const user = await currentUserOrNull()
@@ -18,7 +18,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
   const { ordered, progress, unlocked } = await unlockedFor(user.id)
   if (!unlocked.includes(id)) return NextResponse.json({ error: 'This video is still locked' }, { status: 403 })
   if (progress.completed.includes(id)) return NextResponse.json({ ok: true, already: true })
-  if (!canComplete(progress.started[id], Date.now(), parsed.data.duration, parsed.data.watched)) return NextResponse.json({ error: 'Watch the whole video to unlock the next one.' }, { status: 409 })
+  if (!canComplete(progress.started[id], parsed.data.duration)) return NextResponse.json({ error: 'Play the video to the end to unlock the next one.' }, { status: 409 })
   await markCompleted(user.id, id, progress)
   const next = ordered[ordered.findIndex((v) => v.id === id) + 1]
   return NextResponse.json({ ok: true, nextId: next?.id ?? null })

@@ -113,9 +113,7 @@ export function unlockedIds(orderedIds: string[], completed: readonly string[]):
   return out
 }
 
-/** A lesson counts as finished only if most of it was played, and enough real time has passed since it was first started. */
-export function canComplete(startedAt: number | undefined, now: number, durationSec: number, watchedSec: number): boolean {
-  if (!startedAt || !(durationSec > 0) || !(watchedSec >= 0)) return false
-  if (watchedSec < durationSec * 0.9) return false
-  return now - startedAt >= durationSec * 0.8 * 1000
+/** A lesson counts as finished when it was opened (played) and the viewer reached its end; scrubbing forward is allowed. */
+export function canComplete(startedAt: number | undefined, durationSec: number): boolean {
+  return Boolean(startedAt) && durationSec > 0
 }

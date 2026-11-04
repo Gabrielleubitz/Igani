@@ -68,12 +68,10 @@ describe('course for salespeople', () => {
     expect(canWatch(base, { role: 'SALES' }, null)).toBe(false)
     expect(canWatch(base, { role: 'MARKETING' }, null)).toBe(true)
   })
-  it('counts a lesson as finished only when mostly watched and not faster than real time', () => {
-    const t0 = 1_000_000
-    expect(canComplete(t0, t0 + 600_000, 600, 598)).toBe(true)
-    expect(canComplete(t0, t0 + 60_000, 600, 598)).toBe(false)
-    expect(canComplete(t0, t0 + 600_000, 600, 300)).toBe(false)
-    expect(canComplete(undefined, t0, 600, 600)).toBe(false)
+  it('counts a lesson as finished once it was opened, even if the viewer scrubbed forward', () => {
+    expect(canComplete(1_000_000, 600)).toBe(true)
+    expect(canComplete(undefined, 600)).toBe(false)
+    expect(canComplete(1_000_000, 0)).toBe(false)
   })
   it('reads stored progress defensively', () => {
     expect(parseProgress(null)).toEqual({ completed: [], started: {} })
