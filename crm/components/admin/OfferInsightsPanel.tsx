@@ -55,7 +55,7 @@ export function OfferInsightsPanel({ slug, lang, data, target, site = false }: {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <div className="space-y-2">
           <h4 className="text-sm font-semibold">How far they read</h4>
           {stats.reach.map((r) => (
@@ -82,7 +82,7 @@ export function OfferInsightsPanel({ slug, lang, data, target, site = false }: {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <div className="space-y-2">
           <h4 className="text-sm font-semibold">Most clicked</h4>
           {stats.topClicks.length ? (

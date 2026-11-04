@@ -21,11 +21,15 @@ interface Row {
   utmSource?: string | null
   sections: unknown
   clicks: unknown
-  moves: unknown
+  moves?: unknown
 }
 
 /** Summary, recent visits and heatmap points from visit rows (newest first). Shared by offers and website pages. */
-export function insightsFromRows(rows: Row[], sectionOrder: string[] = []): OfferInsights {
+/**
+ * Summary, recent visits and heatmap points. `moveRows` (recent visits with their mouse samples) is loaded
+ * separately and smaller, so a busy page never pulls millions of points into one request.
+ */
+export function insightsFromRows(rows: Row[], sectionOrder: string[] = [], moveRows: { device: string; moves?: unknown }[] = rows): OfferInsights {
   // A visit is "returning" when the same browser came before it
   const before = new Set<string>()
   const returning = new Set<string>()
@@ -48,19 +52,32 @@ export function insightsFromRows(rows: Row[], sectionOrder: string[] = []): Offe
   const heat = Object.fromEntries(
     (['desktop', 'phone'] as const).map((dev) => {
       const mine = rows.filter((r) => bucket(r.device) === dev)
-      return [dev, { visits: mine.length, clicks: heatPoints(mine.map((r) => asClicks(r.clicks)), 6000), moves: heatPoints(mine.map((r) => asMoves(r.moves)), 25000) }]
+      const withMoves = moveRows.filter((r) => bucket(r.device) === dev)
+      return [dev, { visits: mine.length, clicks: heatPoints(mine.map((r) => asClicks(r.clicks)), 6000), moves: heatPoints(withMoves.map((r) => asMoves(r.moves)), 25000) }]
     }),
   ) as OfferInsights['heat']
   return { stats: offerStats(rows, sectionOrder), recent, heat }
 }
 
 /** Everything the admin offer page shows about client visits (last 500 visits). */
+const SUMMARY = { id: true, visitorId: true, startedAt: true, durationMs: true, maxScrollPct: true, device: true, country: true, referrer: true, sections: true, clicks: true } as const
+const MOVE_VISITS = 300
+
 export async function loadOfferInsights(offerId: string): Promise<OfferInsights> {
-  return insightsFromRows(await prisma.offerVisit.findMany({ where: { offerId }, orderBy: { startedAt: 'desc' }, take: 500 }), SECTION_ORDER)
+  const where = { offerId }
+  const [rows, moveRows] = await Promise.all([
+    prisma.offerVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: 500, select: SUMMARY }),
+    prisma.offerVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: MOVE_VISITS, select: { device: true, moves: true } }),
+  ])
+  return insightsFromRows(rows, SECTION_ORDER, moveRows)
 }
 
 /** Visits to one main-website page in the last `days` days (at most 2,000). */
 export async function loadSiteInsights(page: string, days: number): Promise<OfferInsights> {
-  const rows = await prisma.siteVisit.findMany({ where: { page, startedAt: { gte: new Date(Date.now() - days * 86_400_000) } }, orderBy: { startedAt: 'desc' }, take: 2000 })
-  return insightsFromRows(rows)
+  const where = { page, startedAt: { gte: new Date(Date.now() - days * 86_400_000) } }
+  const [rows, moveRows] = await Promise.all([
+    prisma.siteVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: 2000, select: { ...SUMMARY, utmSource: true } }),
+    prisma.siteVisit.findMany({ where, orderBy: { startedAt: 'desc' }, take: MOVE_VISITS, select: { device: true, moves: true } }),
+  ])
+  return insightsFromRows(rows, [], moveRows)
 }

@@ -54,7 +54,7 @@ export default async function WebsitePage(props: { searchParams: Promise<{ page?
             <CardTitle className="text-base">{meta.label}</CardTitle>
             <p className="font-mono text-xs text-muted-foreground">{url.replace(/^https?:\/\//, '')}</p>
           </div>
-          <WebsiteTrackingToggle page={page} initial={tracking} />
+          <WebsiteTrackingToggle key={page} page={page} initial={tracking} />
         </CardHeader>
         <CardContent>
           <OfferInsightsPanel site data={data} target={{ kind: 'remote', url: `${url}?igani-heatmap=1`, origin: new URL(SITE_URL).origin }} />

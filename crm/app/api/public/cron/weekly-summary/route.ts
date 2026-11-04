@@ -25,7 +25,21 @@ export async function GET(req: Request): Promise<Response> {
   const week = weekKey(now)
   const dry = new URL(req.url).searchParams.get('dry') === '1'
   if (!dry && !(await getSetting('notifications.weeklySummary'))) return Response.json({ ok: true, skipped: 'turned off in Settings' })
-  if (!dry && (await prisma.activityLog.findFirst({ where: { entityType: 'SETTING', action: 'summary.weekly_sent', entityId: `weekly-summary:${week}` } }))) return Response.json({ ok: true, skipped: `already sent for ${week}` })
+  // Claim the week before sending (the settings table's key is unique, so two overlapping runs can't both win).
+  // A run that already sent to some admins records them; a later run only retries the ones still missing.
+  const lockKey = `weekly-summary:${week}`
+  type Lock = { sent: string[] }
+  let already: string[] = []
+  if (!dry) {
+    const claimed = await prisma.siteSetting.create({ data: { key: lockKey, value: { sent: [] } } }).then(() => true).catch(() => false)
+    if (!claimed) {
+      const prev = await prisma.siteSetting.findUnique({ where: { key: lockKey } })
+      already = ((prev?.value as Lock | null)?.sent ?? []).filter((e) => typeof e === 'string')
+      // Another run touched it in the last 10 minutes (it may still be sending): leave it to that run.
+      // After that, a run only retries the admins the earlier one didn't reach.
+      if (prev && Date.now() - prev.updatedAt.getTime() < 10 * 60_000) return Response.json({ ok: true, skipped: `another run handled ${week} moments ago` })
+    }
+  }
 
   const s = await buildWeeklySummary(now, await getSetting('leads.staleDays'))
   if (dry) return Response.json({ ok: true, week, summary: s })
@@ -61,14 +75,17 @@ export async function GET(req: Request): Promise<Response> {
   const sent: string[] = []
   const failed: string[] = []
   for (const a of admins) {
+    if (already.includes(a.email)) continue
     try {
       await sendWeeklySummaryEmail(a.email, { ...props, name: names.get(a.email)?.split(' ')[0] || 'there' }, subject)
       sent.push(a.email)
+      await prisma.siteSetting.update({ where: { key: lockKey }, data: { value: { sent: [...already, ...sent] } } })
     } catch (err) {
       console.error('[weekly-summary] send failed', a.email, err)
       failed.push(a.email)
     }
   }
+  if (!sent.length && !failed.length) return Response.json({ ok: true, skipped: `already sent for ${week}` })
   if (sent.length) await logActivity({ entityType: 'SETTING', entityId: `weekly-summary:${week}`, action: 'summary.weekly_sent', metadata: { week, to: sent, failed } })
   return Response.json({ ok: true, week, sent: sent.length, failed: failed.length })
 }

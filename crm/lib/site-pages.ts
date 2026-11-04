@@ -8,7 +8,8 @@ export const isSitePage = (p: string): p is SitePage => Object.prototype.hasOwnP
 
 /** The main website, and the only origins its tracker may post from. */
 const dev = process.env.NODE_ENV === 'development'
-export const SITE_URL = dev ? (process.env.SITE_DEV_URL ?? 'http://localhost:3000') : 'https://igani.co'
+// www: igani.co redirects there, and the heatmap's postMessage must target the origin the frame really ends up on
+export const SITE_URL = dev ? (process.env.SITE_DEV_URL ?? 'http://localhost:3000') : 'https://www.igani.co'
 const PROD_ORIGINS = ['https://igani.co', 'https://www.igani.co', 'https://funnels.igani.co']
 /** Production: only igani.co. Local development: the site on any localhost port too. */
 export const isSiteOrigin = (origin: string): boolean => PROD_ORIGINS.includes(origin) || (dev && /^http:\/\/localhost:\d+$/.test(origin))

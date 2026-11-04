@@ -12,6 +12,8 @@ export const MAX_MOVES = 4000
 export const MAX_BODY_BYTES = 48_000
 /** New visits one IP may start on one offer per hour (stops someone flooding the table) */
 export const MAX_NEW_VISITS_PER_HOUR = 40
+/** Sections kept per visit (a page has ~12; anything beyond is junk) */
+export const MAX_SECTIONS = 40
 const SIX_HOURS = 6 * 3600_000
 
 const Id = z.string().regex(/^[A-Za-z0-9-]{16,64}$/)
@@ -50,7 +52,10 @@ const r3 = (n: number): number => Math.round(n * 1000) / 1000
 /** Fold a batch into what is stored. Totals only go up (a late, out-of-order batch never lowers them); lists are capped. */
 export function mergeVisit(prev: VisitTotals | null, b: TrackBatch): VisitTotals {
   const sections: Record<string, number> = { ...(prev?.sections ?? {}) }
-  for (const [k, v] of Object.entries(b.sections)) sections[k] = Math.max(sections[k] ?? 0, v)
+  for (const [k, v] of Object.entries(b.sections)) {
+    if (!(k in sections) && Object.keys(sections).length >= MAX_SECTIONS) continue // never grows past the cap
+    sections[k] = Math.max(sections[k] ?? 0, v)
+  }
   return {
     durationMs: Math.max(prev?.durationMs ?? 0, b.durationMs),
     maxScrollPct: Math.max(prev?.maxScrollPct ?? 0, b.maxScroll),

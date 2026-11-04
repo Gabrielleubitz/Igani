@@ -77,3 +77,12 @@ describe('offer tracking', () => {
     expect(sectionLabel('flow-staff')).toBe('Screens · staff')
   })
 })
+
+describe('offer tracking caps', () => {
+  it('a visit never stores more than 40 sections, however many batches arrive', async () => {
+    const { MAX_SECTIONS } = await import('@/lib/offer-tracking')
+    let v = mergeVisit(null, batch({ sections: {} }))
+    for (let i = 0; i < 20; i++) v = mergeVisit(v, batch({ sections: Object.fromEntries(Array.from({ length: 40 }, (_, k) => [`junk-${i}-${k}`, 1])) }))
+    expect(Object.keys(v.sections)).toHaveLength(MAX_SECTIONS)
+  })
+})

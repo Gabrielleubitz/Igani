@@ -14,7 +14,8 @@ import { useEffect } from 'react'
  * Team browsers are never recorded: the CRM's "Open page" link adds ?team=1, which this browser then remembers.
  */
 const CRM = (): string => (location.hostname === 'localhost' ? 'http://localhost:3100' : 'https://app.igani.co')
-const CRM_ORIGINS = ['https://app.igani.co', 'http://localhost:3100']
+/** Who may send heatmap points: the CRM (and the local CRM only while developing locally) */
+const crmOrigins = (): string[] => (location.hostname === 'localhost' ? ['https://app.igani.co', 'http://localhost:3100'] : ['https://app.igani.co'])
 const FLUSH_MS = 5000
 const MOVE_MS = 120
 const ID_RE = /^[a-z0-9-]{1,48}$/
@@ -138,7 +139,7 @@ export function SiteTracker({ page }: { page: 'home' | 'realestate' }): null {
     if (params.get('igani-heatmap') === '1') {
       if (!framed) return
       const onMessage = (e: MessageEvent): void => {
-        if (!CRM_ORIGINS.includes(e.origin)) return
+        if (!crmOrigins().includes(e.origin)) return
         const d = e.data as { type?: string; kind?: 'clicks' | 'moves'; sections?: unknown; points?: unknown }
         if (d?.type !== 'igani-heat' || !Array.isArray(d.sections) || !Array.isArray(d.points)) return
         const sections = d.sections.filter((s): s is string => typeof s === 'string' && (s === 'page' || ID_RE.test(s)))
