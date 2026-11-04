@@ -7,7 +7,7 @@ const offerVideo: VideoRecord = { ...base, visibility: 'offer', offerId: 'o1' }
 describe('who can watch', () => {
   it('team videos need a signed-in user', () => {
     expect(canWatch(base, null, null)).toBe(false)
-    expect(canWatch(base, { role: 'SALES' }, null)).toBe(true)
+    expect(canWatch(base, { role: 'MARKETING' }, null)).toBe(true)
   })
   it('offer videos play only on their own live or signed offer', () => {
     expect(canWatch(offerVideo, null, { id: 'o1', status: 'LIVE' })).toBe(true)
