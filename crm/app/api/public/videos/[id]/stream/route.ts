@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { currentUserOrNull } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { getVideo, playUrl } from '@/lib/video'
+import { markStarted, unlockedFor } from '@/lib/video-progress'
 import { canWatch, isVideoId } from '@/lib/video-core'
 
 export const runtime = 'nodejs'
@@ -23,7 +24,10 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     currentUserOrNull(),
     slug && video.visibility === 'offer' ? prisma.offer.findUnique({ where: { slug }, select: { id: true, status: true } }) : null,
   ])
-  if (!canWatch(video, viewer, offer)) return deny()
+  // Salespeople unlock the course one video at a time
+  const gated = viewer?.role === 'SALES' && video.visibility === 'team' ? await unlockedFor(viewer.id) : null
+  if (!canWatch(video, viewer ? { role: viewer.role, unlocked: gated?.unlocked } : null, offer)) return deny()
+  if (viewer && gated) await markStarted(viewer.id, video.id, gated.progress)
   try {
     return NextResponse.redirect(await playUrl(video.pathname, video.contentType), { status: 302, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } })
   } catch {

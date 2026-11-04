@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_VIDEO_BYTES, TOTAL_VIDEO_BYTES, canWatch, fitsLimits, isVideoId, parseRange, parseVideo, type VideoRecord } from '@/lib/video-core'
+import { canComplete, courseOrder, unlockedIds, parseProgress, MAX_VIDEO_BYTES, TOTAL_VIDEO_BYTES, canWatch, fitsLimits, isVideoId, parseRange, parseVideo, type VideoRecord } from '@/lib/video-core'
 
 const base: VideoRecord = { id: 'abc12345', title: 'Demo', pathname: 'videos/demo.mp4', size: 1000, contentType: 'video/mp4', visibility: 'team', offerId: null, createdAt: '' }
 const offerVideo: VideoRecord = { ...base, visibility: 'offer', offerId: 'o1' }
@@ -46,5 +46,37 @@ describe('Range', () => {
     expect(parseRange('bytes=0-999', 100)).toEqual({ start: 0, end: 99 })
     expect(parseRange('bytes=100-', 100)).toBe('invalid')
     expect(parseRange('bytes=9-3', 100)).toBe('invalid')
+  })
+})
+
+describe('course for salespeople', () => {
+  const vids = ['10 - Last', '02 - Second', '01 - First', 'Offer clip'].map((title, i) => ({ ...base, id: `id${i}12345`, title, visibility: title === 'Offer clip' ? ('offer' as const) : ('team' as const) }))
+  it('orders team videos by number in the title and ignores offer videos', () => {
+    expect(courseOrder(vids).map((v) => v.title)).toEqual(['01 - First', '02 - Second', '10 - Last'])
+  })
+  it('unlocks completed lessons plus the next one only', () => {
+    const ids = ['a', 'b', 'c', 'd']
+    expect(unlockedIds(ids, [])).toEqual(['a'])
+    expect(unlockedIds(ids, ['a'])).toEqual(['a', 'b'])
+    expect(unlockedIds(ids, ['a', 'b', 'c'])).toEqual(['a', 'b', 'c', 'd'])
+    expect(unlockedIds(ids, ['a', 'b', 'c', 'd'])).toEqual(ids)
+    expect(unlockedIds(ids, ['c'])).toEqual(['a'])
+  })
+  it('lets a salesperson play only unlocked team videos; others are not gated', () => {
+    expect(canWatch(base, { role: 'SALES', unlocked: ['abc12345'] }, null)).toBe(true)
+    expect(canWatch(base, { role: 'SALES', unlocked: ['other'] }, null)).toBe(false)
+    expect(canWatch(base, { role: 'SALES' }, null)).toBe(false)
+    expect(canWatch(base, { role: 'MARKETING' }, null)).toBe(true)
+  })
+  it('counts a lesson as finished only when mostly watched and not faster than real time', () => {
+    const t0 = 1_000_000
+    expect(canComplete(t0, t0 + 600_000, 600, 598)).toBe(true)
+    expect(canComplete(t0, t0 + 60_000, 600, 598)).toBe(false)
+    expect(canComplete(t0, t0 + 600_000, 600, 300)).toBe(false)
+    expect(canComplete(undefined, t0, 600, 600)).toBe(false)
+  })
+  it('reads stored progress defensively', () => {
+    expect(parseProgress(null)).toEqual({ completed: [], started: {} })
+    expect(parseProgress({ completed: ['a', 1], started: { a: 5, b: 'x' } })).toEqual({ completed: ['a'], started: { a: 5 } })
   })
 })

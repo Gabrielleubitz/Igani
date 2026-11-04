@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { deleteVideo, listVideos, objectInfo, removeObject, saveVideo, storageConfigured, updateVideo, uploadUrl } from '@/lib/video'
-import { fitsLimits, usedBytes, type VideoRecord } from '@/lib/video-core'
+import { courseOrder, fitsLimits, usedBytes, type VideoRecord } from '@/lib/video-core'
 import { randomBytes } from 'node:crypto'
+import { setProgress } from '@/lib/video-progress'
 
 export type VideoAction = { ok: true } | { ok: false; error: string }
 
@@ -50,6 +51,15 @@ export async function setVideoAccess(id: string, visibility: VideoRecord['visibi
 export async function removeVideo(id: string): Promise<VideoAction> {
   await requireUser(['ADMIN'])
   await deleteVideo(id)
+  revalidatePath('/admin/videos')
+  return { ok: true }
+}
+
+/** Admin: send a salesperson back to video 1, or unlock the whole course for them. */
+export async function setSalesProgress(userId: string, mode: 'reset' | 'all'): Promise<VideoAction> {
+  await requireUser(['ADMIN'])
+  const ids = mode === 'all' ? courseOrder(await listVideos()).map((v) => v.id) : []
+  await setProgress(userId, ids)
   revalidatePath('/admin/videos')
   return { ok: true }
 }
