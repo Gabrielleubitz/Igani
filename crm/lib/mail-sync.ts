@@ -3,6 +3,7 @@ import type { gmail_v1 } from '@googleapis/gmail'
 import { logActivity } from './audit'
 import { GmailNotConnectedError, gmailForUser, hasGmailAccess } from './google'
 import { extractBody, header, parseAddressList, stripQuoted } from './mail-parse'
+import { markReplied } from './email-replies'
 import { prisma } from './prisma'
 
 /** The part of the Gmail API the sync uses (lets tests pass a fake). */
@@ -134,7 +135,11 @@ export async function syncMailbox(userId: string, opts: { api?: MailApi; now?: D
           })
           if (created) {
             stored++
-            if (!outbound) inbound++
+            if (!outbound) {
+              inbound++
+              // their answer: our emails before it are replied, and their reminders are done
+              await markReplied(leadId, sentAt)
+            }
           }
         }
       }

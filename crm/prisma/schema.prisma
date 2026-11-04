@@ -416,6 +416,10 @@ model EmailMessage {
   sentAt          DateTime
   /// When the contact's owner first saw an inbound email in the CRM
   readAt          DateTime?
+  /// Sent from the CRM, waiting for an answer: the reminder task, when it's due, and when they replied
+  followUpTaskId  String?
+  followUpAt      DateTime?
+  repliedAt       DateTime?
   createdAt       DateTime       @default(now())
 
   lead        Lead  @relation(fields: [leadId], references: [id], onDelete: Cascade)
@@ -424,6 +428,7 @@ model EmailMessage {
   @@unique([leadId, dedupeKey])
   @@index([leadId, sentAt])
   @@index([direction, readAt])
+  @@index([leadId, direction, repliedAt])
 }
 
 /// Gmail sync bookmark per teammate.

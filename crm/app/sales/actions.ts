@@ -20,6 +20,8 @@ import { formatDateTime } from '@/lib/format'
 import { GmailNotConnectedError, hasGmailAccess } from '@/lib/google'
 import { syncMailbox } from '@/lib/mail-sync'
 import { syncDueMeetings, syncMeeting } from '@/lib/meetings'
+import { FOLLOW_UP_DAYS, type FollowUpDays } from '@/lib/email-replies'
+import { createAutoTask } from '@/lib/tasks'
 
 const refresh = (leadId?: string): void => {
   if (leadId) revalidatePath(`/sales/leads/${leadId}`)
@@ -178,6 +180,12 @@ const emailSchema = z.object({
   lang: z.enum(['en', 'he']).default('en'),
   /** EmailMessage id being replied to */
   replyToId: z.string().cuid().optional(),
+  /** "If no reply, remind me in N days" (0 = no reminder) */
+  followUpDays: z
+    .number()
+    .int()
+    .refine((d): d is FollowUpDays => (FOLLOW_UP_DAYS as readonly number[]).includes(d), 'Pick when to be reminded')
+    .default(3),
 })
 
 /**
@@ -190,7 +198,7 @@ export async function emailContact(leadId: string, input: z.input<typeof emailSc
     const id = z.string().cuid().parse(leadId)
     const data = emailSchema.parse(input)
     await assertCanSeeLead(id, user)
-    const lead = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { email: true, firstName: true } })
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { email: true, firstName: true, lastName: true, company: true, assignedToId: true } })
     if (!lead.email) throw new BookingError('This contact has no email address yet. Add one under Edit details first.', 'INVALID_STATE')
     const original = data.replyToId ? await prisma.emailMessage.findFirst({ where: { id: data.replyToId, leadId: id } }) : null
     if (data.replyToId && !original) throw new BookingError('The email you are replying to was not found.', 'NOT_FOUND')
@@ -226,7 +234,14 @@ export async function emailContact(leadId: string, input: z.input<typeof emailSc
           sentAt: new Date(),
         },
       })
-      await logActivity({ entityType: 'LEAD', entityId: id, actorId: user.id, action: 'email.sent', metadata: { subject: data.subject, body: data.body.slice(0, 2000), emailId: row.id, via: 'crm' } }, tx)
+      await logActivity({ entityType: 'LEAD', entityId: id, actorId: user.id, action: 'email.sent', metadata: { subject: data.subject, body: data.body.slice(0, 2000), emailId: row.id, via: 'crm', ...(data.followUpDays ? { followUpDays: data.followUpDays } : {}) } }, tx)
+      // Waiting for an answer: a reminder task, closed by itself when they reply.
+      if (data.followUpDays) {
+        const followUpAt = new Date(Date.now() + data.followUpDays * 86_400_000)
+        const who = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.company || lead.email!
+        const taskId = await createAutoTask({ leadId: id, title: `No reply from ${who} yet: follow up on “${data.subject.slice(0, 80)}”`, dueAt: followUpAt, assigneeId: user.id, auto: 'email-reply', emailId: row.id }, tx)
+        await tx.emailMessage.update({ where: { id: row.id }, data: { followUpTaskId: taskId, followUpAt } })
+      }
       // Replying counts as dealing with their email.
       if (original?.direction === 'INBOUND') await tx.emailMessage.updateMany({ where: { leadId: id, direction: 'INBOUND', readAt: null }, data: { readAt: new Date() } })
     })

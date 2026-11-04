@@ -7,18 +7,20 @@ import { notArchivedBy } from './lead-archive'
 
 /** System-created task (same activity-log shape the UI folds into task state). */
 export async function createAutoTask(
-  t: { leadId: string; title: string; dueAt: Date; assigneeId: string | null; priority?: TaskPriority; auto: 'prep' | 'follow-up' | 'invoice' | 'callback'; bookingId?: string; offerId?: string; callId?: string },
+  t: { leadId: string; title: string; dueAt: Date; assigneeId: string | null; priority?: TaskPriority; auto: 'prep' | 'follow-up' | 'invoice' | 'callback' | 'email-reply'; bookingId?: string; offerId?: string; callId?: string; emailId?: string },
   db?: Prisma.TransactionClient,
-): Promise<void> {
+): Promise<string> {
+  const taskId = randomUUID()
   await logActivity(
     {
       entityType: 'LEAD',
       entityId: t.leadId,
       action: 'task.created',
-      metadata: { taskId: randomUUID(), title: t.title, dueAt: t.dueAt.toISOString(), assigneeId: t.assigneeId, priority: t.priority ?? 'MEDIUM', auto: t.auto, ...(t.bookingId ? { bookingId: t.bookingId } : {}), ...(t.offerId ? { offerId: t.offerId } : {}), ...(t.callId ? { callId: t.callId } : {}) },
+      metadata: { taskId, title: t.title, dueAt: t.dueAt.toISOString(), assigneeId: t.assigneeId, priority: t.priority ?? 'MEDIUM', auto: t.auto, ...(t.bookingId ? { bookingId: t.bookingId } : {}), ...(t.offerId ? { offerId: t.offerId } : {}), ...(t.callId ? { callId: t.callId } : {}), ...(t.emailId ? { emailId: t.emailId } : {}) },
     },
     db,
   )
+  return taskId
 }
 
 /** Current state of every task, optionally limited to some leads. Only task events are read. */

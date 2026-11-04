@@ -20,6 +20,8 @@ export interface EmailView {
   ago: string
   unread: boolean
   via: 'gmail' | 'crm'
+  /** sent from the CRM: waiting for their answer, or answered */
+  reply: { replied: boolean; label: string } | null
 }
 
 /** The contact's email conversation (from teammates' Gmail + emails sent from the CRM), newest first. */
@@ -109,6 +111,11 @@ export function EmailsPanel({
                     </time>
                   </span>
                   <span className="block truncate text-sm">{e.subject}</span>
+                  {e.reply ? (
+                    <span className={cn('mt-0.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-px text-[11px]', e.reply.replied ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300')}>
+                      {e.reply.replied ? '✓' : '⏳'} {e.reply.label}
+                    </span>
+                  ) : null}
                   {!isOpen ? <span className="block truncate text-xs text-muted-foreground">{e.snippet}</span> : null}
                 </span>
               </button>

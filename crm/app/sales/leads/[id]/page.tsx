@@ -156,7 +156,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
       case 'touch.logged':
         return { title: `${TOUCH[s(m.kind)] ?? 'Touch'} logged`, body: s(m.summary) || undefined }
       case 'email.sent':
-        return { title: `${m.via === 'gmail' ? 'Emailed from Gmail' : 'Email sent'}: ${s(m.subject)}`, body: s(m.body) ? s(m.body).slice(0, 280) + (s(m.body).length > 280 ? '…' : '') : undefined }
+        return { title: `${m.via === 'gmail' ? 'Emailed from Gmail' : 'Email sent'}: ${s(m.subject)}${m.followUpDays ? ` · reminder in ${s(m.followUpDays)} days if no reply` : ''}`, body: s(m.body) ? s(m.body).slice(0, 280) + (s(m.body).length > 280 ? '…' : '') : undefined }
       case 'email.received':
         return { title: `Email from ${s(m.from)}: ${s(m.subject)}`, body: s(m.body) ? s(m.body).slice(0, 280) + (s(m.body).length > 280 ? '…' : '') : undefined }
       case 'lead.status_changed':
@@ -252,6 +252,13 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
     ago: timeAgo(e.sentAt, now),
     unread: e.direction === 'INBOUND' && !e.readAt,
     via: e.externalId.startsWith('resend:') ? 'crm' : 'gmail',
+    // our emails sent from the CRM: still waiting for their answer, or answered
+    reply:
+      e.direction !== 'OUTBOUND' || !e.externalId.startsWith('resend:')
+        ? null
+        : e.repliedAt
+          ? { replied: true, label: `Replied ${timeAgo(e.repliedAt, now)}` }
+          : { replied: false, label: e.followUpAt ? (e.followUpAt.getTime() > now.getTime() ? `Waiting for reply · reminder ${formatDateTime(e.followUpAt, tz)}` : 'No reply yet · follow up') : 'Waiting for reply' },
   }))
 
   // Archiving is personal: only whether *I* archived this lead matters here.

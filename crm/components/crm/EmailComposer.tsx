@@ -88,6 +88,8 @@ export function EmailComposer({
   const [withBooking, setWithBooking] = useState(false)
   const [lang, setLang] = useState<'en' | 'he'>('en')
   const [tpl, setTpl] = useState('blank')
+  /** "If no reply, remind me in N days" (0 = don't) */
+  const [followUpDays, setFollowUpDays] = useState(3)
   const he = lang === 'he'
 
   const fill = (s: string): string => s.replaceAll('{first}', firstName || 'there').replaceAll('{company}', company || 'your team').replaceAll('{me}', senderName.split(' ')[0] ?? senderName)
@@ -142,10 +144,10 @@ export function EmailComposer({
           onSubmit={(e) => {
             e.preventDefault()
             start(async () => {
-              const res = await emailContact(leadId, { subject, body, cta: withBooking && bookingUrl ? { label: he ? 'בחר/י זמן לשיחה' : 'Pick a time to talk', href: bookingUrl } : undefined, lang, replyToId: reply?.id })
+              const res = await emailContact(leadId, { subject, body, cta: withBooking && bookingUrl ? { label: he ? 'בחר/י זמן לשיחה' : 'Pick a time to talk', href: bookingUrl } : undefined, lang, replyToId: reply?.id, followUpDays })
               if (res.ok) {
                 setOpen(false)
-                setSent(`Email sent to ${email}.`)
+                setSent(`Email sent to ${email}.${followUpDays ? ` Reminder in ${followUpDays} days if they don’t reply.` : ''}`)
                 router.refresh()
               } else setError(res.error)
             })
@@ -190,6 +192,17 @@ export function EmailComposer({
               Add a &ldquo;Pick a time to talk&rdquo; button (links to your booking page)
             </label>
           ) : null}
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Label htmlFor="followup">If they don’t reply, remind me in</Label>
+            <Select id="followup" value={followUpDays} onChange={(e) => setFollowUpDays(Number(e.target.value))} className="h-9 w-auto">
+              <option value={2}>2 days</option>
+              <option value={3}>3 days</option>
+              <option value={5}>5 days</option>
+              <option value={7}>a week</option>
+              <option value={0}>Don’t remind me</option>
+            </Select>
+            <span className="basis-full text-xs text-muted-foreground">A follow-up task on this contact. It closes by itself when their reply reaches your Gmail.</span>
+          </div>
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
