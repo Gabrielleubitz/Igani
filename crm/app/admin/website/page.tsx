@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { loadSiteInsights } from '@/lib/offer-insights'
 import { getSetting } from '@/lib/settings'
-import { SITE_PAGES, SITE_URL, isSitePage, type SitePage } from '@/lib/site-pages'
+import { SITE_PAGES, isSitePage, type SitePage } from '@/lib/site-pages'
 
 export const metadata = { title: 'Website' }
 export const dynamic = 'force-dynamic'
@@ -22,13 +22,13 @@ export default async function WebsitePage(props: { searchParams: Promise<{ page?
   const days = RANGES.find((d) => String(d) === sp.days) ?? 30
   const [data, tracking] = await Promise.all([loadSiteInsights(page, days), getSetting('website.tracking')])
   const meta = SITE_PAGES[page]
-  const url = `${SITE_URL}${meta.path}`
+  const url = `${meta.base}${meta.path}`
   const pill = (active: boolean): string => `rounded-md px-3 py-1 text-sm ${active ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground'}`
   const href = (p: SitePage, d: number): string => `/admin/website?page=${p}${d === 30 ? '' : `&days=${d}`}`
 
   return (
     <div className="space-y-5">
-      <PageIntro title="Website" hint="How visitors read igani.co: how far they scroll, which sections hold them, where they click, and a heatmap. Visits from this CRM's Open buttons are never counted." />
+      <PageIntro title="Website" hint="How visitors read igani.co and the real estate site: how far they scroll, which sections hold them, where they click, and a heatmap. Visits from this CRM's Open buttons are never counted." />
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex rounded-lg border bg-muted/40 p-0.5">
           {(Object.keys(SITE_PAGES) as SitePage[]).map((p) => (
@@ -57,7 +57,7 @@ export default async function WebsitePage(props: { searchParams: Promise<{ page?
           <WebsiteTrackingToggle key={page} page={page} initial={tracking} />
         </CardHeader>
         <CardContent>
-          <OfferInsightsPanel site data={data} target={{ kind: 'remote', url: `${url}?igani-heatmap=1`, origin: new URL(SITE_URL).origin }} />
+          <OfferInsightsPanel site data={data} target={{ kind: 'remote', url: `${url}?igani-heatmap=1`, origin: new URL(meta.base).origin }} />
         </CardContent>
       </Card>
     </div>

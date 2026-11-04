@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ADMIN_COOKIE, adminApiNeedsSession, adminSecret, verifyAdminToken } from '@/lib/admin-session'
 
-const FUNNEL_PATHS = ['/realestate']
-
 export async function middleware(request: NextRequest) {
   // Admin APIs: require the server-issued admin session cookie (see /api/admin/session).
   if (adminApiNeedsSession(request.nextUrl.pathname, request.method)) {
@@ -12,15 +10,11 @@ export async function middleware(request: NextRequest) {
 
   const hostname = request.headers.get('host') || ''
 
-  // The funnels subdomain only serves the real estate page
+  // The old funnels subdomain now lives at realestate.igani.co
   if (hostname.startsWith('funnels.')) {
-    // Anything else goes to it (static files such as case-study screenshots pass through)
-    const isStaticFile = /\.[a-z0-9]+$/i.test(request.nextUrl.pathname)
-    if (!FUNNEL_PATHS.includes(request.nextUrl.pathname) && !isStaticFile) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/realestate'
-      return NextResponse.redirect(url)
-    }
+    const url = new URL(`https://realestate.igani.co${request.nextUrl.pathname === '/' || request.nextUrl.pathname === '/realestate' ? '/' : request.nextUrl.pathname}`)
+    url.search = request.nextUrl.search
+    return NextResponse.redirect(url, 308)
   }
 
   // Security headers
@@ -28,9 +22,9 @@ export async function middleware(request: NextRequest) {
 
   // Security headers
   response.headers.set('X-Content-Type-Options', 'nosniff')
-  // The CRM (Admin → Website) shows the home and real estate pages in a frame to draw its heatmap. Only those two pages,
+  // The CRM (Admin → Website) shows the home page in a frame to draw its heatmap. Only that page,
   // only with ?igani-heatmap=1 (where the tracker records nothing), and only inside app.igani.co. Everything else: DENY.
-  const heatmapFrame = request.nextUrl.searchParams.get('igani-heatmap') === '1' && ['/', '/realestate'].includes(request.nextUrl.pathname)
+  const heatmapFrame = request.nextUrl.searchParams.get('igani-heatmap') === '1' && request.nextUrl.pathname === '/'
   const crmOrigins = process.env.NODE_ENV === 'production' ? 'https://app.igani.co' : 'https://app.igani.co http://localhost:3100'
   if (heatmapFrame) response.headers.set('Content-Security-Policy', `frame-ancestors ${crmOrigins}`)
   else response.headers.set('X-Frame-Options', 'DENY')

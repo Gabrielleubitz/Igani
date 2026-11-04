@@ -12,6 +12,8 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/packages', destination: '/', permanent: true },
+      // The real estate page now lives on its own site; old ad, search and funnels links follow it (query string kept)
+      { source: '/realestate', destination: 'https://realestate.igani.co', permanent: true },
       // The generic funnel pages are retired (the real estate page stays); old ad and search links land on the home page.
       { source: '/funnels', destination: '/', permanent: true },
       { source: '/funnel2', destination: '/', permanent: true },
