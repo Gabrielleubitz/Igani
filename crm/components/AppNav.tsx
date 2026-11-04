@@ -28,8 +28,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useEffect, useState } from 'react'
-import { cn } from '@/lib/utils'
+import { useEffect, useMemo, useState } from 'react'
+import { NavMenu, type MenuNode } from '@/components/ui/multi-level-collapsible-menu'
 
 const ICONS: Record<string, LucideIcon> = {
   today: Sun,
@@ -58,64 +58,23 @@ const ICONS: Record<string, LucideIcon> = {
   settings: Settings,
 }
 
-export type NavItem = { href: string; label: string; icon: keyof typeof ICONS | string; badge?: number; children?: { href: string; label: string }[] }
-export type NavGroup = { title: string; items: NavItem[] }
+/** A menu entry as the server sends it: icons are names (mapped to lucide icons here), folders have children. */
+export type NavNode = { id: string; label: string; icon?: string; href?: string; badge?: number; children?: NavNode[] }
 
-function isActive(pathname: string, href: string): boolean {
-  if (href === '/sales') return pathname === '/sales'
-  return pathname === href || pathname.startsWith(`${href}/`)
+function toMenu(nodes: NavNode[]): MenuNode[] {
+  return nodes.map((n) => {
+    const Icon = n.icon ? ICONS[n.icon] : undefined
+    return { id: n.id, label: n.label, href: n.href, badge: n.badge, icon: Icon ? <Icon aria-hidden /> : undefined, children: n.children ? toMenu(n.children) : undefined }
+  })
 }
 
-export function AppNav({ groups, expanded = false }: { groups: NavGroup[]; expanded?: boolean }): React.ReactElement {
-  const pathname = usePathname() ?? ''
-  return (
-    <nav aria-label="Main" className="flex flex-col gap-5">
-      {groups.map((g) => (
-        <div key={g.title} className="space-y-0.5">
-          <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">{g.title}</div>
-          {g.items.map((n) => {
-            const active = isActive(pathname, n.href)
-            const Icon = ICONS[n.icon]
-            return (
-              <div key={n.href} className="group">
-              <Link
-                href={n.href}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'flex items-center gap-2.5 whitespace-nowrap rounded-md px-3 py-2 text-sm transition-colors',
-                  active ? 'bg-primary/15 font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                )}
-              >
-                {Icon ? <Icon aria-hidden className={cn('h-4 w-4 shrink-0', active ? 'text-primary' : '')} /> : null}
-                <span className="flex-1">{n.label}</span>
-                {n.badge ? <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold tabular-nums text-primary-foreground">{n.badge}</span> : null}
-              </Link>
-              {n.children?.length ? (
-                // Hover (or keyboard focus) the item to reveal its options; always open in the phone menu and when one is the current page.
-                <div className={cn('ml-6 space-y-0.5 border-l pl-2', expanded || n.children.some((c) => isActive(pathname, c.href)) ? 'block' : 'hidden group-focus-within:block group-hover:block')}>
-                  {n.children.map((c) => (
-                    <Link
-                      key={c.href}
-                      href={c.href}
-                      aria-current={isActive(pathname, c.href) ? 'page' : undefined}
-                      className={cn('block whitespace-nowrap rounded-md px-3 py-1.5 text-sm transition-colors', isActive(pathname, c.href) ? 'bg-primary/15 font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}
-                    >
-                      {c.label}
-                    </Link>
-                  ))}
-                </div>
-              ) : null}
-              </div>
-            )
-          })}
-        </div>
-      ))}
-    </nav>
-  )
+export function AppNav({ nodes, expanded = false }: { nodes: NavNode[]; expanded?: boolean }): React.ReactElement {
+  const menu = useMemo(() => toMenu(nodes), [nodes])
+  return <NavMenu nodes={menu} expanded={expanded} />
 }
 
 /** Phone/tablet: a Menu button that opens every grouped link in a panel. */
-export function MobileMenu({ groups }: { groups: NavGroup[] }): React.ReactElement {
+export function MobileMenu({ nodes }: { nodes: NavNode[] }): React.ReactElement {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   useEffect(() => setOpen(false), [pathname])
@@ -132,7 +91,7 @@ export function MobileMenu({ groups }: { groups: NavGroup[] }): React.ReactEleme
       </button>
       {open ? (
         <div id="mobile-menu" className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-4rem)] overflow-y-auto border-b bg-background p-4 shadow-lg">
-          <AppNav groups={groups} expanded />
+          <AppNav nodes={nodes} expanded />
         </div>
       ) : null}
     </div>

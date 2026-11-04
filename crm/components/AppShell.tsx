@@ -8,62 +8,118 @@ import { ensureAvatar } from '@/lib/avatar-sync'
 import { prisma } from '@/lib/prisma'
 import { SignOutButton } from './AuthButtons'
 import { SessionKeepAlive } from './SessionKeepAlive'
-import { AppNav, GlobalSearch, MobileMenu, type NavGroup } from './AppNav'
+import { AppNav, GlobalSearch, MobileMenu, type NavNode } from './AppNav'
 
 type Role = SessionUser['role']
 const ALL: Role[] = ['ADMIN', 'SALES', 'MARKETING']
 const SELLERS: Role[] = ['ADMIN', 'SALES']
 
-const NAV: { title: string; items: { href: string; label: string; icon: string; roles: Role[]; children?: { href: string; label: string }[] }[] }[] = [
+type Entry = { id: string; label: string; icon?: string; href?: string; roles: Role[]; children?: Entry[] }
+
+/** The sidebar: categories that open into their pages. Each entry lists who may see it; folders with nothing left are hidden. */
+const NAV: Entry[] = [
+  { id: 'today', label: 'Today', icon: 'today', href: '/sales/today', roles: ALL },
   {
-    title: 'Workspace',
-    items: [
-      { href: '/sales/today', label: 'Today', icon: 'today', roles: ALL },
-      { href: '/sales/leads', label: 'Leads', icon: 'contacts', roles: ALL },
-      { href: '/sales/board', label: 'Board', icon: 'board', roles: ALL },
-      { href: '/sales/tasks', label: 'Tasks', icon: 'tasks', roles: ALL },
-      { href: '/sales/calls', label: 'Calls', icon: 'calls', roles: SELLERS },
-      { href: '/sales/call-lists', label: 'Call lists', icon: 'callLists', roles: SELLERS },
+    id: 'sales',
+    label: 'Sales',
+    icon: 'contacts',
+    roles: ALL,
+    children: [
+      { id: 'leads', label: 'Leads', icon: 'contacts', href: '/sales/leads', roles: ALL },
+      { id: 'board', label: 'Board', icon: 'board', href: '/sales/board', roles: ALL },
+      { id: 'tasks', label: 'Tasks', icon: 'tasks', href: '/sales/tasks', roles: ALL },
+      { id: 'analytics', label: 'Analytics', icon: 'reports', href: '/sales/reports', roles: ALL },
+    ],
+  },
+  {
+    id: 'calling',
+    label: 'Calling',
+    icon: 'calls',
+    roles: SELLERS,
+    children: [
+      { id: 'calls', label: 'Calls', icon: 'calls', href: '/sales/calls', roles: SELLERS },
+      { id: 'call-lists', label: 'Call lists', icon: 'callLists', href: '/sales/call-lists', roles: SELLERS },
+    ],
+  },
+  {
+    id: 'meetings',
+    label: 'Meetings',
+    icon: 'meetings',
+    roles: SELLERS,
+    children: [
+      { id: 'team-meeting', label: 'Book meeting with team', icon: 'teamMeetings', href: '/sales/team-meeting', roles: SELLERS },
+      { id: 'invite', label: 'Book meeting with client', icon: 'invite', href: '/sales/invite', roles: SELLERS },
+    ],
+  },
+  { id: 'training', label: 'Training', icon: 'videos', roles: ALL, children: [{ id: 'videos', label: 'Videos', icon: 'videos', href: '/sales/videos', roles: ALL }] },
+  {
+    id: 'tools',
+    label: 'Tools',
+    icon: 'documents',
+    roles: ['SALES', 'ADMIN', 'MARKETING'],
+    children: [
+      { id: 'documents', label: 'Documents', icon: 'documents', href: '/sales/documents', roles: ['SALES'] },
+      { id: 'marketing', label: 'Marketing', icon: 'marketing', href: '/marketing', roles: ['ADMIN', 'MARKETING'] },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    icon: 'overview',
+    roles: ['ADMIN'],
+    children: [
+      { id: 'overview', label: 'Overview', icon: 'overview', href: '/admin/dashboard', roles: ['ADMIN'] },
       {
-        href: '/sales',
-        label: 'Meetings',
-        icon: 'meetings',
-        roles: SELLERS,
+        id: 'clients',
+        label: 'Clients & offers',
+        icon: 'offers',
+        roles: ['ADMIN'],
         children: [
-          { href: '/sales/team-meeting', label: 'Book meeting with team' },
-          { href: '/sales/invite', label: 'Book meeting with client' },
+          { id: 'offers', label: 'Offers', icon: 'offers', href: '/admin/offers', roles: ['ADMIN'] },
+          { id: 'sales-contracts', label: 'Sales contracts', icon: 'documents', href: '/admin/sales-contracts', roles: ['ADMIN'] },
+          { id: 'bookings', label: 'Bookings', icon: 'bookings', href: '/admin/bookings', roles: ['ADMIN'] },
+          { id: 'booking-pages', label: 'Booking pages', icon: 'pages', href: '/admin/booking-pages', roles: ['ADMIN'] },
+          { id: 'team-meetings', label: 'Team meetings', icon: 'teamMeetings', href: '/admin/team-meetings', roles: ['ADMIN'] },
         ],
       },
-      { href: '/sales/reports', label: 'Analytics', icon: 'reports', roles: ALL },
-      { href: '/sales/videos', label: 'Videos', icon: 'videos', roles: ALL },
-    ],
-  },
-  {
-    title: 'Tools',
-    items: [
-      { href: '/sales/documents', label: 'Documents', icon: 'documents', roles: ['SALES'] },
-      { href: '/marketing', label: 'Marketing', icon: 'marketing', roles: ['ADMIN', 'MARKETING'] },
-    ],
-  },
-  {
-    title: 'Admin',
-    items: [
-      { href: '/admin/dashboard', label: 'Overview', icon: 'overview', roles: ['ADMIN'] },
-      { href: '/admin/bookings', label: 'Bookings', icon: 'bookings', roles: ['ADMIN'] },
-      { href: '/admin/team-meetings', label: 'Team meetings', icon: 'teamMeetings', roles: ['ADMIN'] },
-      { href: '/admin/offers', label: 'Offers', icon: 'offers', roles: ['ADMIN'] },
-      { href: '/admin/videos', label: 'Video library', icon: 'videos', roles: ['ADMIN'] },
-      { href: '/admin/sales-contracts', label: 'Sales contracts', icon: 'offers', roles: ['ADMIN'] },
-      { href: '/admin/website', label: 'Website', icon: 'website', roles: ['ADMIN'] },
-      { href: '/admin/phone', label: 'Phone', icon: 'phone', roles: ['ADMIN'] },
-      { href: '/admin/booking-pages', label: 'Booking pages', icon: 'pages', roles: ['ADMIN'] },
-      { href: '/admin/team', label: 'Sales team', icon: 'performance', roles: ['ADMIN'] },
-      { href: '/admin/users', label: 'Team access', icon: 'team', roles: ['ADMIN'] },
-      { href: '/admin/audit', label: 'Audit log', icon: 'audit', roles: ['ADMIN'] },
-      { href: '/admin/settings', label: 'Settings', icon: 'settings', roles: ['ADMIN'] },
+      {
+        id: 'content',
+        label: 'Content',
+        icon: 'website',
+        roles: ['ADMIN'],
+        children: [
+          { id: 'video-library', label: 'Video library', icon: 'videos', href: '/admin/videos', roles: ['ADMIN'] },
+          { id: 'website', label: 'Website', icon: 'website', href: '/admin/website', roles: ['ADMIN'] },
+          { id: 'phone', label: 'Phone', icon: 'phone', href: '/admin/phone', roles: ['ADMIN'] },
+        ],
+      },
+      {
+        id: 'people',
+        label: 'People',
+        icon: 'team',
+        roles: ['ADMIN'],
+        children: [
+          { id: 'sales-team', label: 'Sales team', icon: 'performance', href: '/admin/team', roles: ['ADMIN'] },
+          { id: 'team-access', label: 'Team access', icon: 'team', href: '/admin/users', roles: ['ADMIN'] },
+          { id: 'audit', label: 'Audit log', icon: 'audit', href: '/admin/audit', roles: ['ADMIN'] },
+        ],
+      },
+      { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings', roles: ['ADMIN'] },
     ],
   },
 ]
+
+/** Keeps the entries this role may see; a folder with no visible pages disappears. */
+function visible(entries: Entry[], role: Role, badges: Record<string, number>): NavNode[] {
+  return entries.flatMap((e): NavNode[] => {
+    if (!e.roles.includes(role)) return []
+    if (e.children) {
+      const children = visible(e.children, role, badges)
+      return children.length ? [{ id: e.id, label: e.label, icon: e.icon, children }] : []
+    }
+    return [{ id: e.id, label: e.label, icon: e.icon, href: e.href, badge: badges[e.id] || undefined }]
+  })
+}
 
 const ROLE_LABEL: Record<Role, string> = { ADMIN: 'Admin', SALES: 'Sales', MARKETING: 'Marketing' }
 
@@ -75,12 +131,7 @@ export async function AppShell({ user, children }: { user: SessionUser; children
   // No photo yet: find it now (stored sign-in token, else Google; capped at ~2.5 s and retried every few hours)
   const image = isGooglePhoto(me?.image) ? me.image : (me ? await Promise.race([ensureAvatar(me.id).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]) : null)
   const photo = me ? avatarPath({ id: me.id, image }) : null
-  const groups: NavGroup[] = NAV.map((g) => ({
-    title: g.title,
-    items: g.items
-      .filter((i) => i.roles.includes(user.role))
-      .map(({ href, label, icon, children }) => ({ href, label, icon, children, badge: href === '/admin/bookings' ? pendingApprovals : undefined })),
-  })).filter((g) => g.items.length > 0)
+  const nodes = visible(NAV, user.role, { bookings: pendingApprovals })
   const initials = (user.name ?? user.email)
     .split(/[\s@.]+/)
     .filter(Boolean)
@@ -101,14 +152,14 @@ export async function AppShell({ user, children }: { user: SessionUser; children
             <span className="hidden rounded border border-primary/40 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-primary lg:inline">CRM</span>
           </Link>
           <div className="flex items-center gap-2 lg:hidden">
-            <MobileMenu groups={groups} />
+            <MobileMenu nodes={nodes} />
             <SignOutButton />
           </div>
           <div className="hidden lg:block">
             <GlobalSearch />
           </div>
           <div className="hidden lg:block">
-            <AppNav groups={groups} />
+            <AppNav nodes={nodes} />
           </div>
         </div>
         <div className="hidden items-center gap-3 border-t px-4 py-4 lg:flex">
