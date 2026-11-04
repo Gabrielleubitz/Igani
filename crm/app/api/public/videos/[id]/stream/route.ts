@@ -1,15 +1,16 @@
 import { NextResponse } from 'next/server'
 import { currentUserOrNull } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getVideo, openVideo } from '@/lib/video'
-import { canWatch, isVideoId, parseRange, sliceStream } from '@/lib/video-core'
+import { getVideo, playUrl } from '@/lib/video'
+import { canWatch, isVideoId } from '@/lib/video-core'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
  * Plays a private video. Allowed: signed-in teammates (team videos), admins (all), and visitors of the live offer the video
- * belongs to (?o=<offer slug>). The file never has a public address; this route streams it from the private store with Range support.
+ * belongs to (?o=<offer slug>). Anyone else gets 404. When allowed we redirect to a 5-minute signed link straight to the private
+ * bucket, so the file is never public, never passes through our server (no function bandwidth) and seeking works natively.
  */
 export async function GET(req: Request, props: { params: Promise<{ id: string }> }): Promise<Response> {
   const { id } = await props.params
@@ -23,26 +24,9 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     slug && video.visibility === 'offer' ? prisma.offer.findUnique({ where: { slug }, select: { id: true, status: true } }) : null,
   ])
   if (!canWatch(video, viewer, offer)) return deny()
-
-  const range = parseRange(req.headers.get('range'), video.size)
-  if (range === 'invalid') return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${video.size}` } })
-  const res = await openVideo(video.pathname, range)
-  if (!res || !res.stream) return deny()
-  const headers: Record<string, string> = {
-    'Content-Type': video.contentType,
-    'Accept-Ranges': 'bytes',
-    'Cache-Control': 'private, no-store',
-    'X-Content-Type-Options': 'nosniff',
-    'Content-Disposition': 'inline',
+  try {
+    return NextResponse.redirect(await playUrl(video.pathname, video.contentType), { status: 302, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } })
+  } catch {
+    return NextResponse.json({ error: 'Video storage is not connected' }, { status: 503 })
   }
-  if (range) {
-    // If the store ignored the Range header and sent the whole file, cut the requested bytes out ourselves
-    const upstreamRanged = Boolean(res.headers.get('content-range'))
-    const body = upstreamRanged ? res.stream : sliceStream(res.stream, range.start, range.end)
-    headers['Content-Range'] = `bytes ${range.start}-${range.end}/${video.size}`
-    headers['Content-Length'] = String(range.end - range.start + 1)
-    return new Response(body, { status: 206, headers })
-  }
-  headers['Content-Length'] = String(video.size)
-  return new Response(res.stream, { status: 200, headers })
 }

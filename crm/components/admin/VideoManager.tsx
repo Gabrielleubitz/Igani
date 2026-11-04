@@ -1,15 +1,27 @@
 'use client'
 
-import { upload } from '@vercel/blob/client'
 import { Trash2, Upload } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useRef, useState, useTransition } from 'react'
-import { registerVideo, removeVideo, setVideoAccess } from '@/app/actions/videos'
+import { createUpload, registerVideo, removeVideo, setVideoAccess } from '@/app/actions/videos'
 import { PrivateVideo } from '@/components/PrivateVideo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { MAX_VIDEO_BYTES, TOTAL_VIDEO_BYTES, fitsLimits, type VideoRecord } from '@/lib/video-core'
+
+/** Browser upload straight to the private bucket with a progress callback. */
+function putFile(url: string, file: File, type: string, onProgress: (pct: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest()
+    x.open('PUT', url)
+    x.setRequestHeader('Content-Type', type)
+    x.upload.onprogress = (e) => e.lengthComputable && onProgress(Math.round((e.loaded / e.total) * 100))
+    x.onload = () => (x.status >= 200 && x.status < 300 ? resolve() : reject(new Error(`Upload failed (${x.status}). Check the bucket's CORS rule allows PUT from this site.`)))
+    x.onerror = () => reject(new Error("Upload failed. Check the bucket's CORS rule allows PUT from this site."))
+    x.send(file)
+  })
+}
 
 const mb = (n: number): string => `${(n / 1024 / 1024).toFixed(n > 10 * 1024 * 1024 ? 0 : 1)} MB`
 
@@ -28,9 +40,10 @@ export function VideoManager({ videos, offers }: { videos: VideoRecord[]; offers
     if (err) return setMsg(err)
     setProgress(0)
     try {
-      const safe = file.name.replace(/[^A-Za-z0-9._-]+/g, '-')
-      const blob = await upload(`videos/${safe}`, file, { access: 'private', handleUploadUrl: '/api/admin/videos/upload', multipart: file.size > 20 * 1024 * 1024, onUploadProgress: (p) => setProgress(Math.round(p.percentage)) })
-      const res = await registerVideo({ title: title || file.name.replace(/\.[^.]+$/, ''), pathname: blob.pathname, contentType: file.type })
+      const up = await createUpload({ filename: file.name, size: file.size, contentType: file.type })
+      if (!up.ok) return setMsg(up.error)
+      await putFile(up.url, file, file.type, setProgress)
+      const res = await registerVideo({ title: title || file.name.replace(/\.[^.]+$/, ''), pathname: up.key, contentType: file.type })
       if (!res.ok) setMsg(res.error)
       else {
         setTitle('')
@@ -55,7 +68,7 @@ export function VideoManager({ videos, offers }: { videos: VideoRecord[]; offers
             <div className="h-full bg-primary" style={{ width: `${Math.min(100, (used / TOTAL_VIDEO_BYTES) * 100)}%` }} />
           </div>
           <p className="text-sm text-muted-foreground">
-            {mb(used)} of 1 GB used. MP4, WebM or MOV, up to {mb(MAX_VIDEO_BYTES)} each. Compress first: HandBrake &quot;Fast 720p30&quot;, quality RF 28, audio AAC 96 kbps (about 60 to 100 MB per video). Start titles with 01, 02, 03… to keep course order.
+            {mb(used)} of 9 GB used. MP4, WebM or MOV, up to {mb(MAX_VIDEO_BYTES)} each. Start titles with 01, 02, 03… to keep course order.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Input className="max-w-xs" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />

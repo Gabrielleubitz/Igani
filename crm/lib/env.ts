@@ -16,6 +16,11 @@ const schema = z.object({
   ADMIN_NOTIFY_EMAIL: z.string().optional(),
   /** Needed in production for reminders, follow-ups and email sync: without it the hourly job refuses every call */
   CRON_SECRET: z.string().optional(),
+  /** Private video storage (Cloudflare R2). Without these the Videos pages say storage is not connected. */
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET: z.string().optional(),
 })
 
 export type Env = z.infer<typeof schema>

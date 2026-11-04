@@ -1,14 +1,15 @@
 /** Private videos: records, limits, access rule and Range parsing. Pure (no server imports) so it can be unit-tested. */
 
 export const VIDEO_PREFIX = 'video:'
-export const MAX_VIDEO_BYTES = 250 * 1024 * 1024
-export const TOTAL_VIDEO_BYTES = 1024 * 1024 * 1024
+export const MAX_VIDEO_BYTES = 500 * 1024 * 1024
+/** Cloudflare R2 free tier is 10 GB; stay a little under it */
+export const TOTAL_VIDEO_BYTES = 9 * 1024 * 1024 * 1024
 export const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'] as const
 
 export interface VideoRecord {
   id: string
   title: string
-  /** pathname in the private Blob store */
+  /** object key in the private R2 bucket */
   pathname: string
   size: number
   contentType: string
@@ -68,39 +69,7 @@ export function usedBytes(videos: VideoRecord[]): number {
 
 export function fitsLimits(size: number, type: string, used: number): string | null {
   if (!(VIDEO_TYPES as readonly string[]).includes(type)) return 'Upload an MP4, WebM or MOV video.'
-  if (size > MAX_VIDEO_BYTES) return 'This file is over 250 MB. Compress it first (720p, quality 28) and try again.'
-  if (used + size > TOTAL_VIDEO_BYTES) return 'Not enough space: the library is limited to 1 GB. Delete a video first.'
+  if (size > MAX_VIDEO_BYTES) return 'This file is over 500 MB. Compress it a little (720p) and try again.'
+  if (used + size > TOTAL_VIDEO_BYTES) return 'Not enough space: the library is limited to 9 GB (the free tier). Delete a video first.'
   return null
-}
-
-/** Passes through bytes start..end (inclusive) of a stream. */
-export function sliceStream(src: ReadableStream<Uint8Array>, start: number, end: number): ReadableStream<Uint8Array> {
-  let pos = 0
-  const reader = src.getReader()
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done || pos > end) {
-          controller.close()
-          void reader.cancel().catch(() => undefined)
-          return
-        }
-        const chunkStart = pos
-        pos += value.length
-        if (pos <= start) continue
-        const from = Math.max(0, start - chunkStart)
-        const to = Math.min(value.length, end - chunkStart + 1)
-        if (to > from) {
-          controller.enqueue(value.subarray(from, to))
-          if (pos > end) {
-            controller.close()
-            void reader.cancel().catch(() => undefined)
-          }
-          return
-        }
-      }
-    },
-    cancel: () => reader.cancel(),
-  })
 }
