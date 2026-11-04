@@ -101,7 +101,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Latest calls</CardTitle>
-          <p className="text-sm text-muted-foreground">Recordings, transcripts and coaching come with the CallMap step.</p>
+          <p className="text-sm text-muted-foreground">Click a call for its recording, transcript and coaching. <Link href="/sales/calls" className="text-primary hover:underline">All calls and team scores →</Link></p>
         </CardHeader>
         <CardContent>
           {calls.length === 0 ? (
@@ -123,12 +123,13 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
                     )}
                     {c.simulated ? <span className="ms-2 rounded bg-amber-500/15 px-1.5 text-[10px] text-amber-300">demo</span> : null}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <Link href={`/sales/calls/${c.id}`} className="text-xs text-muted-foreground hover:text-foreground hover:underline">
                     {STATUS[c.status] ?? c.status}
                     {c.durationSec ? ` · ${fmtDuration(c.durationSec)}` : ''}
                     {c.outcome ? ` · ${CALL_OUTCOMES[c.outcome as keyof typeof CALL_OUTCOMES] ?? c.outcome}` : ''}
-                    {c.recordingSid ? ' · recorded' : ''}
-                  </span>
+                    {c.recordingSid ? ' · ▶ recording' : ''}
+                    {c.analysisStatus === 'ready' ? ' · analyzed' : ''}
+                  </Link>
                 </li>
               ))}
             </ul>

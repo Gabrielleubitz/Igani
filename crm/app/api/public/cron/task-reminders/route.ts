@@ -12,6 +12,7 @@ import { localHour } from '@/lib/time'
 import { syncAllMailboxes } from '@/lib/mail-sync'
 import { backfillMeetingTasks } from '@/lib/meeting-tasks'
 import { reconcileCall } from '@/lib/calls'
+import { analyzeCall } from '@/lib/call-analysis'
 import { syncDueMeetings } from '@/lib/meetings'
 import { syncCalendarChanges } from '@/lib/calendar-sync'
 
@@ -132,6 +133,19 @@ async function run(): Promise<Record<string, number>> {
   // (a lost callback must not leave anyone "on a call")
   const stuck = await prisma.call.findMany({ where: { status: { in: ['INITIATED', 'RINGING', 'IN_PROGRESS'] }, startedAt: { lt: new Date(Date.now() - 15 * 60_000) } }, select: { id: true }, take: 100 })
   for (const c of stuck) await reconcileCall(c.id).catch((err: unknown) => console.error('[cron] call reconcile failed', c.id, err))
+  // Call analysis: retry pending/failed ones, and answered calls from the last 2 days whose recording callback never came
+  const toAnalyse = await prisma.call.findMany({
+    where: {
+      simulated: false,
+      startedAt: { gt: new Date(Date.now() - 2 * 86_400_000), lt: new Date(Date.now() - 5 * 60_000) },
+      analysisAttempts: { lt: 3 },
+      OR: [{ analysisStatus: { in: ['pending', 'failed'] } }, { analysisStatus: null, status: 'COMPLETED', durationSec: { gte: 15 } }],
+    },
+    select: { id: true },
+    orderBy: { startedAt: 'desc' },
+    take: 4,
+  })
+  for (const c of toAnalyse) await analyzeCall(c.id).catch((err: unknown) => console.error('[cron] call analysis failed', c.id, err))
   const followUps = await createFollowUps()
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()

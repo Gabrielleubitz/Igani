@@ -198,6 +198,8 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
         const how = m.answered ? `talked ${talk}` : ({ BUSY: 'busy', NO_ANSWER: 'no answer', FAILED: 'didn’t go through', CANCELED: 'hung up before they answered' } as Record<string, string>)[s(m.status)] ?? 'not answered'
         return { title: `📞 ${m.direction === 'INBOUND' ? 'Call from' : 'Called'} ${formatPhone(s(m.direction === 'INBOUND' ? m.from : m.to))} · ${how}` }
       }
+      case 'call.analyzed':
+        return { title: `Call summary${m.outcome ? `: ${s(m.outcome)}` : ''}`, body: [s(m.summary), m.nextStep ? `Next step: ${s(m.nextStep)}` : ''].filter(Boolean).join('\n') || undefined }
       case 'call.outcome':
         return { title: `Call outcome: ${({ connected: 'Connected', voicemail: 'Left voicemail', no_answer: 'No answer', busy: 'Busy', callback: 'Call back later', not_interested: 'Not interested', wrong_number: 'Wrong number' } as Record<string, string>)[s(m.outcome)] ?? s(m.outcome)}`, body: s(m.notes) || undefined }
       case 'task.created':

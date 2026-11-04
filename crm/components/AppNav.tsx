@@ -21,6 +21,7 @@ import {
   Video,
   Globe,
   Phone,
+  PhoneCall,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -50,6 +51,7 @@ const ICONS: Record<string, LucideIcon> = {
   teamMeetings: Video,
   website: Globe,
   phone: Phone,
+  calls: PhoneCall,
   settings: Settings,
 }
 

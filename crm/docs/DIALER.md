@@ -29,19 +29,22 @@ Twilio setup (one time, by the admin): see "Setup" below.
 - [ ] Missed call → task "Call back <name>" + voicemail (Twilio `<Record>`), voicemail shown on the lead.
 - [ ] Busy / offline → voicemail; optional forwarding to the user's mobile.
 
-## Step 3 — Recordings into CallMap
+## Step 3 — Recordings and transcripts ✅
 
-- [ ] Recording callback → store the recording privately (Cloudinary raw/private like contracts, or keep on Twilio
-      and stream through an authenticated CRM route). Never a public URL.
-- [ ] Send each recording to the CallMap engine (it already ingests phone recordings: download → Whisper transcript →
-      analysis; see `callmap/Documentation/NET2PHONE_CALLMAP_TECHNICAL_INTEGRATION.md`). `Call.analysisStatus` tracks it.
-- [ ] Transcript + summary + action items on the call, shown on the lead; action items can become tasks (like meetings).
+- [x] Recordings stay on Twilio; the CRM streams them through `/api/calls/[id]/recording` (the caller and admins only,
+      byte ranges for seeking). A missed recording callback is healed by looking the recording up on the call's legs.
+- [x] Each recording (15 s to ~45 min) is transcribed with Whisper (timestamps) right after Twilio's recording callback
+      (`after()`), retried by the hourly job (3 attempts). Audio goes to OpenAI for this only.
+- [x] Summary, outcome, next step, needs and action items on the call page; a "Call summary" entry on the lead.
 
-## Step 4 — Coaching
+## Step 4 — Coaching ✅ (CallMap-style, built in: `lib/call-analysis.ts`)
 
-- [ ] Per-call coaching card from CallMap: talk/listen ratio, questions asked, objections and how they were handled,
-      next step agreed, score with 2–3 concrete tips.
-- [ ] Salesperson sees their own coaching after each call (in the wrap-up and on the call page).
+- [x] Per call: score 0–100, rubric (opening, discovery, value, objections, next step), talk/listen ratio, questions
+      asked, objections and whether they were handled, strengths, things to work on, and coaching moments (what the
+      client said, what the rep said, a better line, why) with a jump to that moment in the recording.
+- [x] Calls page: salespeople see their own numbers and calls; admins see the team table (calls, connect rate, talk
+      time, average score, 7-day trend) and every call.
+- [ ] Turn action items into tasks with one click.
 
 ## Step 5 — Admin insights and performance reviews
 

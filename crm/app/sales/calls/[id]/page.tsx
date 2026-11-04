@@ -1,0 +1,312 @@
+import { ArrowLeft, CheckCircle2, MessageCircleQuestion, Target, TriangleAlert, XCircle } from 'lucide-react'
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Transcript } from '@/components/calls/CallView'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { requireUser } from '@/lib/auth'
+import { asAnalysis, asTranscript } from '@/lib/call-analysis'
+import { CALL_STATUS_LABEL, RUBRIC, scoreTone } from '@/lib/call-ui'
+import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
+import { formatDateTime, leadName } from '@/lib/format'
+import { formatPhone } from '@/lib/phone-numbers'
+import { prisma } from '@/lib/prisma'
+import { cn } from '@/lib/utils'
+
+export const metadata = { title: 'Call' }
+export const dynamic = 'force-dynamic'
+export const maxDuration = 300 // "Analyze again" runs the whole analysis in this request
+
+/** One call: the recording, the analysis and coaching (CallMap-style), and the transcript. The caller and admins only. */
+export default async function CallPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
+  const user = await requireUser(['ADMIN', 'SALES'])
+  const { id } = await props.params
+  const call = await prisma.call.findUnique({ where: { id }, include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, company: true } }, user: { select: { name: true, email: true } } } })
+  if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) notFound()
+  const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } })
+  const a = asAnalysis(call.analysis)
+  const lines = asTranscript(call.transcript)
+  const rep = call.user?.name?.split(' ')[0] ?? 'Rep'
+  // a player only when there is (or may be, if our callback was missed) a Twilio recording
+  const recorded = Boolean(call.recordingSid) || (Boolean(call.twilioCallSid) && call.status === 'COMPLETED' && !call.simulated && (call.durationSec ?? 0) > 0)
+  const working = call.analysisStatus === 'processing' || call.analysisStatus === 'pending'
+  const tone = a ? scoreTone(a.overallScore) : null
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-5">
+      <AnalysisRefresher active={working} />
+      <Link href="/sales/calls" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> All calls
+      </Link>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {call.lead ? (
+              <Link href={`/sales/leads/${call.lead.id}`} className="hover:underline">
+                {leadName(call.lead)}
+              </Link>
+            ) : (
+              formatPhone(call.toNumber)
+            )}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {[call.lead?.company, call.lead ? formatPhone(call.toNumber) : null, `${call.user ? (call.user.name ?? call.user.email) : 'Former teammate'} called`, formatDateTime(call.startedAt, me.timeZone)].filter(Boolean).join(' · ')}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_STATUS_LABEL[call.status] ?? call.status}</span>
+            {call.durationSec ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">Talk time {fmtDuration(call.durationSec)}</span> : null}
+            {call.outcome ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_OUTCOMES[call.outcome as keyof typeof CALL_OUTCOMES] ?? call.outcome}</span> : null}
+            {a ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{a.callType}</span> : null}
+          </div>
+        </div>
+        {a && tone ? (
+          <div className={cn('flex items-center gap-3 rounded-2xl px-4 py-3 ring-1', tone.bg, tone.ring)}>
+            <div className={cn('text-4xl font-semibold tabular-nums', tone.text)}>{a.overallScore}</div>
+            <div className="text-xs leading-tight text-muted-foreground">
+              Call score
+              <br />
+              out of 100
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <CallPlayerProvider src={recorded ? `/api/calls/${call.id}/recording` : null} durationSec={call.recordingSec ?? call.durationSec}>
+        <div className="mt-5 space-y-5">
+          {call.notes ? (
+            <Card>
+              <CardContent className="pt-[var(--card-pad)] text-sm">
+                <span className="text-muted-foreground">{rep}’s note: </span>
+                {call.notes}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {!a ? (
+            <Card>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-[var(--card-pad)] text-sm">
+                <span className="text-muted-foreground">
+                  {working
+                    ? 'Analyzing the call: transcript, summary and coaching. This usually takes under a minute.'
+                    : call.analysisStatus === 'failed'
+                      ? `The analysis didn’t finish: ${call.analysisError ?? 'unknown error'}.`
+                      : call.analysisStatus === 'skipped'
+                        ? (call.analysisError ?? 'This call wasn’t analyzed.')
+                        : recorded
+                          ? 'This call hasn’t been analyzed yet.'
+                          : 'No recording, so there’s nothing to analyze.'}
+                </span>
+                {working ? null : recorded ? <ReanalyzeButton callId={call.id} label="Analyze now" /> : null}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="grid gap-5 md:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 text-sm">
+                    <p className="leading-relaxed">{a.summary}</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">Outcome</div>
+                        <div className="mt-0.5 font-medium">{a.outcome.label}</div>
+                      </div>
+                      <div className="rounded-lg border p-3">
+                        <div className="text-xs text-muted-foreground">Next step</div>
+                        <div className={cn('mt-0.5 font-medium', !a.nextStep && 'text-amber-300')}>{a.nextStep ?? 'None agreed'}</div>
+                      </div>
+                    </div>
+                    {a.clientNeeds.length ? (
+                      <div>
+                        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">What they need</div>
+                        <ul className="space-y-1">
+                          {a.clientNeeds.map((n) => (
+                            <li key={n} className="flex gap-2">
+                              <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                              <span dir="auto">{n}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Scorecard</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    {RUBRIC.map((r) => {
+                      const v = a.scores[r.key]
+                      return (
+                        <div key={r.key} title={r.hint}>
+                          <div className="flex justify-between text-xs">
+                            <span>{r.label}</span>
+                            <span className="tabular-nums text-muted-foreground">{v}/5</span>
+                          </div>
+                          <div className="mt-1 flex gap-1">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <span key={n} className={cn('h-1.5 flex-1 rounded-full', n <= v ? (v >= 4 ? 'bg-emerald-400' : v === 3 ? 'bg-amber-400' : 'bg-rose-400') : 'bg-muted')} />
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    <div className="grid grid-cols-2 gap-2 border-t pt-3">
+                      <div>
+                        <div className="text-xs text-muted-foreground">Talk / listen</div>
+                        <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-amber-400/70" title={`${rep} ${a.talkRatioRep}% · client ${100 - a.talkRatioRep}%`}>
+                          <span className="h-full bg-primary" style={{ width: `${a.talkRatioRep}%` }} />
+                        </div>
+                        <div className="mt-1 text-[11px] text-muted-foreground">
+                          {rep} {a.talkRatioRep}% · client {100 - a.talkRatioRep}%
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground">Questions asked</div>
+                        <div className="mt-0.5 flex items-center gap-1.5 text-lg font-semibold tabular-nums">
+                          <MessageCircleQuestion className="h-4 w-4 text-primary" aria-hidden /> {a.questionsAsked}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">What went well</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm">
+                      {a.strengths.map((s) => (
+                        <li key={s} className="flex gap-2">
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">To work on</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 text-sm">
+                      {a.improvements.map((s) => (
+                        <li key={s} className="flex gap-2">
+                          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-hidden />
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {a.moments.length ? (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Coaching moments</CardTitle>
+                    <p className="text-sm text-muted-foreground">Real moments from the call, and a stronger way to handle them.</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {a.moments.map((m, i) => (
+                      <div key={i} className="space-y-2 rounded-xl border p-4 text-sm">
+                        {m.at != null ? <SeekButton at={m.at} /> : null}
+                        {m.clientSaid ? (
+                          <div>
+                            <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">Client said</div>
+                            <p dir="auto" className="mt-0.5">
+                              {m.clientSaid}
+                            </p>
+                          </div>
+                        ) : null}
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">{rep} said</div>
+                          <p dir="auto" className="mt-0.5 text-muted-foreground line-through decoration-rose-400/60">
+                            {m.repSaid}
+                          </p>
+                        </div>
+                        <div className="rounded-lg bg-emerald-500/10 px-3 py-2 ring-1 ring-emerald-500/25">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300">Try instead</div>
+                          <p dir="auto" className="mt-0.5">
+                            {m.better}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{m.why}</p>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Objections</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {a.objections.length ? (
+                      <ul className="space-y-3 text-sm">
+                        {a.objections.map((o) => (
+                          <li key={o.objection} className="flex gap-2">
+                            {o.handledWell ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-label="Handled well" /> : <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" aria-label="Not handled well" />}
+                            <span>
+                              <span dir="auto" className="font-medium">
+                                {o.objection}
+                              </span>
+                              <span dir="auto" className="block text-muted-foreground">
+                                {o.response}
+                              </span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No objections came up.</p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base">Action items</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {a.actionItems.length ? (
+                      <ul className="space-y-2 text-sm">
+                        {a.actionItems.map((t) => (
+                          <li key={t.text} className="flex gap-2">
+                            <span className={cn('mt-0.5 shrink-0 rounded px-1.5 py-px text-[10px] font-semibold uppercase', t.owner === 'rep' ? 'bg-primary/15 text-primary' : 'bg-amber-500/15 text-amber-300')}>{t.owner === 'rep' ? rep : 'Client'}</span>
+                            <span dir="auto">{t.text}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No commitments were made.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {lines.length ? (
+                <Card>
+                  <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-base">Transcript</CardTitle>
+                    <ReanalyzeButton callId={call.id} />
+                  </CardHeader>
+                  <CardContent>
+                    <Transcript lines={lines} repName={rep} />
+                  </CardContent>
+                </Card>
+              ) : null}
+            </>
+          )}
+        </div>
+      </CallPlayerProvider>
+    </div>
+  )
+}

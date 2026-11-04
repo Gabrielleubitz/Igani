@@ -12,6 +12,7 @@ import { dialProblem, formatPhone, toE164 } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { dialerDemo } from '@/lib/twilio'
+import { analyzeCall } from '@/lib/call-analysis'
 import { toActionError, type ActionResult } from './result'
 
 const callers = ['ADMIN', 'SALES'] as const
@@ -239,6 +240,23 @@ export async function recentCalls(): Promise<ActionResult<RecentCall[]>> {
         live: LIVE_STATUSES.includes(c.status),
       })),
     }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Run (or re-run) the analysis of a recorded call now. The caller and admins only. */
+export async function reanalyzeCall(callId: string): Promise<ActionResult<{ status: string }>> {
+  try {
+    const user = await requireUser([...callers])
+    const id = z.string().cuid().parse(callId)
+    const call = await prisma.call.findUnique({ where: { id }, select: { userId: true, analysisStatus: true } })
+    if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) throw new BookingError('Call not found.', 'NOT_FOUND')
+    if (call.analysisStatus === 'processing') return { ok: true, data: { status: 'processing' } }
+    const status = await analyzeCall(id, { force: true })
+    if (status === 'none') throw new BookingError('This call has no recording to analyse (or OpenAI isn’t set up).', 'INVALID_STATE')
+    revalidatePath(`/sales/calls/${id}`)
+    return { ok: true, data: { status } }
   } catch (err) {
     return toActionError(err)
   }

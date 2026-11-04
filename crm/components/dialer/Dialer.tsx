@@ -602,13 +602,9 @@ function Recent({ onCall }: { onCall: (r: RecentCall) => void }): React.ReactEle
             </span>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">
-                {r.lead ? (
-                  <a href={`/sales/leads/${r.lead.id}`} className="hover:underline">
-                    {r.lead.name}
-                  </a>
-                ) : (
-                  r.display
-                )}
+                <a href={`/sales/calls/${r.id}`} className="hover:underline">
+                  {r.lead?.name ?? r.display}
+                </a>
               </span>
               <span className="block truncate text-xs text-muted-foreground">
                 {r.outcome ? OUTCOME_LABEL[r.outcome] : r.live ? 'In progress' : r.status === 'COMPLETED' ? 'Connected' : r.status.replace('_', ' ').toLowerCase()}

@@ -677,33 +677,40 @@ model PhoneLine {
 
 /// One phone call made (or, from step 2, received) in the CRM. See docs/DIALER.md.
 model Call {
-  id              String        @id @default(cuid())
+  id               String        @id @default(cuid())
   /// Who made the call (kept as empty if the teammate is deleted: company call records stay)
-  userId          String?
-  leadId          String?
-  direction       CallDirection
-  status          CallStatus    @default(INITIATED)
+  userId           String?
+  leadId           String?
+  direction        CallDirection
+  status           CallStatus    @default(INITIATED)
   /// The user's line and the other party, both E.164
-  fromNumber      String
-  toNumber        String
+  fromNumber       String
+  toNumber         String
   /// The browser leg (parent) and the phone leg (child) in Twilio
-  twilioCallSid   String?       @unique
-  childCallSid    String?
-  startedAt       DateTime      @default(now())
-  answeredAt      DateTime?
-  endedAt         DateTime?
+  twilioCallSid    String?       @unique
+  childCallSid     String?
+  startedAt        DateTime      @default(now())
+  answeredAt       DateTime?
+  endedAt          DateTime?
   /// Talk time once answered (seconds)
-  durationSec     Int?
-  recordingSid    String?
-  recordingStatus String?
-  recordingSec    Int?
+  durationSec      Int?
+  recordingSid     String?
+  recordingStatus  String?
+  recordingSec     Int?
   /// Wrap-up chosen after the call: connected, voicemail, no_answer, busy, wrong_number, callback, not_interested
-  outcome         String?
-  notes           String?
-  /// Step 3: CallMap analysis (pending | ready | failed)
-  analysisStatus  String?
+  outcome          String?
+  notes            String?
+  /// Analysis of the recording: pending → processing → ready | failed | skipped (see lib/call-analysis.ts)
+  analysisStatus   String?
+  /// Whisper segments: [{ start, end, text, speaker: 'rep' | 'client' }]
+  transcript       Json?
+  /// Summary, outcome, objections, action items, scores and coaching moments (CallAnalysis)
+  analysis         Json?
+  analyzedAt       DateTime?
+  analysisError    String?
+  analysisAttempts Int           @default(0)
   /// true for calls made in the development demo mode (never in production)
-  simulated       Boolean       @default(false)
+  simulated        Boolean       @default(false)
 
   user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
