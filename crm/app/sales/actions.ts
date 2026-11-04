@@ -22,6 +22,7 @@ import { syncMailbox } from '@/lib/mail-sync'
 import { syncDueMeetings, syncMeeting } from '@/lib/meetings'
 import { FOLLOW_UP_DAYS, type FollowUpDays } from '@/lib/email-replies'
 import { createAutoTask } from '@/lib/tasks'
+import { avatarEmailUrl } from '@/lib/avatar'
 
 const refresh = (leadId?: string): void => {
   if (leadId) revalidatePath(`/sales/leads/${leadId}`)
@@ -202,8 +203,9 @@ export async function emailContact(leadId: string, input: z.input<typeof emailSc
     if (!lead.email) throw new BookingError('This contact has no email address yet. Add one under Edit details first.', 'INVALID_STATE')
     const original = data.replyToId ? await prisma.emailMessage.findFirst({ where: { id: data.replyToId, leadId: id } }) : null
     if (data.replyToId && !original) throw new BookingError('The email you are replying to was not found.', 'NOT_FOUND')
-    const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } })
+    const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { id: true, timeZone: true, image: true } })
     const emailId = await sendContactEmail({
+      senderPhotoUrl: avatarEmailUrl(me),
       to: lead.email,
       subject: data.subject,
       body: data.body,

@@ -83,7 +83,9 @@ export function authOptions(): NextAuthOptions {
         if (!role) return '/unauthorized?reason=not-whitelisted'
 
         // Returning user: sync role and refresh stored Google tokens (the adapter only writes them on first link).
-        await prisma.user.updateMany({ where: { email: normalizeEmail(email) }, data: { role } })
+        // …and keep their Google photo current (the adapter only stores it when the account is first created)
+        const picture = (profile as { picture?: unknown } | undefined)?.picture
+        await prisma.user.updateMany({ where: { email: normalizeEmail(email) }, data: { role, ...(typeof picture === 'string' && picture.startsWith('https://') ? { image: picture } : {}) } })
         await prisma.allowedUser.updateMany({ where: { email: normalizeEmail(email), invitedAt: { not: null }, inviteAcceptedAt: null }, data: { inviteAcceptedAt: new Date(), inviteToken: null } })
         // Only store tokens from a grant that includes Calendar or Gmail (the "Connect Google" step). A plain
         // sign-in grants identity only; saving it would overwrite a teammate's saved Calendar/Gmail connection.

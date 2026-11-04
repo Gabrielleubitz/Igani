@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { SessionUser } from '@/lib/auth'
 import { Logo } from '@/components/brand/Logo'
 import { TaskAlert } from '@/components/crm/TaskAlert'
+import { avatarPath } from '@/lib/avatar'
 import { prisma } from '@/lib/prisma'
 import { SignOutButton } from './AuthButtons'
 import { SessionKeepAlive } from './SessionKeepAlive'
@@ -63,7 +64,11 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
 const ROLE_LABEL: Record<Role, string> = { ADMIN: 'Admin', SALES: 'Sales', MARKETING: 'Marketing' }
 
 export async function AppShell({ user, children }: { user: SessionUser; children: ReactNode }): Promise<React.ReactElement> {
-  const pendingApprovals = user.role === 'ADMIN' ? await prisma.booking.count({ where: { status: 'PENDING', source: 'PUBLIC_PAGE', startTime: { gt: new Date() } } }) : 0
+  const [pendingApprovals, me] = await Promise.all([
+    user.role === 'ADMIN' ? prisma.booking.count({ where: { status: 'PENDING', source: 'PUBLIC_PAGE', startTime: { gt: new Date() } } }) : Promise.resolve(0),
+    prisma.user.findUnique({ where: { id: user.id }, select: { id: true, image: true } }),
+  ])
+  const photo = me ? avatarPath(me) : null
   const groups: NavGroup[] = NAV.map((g) => ({
     title: g.title,
     items: g.items
@@ -101,8 +106,13 @@ export async function AppShell({ user, children }: { user: SessionUser; children
           </div>
         </div>
         <div className="hidden items-center gap-3 border-t px-4 py-4 lg:flex">
-          <div aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-sm font-semibold text-primary">
+          <div aria-hidden className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/20 text-sm font-semibold text-primary ring-1 ring-border">
             {initials}
+            {/* the photo covers the initials once loaded; if it fails, the initials stay */}
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element -- our own cached 256px square; next/image would re-optimise it
+              <img src={photo} alt="" width={36} height={36} decoding="async" fetchPriority="high" referrerPolicy="no-referrer" className="absolute inset-0 h-full w-full object-cover" />
+            ) : null}
           </div>
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-medium">{user.name ?? user.email}</div>

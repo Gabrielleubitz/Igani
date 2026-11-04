@@ -1,4 +1,5 @@
 import 'server-only'
+import { avatarEmailUrlFor } from './avatar'
 import { render } from '@react-email/render'
 import { Resend } from 'resend'
 import { mkdirSync, writeFileSync } from 'node:fs'
@@ -91,7 +92,7 @@ const logoUrl = (): string => {
 }
 
 export async function sendBookingInviteEmail(b: BookingEmailData & { acceptUrl: string }): Promise<string> {
-  const element = BookingInvite({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  const element = BookingInvite({ ...b, hostPhotoUrl: await avatarEmailUrlFor(b.hostEmail), logoUrl: logoUrl(), ...(await brand()) })
   return send({
     to: b.guestEmail,
     replyTo: b.hostEmail,
@@ -192,7 +193,7 @@ export async function sendWeeklySummaryEmail(to: string, a: Omit<WeeklySummaryPr
 
 /** Guest notice that a meeting was cancelled, or that an approval request was declined. */
 export async function sendBookingCancelledEmail(b: BookingEmailData & { kind: 'cancelled' | 'declined'; rebookUrl?: string | null; removeFromCalendar?: boolean }): Promise<string> {
-  const element = BookingCancelled({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  const element = BookingCancelled({ ...b, hostPhotoUrl: await avatarEmailUrlFor(b.hostEmail), logoUrl: logoUrl(), ...(await brand()) })
   // A confirmed meeting was sent with an .ics invite: a METHOD:CANCEL file with the same UID removes it from their calendar.
   const ics = b.removeFromCalendar
     ? buildIcs({ uid: `${b.bookingId}@app.igani.co`, start: b.startTime, end: b.endTime, title: b.title, organizerName: b.hostName, organizerEmail: b.hostEmail, attendeeName: b.guestName, attendeeEmail: b.guestEmail, method: 'CANCEL' })
@@ -209,13 +210,13 @@ export async function sendBookingCancelledEmail(b: BookingEmailData & { kind: 'c
 
 /** Guest receipt for a booking that waits for approval. */
 export async function sendBookingRequestedEmail(b: BookingEmailData): Promise<string> {
-  const element = BookingRequested({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  const element = BookingRequested({ ...b, hostPhotoUrl: await avatarEmailUrlFor(b.hostEmail), logoUrl: logoUrl(), ...(await brand()) })
   return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Request received: ${b.title}`, html: await render(element), text: await render(element, { plainText: true }) })
 }
 
 /** Guest reminder ~24h before a confirmed meeting (sent by the hourly cron). */
 export async function sendMeetingReminderEmail(b: BookingEmailData & { meetUrl: string | null }): Promise<string> {
-  const element = MeetingReminder({ ...b, logoUrl: logoUrl(), ...(await brand()) })
+  const element = MeetingReminder({ ...b, hostPhotoUrl: await avatarEmailUrlFor(b.hostEmail), logoUrl: logoUrl(), ...(await brand()) })
   return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Reminder: ${b.title} is coming up`, html: await render(element), text: await render(element, { plainText: true }) })
 }
 
@@ -234,13 +235,15 @@ export async function sendContactEmail(a: {
   firstName: string | null
   senderName: string
   senderEmail: string
+  /** the sender's photo for the signature */
+  senderPhotoUrl?: string | null
   cta?: { label: string; href: string }
   /** Email language (default English) */
   lang?: 'en' | 'he'
   /** When replying: the original email, quoted under the message and threaded via In-Reply-To/References */
   inReplyTo?: { messageIdHeader: string | null; quote: { from: string; sentAt: string; text: string } }
 }): Promise<string> {
-  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, cta: a.cta, quote: a.inReplyTo?.quote, lang: a.lang, logoUrl: logoUrl(), ...(await brand()) })
+  const element = ContactEmail({ subject: a.subject, body: a.body, senderName: a.senderName, senderEmail: a.senderEmail, senderPhotoUrl: a.senderPhotoUrl, cta: a.cta, quote: a.inReplyTo?.quote, lang: a.lang, logoUrl: logoUrl(), ...(await brand()) })
   const mid = a.inReplyTo?.messageIdHeader
   return send({
     to: a.to,

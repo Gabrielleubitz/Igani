@@ -3,6 +3,8 @@ import { MeetingCard, Shell } from './Shell'
 import { formatWhen, googleCalendarUrl, outlookCalendarUrl } from './theme'
 
 export interface MeetingReminderProps {
+  /** the host's photo (public URL); initials when absent */
+  hostPhotoUrl?: string | null
   guestName: string
   hostName: string
   title: string
@@ -16,7 +18,7 @@ export interface MeetingReminderProps {
 }
 
 /** Sent to the guest about a day before a confirmed meeting. */
-export function MeetingReminder({ guestName, hostName, title, startTime, endTime, timeZone, meetUrl, logoUrl, brandName = 'Igani', supportEmail }: MeetingReminderProps): React.ReactElement {
+export function MeetingReminder({ hostPhotoUrl, guestName, hostName, title, startTime, endTime, timeZone, meetUrl, logoUrl, brandName = 'Igani', supportEmail }: MeetingReminderProps): React.ReactElement {
   const w = formatWhen(startTime, endTime, timeZone)
   const cal = { title, start: startTime, end: endTime, details: meetUrl ? `Join Google Meet: ${meetUrl}` : undefined, location: meetUrl ?? undefined }
   return (
@@ -36,7 +38,7 @@ export function MeetingReminder({ guestName, hostName, title, startTime, endTime
         { href: outlookCalendarUrl(cal), label: 'Outlook' },
       ]}
       ctaHint="Need to change the time? Reply to this email and we'll sort it out."
-      signature={{ name: hostName, detail: brandName }}
+      signature={{ name: hostName, detail: brandName, photoUrl: hostPhotoUrl }}
       footerNote={`You have a meeting booked with ${brandName}.`}
     >
       <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="warning" rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Where', value: 'Google Meet' }]} />

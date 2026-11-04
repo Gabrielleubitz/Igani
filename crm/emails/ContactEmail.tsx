@@ -8,6 +8,8 @@ export interface ContactEmailProps {
   body: string
   senderName: string
   senderEmail: string
+  /** the sender's photo (public URL); initials when absent */
+  senderPhotoUrl?: string | null
   cta?: { label: string; href: string }
   /** The email being replied to, shown quoted under the message */
   quote?: { from: string; sentAt: string; text: string }
@@ -22,7 +24,7 @@ export interface ContactEmailProps {
  * A personal email a teammate writes from the CRM. Deliberately letter-like (no status chip noise, no icon):
  * personal emails read best when they look written by a person, framed lightly by the brand.
  */
-export function ContactEmail({ subject, body, senderName, senderEmail, cta, quote, lang = 'en', logoUrl, brandName = 'Igani', supportEmail }: ContactEmailProps): React.ReactElement {
+export function ContactEmail({ subject, body, senderName, senderEmail, senderPhotoUrl, cta, quote, lang = 'en', logoUrl, brandName = 'Igani', supportEmail }: ContactEmailProps): React.ReactElement {
   const he = lang === 'he'
   const paragraphs = body.split(/\n{2,}/).map((x) => x.trim()).filter(Boolean)
   return (
@@ -35,7 +37,7 @@ export function ContactEmail({ subject, body, senderName, senderEmail, cta, quot
       brandName={brandName}
       supportEmail={supportEmail}
       cta={cta}
-      signature={{ name: senderName, detail: `${brandName} · ${senderEmail}` }}
+      signature={{ name: senderName, detail: `${brandName} · ${senderEmail}`, photoUrl: senderPhotoUrl }}
       footerNote={he ? `נשלח על ידי ${senderName} מ-${brandName}. אפשר להשיב להודעה זו כדי ליצור קשר ישיר.` : `Sent by ${senderName} at ${brandName}. Reply to this email to reach them directly.`}
     >
       {paragraphs.map((para, i) => (

@@ -3,6 +3,8 @@ import { MeetingCard, Shell, Steps } from './Shell'
 import { formatWhen } from './theme'
 
 export interface BookingRequestedProps {
+  /** the host's photo (public URL); initials when absent */
+  hostPhotoUrl?: string | null
   guestName: string
   hostName: string
   title: string
@@ -15,7 +17,7 @@ export interface BookingRequestedProps {
 }
 
 /** Receipt for the guest when a booking page needs approval: "we got it, we'll confirm soon". */
-export function BookingRequested({ guestName, hostName, title, startTime, endTime, timeZone, logoUrl, brandName = 'Igani', supportEmail }: BookingRequestedProps): React.ReactElement {
+export function BookingRequested({ hostPhotoUrl, guestName, hostName, title, startTime, endTime, timeZone, logoUrl, brandName = 'Igani', supportEmail }: BookingRequestedProps): React.ReactElement {
   const w = formatWhen(startTime, endTime, timeZone)
   return (
     <Shell
@@ -28,7 +30,7 @@ export function BookingRequested({ guestName, hostName, title, startTime, endTim
       logoUrl={logoUrl}
       brandName={brandName}
       supportEmail={supportEmail}
-      signature={{ name: hostName, detail: brandName }}
+      signature={{ name: hostName, detail: brandName, photoUrl: hostPhotoUrl }}
       footerNote={`You requested a meeting with ${brandName}.`}
     >
       <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="warning" rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Status', value: 'Waiting for confirmation' }]} />

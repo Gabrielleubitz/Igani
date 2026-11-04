@@ -22,7 +22,7 @@ export interface ShellProps {
   /** Small grey line under the button/links */
   ctaHint?: string
   /** Sign-off with an initial avatar, e.g. { name: 'Gabriel', detail: 'Igani' } */
-  signature?: { name: string; detail?: string }
+  signature?: { name: string; detail?: string; photoUrl?: string | null }
   /** Footer reason line; defaults to CRM activity */
   footerNote?: string
   /** Email language; Hebrew switches the whole frame to right-to-left */
@@ -132,7 +132,7 @@ export function Shell({ preview, eyebrow, tone = 'brand', icon, title, intro, lo
   )
 }
 
-function Signature({ name, detail }: { name: string; detail?: string }): React.ReactElement {
+function Signature({ name, detail, photoUrl }: { name: string; detail?: string; photoUrl?: string | null }): React.ReactElement {
   return (
     <Section style={{ borderTop: `1px solid ${colors.hairline}`, marginTop: 32, paddingTop: 20 }}>
       <Row>
@@ -140,9 +140,17 @@ function Signature({ name, detail }: { name: string; detail?: string }): React.R
           <table role="presentation" cellPadding={0} cellSpacing={0}>
             <tbody>
               <tr>
-                <td align="center" valign="middle" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, color: colors.link, fontSize: 16, fontWeight: 700, lineHeight: '40px', textAlign: 'center' }}>
-                  {name.trim()[0]?.toUpperCase() ?? 'I'}
-                </td>
+                {photoUrl ? (
+                  <td align="center" valign="middle" style={{ width: 40, height: 40 }}>
+                    {/* 256px source shown at 40px: sharp on retina; fixed size so the layout never jumps */}
+                    {/* eslint-disable-next-line @next/next/no-img-element -- email HTML, not a Next page */}
+                    <img src={photoUrl} width={40} height={40} alt={name} style={{ display: 'block', width: 40, height: 40, borderRadius: 20, border: 0, objectFit: 'cover', backgroundColor: colors.accentSoft }} />
+                  </td>
+                ) : (
+                  <td align="center" valign="middle" style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.accentSoft, color: colors.link, fontSize: 16, fontWeight: 700, lineHeight: '40px', textAlign: 'center' }}>
+                    {name.trim()[0]?.toUpperCase() ?? 'I'}
+                  </td>
+                )}
               </tr>
             </tbody>
           </table>

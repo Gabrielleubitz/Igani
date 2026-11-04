@@ -3,6 +3,8 @@ import { MeetingCard, Quote, Shell } from './Shell'
 import { formatWhen } from './theme'
 
 export interface BookingInviteProps {
+  /** the host's photo (public URL); initials when absent */
+  hostPhotoUrl?: string | null
   guestName: string
   hostName: string
   title: string
@@ -16,7 +18,7 @@ export interface BookingInviteProps {
   notes?: string | null
 }
 
-export function BookingInvite({ guestName, hostName, title, startTime, endTime, timeZone, acceptUrl, logoUrl, brandName = 'Igani', supportEmail, notes }: BookingInviteProps): React.ReactElement {
+export function BookingInvite({ hostPhotoUrl, guestName, hostName, title, startTime, endTime, timeZone, acceptUrl, logoUrl, brandName = 'Igani', supportEmail, notes }: BookingInviteProps): React.ReactElement {
   const w = formatWhen(startTime, endTime, timeZone)
   return (
     <Shell
@@ -29,7 +31,7 @@ export function BookingInvite({ guestName, hostName, title, startTime, endTime, 
       supportEmail={supportEmail}
       cta={{ href: acceptUrl, label: 'Confirm this time' }}
       ctaHint="A Google Meet link and calendar invite arrive the moment you confirm. Need a different time? Just reply to this email."
-      signature={{ name: hostName, detail: brandName }}
+      signature={{ name: hostName, detail: brandName, photoUrl: hostPhotoUrl }}
       footerNote={`${hostName} at ${brandName} invited you to this meeting.`}
     >
       <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} rows={[{ label: 'With', value: `${hostName}, ${brandName}` }, { label: 'Where', value: 'Google Meet (video call)' }]} />

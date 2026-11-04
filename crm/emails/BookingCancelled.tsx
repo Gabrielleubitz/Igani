@@ -4,6 +4,8 @@ import { Text } from '@react-email/components'
 import { formatWhen } from './theme'
 
 export interface BookingCancelledProps {
+  /** the host's photo (public URL); initials when absent */
+  hostPhotoUrl?: string | null
   guestName: string
   hostName: string
   title: string
@@ -19,7 +21,7 @@ export interface BookingCancelledProps {
   supportEmail?: string
 }
 
-export function BookingCancelled({ guestName, hostName, title, startTime, endTime, timeZone, kind, rebookUrl, logoUrl, brandName = 'Igani', supportEmail }: BookingCancelledProps): React.ReactElement {
+export function BookingCancelled({ hostPhotoUrl, guestName, hostName, title, startTime, endTime, timeZone, kind, rebookUrl, logoUrl, brandName = 'Igani', supportEmail }: BookingCancelledProps): React.ReactElement {
   const w = formatWhen(startTime, endTime, timeZone)
   const declined = kind === 'declined'
   return (
@@ -41,7 +43,7 @@ export function BookingCancelled({ guestName, hostName, title, startTime, endTim
       supportEmail={supportEmail}
       cta={rebookUrl ? { href: rebookUrl, label: 'Pick a new time' } : undefined}
       ctaHint={supportEmail ? `Questions? Reply to this email or write to ${supportEmail}.` : 'Questions? Just reply to this email.'}
-      signature={{ name: hostName, detail: brandName }}
+      signature={{ name: hostName, detail: brandName, photoUrl: hostPhotoUrl }}
     >
       <MeetingCard month={w.month} day={w.day} weekday={w.weekday} title={title} time={w.time} tone="danger" struck />
       {!rebookUrl ? <Text style={p}>Reply to this email with a few times that work for you and we&apos;ll set something up.</Text> : null}
