@@ -49,6 +49,7 @@ const ICONS: Record<string, LucideIcon> = {
   performance: TrendingUp,
   audit: ScrollText,
   offers: FileSignature,
+  videos: Video,
   teamMeetings: Video,
   website: Globe,
   phone: Phone,

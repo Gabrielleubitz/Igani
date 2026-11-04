@@ -1,3 +1,4 @@
+import { PrivateVideo } from '@/components/PrivateVideo'
 import { ArrowDown, ArrowLeft, ArrowRight, CalendarClock, Check, Expand, Globe, Layers, LayoutGrid, MessageCircle, Monitor, Smartphone, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import type { CSSProperties, ReactNode } from 'react'
@@ -130,6 +131,7 @@ export function OfferPage({ data, lang, base, supportEmail, track = false }: { d
   const nav: [string, string][] = [
     ['#overview', ui('overview', lang)],
     ...(content?.flows.length ? ([['#screens', ui('screens', lang)]] as [string, string][]) : []),
+    ...(data.videos.length ? ([['#videos', ui('videos', lang)]] as [string, string][]) : []),
     ...(modules.length ? ([['#modules', ui('modulesShort', lang)]] as [string, string][]) : []),
     ...(content?.phases.length ? ([['#phases', ui('phases', lang)]] as [string, string][]) : []),
     ['#sign', ui('sign', lang)],
@@ -395,6 +397,17 @@ export function OfferPage({ data, lang, base, supportEmail, track = false }: { d
                     <Image src={g.src} alt={t(g.caption, lang)} fill sizes="(min-width: 1024px) 33vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
                     <figcaption className="absolute inset-x-3 bottom-3 rounded-xl bg-white/85 px-3 py-2 text-sm font-medium text-slate-800 backdrop-blur">{t(g.caption, lang)}</figcaption>
                   </figure>
+                ))}
+              </div>
+            </Section>
+          ) : null}
+
+          {/* ── Private videos ── */}
+          {data.videos.length ? (
+            <Section id="videos" n={num()} eyebrow={ui('videos', lang)} title={ui('watch', lang)}>
+              <div className="grid gap-5 lg:grid-cols-2">
+                {data.videos.map((v) => (
+                  <PrivateVideo key={v.id} id={v.id} offerSlug={offer.slug} title={v.title} />
                 ))}
               </div>
             </Section>

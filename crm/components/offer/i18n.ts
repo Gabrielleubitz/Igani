@@ -29,6 +29,8 @@ const UI = {
   system: { he: 'המערכת', en: 'The system' },
   howItConnects: { he: 'איך הכול מתחבר', en: 'How it all connects' },
   gallery: { he: 'מהשטח', en: 'From the field' },
+  videos: { he: 'סרטונים', en: 'Videos' },
+  watch: { he: 'לצפייה', en: 'Watch' },
   required: { he: 'חובה', en: 'Required' },
   recommended: { he: 'מומלץ', en: 'Recommended' },
   optional: { he: 'אופציונלי', en: 'Optional' },

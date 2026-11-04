@@ -35,6 +35,7 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
         ],
       },
       { href: '/sales/reports', label: 'Analytics', icon: 'reports', roles: ALL },
+      { href: '/sales/videos', label: 'Videos', icon: 'videos', roles: ALL },
     ],
   },
   {
@@ -51,6 +52,7 @@ const NAV: { title: string; items: { href: string; label: string; icon: string; 
       { href: '/admin/bookings', label: 'Bookings', icon: 'bookings', roles: ['ADMIN'] },
       { href: '/admin/team-meetings', label: 'Team meetings', icon: 'teamMeetings', roles: ['ADMIN'] },
       { href: '/admin/offers', label: 'Offers', icon: 'offers', roles: ['ADMIN'] },
+      { href: '/admin/videos', label: 'Video library', icon: 'videos', roles: ['ADMIN'] },
       { href: '/admin/sales-contracts', label: 'Sales contracts', icon: 'offers', roles: ['ADMIN'] },
       { href: '/admin/website', label: 'Website', icon: 'website', roles: ['ADMIN'] },
       { href: '/admin/phone', label: 'Phone', icon: 'phone', roles: ['ADMIN'] },

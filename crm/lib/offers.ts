@@ -8,6 +8,7 @@ import type { OfferDefinition } from '@/offers/types'
 import { currentUserOrNull } from './auth'
 import { canSeeOffer } from './offer-access'
 import { parseModules, type OfferModuleItem } from './offer-modules'
+import { offerVideos } from './video'
 import { prisma } from './prisma'
 
 /** The domain offers live under: honey → honey.app.igani.co. */
@@ -56,6 +57,8 @@ export interface PublicOffer {
   modules: OfferModuleItem[]
   definition: OfferDefinition | null
   assets: OfferAssets
+  /** Private videos attached to this offer (played through the access-checked stream route) */
+  videos: { id: string; title: string }[]
   /** True when an admin (or localhost) is looking at a draft */
   preview: boolean
 }
@@ -79,7 +82,8 @@ export async function loadPublicOffer(slug: string): Promise<PublicOffer | null>
       preview = true
     }
   }
-  return { offer, modules: parseModules(offer.modules), definition: await loadDefinition(slug), assets: loadAssets(slug), preview }
+  const videos = (await offerVideos(offer.id).catch(() => [])).map((v) => ({ id: v.id, title: v.title }))
+  return { offer, modules: parseModules(offer.modules), definition: await loadDefinition(slug), assets: loadAssets(slug), videos, preview }
 }
 
 /** The address a client uses: the subdomain in production, <slug>.localhost when running locally. */
