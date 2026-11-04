@@ -89,10 +89,23 @@ export async function advanceCall(callId: string, update: { status: CallStatus; 
   }
 }
 
+/**
+ * Leads whose phone number contains these digits, however it's written ("+972 53 231 5090", "053-231-5090").
+ * Only ids: the caller applies who-may-see-what on top.
+ */
+export async function leadIdsByPhoneDigits(digits: string, limit = 200): Promise<string[]> {
+  const d = digits.replace(/\D/g, '')
+  if (d.length < 3) return []
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Lead" WHERE regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g') LIKE ${'%' + d + '%'} LIMIT ${limit}`
+  return rows.map((r) => r.id)
+}
+
 /** A lead this user may call whose phone number is this one (so a typed number still lands on the right timeline). */
 export async function leadForNumber(e164: string, where: Prisma.LeadWhereInput): Promise<{ id: string; name: string } | null> {
-  const tail = e164.replace(/\D/g, '').slice(-7)
-  const candidates = await prisma.lead.findMany({ where: { AND: [where, { phone: { contains: tail.slice(-4) } }] }, select: { id: true, firstName: true, lastName: true, email: true, phone: true }, take: 50, orderBy: { updatedAt: 'desc' } })
+  const ids = await leadIdsByPhoneDigits(e164.replace(/\D/g, '').slice(-7), 50)
+  if (!ids.length) return null
+  const candidates = await prisma.lead.findMany({ where: { AND: [where, { id: { in: ids } }] }, select: { id: true, firstName: true, lastName: true, email: true, phone: true }, take: 50, orderBy: { updatedAt: 'desc' } })
   const hit = candidates.find((l) => l.phone && toE164(l.phone) === e164)
   return hit ? { id: hit.id, name: leadName(hit) } : null
 }

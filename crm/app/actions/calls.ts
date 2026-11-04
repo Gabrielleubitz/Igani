@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
-import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, leadForNumber, reconcileCall } from '@/lib/calls'
+import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, leadForNumber, leadIdsByPhoneDigits, reconcileCall } from '@/lib/calls'
 import { leadName } from '@/lib/format'
 import { assertCanSeeLead, leadScope } from '@/lib/lead-access'
 import { dialProblem, formatPhone, toE164 } from '@/lib/phone-numbers'
@@ -166,6 +166,8 @@ export async function searchDialerContacts(query: string): Promise<ActionResult<
     const user = await requireUser([...callers])
     const q = z.string().trim().max(60).parse(query)
     const digits = q.replace(/\D/g, '')
+    // numbers are stored however people typed them: match on digits only
+    const byPhone = digits.length >= 3 ? await leadIdsByPhoneDigits(digits.slice(-9)) : []
     const rows = await prisma.lead.findMany({
       where: {
         AND: [
@@ -179,7 +181,7 @@ export async function searchDialerContacts(query: string): Promise<ActionResult<
                   { lastName: { contains: q, mode: 'insensitive' } },
                   { company: { contains: q, mode: 'insensitive' } },
                   { email: { contains: q, mode: 'insensitive' } },
-                  ...(digits.length >= 3 ? [{ phone: { contains: digits.slice(-7) } }] : []),
+                  ...(byPhone.length ? [{ id: { in: byPhone } }] : []),
                 ],
               }
             : {},

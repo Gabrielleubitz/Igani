@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUpRight, Check, Delete, Grid3x3, History, Mic, MicOff, Phone, PhoneOff, Search, Users, X } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronDown, Delete, Grid3x3, History, Mic, MicOff, Search, Users, X } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { abandonCall, clearStuckCalls, recentCalls, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
@@ -54,6 +54,22 @@ const initials = (name: string | undefined, fallback: string): string =>
     .slice(0, 2)
     .map((x) => x[0]!.toUpperCase())
     .join('') || fallback
+
+/* ───────────────────────── look ───────────────────────── */
+
+/** A proper filled handset (not an outline icon), used for the button, call and hang-up. */
+function Handset({ className }: { className?: string }): React.ReactElement {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.02-.24c1.12.37 2.33.57 3.57.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.61 21 3 13.39 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1.02l-2.2 2.2Z" />
+    </svg>
+  )
+}
+
+/** Solid surfaces with real edges: the panel sits clearly above the page. */
+const KEY = 'border border-[#2b4263] bg-[#172b47] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:border-[#3a5884] hover:bg-[#1c3456] active:scale-[0.96] active:bg-[#24426c]'
+const FIELD = 'w-full rounded-xl border border-[#2b4060] bg-[#0b1728] text-sm outline-none transition placeholder:text-muted-foreground/70 focus:border-[#4a7bd0] focus:ring-2 focus:ring-[#4a7bd0]/25'
+const LIST = 'divide-y divide-[#22344f] overflow-hidden rounded-xl border border-[#22344f] bg-[#0c192b]'
 
 /* ───────────────────────── root ───────────────────────── */
 
@@ -247,16 +263,22 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
         <div
           role="dialog"
           aria-label="Phone"
-          className="fixed inset-x-2 bottom-2 z-[60] flex max-h-[calc(100dvh-1rem)] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[hsl(var(--card))] shadow-2xl shadow-black/50 sm:inset-x-auto sm:bottom-24 sm:right-6 sm:w-[380px] sm:max-h-[min(680px,calc(100dvh-8rem))] animate-in fade-in slide-in-from-bottom-4"
+          className="fixed inset-x-2 bottom-2 z-[60] flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-[22px] border border-[#2b4060] bg-[#0f1d31] text-foreground shadow-[0_28px_70px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] sm:inset-x-auto sm:bottom-[84px] sm:right-5 sm:h-[min(620px,calc(100dvh-7rem))] sm:w-[372px]"
         >
-          <header className="flex items-center justify-between border-b border-white/5 px-5 py-3.5">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold">Phone</div>
-              <div className="truncate text-xs text-muted-foreground">
-                {demo ? 'Demo mode · no real calls' : number ? `Calling from ${formatPhone(number)}` : ''}
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#22344f] bg-[#0b1728] px-5 py-3.5">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#2b4263] bg-[#172b47] text-[#8fb5ff]">
+                <Handset className="h-[18px] w-[18px]" />
+              </span>
+              <div className="min-w-0">
+                <div className="text-[15px] font-semibold leading-tight">Phone</div>
+                <div className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
+                  <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', demo ? 'bg-amber-400' : 'bg-emerald-400')} aria-hidden />
+                  {demo ? 'Demo mode · no real calls' : number ? `Ready · ${formatPhone(number)}` : 'Ready'}
+                </div>
               </div>
             </div>
-            <button type="button" onClick={() => setOpen(false)} className="rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Close phone">
+            <button type="button" onClick={() => setOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#2b4060] bg-[#132540] text-muted-foreground transition hover:border-[#3a5884] hover:text-foreground" aria-label="Close phone">
               <X className="h-4 w-4" />
             </button>
           </header>
@@ -267,7 +289,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
             <WrapUp session={session} onDone={onWrapped} />
           ) : (
             <>
-              <nav className="grid grid-cols-3 gap-1 px-4 pt-3" aria-label="Phone views">
+              <nav className="mx-4 mt-4 grid shrink-0 grid-cols-3 gap-1 rounded-xl border border-[#22344f] bg-[#0b1728] p-1" aria-label="Phone views">
                 {(
                   [
                     ['keypad', 'Keypad', Grid3x3],
@@ -280,7 +302,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
                     type="button"
                     onClick={() => setTab(k)}
                     aria-current={tab === k ? 'page' : undefined}
-                    className={cn('flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium transition-colors', tab === k ? 'bg-primary/15 text-foreground' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground')}
+                    className={cn('flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition', tab === k ? 'bg-[#1d3354] text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] ring-1 ring-[#33507a]' : 'text-muted-foreground hover:text-foreground')}
                   >
                     <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
                   </button>
@@ -338,11 +360,11 @@ function FloatingButton({ session, now, open, onClick }: { session: Session | nu
         type="button"
         onClick={onClick}
         aria-label={`On a call with ${session.call.lead?.name ?? session.call.display}. ${open ? 'Hide' : 'Show'} the phone`}
-        className="fixed bottom-5 right-5 z-[59] flex items-center gap-2.5 rounded-full bg-emerald-500 py-2.5 pl-3 pr-4 text-sm font-semibold text-emerald-950 shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400"
+        className="fixed bottom-5 right-5 z-[59] flex h-[52px] items-center gap-2.5 rounded-2xl border border-white/15 bg-[#16a34a] pl-3.5 pr-4 text-sm font-semibold text-white shadow-[0_12px_28px_-10px_rgba(0,0,0,0.8)] transition hover:bg-[#15913f]"
       >
         <span className="relative flex h-2.5 w-2.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-950/50 motion-reduce:hidden" />
-          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-950" />
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60 motion-reduce:hidden" />
+          <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
         </span>
         <span className="max-w-[9rem] truncate">{session.call.lead?.name ?? session.call.display}</span>
         <span className="tabular-nums opacity-80">{label}</span>
@@ -356,13 +378,12 @@ function FloatingButton({ session, now, open, onClick }: { session: Session | nu
       aria-label={open ? 'Close phone' : 'Open phone'}
       aria-expanded={open}
       className={cn(
-        'fixed bottom-5 right-5 z-[59] flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg shadow-primary/30 ring-1 ring-white/15 transition-transform hover:scale-105 active:scale-95',
-        session?.phase === 'wrapup' ? 'bg-amber-500' : 'bg-gradient-to-br from-[#4f8df0] to-[#2f66bd]',
-        open && 'sm:rotate-0',
+        'fixed bottom-5 right-5 z-[59] flex h-[52px] w-[52px] items-center justify-center rounded-2xl border text-white shadow-[0_12px_28px_-10px_rgba(0,0,0,0.8)] transition active:scale-95',
+        open ? 'border-[#2b4060] bg-[#132540] hover:bg-[#1a2f4f]' : 'border-white/15 bg-[#3b78db] hover:bg-[#4685e6]',
       )}
     >
-      {open ? <X className="h-6 w-6" /> : <Phone className="h-6 w-6" />}
-      {session?.phase === 'wrapup' && !open ? <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-rose-500 ring-2 ring-background" aria-label="Wrap-up waiting" /> : null}
+      {open ? <ChevronDown className="h-5 w-5" /> : <Handset className="h-6 w-6" />}
+      {session?.phase === 'wrapup' && !open ? <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-[#020d1a] bg-amber-400" aria-label="Wrap-up waiting" /> : null}
     </button>
   )
 }
@@ -388,7 +409,7 @@ function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: s
   const timer = useRef<number | null>(null)
   const longFired = useRef(false)
   return (
-    <div className="grid grid-cols-3 gap-x-5 gap-y-3 px-8">
+    <div className="grid grid-cols-3 gap-x-6 gap-y-3 px-9">
       {KEYS.map(([k, sub]) => (
         <button
           key={k}
@@ -405,10 +426,10 @@ function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: s
           onPointerLeave={() => timer.current && window.clearTimeout(timer.current)}
           onClick={() => !longFired.current && onKey(k)}
           aria-label={k === '0' ? '0 (hold for +)' : k}
-          className="mx-auto flex h-[60px] w-[60px] flex-col items-center justify-center rounded-full bg-muted/50 transition-colors hover:bg-muted active:bg-primary/25"
+          className={cn('mx-auto flex h-[62px] w-[62px] flex-col items-center justify-center rounded-full', KEY)}
         >
-          <span className="text-2xl font-light leading-none">{k}</span>
-          <span className="mt-0.5 h-3 text-[9px] font-semibold tracking-[0.18em] text-muted-foreground">{sub}</span>
+          <span className="text-[26px] font-normal leading-none">{k}</span>
+          <span className="mt-1 h-3 text-[9px] font-semibold tracking-[0.2em] text-[#8ea3c0]">{sub}</span>
         </button>
       ))}
     </div>
@@ -449,7 +470,7 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
   }, [value, onChange, onCall, e164, match])
 
   return (
-    <div className="flex flex-col gap-5 pb-6 pt-5">
+    <div className="flex h-full flex-col justify-center gap-5 pb-6 pt-4">
       <div className="px-6 text-center">
         <input
           ref={input}
@@ -459,13 +480,16 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
           autoComplete="off"
           placeholder="Enter a number"
           aria-label="Phone number"
-          className="w-full bg-transparent text-center text-3xl font-light tabular-nums tracking-wide outline-none placeholder:text-base placeholder:text-muted-foreground/60"
+          className="w-full bg-transparent text-center text-[32px] font-normal tabular-nums tracking-wide outline-none placeholder:text-base placeholder:text-muted-foreground/60"
         />
-        <div className="mt-1 h-5 truncate text-xs text-muted-foreground" aria-live="polite">
+        <div className="mt-1.5 flex h-7 items-center justify-center truncate text-xs text-muted-foreground" aria-live="polite">
           {match ? (
-            <span className="text-foreground">
-              {match.name}
-              {match.company ? <span className="text-muted-foreground"> · {match.company}</span> : null}
+            <span className="inline-flex max-w-full items-center gap-2 truncate rounded-full border border-[#2b4263] bg-[#132540] py-1 pl-1 pr-3 text-foreground">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1d3354] text-[9px] font-semibold text-[#9cc0ff]">{initials(match.name, '#')}</span>
+              <span className="truncate">
+                {match.name}
+                {match.company ? <span className="text-muted-foreground"> · {match.company}</span> : null}
+              </span>
             </span>
           ) : e164 ? (
             formatPhone(e164)
@@ -477,19 +501,19 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
         </div>
       </div>
       <KeyGrid onKey={(k) => onChange(value + k)} onLong={(k) => onChange(value + k)} />
-      <div className="grid grid-cols-3 items-center px-8">
+      <div className="grid grid-cols-3 items-center px-9">
         <span />
         <button
           type="button"
           disabled={!e164}
           onClick={() => e164 && onCall(value, match ? { id: match.id, name: match.name } : null)}
           aria-label={match ? `Call ${match.name}` : 'Call'}
-          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 transition hover:bg-emerald-400 active:scale-95 disabled:bg-muted disabled:text-muted-foreground disabled:shadow-none"
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#22c55e]/40 bg-[#16a34a] text-white shadow-[0_10px_24px_-10px_rgba(22,163,74,0.9)] transition hover:bg-[#15913f] active:scale-95 disabled:border-[#2b4263] disabled:bg-[#172b47] disabled:text-[#5d7392] disabled:shadow-none"
         >
-          <Phone className="h-7 w-7" />
+          <Handset className="h-7 w-7" />
         </button>
         {value ? (
-          <button type="button" onClick={() => onChange(value.slice(0, -1))} onDoubleClick={() => onChange('')} aria-label="Delete digit" className="mx-auto rounded-full p-3 text-muted-foreground hover:bg-muted hover:text-foreground">
+          <button type="button" onClick={() => onChange(value.slice(0, -1))} onDoubleClick={() => onChange('')} aria-label="Delete digit" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-[#8ea3c0] transition hover:bg-[#172b47] hover:text-foreground">
             <Delete className="h-6 w-6" />
           </button>
         ) : (
@@ -513,27 +537,27 @@ function Contacts({ onCall }: { onCall: (c: DialerContact) => void }): React.Rea
     return () => window.clearTimeout(t)
   }, [q])
   return (
-    <div className="space-y-2 p-4">
+    <div className="flex h-full flex-col gap-3 p-4">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, company or number" aria-label="Search contacts" className="h-10 w-full rounded-xl border border-white/10 bg-background/60 pl-9 pr-3 text-sm outline-none focus:border-primary/60" />
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, company or number" aria-label="Search contacts" className={cn('h-10 pl-9 pr-3', FIELD)} />
       </div>
       {rows === null ? (
         <p className="py-8 text-center text-xs text-muted-foreground">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="py-8 text-center text-xs text-muted-foreground">{q ? 'No contacts with a phone number match.' : 'No contacts with a phone number yet.'}</p>
       ) : (
-        <ul className="space-y-1">
+        <ul className={cn('min-h-0 overflow-y-auto', LIST)}>
           {rows.map((c) => (
             <li key={c.id}>
-              <button type="button" onClick={() => onCall(c)} className="group flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-muted/60">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">{initials(c.name, '#')}</span>
+              <button type="button" onClick={() => onCall(c)} className="group flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[#132540]">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#2b4263] bg-[#1d3354] text-xs font-semibold text-[#9cc0ff]">{initials(c.name, '#')}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{c.name}</span>
                   <span className="block truncate text-xs text-muted-foreground">{[c.company, c.display].filter(Boolean).join(' · ')}</span>
                 </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
-                  <Phone className="h-4 w-4" aria-hidden />
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#22c55e]/30 bg-[#16a34a]/15 text-[#4ade80] transition group-hover:bg-[#16a34a] group-hover:text-white">
+                  <Handset className="h-4 w-4" />
                 </span>
               </button>
             </li>
@@ -559,14 +583,21 @@ function Recent({ onCall }: { onCall: (r: RecentCall) => void }): React.ReactEle
     void recentCalls().then((r) => setRows(r.ok ? r.data : []))
   }, [])
   if (rows === null) return <p className="py-10 text-center text-xs text-muted-foreground">Loading…</p>
-  if (!rows.length) return <p className="px-6 py-10 text-center text-xs text-muted-foreground">Your calls will show up here.</p>
+  if (!rows.length)
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 px-8 text-center">
+        <History className="h-6 w-6 text-[#5d7392]" aria-hidden />
+        <p className="text-sm text-muted-foreground">Your calls will show up here.</p>
+      </div>
+    )
   return (
-    <ul className="space-y-1 p-3">
+    <div className="h-full p-4">
+    <ul className={cn('max-h-full overflow-y-auto', LIST)}>
       {rows.map((r) => {
         const missed = r.status !== 'COMPLETED' && !r.live
         return (
-          <li key={r.id} className="group flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-muted/60">
-            <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full', missed ? 'bg-rose-500/10 text-rose-400' : 'bg-emerald-500/10 text-emerald-400')}>
+          <li key={r.id} className="group flex items-center gap-3 px-3 py-2.5 transition hover:bg-[#132540]">
+            <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-full border', missed ? 'border-rose-500/30 bg-rose-500/10 text-rose-400' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400')}>
               <ArrowUpRight className="h-4 w-4" aria-label="Outgoing" />
             </span>
             <span className="min-w-0 flex-1">
@@ -584,13 +615,14 @@ function Recent({ onCall }: { onCall: (r: RecentCall) => void }): React.ReactEle
                 {r.durationSec ? ` · ${fmt(r.durationSec * 1000)}` : ''} · {timeAgo(r.startedAt)}
               </span>
             </span>
-            <button type="button" onClick={() => onCall(r)} aria-label={`Call ${r.lead?.name ?? r.display} again`} className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 opacity-70 transition hover:opacity-100">
-              <Phone className="h-4 w-4" />
+            <button type="button" onClick={() => onCall(r)} aria-label={`Call ${r.lead?.name ?? r.display} again`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#22c55e]/30 bg-[#16a34a]/15 text-[#4ade80] transition hover:bg-[#16a34a] hover:text-white">
+              <Handset className="h-4 w-4" />
             </button>
           </li>
         )
       })}
     </ul>
+    </div>
   )
 }
 
@@ -606,11 +638,11 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }
       <div className="relative flex h-24 w-24 items-center justify-center">
         {phase !== 'live' ? (
           <>
-            <span className="absolute inset-0 animate-ping rounded-full bg-primary/20 motion-reduce:hidden" />
-            <span className="absolute -inset-2 rounded-full bg-primary/10" />
+            <span className="absolute -inset-3 animate-ping rounded-full border-2 border-[#3b78db]/40 motion-reduce:hidden" />
+            <span className="absolute -inset-3 rounded-full border border-[#2b4263]" />
           </>
         ) : null}
-        <span className="relative flex h-24 w-24 items-center justify-center rounded-full bg-gradient-to-br from-[#4f8df0] to-[#2f66bd] text-2xl font-semibold text-white">{initials(name, '#')}</span>
+        <span className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#3a5884] bg-[#1d3354] text-2xl font-semibold text-white">{initials(name, '#')}</span>
       </div>
       <div className="text-center">
         <div className="text-xl font-semibold">{name ?? call.display}</div>
@@ -644,8 +676,8 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }
         <RoundAction label={session.muted ? 'Unmute' : 'Mute'} active={session.muted} onClick={onMute} disabled={phase !== 'live'}>
           {session.muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
         </RoundAction>
-        <button type="button" onClick={onHangup} aria-label="Hang up" className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-500 text-white shadow-lg shadow-rose-500/30 transition hover:bg-rose-400 active:scale-95">
-          <PhoneOff className="h-7 w-7" />
+        <button type="button" onClick={onHangup} aria-label="Hang up" className="flex h-16 w-16 items-center justify-center rounded-full border border-[#f87171]/40 bg-[#dc2626] text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.9)] transition hover:bg-[#c41f1f] active:scale-95">
+          <Handset className="h-7 w-7 rotate-[135deg]" />
         </button>
         <RoundAction label={showPad ? 'Hide keypad' : 'Keypad'} active={showPad} onClick={() => setShowPad(!showPad)} disabled={phase !== 'live'}>
           <Grid3x3 className="h-5 w-5" />
@@ -658,7 +690,7 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }
 function RoundAction({ label, active, onClick, disabled, children }: { label: string; active: boolean; onClick: () => void; disabled?: boolean; children: React.ReactNode }): React.ReactElement {
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <button type="button" onClick={onClick} disabled={disabled} aria-pressed={active} aria-label={label} className={cn('flex h-12 w-12 items-center justify-center rounded-full transition-colors disabled:opacity-40', active ? 'bg-foreground text-background' : 'bg-muted/70 hover:bg-muted')}>
+      <button type="button" onClick={onClick} disabled={disabled} aria-pressed={active} aria-label={label} className={cn('flex h-12 w-12 items-center justify-center rounded-full border transition disabled:opacity-40', active ? 'border-white bg-white text-[#0b1728]' : 'border-[#2b4263] bg-[#172b47] hover:border-[#3a5884] hover:bg-[#1c3456]')}>
         {children}
       </button>
       <span className="text-[11px] text-muted-foreground">{label}</span>
@@ -700,7 +732,7 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
               type="button"
               onClick={() => setOutcome(o.key)}
               aria-pressed={outcome === o.key}
-              className={cn('rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition-colors', outcome === o.key ? 'bg-primary text-primary-foreground ring-primary' : 'ring-white/15 hover:bg-muted')}
+              className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition', outcome === o.key ? 'border-[#4a7bd0] bg-[#3b78db] text-white' : 'border-[#2b4263] bg-[#172b47] hover:border-[#3a5884]')}
             >
               {o.label}
             </button>
@@ -709,12 +741,12 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
       </fieldset>
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium">Note {name ? <span className="font-normal text-muted-foreground">(goes on {name}’s timeline)</span> : null}</span>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} maxLength={2000} placeholder="What did you agree? What’s next?" className="w-full resize-none rounded-xl border border-white/10 bg-background/60 px-3 py-2 text-sm outline-none focus:border-primary/60" />
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} maxLength={2000} placeholder="What did you agree? What’s next?" className={cn('resize-none px-3 py-2', FIELD)} />
       </label>
       {!session.call.lead ? <p className="text-xs text-muted-foreground">This number isn’t on a contact, so the call is saved in your call history only.</p> : null}
       {error ? <p className="text-xs text-rose-300">{error}</p> : null}
       <div className="mt-auto flex gap-2">
-        <button type="button" onClick={() => void save()} disabled={saving} className="flex-1 rounded-xl bg-primary py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60">
+        <button type="button" onClick={() => void save()} disabled={saving} className="flex-1 rounded-xl border border-white/10 bg-[#3b78db] py-3 text-sm font-semibold text-white transition hover:bg-[#4685e6] disabled:opacity-60">
           {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
