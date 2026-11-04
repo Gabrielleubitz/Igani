@@ -85,7 +85,6 @@ export function SalesContractForm({ adminName, adminEmail }: { adminName: string
             {num('basePercent', 'Commission up to the threshold', '%')}
             {num('bonus', 'Bonus per increment', 'ILS')}
             {num('increment', 'Increment size above the threshold', 'ILS')}
-            {num('milestone1Percent', 'Milestone 1 (share of the downpayment)', '%')}
             <div className="text-sm">
               <span className="font-medium">Base payout (calculated)</span>
               <p className="mt-2 text-lg font-semibold">{Number.isFinite(basePayout(f)) ? basePayout(f).toLocaleString('en-US') : '—'} ILS</p>

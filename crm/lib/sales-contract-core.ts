@@ -13,8 +13,6 @@ export interface Figures {
   bonus: number
   /** Increment size above the threshold (ILS) */
   increment: number
-  /** Milestone 1: percent of the collected downpayment */
-  milestone1Percent: number
 }
 
 export interface ContractData {
@@ -25,7 +23,7 @@ export interface ContractData {
   figures: Figures
 }
 
-export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000, milestone1Percent: 30 }
+export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
 export const basePayout = (f: Figures): number => Math.round((f.threshold * f.basePercent) / 100)
 
@@ -39,7 +37,6 @@ export function validate(d: ContractData): string | null {
   if (!pos(f.basePercent, 100)) return 'The base commission must be between 1% and 100%.'
   if (!pos(f.bonus, 10_000_000)) return 'The bonus must be a positive amount.'
   if (!pos(f.increment, 10_000_000)) return 'The bonus increment must be a positive amount.'
-  if (!pos(f.milestone1Percent, 100)) return 'The milestone 1 percentage must be between 1% and 100%.'
   return null
 }
 
@@ -62,18 +59,16 @@ export function agreementSectionsHtml(d: ContractData): string {
   const name = esc(d.name.trim())
   return `
 <h2><span class="n">1.</span>AGREEMENT SCOPE</h2>
-<p class="clause">This document sets forth the binding commission structure and milestone payout terms for sales representation services provided by ${name} for Igani.</p>
+<p class="clause">This document sets forth the binding commission structure and payout terms for sales representation services provided by ${name} for Igani.</p>
 <h2><span class="n">2.</span>COMMISSION STRUCTURE &amp; TIERED RULES</h2>
 <div class="box">
   <p class="boxtitle">Standard Commission Schedule</p>
   <p class="item"><b>Deals up to ${ils(f.threshold)}:</b> Representative receives ${pct(f.basePercent)} total commission.</p>
   <p class="item"><b>Deals above ${ils(f.threshold)}:</b> Base payout of ${ils(basePayout(f))} (${pct(f.basePercent)} of ${ils(f.threshold)}) plus an additional ${ils(f.bonus)} bonus for every completed ${ils(f.increment)} increment above ${ils(f.threshold)}.</p>
 </div>
-<h2><span class="n">3.</span>MILESTONE PAYOUT TERMS (DOWNPAYMENT &amp; FINAL PAYMENT)</h2>
-<p class="clause">Commissions are disbursed in alignment with client payment milestones:</p>
-<p class="item"><b>Milestone 1 (Initial Downpayment):</b> When the client pays the initial downpayment upon project sign-off, the representative receives ${pct(f.milestone1Percent)} of the collected downpayment amount. The downpayment amount is set per deal and is not fixed at any particular percentage of the contract.</p>
-<p class="item"><b>Milestone 2 (Final Payment):</b> The remaining balance of the representative’s commission is paid once the website has been delivered to the client and the client’s remaining payment has been received.</p>
-<p class="note"><b>Note:</b> Total commission across both milestones equals the full calculated commission amount for the contract. No commission is advanced prior to funds being collected from the client.</p>`
+<h2><span class="n">3.</span>PAYOUT TERMS</h2>
+<p class="item"><b>Payment on full collection:</b> The representative’s commission for a deal is paid only after the client has paid in full everything owed under the contract. No commission is paid in part, or advanced, before the full amount has been collected from the client.</p>
+<p class="note"><b>Note:</b> The commission amount is calculated under the Standard Commission Schedule above, on the total contract value.</p>`
 }
 
 export interface SignerView {

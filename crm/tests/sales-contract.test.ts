@@ -20,7 +20,8 @@ describe('commission wording', () => {
     expect(text).toContain('Awaiting signature')
     expect(text).toContain('Deals up to 15,000 ILS: Representative receives 30% total commission.')
     expect(text).toContain('Base payout of 4,500 ILS (30% of 15,000 ILS) plus an additional 1,000 ILS bonus for every completed 5,000 ILS increment above 15,000 ILS.')
-    expect(text).toContain('the representative receives 30% of the collected downpayment amount')
+    expect(text).toContain('paid only after the client has paid in full everything owed')
+    expect(text).not.toMatch(/Milestone|downpayment/i)
   })
   it('changes only the injected values and escapes them', () => {
     const t = agreementHtml({ ...data, name: '<b>X</b>', figures: { ...data.figures, threshold: 20000, basePercent: 25 } })
