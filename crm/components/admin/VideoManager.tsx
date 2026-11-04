@@ -55,7 +55,7 @@ export function VideoManager({ videos, offers }: { videos: VideoRecord[]; offers
             <div className="h-full bg-primary" style={{ width: `${Math.min(100, (used / TOTAL_VIDEO_BYTES) * 100)}%` }} />
           </div>
           <p className="text-sm text-muted-foreground">
-            {mb(used)} of 1 GB used. MP4, WebM or MOV, up to {mb(MAX_VIDEO_BYTES)} each. Compress first: HandBrake "Fast 720p30", quality RF 28, audio AAC 96 kbps (about 60 to 100 MB per video). Start titles with 01, 02, 03… to keep course order.
+            {mb(used)} of 1 GB used. MP4, WebM or MOV, up to {mb(MAX_VIDEO_BYTES)} each. Compress first: HandBrake &quot;Fast 720p30&quot;, quality RF 28, audio AAC 96 kbps (about 60 to 100 MB per video). Start titles with 01, 02, 03… to keep course order.
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Input className="max-w-xs" placeholder="Title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
