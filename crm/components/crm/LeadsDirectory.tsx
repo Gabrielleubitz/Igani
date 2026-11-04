@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { LeadsTable } from '@/app/admin/_components/LeadsTable'
 import { NewLeadForm } from '@/app/admin/_components/NewLeadForm'
+import { FindBusinesses } from '@/components/crm/FindBusinesses'
 import { PageIntro } from '@/components/PageIntro'
 import { buttonVariants } from '@/components/ui/button'
 import { Popover } from '@/components/ui/popover'
@@ -66,6 +67,7 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
           hint={user.role === 'ADMIN' ? 'Everyone in the CRM. Search, filter, change a stage, or open a name for notes, tasks and meetings.' : 'Your leads. Open a name for notes, tasks and meetings.'}
         />
         <div className="flex flex-wrap items-center gap-2">
+          <FindBusinesses />
           <Popover label="+ Add lead" panelClassName="sm:w-[min(92vw,34rem)]">
               <NewLeadForm />
             </Popover>

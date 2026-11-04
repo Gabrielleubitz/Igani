@@ -1,0 +1,228 @@
+'use client'
+
+import { Check, ExternalLink, Globe, Loader2, MapPin, Phone, Search, Star } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
+import { findBusinesses, importBusinesses, type FoundPlace } from '@/app/actions/places'
+import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
+import { Input, Label } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+
+const host = (url: string): string => {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+/** "Find businesses": search Google Maps (e.g. real estate in Jerusalem), tick results, add them as leads. */
+export function FindBusinesses(): React.ReactElement {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const [what, setWhat] = useState('')
+  const [where, setWhere] = useState('')
+  const [query, setQuery] = useState('')
+  // "Load more" must repeat exactly the search Google gave the page token for.
+  const [last, setLast] = useState({ what: '', where: '' })
+  const [places, setPlaces] = useState<FoundPlace[] | null>(null)
+  const [next, setNext] = useState<{ token: string; page: number } | null>(null)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [searching, startSearch] = useTransition()
+  const [importing, startImport] = useTransition()
+
+  const canPick = (p: FoundPlace): boolean => !p.existing && Boolean(p.phone)
+  const pickable = (places ?? []).filter(canPick)
+
+  const run = (more: boolean): void => {
+    setMsg(null)
+    startSearch(async () => {
+      const terms = more ? last : { what, where }
+      const r = await findBusinesses({ ...terms, pageToken: more ? next?.token : null, page: more ? (next?.page ?? 1) : 1 })
+      if (!r.ok) {
+        setMsg({ ok: false, text: r.error })
+        return
+      }
+      const fresh = r.data.places
+      setQuery(r.data.query)
+      setLast(terms)
+      setPlaces((prev) => {
+        const base = more && prev ? prev : []
+        const ids = new Set(base.map((p) => p.placeId))
+        return [...base, ...fresh.filter((p) => !ids.has(p.placeId))]
+      })
+      // New results start ticked when they can be added.
+      setPicked((prev) => new Set([...(more ? prev : []), ...fresh.filter(canPick).map((p) => p.placeId)]))
+      setNext(r.data.nextPageToken ? { token: r.data.nextPageToken, page: r.data.page + 1 } : null)
+    })
+  }
+
+  const add = (): void => {
+    const chosen = (places ?? []).filter((p) => picked.has(p.placeId) && canPick(p))
+    if (!chosen.length) return
+    setMsg(null)
+    startImport(async () => {
+      const r = await importBusinesses({ query, places: chosen.map(({ existing: _e, ...p }) => p) })
+      if (!r.ok) {
+        setMsg({ ok: false, text: r.error })
+        return
+      }
+      const { added, skipped } = r.data
+      setMsg({ ok: true, text: `✓ Added ${added} lead${added === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped: already leads)` : ''}.` })
+      // Mark them so they can't be added twice.
+      setPlaces((prev) => (prev ?? []).map((p) => (picked.has(p.placeId) ? { ...p, existing: p.existing ?? { id: null, owner: null } } : p)))
+      setPicked(new Set())
+      router.refresh()
+    })
+  }
+
+  const allPicked = pickable.length > 0 && pickable.every((p) => picked.has(p.placeId))
+
+  return (
+    <>
+      <Button type="button" variant="outline" onClick={() => setOpen(true)}>
+        <Search className="me-1.5 h-4 w-4" aria-hidden /> Find businesses
+      </Button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Find businesses on Google"
+        description="Search Google Maps by type and city, tick the ones you want, and add them as leads. Only each business’s listed phone and website are added."
+        className="w-[min(96vw,46rem)]"
+      >
+        <form
+          className="grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_1fr_auto]"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (what.trim().length >= 2) run(false)
+          }}
+        >
+          <div className="space-y-1">
+            <Label htmlFor="fb-what">Type of business</Label>
+            <Input id="fb-what" value={what} onChange={(e) => setWhat(e.target.value)} placeholder="e.g. real estate agency" dir="auto" autoFocus maxLength={100} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="fb-where">City or area</Label>
+            <Input id="fb-where" value={where} onChange={(e) => setWhere(e.target.value)} placeholder="e.g. Jerusalem" dir="auto" maxLength={100} />
+          </div>
+          <Button type="submit" disabled={searching || what.trim().length < 2}>
+            {searching && !next ? <Loader2 className="me-1.5 h-4 w-4 animate-spin" /> : <Search className="me-1.5 h-4 w-4" />}
+            Search
+          </Button>
+        </form>
+
+        {places ? (
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="text-muted-foreground">
+                {places.length} result{places.length === 1 ? '' : 's'} for <span className="font-medium text-foreground">“{query}”</span>
+              </span>
+              {pickable.length ? (
+                <button type="button" className="text-primary hover:underline" onClick={() => setPicked(allPicked ? new Set() : new Set(pickable.map((p) => p.placeId)))}>
+                  {allPicked ? 'Untick all' : 'Tick all new'}
+                </button>
+              ) : null}
+            </div>
+            <ul className="max-h-[52vh] divide-y overflow-y-auto rounded-lg border">
+              {places.length === 0 ? <li className="p-4 text-sm text-muted-foreground">Nothing found. Try a broader type or another spelling of the city.</li> : null}
+              {places.map((p) => {
+                const ok = canPick(p)
+                const on = picked.has(p.placeId)
+                return (
+                  <li key={p.placeId}>
+                    <label className={cn('flex gap-3 px-3 py-2.5', ok ? 'cursor-pointer hover:bg-muted/40' : 'opacity-70')}>
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 shrink-0 accent-[hsl(var(--primary))]"
+                        checked={on}
+                        disabled={!ok}
+                        onChange={() =>
+                          setPicked((prev) => {
+                            const s = new Set(prev)
+                            if (s.has(p.placeId)) s.delete(p.placeId)
+                            else s.add(p.placeId)
+                            return s
+                          })
+                        }
+                      />
+                      <span className="min-w-0 flex-1 space-y-0.5">
+                        <span className="flex flex-wrap items-baseline gap-x-2">
+                          <span dir="auto" className="font-medium">{p.name}</span>
+                          {p.category ? <span className="text-xs text-muted-foreground">{p.category}</span> : null}
+                          {p.rating != null ? (
+                            <span className="inline-flex items-center gap-0.5 text-xs text-muted-foreground">
+                              <Star className="h-3 w-3 fill-amber-400 text-amber-400" aria-hidden /> {p.rating.toFixed(1)}
+                              {p.reviews != null ? ` (${p.reviews})` : ''}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                          {p.phone ? (
+                            <span className="inline-flex items-center gap-1 tabular-nums" dir="ltr">
+                              <Phone className="h-3 w-3" aria-hidden /> {p.phone}
+                            </span>
+                          ) : (
+                            <span className="text-amber-400">No phone listed</span>
+                          )}
+                          {p.website ? (
+                            <a href={p.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground" onClick={(e) => e.stopPropagation()}>
+                              <Globe className="h-3 w-3" aria-hidden /> {host(p.website)}
+                            </a>
+                          ) : null}
+                          {p.mapsUrl ? (
+                            <a href={p.mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground" onClick={(e) => e.stopPropagation()}>
+                              <ExternalLink className="h-3 w-3" aria-hidden /> Maps
+                            </a>
+                          ) : null}
+                        </span>
+                        {p.address ? (
+                          <span dir="auto" className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <MapPin className="h-3 w-3 shrink-0" aria-hidden /> <span className="truncate">{p.address}</span>
+                          </span>
+                        ) : null}
+                        {p.existing ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+                            <Check className="h-3 w-3" aria-hidden />
+                            {p.existing.id ? (
+                              <Link href={`/sales/leads/${p.existing.id}`} className="underline underline-offset-2">
+                                Already a lead
+                              </Link>
+                            ) : (
+                              'Already a lead'
+                            )}
+                            {p.existing.owner ? ` · ${p.existing.owner}` : ''}
+                          </span>
+                        ) : null}
+                      </span>
+                    </label>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        ) : null}
+
+        {msg ? <p className={cn('text-sm', msg.ok ? 'text-emerald-400' : 'text-rose-400')}>{msg.text}</p> : null}
+
+        {places && places.length ? (
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {next ? (
+              <Button type="button" variant="outline" disabled={searching} onClick={() => run(true)}>
+                {searching ? <Loader2 className="me-1.5 h-4 w-4 animate-spin" /> : null} Load 20 more
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">Google shows up to 60 results per search.</span>
+            )}
+            <Button type="button" disabled={importing || picked.size === 0} onClick={add}>
+              {importing ? <Loader2 className="me-1.5 h-4 w-4 animate-spin" /> : null}
+              {importing ? 'Adding…' : `Add ${picked.size} as lead${picked.size === 1 ? '' : 's'}`}
+            </Button>
+          </div>
+        ) : null}
+      </Dialog>
+    </>
+  )
+}
