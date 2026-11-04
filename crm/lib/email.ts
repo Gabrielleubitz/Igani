@@ -14,6 +14,7 @@ import { NewLeadAlert, type NewLeadAlertProps } from '@/emails/NewLeadAlert'
 import { OfferSigned, type OfferSignedProps } from '@/emails/OfferSigned'
 import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
 import { PendingBooking } from '@/emails/PendingBooking'
+import { SalesContractSigned, type SalesContractSignedProps } from '@/emails/SalesContractSigned'
 import { TaskDigest, type TaskDigestProps } from '@/emails/TaskDigest'
 import { TeamInvite } from '@/emails/TeamInvite'
 import { WeeklySummary, type WeeklySummaryProps } from '@/emails/WeeklySummary'
@@ -263,5 +264,16 @@ export async function sendOfferSignedEmail(
 ): Promise<string> {
   const element = OfferSigned({ ...a, logoUrl: logoUrl(), ...(await brand()) })
   const subject = a.audience === 'team' ? `Signed: ${a.offerTitle} (${a.clientName})` : a.lang === 'he' ? `ההסכם נחתם: ${a.offerTitle}` : `Signed: ${a.offerTitle}`
+  return send({ to, subject, html: await render(element), text: await render(element, { plainText: true }), attachments: [{ ...pdf, contentType: 'application/pdf' }] })
+}
+
+/** Signed salesman commission agreement: the PDF goes to the salesman and the creating admin, nothing is stored. */
+export async function sendSalesContractSignedEmail(
+  to: string,
+  a: Omit<SalesContractSignedProps, 'logoUrl' | 'brandName' | 'supportEmail'>,
+  pdf: { filename: string; content: Buffer },
+): Promise<string> {
+  const element = SalesContractSigned({ ...a, logoUrl: logoUrl(), ...(await brand()) })
+  const subject = a.audience === 'admin' ? `Signed: sales commission agreement (${a.repName})` : 'Signed: your Igani sales commission agreement'
   return send({ to, subject, html: await render(element), text: await render(element, { plainText: true }), attachments: [{ ...pdf, contentType: 'application/pdf' }] })
 }
