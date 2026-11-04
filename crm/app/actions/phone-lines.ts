@@ -7,6 +7,7 @@ import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { normalizePhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
+import { restoreNumberRouting, routeNumberToCrm, twilioConfig } from '@/lib/twilio'
 import { toActionError, type ActionResult } from './result'
 
 const Assign = z.object({ userId: z.string().cuid(), number: z.string().trim().min(3).max(40), twilioSid: z.string().regex(/^PN[0-9a-f]{32}$/i).nullish() })
@@ -40,6 +41,46 @@ export async function removePhoneLine(userId: string): Promise<ActionResult> {
     if (!line) return { ok: true, data: undefined }
     await prisma.phoneLine.delete({ where: { userId: id } })
     await logActivity({ entityType: 'USER', entityId: id, actorId: admin.id, action: 'phone.line_removed', metadata: { number: line.number } })
+    revalidatePath('/admin/phone')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const NumberSid = z.string().regex(/^PN[0-9a-f]{32}$/i)
+type Routing = { voiceUrl: string; voiceMethod: string; voiceAppSid: string }
+
+/** Admin: make a Twilio number's incoming calls ring in the CRM. Its previous routing is saved for undo. */
+export async function routeIncomingToCrm(numberSid: string): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const sid = NumberSid.parse(numberSid)
+    const c = twilioConfig()
+    if (!c) throw new BookingError('Twilio is not connected.', 'INVALID_STATE')
+    const before = await routeNumberToCrm(c, sid)
+    // keep the original only the first time (routing twice must not overwrite it with our own URL)
+    await prisma.siteSetting.upsert({ where: { key: `voice.routing:${sid}` }, create: { key: `voice.routing:${sid}`, value: before }, update: {} })
+    await logActivity({ entityType: 'SETTING', entityId: `voice.routing:${sid}`, actorId: admin.id, action: 'phone.incoming_routed', metadata: { before } })
+    revalidatePath('/admin/phone')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Admin: undo — put the number's incoming calls back where they went before. */
+export async function restoreIncomingRouting(numberSid: string): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const sid = NumberSid.parse(numberSid)
+    const c = twilioConfig()
+    if (!c) throw new BookingError('Twilio is not connected.', 'INVALID_STATE')
+    const saved = await prisma.siteSetting.findUnique({ where: { key: `voice.routing:${sid}` } })
+    if (!saved) throw new BookingError('There is no earlier routing saved for this number.', 'INVALID_STATE')
+    await restoreNumberRouting(c, sid, saved.value as Routing)
+    await prisma.siteSetting.delete({ where: { key: `voice.routing:${sid}` } })
+    await logActivity({ entityType: 'SETTING', entityId: `voice.routing:${sid}`, actorId: admin.id, action: 'phone.incoming_restored', metadata: { restored: saved.value } })
     revalidatePath('/admin/phone')
     return { ok: true, data: undefined }
   } catch (err) {

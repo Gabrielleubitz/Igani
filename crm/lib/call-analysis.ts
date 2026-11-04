@@ -120,7 +120,7 @@ async function transcribe(audio: Blob, key: string): Promise<{ text: string; seg
   return { text: body.text ?? segments.map((s) => s.text).join(' '), segments }
 }
 
-export async function analyseSegments(segments: { start: number; end: number; text: string }[], key: string): Promise<{ speakers: ('rep' | 'client')[]; analysis: CallAnalysis }> {
+export async function analyseSegments(segments: { start: number; end: number; text: string }[], key: string, context = 'Outgoing call: the rep called the client.'): Promise<{ speakers: ('rep' | 'client')[]; analysis: CallAnalysis }> {
   const model = process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
   const lines = segments.map((s, i) => `[${i}] (${Math.floor(s.start / 60)}:${String(Math.floor(s.start % 60)).padStart(2, '0')}, ${s.start.toFixed(0)}s) ${s.text}`).join('\n')
@@ -133,7 +133,7 @@ export async function analyseSegments(segments: { start: number; end: number; te
       response_format: { type: 'json_schema', json_schema: { name: 'call_analysis', strict: true, schema: SCHEMA } },
       messages: [
         { role: 'system', content: PROMPT },
-        { role: 'user', content: `Transcript (${segments.length} segments):\n${lines}` },
+        { role: 'user', content: `${context}\nTranscript (${segments.length} segments):\n${lines}` },
       ],
     }),
     signal: AbortSignal.timeout(240_000),
@@ -166,7 +166,7 @@ export async function analyzeCall(callId: string, opts: { force?: boolean } = {}
     data: { analysisStatus: 'processing', analyzedAt: new Date(), analysisAttempts: { increment: 1 }, analysisError: null },
   })
   if (!claim.count) return 'busy'
-  const call = await prisma.call.findUniqueOrThrow({ where: { id: callId }, select: { leadId: true, userId: true, recordingSec: true } })
+  const call = await prisma.call.findUniqueOrThrow({ where: { id: callId }, select: { leadId: true, userId: true, recordingSec: true, direction: true, answeredAt: true } })
   const fail = async (status: 'failed' | 'skipped', error: string): Promise<'failed' | 'skipped'> => {
     await prisma.call.update({ where: { id: callId }, data: { analysisStatus: status, analysisError: error.slice(0, 300), analyzedAt: new Date() } })
     return status
@@ -179,7 +179,13 @@ export async function analyzeCall(callId: string, opts: { force?: boolean } = {}
     if (audio.size > MAX_AUDIO_BYTES) return await fail('skipped', 'The recording is too long to analyse automatically (over ~45 minutes).')
     const { segments } = await transcribe(audio, key)
     if (segments.length < 2) return await fail('skipped', 'Nothing was said on the recording.')
-    const { speakers, analysis } = await analyseSegments(segments.slice(0, 800), key)
+    const context =
+      call.direction === 'INBOUND'
+        ? call.answeredAt
+          ? 'Incoming call: the client called Igani and the rep answered.'
+          : 'Voicemail: the caller left a message; nobody from Igani speaks. Mark every segment "client", isSalesCall false, and summarise who called and what they want.'
+        : 'Outgoing call: the rep called the client.'
+    const { speakers, analysis } = await analyseSegments(segments.slice(0, 800), key, context)
     const transcript: TranscriptLine[] = segments.map((s, i) => ({ ...s, speaker: speakers[i] ?? 'rep' }))
     await prisma.call.update({
       where: { id: callId },

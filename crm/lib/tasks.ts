@@ -7,7 +7,7 @@ import { notArchivedBy } from './lead-archive'
 
 /** System-created task (same activity-log shape the UI folds into task state). */
 export async function createAutoTask(
-  t: { leadId: string; title: string; dueAt: Date; assigneeId: string | null; priority?: TaskPriority; auto: 'prep' | 'follow-up' | 'invoice'; bookingId?: string; offerId?: string },
+  t: { leadId: string; title: string; dueAt: Date; assigneeId: string | null; priority?: TaskPriority; auto: 'prep' | 'follow-up' | 'invoice' | 'callback'; bookingId?: string; offerId?: string; callId?: string },
   db?: Prisma.TransactionClient,
 ): Promise<void> {
   await logActivity(
@@ -15,7 +15,7 @@ export async function createAutoTask(
       entityType: 'LEAD',
       entityId: t.leadId,
       action: 'task.created',
-      metadata: { taskId: randomUUID(), title: t.title, dueAt: t.dueAt.toISOString(), assigneeId: t.assigneeId, priority: t.priority ?? 'MEDIUM', auto: t.auto, ...(t.bookingId ? { bookingId: t.bookingId } : {}), ...(t.offerId ? { offerId: t.offerId } : {}) },
+      metadata: { taskId: randomUUID(), title: t.title, dueAt: t.dueAt.toISOString(), assigneeId: t.assigneeId, priority: t.priority ?? 'MEDIUM', auto: t.auto, ...(t.bookingId ? { bookingId: t.bookingId } : {}), ...(t.offerId ? { offerId: t.offerId } : {}), ...(t.callId ? { callId: t.callId } : {}) },
     },
     db,
   )

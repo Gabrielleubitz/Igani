@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle } from 'lucide-react'
 import Link from 'next/link'
-import { PhoneLineRow, VoiceSettingsForm, type TwilioNumber } from '@/components/admin/PhoneAdmin'
+import { IncomingRoutingRow, PhoneLineRow, VoiceSettingsForm, type TwilioNumber } from '@/components/admin/PhoneAdmin'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -9,7 +9,7 @@ import { formatDateTime, leadName } from '@/lib/format'
 import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
-import { dialerDemo, listTwilioNumbers, twilioConfig, twilioSetup } from '@/lib/twilio'
+import { dialerDemo, incomingUrl, listTwilioNumbers, twilioConfig, twilioSetup } from '@/lib/twilio'
 
 export const metadata = { title: 'Phone' }
 export const dynamic = 'force-dynamic'
@@ -20,7 +20,7 @@ const STATUS: Record<string, string> = { INITIATED: 'Starting', RINGING: 'Ringin
 export default async function PhoneAdminPage(): Promise<React.ReactElement> {
   const admin = await requireUser(['ADMIN'])
   const config = twilioConfig()
-  let numbers: TwilioNumber[] | null = null
+  let numbers: (TwilioNumber & { voiceUrl: string; voiceAppSid: string })[] | null = null
   let numbersError: string | null = null
   if (config) {
     try {
@@ -39,6 +39,8 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
     prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { timeZone: true } }),
   ])
   const lineOf = new Map(lines.map((l) => [l.userId, l]))
+  const ownerOf = new Map(lines.map((l) => [l.number, team.find((u) => u.id === l.userId)]))
+  const savedRouting = new Set((await prisma.siteSetting.findMany({ where: { key: { startsWith: 'voice.routing:' } }, select: { key: true } })).map((r) => r.key.slice('voice.routing:'.length)))
   const takenBy = Object.fromEntries(lines.map((l) => [l.number, l.userId]))
   const setup = twilioSetup()
   const ready = Boolean(config)
@@ -88,6 +90,31 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
           ))}
         </CardContent>
       </Card>
+
+      {numbers?.length ? (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Incoming calls</CardTitle>
+            <p className="text-sm text-muted-foreground">Calls to a number ring in the CRM for the person it’s assigned to (every CRM tab they have open). Unanswered after 25 seconds, the caller can leave a voicemail and a “Call back” task is created.</p>
+          </CardHeader>
+          <CardContent className="divide-y divide-border/60">
+            {numbers.map((n) => {
+              const owner = ownerOf.get(n.number)
+              return (
+                <IncomingRoutingRow
+                  key={n.sid}
+                  sid={n.sid}
+                  number={n.number}
+                  owner={owner ? (owner.name ?? owner.email ?? 'Teammate') : null}
+                  routed={n.voiceUrl === incomingUrl() && !n.voiceAppSid}
+                  canUndo={savedRouting.has(n.sid)}
+                  elsewhere={n.voiceAppSid ? `a TwiML app (${n.voiceAppSid.slice(0, 8)}…)` : n.voiceUrl.replace(/^https?:\/\//, '').slice(0, 60)}
+                />
+              )
+            })}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader className="pb-2">

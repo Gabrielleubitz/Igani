@@ -22,12 +22,14 @@ We build it in steps. Each step ships on its own, is tested, and leaves the next
 
 Twilio setup (one time, by the admin): see "Setup" below.
 
-## Step 2 — Inbound calls
+## Step 2 — Inbound calls ✅
 
-- [ ] Incoming calls ring in the browser of the line's owner (the token already allows incoming).
-- [ ] Ringing UI (accept / decline), caller matched to a lead by phone number, unknown callers can be added as a lead.
-- [ ] Missed call → task "Call back <name>" + voicemail (Twilio `<Record>`), voicemail shown on the lead.
-- [ ] Busy / offline → voicemail; optional forwarding to the user's mobile.
+- [x] Calls to a number ring in every CRM tab of the person it's assigned to (Igani ringtone, desktop notification
+      when the tab isn't in front, flashing tab title); caller matched to their contacts by phone number.
+- [x] Accept → same in-call screen, wrap-up, recording, transcript and coaching as outgoing calls.
+- [x] Declined, unanswered after 25 s, or already on a call → voicemail (2 min) and a "Call back …" task (once).
+- [x] Admin → Phone → Incoming calls: "Ring in the CRM" per number (its previous routing is saved; Undo restores it).
+- [ ] Forward to the person's mobile when they're offline.
 
 ## Step 3 — Recordings and transcripts ✅
 

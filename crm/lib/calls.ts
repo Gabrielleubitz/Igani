@@ -2,7 +2,7 @@ import 'server-only'
 import type { CallStatus, Prisma } from '@prisma/client'
 import { logActivity } from './audit'
 import { leadName } from './format'
-import { toE164 } from './phone-numbers'
+import { formatPhone, toE164 } from './phone-numbers'
 import { prisma } from './prisma'
 import { fetchTwilioCall, twilioConfig } from './twilio'
 
@@ -151,3 +151,23 @@ export async function reconcileCall(callId: string): Promise<boolean> {
 
 /** Longest a single call may run (Twilio hangs up at this point). */
 export const MAX_CALL_MIN = 90
+
+/**
+ * A missed incoming call becomes a "Call back …" task for the line's owner, once: on the contact if we know who
+ * called, otherwise on the owner's own list.
+ */
+export async function createMissedCallTask(callId: string): Promise<void> {
+  const call = await prisma.call.findUnique({ where: { id: callId }, include: { lead: { select: { id: true, firstName: true, lastName: true, email: true } } } })
+  if (!call || call.direction !== 'INBOUND' || !call.userId) return
+  const done = await prisma.activityLog.findFirst({ where: { action: 'task.created', metadata: { path: ['callId'], equals: callId } }, select: { id: true } })
+  if (done) return
+  const { randomUUID } = await import('node:crypto')
+  const who = call.lead ? leadName(call.lead) : formatPhone(call.fromNumber)
+  const title = `Call back ${who} (missed call)`
+  if (call.lead) {
+    const { createAutoTask } = await import('./tasks')
+    await createAutoTask({ leadId: call.lead.id, title, dueAt: new Date(), assigneeId: call.userId, priority: 'HIGH', auto: 'callback', callId })
+  } else {
+    await logActivity({ entityType: 'USER', entityId: call.userId, action: 'task.created', metadata: { taskId: randomUUID(), title, dueAt: new Date().toISOString(), assigneeId: call.userId, priority: 'HIGH', auto: 'team', callId } })
+  }
+}

@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
-import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, leadForNumber, leadIdsByPhoneDigits, reconcileCall } from '@/lib/calls'
+import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, createMissedCallTask, leadForNumber, leadIdsByPhoneDigits, reconcileCall } from '@/lib/calls'
 import { leadName } from '@/lib/format'
 import { assertCanSeeLead, leadScope } from '@/lib/lead-access'
 import { dialProblem, formatPhone, toE164 } from '@/lib/phone-numbers'
@@ -112,6 +112,8 @@ export async function simulateCallProgress(input: z.input<typeof SimInput>): Pro
     const call = await prisma.call.findUnique({ where: { id: data.callId }, select: { userId: true, simulated: true } })
     if (!call?.simulated || call.userId !== user.id) throw new BookingError('Call not found.', 'NOT_FOUND')
     await advanceCall(data.callId, { status: data.status })
+    const row = await prisma.call.findUnique({ where: { id: data.callId }, select: { direction: true } })
+    if (row?.direction === 'INBOUND' && data.status === 'NO_ANSWER') await createMissedCallTask(data.callId)
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -257,6 +259,40 @@ export async function reanalyzeCall(callId: string): Promise<ActionResult<{ stat
     if (status === 'none') throw new BookingError('This call has no recording to analyse (or OpenAI isn’t set up).', 'INVALID_STATE')
     revalidatePath(`/sales/calls/${id}`)
     return { ok: true, data: { status } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+export interface IncomingCaller {
+  callId: string
+  number: string
+  display: string
+  lead: { id: string; name: string; company: string | null } | null
+}
+
+/** Who is calling (the contact the incoming webhook matched). Only for the person whose line is ringing. */
+export async function lookupIncoming(callId: string): Promise<ActionResult<IncomingCaller>> {
+  try {
+    const user = await requireUser([...callers])
+    const id = z.string().cuid().parse(callId)
+    const call = await prisma.call.findUnique({ where: { id }, include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, company: true } } } })
+    if (!call || call.userId !== user.id || call.direction !== 'INBOUND') throw new BookingError('Call not found.', 'NOT_FOUND')
+    return { ok: true, data: { callId: id, number: call.fromNumber, display: formatPhone(call.fromNumber), lead: call.lead ? { id: call.lead.id, name: leadName(call.lead), company: call.lead.company } : null } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Demo mode only (development without Twilio): a contact "calls" you, so the ringing flow can be tried. */
+export async function simulateIncomingCall(): Promise<ActionResult<{ callId: string; from: string }>> {
+  try {
+    if (!dialerDemo()) throw new BookingError('Not available.', 'FORBIDDEN')
+    const user = await requireUser([...callers])
+    const lead = await prisma.lead.findFirst({ where: { AND: [leadScope(user), { phone: { not: null } }, { NOT: { phone: '' } }] }, orderBy: { updatedAt: 'desc' }, select: { id: true, phone: true } })
+    const from = (lead?.phone && toE164(lead.phone)) || '+972501234567'
+    const call = await prisma.call.create({ data: { userId: user.id, leadId: lead?.id ?? null, direction: 'INBOUND', status: 'RINGING', fromNumber: from, toNumber: '+15005550006', simulated: true } })
+    return { ok: true, data: { callId: call.id, from } }
   } catch (err) {
     return toActionError(err)
   }

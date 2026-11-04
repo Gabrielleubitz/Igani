@@ -12,9 +12,20 @@ export interface ActiveCall {
   sendDigits(digits: string): void
   hangup(): void
 }
+/** A call ringing in this browser. accept() answers it; reject() sends the caller to voicemail. */
+export interface IncomingCall {
+  callId: string
+  from: string
+  accept(): ActiveCall
+  reject(): void
+  /** the caller hung up (or another tab answered) before we did */
+  onGone(cb: () => void): void
+}
 export interface VoiceEngine {
   kind: 'twilio' | 'demo'
   connect(callId: string, to: string): Promise<ActiveCall>
+  /** start receiving calls (rings with the Igani ringtone) */
+  listen(onIncoming: (call: IncomingCall) => void): Promise<void>
   /** false once the session can't be trusted (token refresh failed, device error): build a new one */
   healthy(): boolean
   destroy(): void
@@ -42,7 +53,7 @@ export function voiceErrorText(err: { message?: string; code?: number } | undefi
 export async function twilioEngine(token: string): Promise<VoiceEngine> {
   const { Device } = await import('@twilio/voice-sdk')
   // SDK 2.x: ringing state is always on and Opus is preferred by default
-  const device = new Device(token, { closeProtection: 'You’re on a call. Leave and hang up?', logLevel: 'error' })
+  const device = new Device(token, { closeProtection: 'You’re on a call. Leave and hang up?', logLevel: 'error', sounds: { incoming: '/sounds/igani-ring.wav' } })
   let ok = true
   device.on('tokenWillExpire', async () => {
     try {
@@ -56,18 +67,38 @@ export async function twilioEngine(token: string): Promise<VoiceEngine> {
   device.on('error', () => {
     ok = false
   })
+  type TwilioCall = Awaited<ReturnType<typeof device.connect>>
+  const wrap = (call: TwilioCall): ActiveCall => ({
+    on: (event, cb) => {
+      call.on(event, (e?: { message?: string; code?: number }) => cb(event === 'error' && e ? { message: e.message ?? 'error', code: e.code } : undefined))
+    },
+    mute: (on) => call.mute(on),
+    sendDigits: (d) => call.sendDigits(d),
+    hangup: () => call.disconnect(),
+  })
   return {
     kind: 'twilio',
     async connect(callId, to) {
-      const call = await device.connect({ params: { callId, To: to } })
-      return {
-        on: (event, cb) => {
-          call.on(event, (e?: { message?: string; code?: number }) => cb(event === 'error' && e ? { message: e.message ?? 'error', code: e.code } : undefined))
-        },
-        mute: (on) => call.mute(on),
-        sendDigits: (d) => call.sendDigits(d),
-        hangup: () => call.disconnect(),
-      }
+      return wrap(await device.connect({ params: { callId, To: to } }))
+    },
+    async listen(onIncoming) {
+      device.on('incoming', (call: TwilioCall) => {
+        const callId = call.customParameters.get('callId') ?? ''
+        onIncoming({
+          callId,
+          from: call.parameters.From ?? '',
+          accept: () => {
+            call.accept()
+            return wrap(call)
+          },
+          reject: () => call.reject(),
+          onGone: (cb) => {
+            call.on('cancel', cb)
+            call.on('disconnect', cb)
+          },
+        })
+      })
+      await device.register()
     },
     healthy: () => ok && device.state !== 'destroyed',
     destroy: () => device.destroy(),
@@ -119,6 +150,54 @@ export function demoEngine(): VoiceEngine {
         sendDigits: () => undefined,
         hangup: () => end(state === 'live' ? 'COMPLETED' : 'CANCELED'),
       }
+    },
+    // Demo: "Simulate incoming call" (development only) rings this browser with a fake caller
+    async listen(onIncoming) {
+      window.addEventListener('igani:demo-incoming', ((e: CustomEvent<{ callId: string; from: string }>) => {
+        let gone: (() => void) | null = null
+        // the same Igani ringtone Twilio plays for real calls
+        const ring = new Audio('/sounds/igani-ring.wav')
+        ring.loop = true
+        void ring.play().catch(() => undefined)
+        const stopRing = (): void => {
+          ring.pause()
+          ring.currentTime = 0
+        }
+        const timer = window.setTimeout(() => {
+          stopRing()
+          gone?.()
+        }, 20000) // caller gives up after 20 s
+        onIncoming({
+          callId: e.detail.callId,
+          from: e.detail.from,
+          accept: () => {
+            window.clearTimeout(timer)
+            stopRing()
+            void simulateCallProgress({ callId: e.detail.callId, status: 'IN_PROGRESS' })
+            const handlers: Record<string, (() => void)[]> = {}
+            return {
+              on: (event, cb) => void (handlers[event] = [...(handlers[event] ?? []), cb as () => void]),
+              mute: () => undefined,
+              sendDigits: () => undefined,
+              hangup: () => {
+                void simulateCallProgress({ callId: e.detail.callId, status: 'COMPLETED' })
+                ;(handlers.disconnect ?? []).forEach((h) => h())
+              },
+            }
+          },
+          reject: () => {
+            window.clearTimeout(timer)
+            stopRing()
+            void simulateCallProgress({ callId: e.detail.callId, status: 'NO_ANSWER' })
+          },
+          onGone: (cb) => {
+            gone = () => {
+              void simulateCallProgress({ callId: e.detail.callId, status: 'NO_ANSWER' })
+              cb()
+            }
+          },
+        })
+      }) as EventListener)
     },
     healthy: () => true,
     destroy: () => undefined,

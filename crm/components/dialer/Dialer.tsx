@@ -3,10 +3,10 @@
 import { ArrowUpRight, Check, ChevronDown, Delete, Grid3x3, History, Mic, MicOff, Search, Users, X } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { abandonCall, clearStuckCalls, recentCalls, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
+import { abandonCall, clearStuckCalls, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { cn } from '@/lib/utils'
 import { formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
-import { demoEngine, fetchVoiceToken, twilioEngine, voiceErrorText, type ActiveCall, type VoiceEngine } from './voice'
+import { demoEngine, fetchVoiceToken, twilioEngine, voiceErrorText, type ActiveCall, type IncomingCall, type VoiceEngine } from './voice'
 
 /* ───────────────────────── state ───────────────────────── */
 
@@ -21,6 +21,8 @@ interface Session {
   ended: 'answered' | 'no_answer' | 'busy' | 'canceled' | 'failed' | null
   /** The other phone rang (so "didn't pick up" rather than "didn't go through") */
   rang: boolean
+  /** who called whom */
+  direction: 'out' | 'in'
 }
 
 const OUTCOMES: { key: string; label: string }[] = [
@@ -120,6 +122,14 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   const [notice, setNotice] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [showPad, setShowPad] = useState(false)
+  const [incoming, setIncoming] = useState<{ call: IncomingCall; caller: IncomingCaller | null } | null>(null)
+  const listening = useRef<VoiceEngine | null>(null)
+  const sessionRef = useRef<Session | null>(null)
+  useEffect(() => {
+    sessionRef.current = session
+  }, [session])
+  /** bumped when the phone session is rebuilt, so the new one starts listening for calls again */
+  const [engineGen, setEngineGen] = useState(0)
   const engine = useRef<VoiceEngine | null>(null)
   const active = useRef<ActiveCall | null>(null)
   const busy = useRef(false)
@@ -147,6 +157,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
       /* already gone */
     }
     engine.current = null
+    setEngineGen((g) => g + 1)
   }, [])
 
   const getEngine = useCallback(async (): Promise<VoiceEngine> => {
@@ -158,6 +169,89 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     else throw new Error(t.error)
     return engine.current
   }, [resetEngine])
+
+  /** Someone is calling: ring here (Igani ringtone), alert the desktop if the tab isn't in front, show who it is. */
+  const onIncoming = useCallback((call: IncomingCall) => {
+    if (sessionRef.current && sessionRef.current.phase !== 'wrapup') {
+      call.reject() // already on a call: they go to voicemail
+      return
+    }
+    setIncoming({ call, caller: null })
+    setOpen(true)
+    let note: Notification | null = null
+    const title = document.title
+    const flash = window.setInterval(() => (document.title = document.title.startsWith('📞') ? title : '📞 Incoming call'), 1000)
+    const stopAlerts = (): void => {
+      window.clearInterval(flash)
+      document.title = title
+      note?.close()
+    }
+    call.onGone(() => {
+      stopAlerts()
+      setIncoming((cur) => {
+        if (cur?.call === call) setNotice(`Missed call from ${cur.caller?.lead?.name ?? cur.caller?.display ?? 'a caller'}`)
+        return cur?.call === call ? null : cur
+      })
+    })
+    ;(call as IncomingCall & { stopAlerts?: () => void }).stopAlerts = stopAlerts
+    void lookupIncoming(call.callId).then((r) => {
+      const caller = r.ok ? r.data : null
+      setIncoming((cur) => (cur?.call === call ? { call, caller } : cur))
+      if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && (document.hidden || !document.hasFocus())) {
+        note = new Notification('Incoming call', { body: caller?.lead ? `${caller.lead.name}${caller.lead.company ? ` · ${caller.lead.company}` : ''}\n${caller.display}` : (caller?.display ?? call.from), icon: '/android-chrome-192x192.png', tag: `call-${call.callId}`, requireInteraction: true })
+        note.onclick = () => {
+          window.focus()
+          note?.close()
+        }
+      }
+    })
+  }, [])
+
+  // Listen for incoming calls as soon as calling is available (every CRM tab rings)
+  useEffect(() => {
+    if (!enabled) return
+    let cancelled = false
+    void getEngine()
+      .then(async (eng) => {
+        if (cancelled || listening.current === eng) return
+        listening.current = eng
+        await eng.listen(onIncoming)
+      })
+      .catch(() => undefined) // no line / signed out: outgoing calls show the reason when tried
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, getEngine, onIncoming, engineGen])
+
+  const stopIncomingAlerts = (call: IncomingCall): void => (call as IncomingCall & { stopAlerts?: () => void }).stopAlerts?.()
+
+  const answer = (): void => {
+    if (!incoming) return
+    const { call, caller } = incoming
+    stopIncomingAlerts(call)
+    setIncoming(null)
+    const c = call.accept()
+    active.current = c
+    const display = caller?.display ?? formatPhone(call.from)
+    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ? { id: caller.lead.id, name: caller.lead.name } : null, record: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in' })
+    const finish = (): void => {
+      active.current = null
+      setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'answered' } : s))
+      setOpen(true)
+    }
+    c.on('disconnect', finish)
+    c.on('cancel', finish)
+    c.on('error', (e) => {
+      setError(voiceErrorText(e))
+      finish()
+    })
+  }
+  const decline = (): void => {
+    if (!incoming) return
+    stopIncomingAlerts(incoming.call)
+    incoming.call.reject()
+    setIncoming(null)
+  }
 
   const dial = useCallback(
     async (phone: string, lead?: { id: string; name: string } | null) => {
@@ -183,7 +277,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
           return
         }
         const call = res.data
-        setSession({ call, phase: 'connecting', answeredAt: null, endedAt: null, muted: false, ended: null, rang: false })
+        setSession({ call, phase: 'connecting', answeredAt: null, endedAt: null, muted: false, ended: null, rang: false, direction: 'out' })
         let eng: VoiceEngine
         try {
           eng = await getEngine()
@@ -258,7 +352,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
       {children}
       {enabled && (visible || live) ? (
         <>
-      <FloatingButton session={session} now={now} open={open} onClick={() => setOpen((o) => !o)} />
+      <FloatingButton session={session} now={now} open={open} incoming={incoming ? (incoming.caller?.lead?.name ?? incoming.caller?.display ?? formatPhone(incoming.call.from)) : null} onClick={() => setOpen((o) => !o)} />
       {open ? (
         <div
           role="dialog"
@@ -275,6 +369,19 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
                 <div className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
                   <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', demo ? 'bg-amber-400' : 'bg-emerald-400')} aria-hidden />
                   {demo ? 'Demo mode · no real calls' : number ? `Ready · ${formatPhone(number)}` : 'Ready'}
+                  {demo && !session && !incoming ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const r = await simulateIncomingCall()
+                        if (!r.ok) return setError(r.error)
+                        window.setTimeout(() => window.dispatchEvent(new CustomEvent('igani:demo-incoming', { detail: r.data })), 600)
+                      }}
+                      className="ms-1 shrink-0 text-amber-300 underline underline-offset-2 hover:text-amber-200"
+                    >
+                      Test ring
+                    </button>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -283,7 +390,9 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
             </button>
           </header>
 
-          {session && session.phase !== 'wrapup' ? (
+          {incoming ? (
+            <IncomingView caller={incoming.caller} from={incoming.call.from} onAccept={answer} onDecline={decline} />
+          ) : session && session.phase !== 'wrapup' ? (
             <InCall session={session} now={now} showPad={showPad} setShowPad={setShowPad} onMute={toggleMute} onHangup={hangup} onDigit={(d) => active.current?.sendDigits(d)} />
           ) : session?.phase === 'wrapup' ? (
             <WrapUp session={session} onDone={onWrapped} />
@@ -336,6 +445,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
                   <Check className="h-3.5 w-3.5" aria-hidden /> {notice}
                 </div>
               ) : null}
+              <AlertPrompt />
               <div className="min-h-0 flex-1 overflow-y-auto">
                 {tab === 'keypad' ? <Keypad value={typed} onChange={setTyped} onCall={(p, lead) => void dial(p, lead)} /> : null}
                 {tab === 'contacts' ? <Contacts onCall={(c) => void dial(c.phone, { id: c.id, name: c.name })} /> : null}
@@ -351,7 +461,18 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   )
 }
 
-function FloatingButton({ session, now, open, onClick }: { session: Session | null; now: number; open: boolean; onClick: () => void }): React.ReactElement {
+function FloatingButton({ session, now, open, incoming, onClick }: { session: Session | null; now: number; open: boolean; incoming: string | null; onClick: () => void }): React.ReactElement {
+  if (incoming && !open) {
+    return (
+      <button type="button" onClick={onClick} aria-label={`Incoming call from ${incoming}. Show the phone`} className="fixed bottom-5 right-5 z-[59] flex h-[52px] items-center gap-2.5 rounded-2xl border border-white/15 bg-[#16a34a] pl-3.5 pr-4 text-sm font-semibold text-white shadow-[0_12px_28px_-10px_rgba(0,0,0,0.8)]">
+        <span className="relative flex h-6 w-6 items-center justify-center">
+          <span className="absolute inset-0 animate-ping rounded-full bg-white/40 motion-reduce:hidden" />
+          <Handset className="relative h-4 w-4 animate-[wiggle_0.9s_ease-in-out_infinite] motion-reduce:animate-none" />
+        </span>
+        <span className="max-w-[10rem] truncate">Incoming · {incoming}</span>
+      </button>
+    )
+  }
   const live = session && session.phase !== 'wrapup'
   if (live) {
     const label = session.phase === 'live' && session.answeredAt ? fmt(now - session.answeredAt) : session.phase === 'ringing' ? 'Ringing…' : 'Calling…'
@@ -388,6 +509,63 @@ function FloatingButton({ session, now, open, onClick }: { session: Session | nu
   )
 }
 
+/* ───────────────────────── incoming ───────────────────────── */
+
+function IncomingView({ caller, from, onAccept, onDecline }: { caller: IncomingCaller | null; from: string; onAccept: () => void; onDecline: () => void }): React.ReactElement {
+  const name = caller?.lead?.name
+  const display = caller?.display ?? formatPhone(from)
+  return (
+    <div className="flex flex-1 flex-col items-center px-6 pb-8 pt-10" role="alertdialog" aria-label={`Incoming call from ${name ?? display}`}>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">Incoming call</div>
+      <div className="relative mt-8 flex h-28 w-28 items-center justify-center">
+        <span className="absolute -inset-4 animate-ping rounded-full border-2 border-emerald-400/40 motion-reduce:hidden" />
+        <span className="absolute -inset-4 rounded-full border border-[#2b4263]" />
+        <span className="relative flex h-28 w-28 items-center justify-center rounded-full border-2 border-[#3a5884] bg-[#1d3354] text-3xl font-semibold text-white">{initials(name, '#')}</span>
+      </div>
+      <div className="mt-7 text-center">
+        <div className="text-2xl font-semibold">{name ?? display}</div>
+        {caller?.lead?.company ? <div className="mt-0.5 text-sm text-muted-foreground">{caller.lead.company}</div> : null}
+        {name ? <div className="mt-1 text-sm tabular-nums text-muted-foreground">{display}</div> : <div className="mt-1 text-sm text-muted-foreground">Not in your contacts</div>}
+      </div>
+      <div className="flex-1" />
+      <div className="flex w-full items-center justify-center gap-14">
+        <div className="flex flex-col items-center gap-2">
+          <button type="button" onClick={onDecline} aria-label="Decline" className="flex h-16 w-16 items-center justify-center rounded-full border border-[#f87171]/40 bg-[#dc2626] text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.9)] transition hover:bg-[#c41f1f] active:scale-95">
+            <Handset className="h-7 w-7 rotate-[135deg]" />
+          </button>
+          <span className="text-xs text-muted-foreground">Decline</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <button type="button" onClick={onAccept} autoFocus aria-label="Accept" className="flex h-16 w-16 items-center justify-center rounded-full border border-[#22c55e]/40 bg-[#16a34a] text-white shadow-[0_10px_24px_-10px_rgba(22,163,74,0.9)] transition hover:bg-[#15913f] active:scale-95">
+            <Handset className="h-7 w-7 animate-[wiggle_0.9s_ease-in-out_infinite] motion-reduce:animate-none" />
+          </button>
+          <span className="text-xs text-muted-foreground">Accept</span>
+        </div>
+      </div>
+      <p className="mt-6 text-center text-[11px] text-muted-foreground">Declined or unanswered calls go to voicemail, with a “Call back” task for you.</p>
+    </div>
+  )
+}
+
+/** One-time prompt so incoming calls also show up as a desktop notification when the CRM tab isn't in front. */
+function AlertPrompt(): React.ReactElement | null {
+  const [state, setState] = useState<NotificationPermission | 'unsupported' | null>(null)
+  useEffect(() => {
+    // read on the client only (Notification doesn't exist on the server)
+    const id = window.setTimeout(() => setState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission), 0)
+    return () => window.clearTimeout(id)
+  }, [])
+  if (state !== 'default') return null
+  return (
+    <div className="mx-4 mt-2.5 flex shrink-0 items-center gap-2 rounded-lg border border-[#2b4263] bg-[#132540] py-1 pl-3 pr-1 text-[11px]">
+      <span className="flex-1 truncate text-muted-foreground">Desktop alerts for incoming calls</span>
+      <button type="button" onClick={() => void Notification.requestPermission().then(setState)} className="shrink-0 rounded-md bg-[#3b78db] px-2 py-1 font-semibold text-white hover:bg-[#4685e6]">
+        Turn on
+      </button>
+    </div>
+  )
+}
+
 /* ───────────────────────── keypad ───────────────────────── */
 
 const KEYS: [string, string][] = [
@@ -409,7 +587,7 @@ function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: s
   const timer = useRef<number | null>(null)
   const longFired = useRef(false)
   return (
-    <div className="grid grid-cols-3 gap-x-6 gap-y-3 px-9">
+    <div className="grid grid-cols-3 gap-x-6 gap-y-2.5 px-9">
       {KEYS.map(([k, sub]) => (
         <button
           key={k}
@@ -426,7 +604,7 @@ function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: s
           onPointerLeave={() => timer.current && window.clearTimeout(timer.current)}
           onClick={() => !longFired.current && onKey(k)}
           aria-label={k === '0' ? '0 (hold for +)' : k}
-          className={cn('mx-auto flex h-[62px] w-[62px] flex-col items-center justify-center rounded-full', KEY)}
+          className={cn('mx-auto flex h-[58px] w-[58px] flex-col items-center justify-center rounded-full', KEY)}
         >
           <span className="text-[26px] font-normal leading-none">{k}</span>
           <span className="mt-1 h-3 text-[9px] font-semibold tracking-[0.2em] text-[#8ea3c0]">{sub}</span>
@@ -470,7 +648,7 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
   }, [value, onChange, onCall, e164, match])
 
   return (
-    <div className="flex h-full flex-col justify-center gap-5 pb-6 pt-4">
+    <div className="flex h-full flex-col justify-center gap-4 pb-5 pt-3">
       <div className="px-6 text-center">
         <input
           ref={input}
@@ -641,6 +819,7 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }
         <span className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#3a5884] bg-[#1d3354] text-2xl font-semibold text-white">{initials(name, '#')}</span>
       </div>
       <div className="text-center">
+        {session.direction === 'in' ? <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Incoming call</div> : null}
         <div className="text-xl font-semibold">{name ?? call.display}</div>
         {name ? <div className="text-sm text-muted-foreground">{call.display}</div> : null}
         <div className={cn('mt-2 text-sm tabular-nums', phase === 'live' ? 'text-emerald-400' : 'text-muted-foreground')} aria-live="polite">

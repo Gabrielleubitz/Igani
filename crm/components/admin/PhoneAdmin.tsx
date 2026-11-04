@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { saveSettings } from '@/app/actions/admin'
-import { assignPhoneLine, removePhoneLine } from '@/app/actions/phone-lines'
+import { assignPhoneLine, removePhoneLine, restoreIncomingRouting, routeIncomingToCrm } from '@/app/actions/phone-lines'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DIAL_COUNTRIES, formatPhone, type DialCountry } from '@/lib/phone-numbers'
@@ -108,6 +108,53 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; con
         <Button onClick={save} disabled={pending || v.countries.length === 0 || (v.record && !v.consent.trim())}>
           {pending ? 'Saving…' : 'Save'}
         </Button>
+        {msg ? <span className={`text-xs ${msg.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{msg.text}</span> : null}
+      </div>
+    </div>
+  )
+}
+
+/** One Twilio number's incoming calls: ring in the CRM (for whoever owns the number) or keep going where they went. */
+export function IncomingRoutingRow({ sid, number, owner, routed, canUndo, elsewhere }: { sid: string; number: string; owner: string | null; routed: boolean; canUndo: boolean; elsewhere: string }): React.ReactElement {
+  const router = useRouter()
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [pending, start] = useTransition()
+  const run = (fn: () => Promise<{ ok: boolean; error?: string }>, okText: string): void =>
+    start(async () => {
+      setMsg(null)
+      const r = await fn()
+      setMsg(r.ok ? { ok: true, text: okText } : { ok: false, text: r.error ?? 'Failed' })
+      if (r.ok) router.refresh()
+    })
+  return (
+    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">
+      <div className="min-w-0 sm:w-56">
+        <div className="font-medium tabular-nums">{formatPhone(number)}</div>
+        <div className="truncate text-xs text-muted-foreground">{owner ? `Rings ${owner}` : 'Not assigned to anyone yet'}</div>
+      </div>
+      <div className="min-w-0 flex-1 text-sm">
+        {routed ? (
+          <span className="inline-flex items-center gap-1.5 text-emerald-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" aria-hidden /> Rings in the CRM
+          </span>
+        ) : (
+          <span className="block truncate text-muted-foreground" title={elsewhere}>
+            Goes to {elsewhere || 'nothing set'}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {routed ? (
+          canUndo ? (
+            <Button size="sm" variant="outline" disabled={pending} onClick={() => window.confirm('Send this number’s calls back to where they went before?') && run(() => restoreIncomingRouting(sid), 'Restored')}>
+              Undo
+            </Button>
+          ) : null
+        ) : (
+          <Button size="sm" disabled={pending || !owner} title={owner ? undefined : 'Assign the number to someone first'} onClick={() => window.confirm(`Incoming calls to ${formatPhone(number)} will ring in the CRM for ${owner}. Its current routing is saved so you can undo. Continue?`) && run(() => routeIncomingToCrm(sid), 'Done: calls now ring in the CRM')}>
+            Ring in the CRM
+          </Button>
+        )}
         {msg ? <span className={`text-xs ${msg.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{msg.text}</span> : null}
       </div>
     </div>

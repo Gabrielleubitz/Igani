@@ -25,6 +25,8 @@ d('dialer: webhooks and call state', async () => {
   const twimlRoute = await import('@/app/api/public/voice/twiml/route')
   const statusRoute = await import('@/app/api/public/voice/status/route')
   const recordingRoute = await import('@/app/api/public/voice/recording/route')
+  const incomingRoute = await import('@/app/api/public/voice/incoming/route')
+  const incomingDone = await import('@/app/api/public/voice/incoming-done/route')
   const prisma = new PrismaClient()
   let userId = ''
   let leadId = ''
@@ -47,7 +49,7 @@ d('dialer: webhooks and call state', async () => {
     twilioCall.value = null
     userId = (await prisma.user.create({ data: { email: 'rep@igani.co', name: 'Rita', role: 'SALES' } })).id
     await prisma.phoneLine.create({ data: { userId, number: '+972531111111' } })
-    leadId = (await prisma.lead.create({ data: { email: 'dana@x.com', firstName: 'Dana', phone: '050-123-4567' } })).id
+    leadId = (await prisma.lead.create({ data: { email: 'dana@x.com', firstName: 'Dana', phone: '050-123-4567', assignedToId: userId } })).id
   })
   afterAll(async () => {
     await prisma.call.deleteMany()
@@ -155,6 +157,45 @@ d('dialer: webhooks and call state', async () => {
     await prisma.phoneLine.deleteMany()
     await prisma.user.delete({ where: { id: userId } })
     expect(await prisma.call.findUniqueOrThrow({ where: { id: call.id } })).toMatchObject({ userId: null })
+  })
+
+  it('an incoming call rings the line owner’s browser, linked to the contact who called', async () => {
+    const res = await incomingRoute.POST(signed('incoming', { CallSid: 'CA' + 'b'.repeat(32), From: '+972501234567', To: '+972531111111' }))
+    const xml = await res.text()
+    expect(xml).toContain(`<Identity>u_${userId}</Identity>`)
+    expect(xml).toMatch(/<Parameter name="callId" value="[a-z0-9]+"\/>/)
+    expect(xml).toContain('timeout="25"')
+    const call = await prisma.call.findFirstOrThrow({ where: { direction: 'INBOUND' } })
+    expect(call).toMatchObject({ userId, leadId, fromNumber: '+972501234567', toNumber: '+972531111111', status: 'RINGING' })
+    // Twilio retrying the same webhook doesn't create a second call
+    await incomingRoute.POST(signed('incoming', { CallSid: 'CA' + 'b'.repeat(32), From: '+972501234567', To: '+972531111111' }))
+    expect(await prisma.call.count({ where: { direction: 'INBOUND' } })).toBe(1)
+    expect((await incomingRoute.POST(signed('incoming', { CallSid: 'CA' + 'c'.repeat(32), From: '+972501234567', To: '+972531111111' }, '', 'forged'))).status).toBe(403)
+  })
+
+  it('a number that isn’t an active line refuses; someone already on a call goes to voicemail', async () => {
+    expect(await (await incomingRoute.POST(signed('incoming', { CallSid: 'CA' + 'd'.repeat(32), From: '+972501234567', To: '+972539999999' }))).text()).toContain('not in service')
+    await newCall({ status: 'IN_PROGRESS', twilioCallSid: 'CA' + 'e'.repeat(32), answeredAt: new Date() })
+    const xml = await (await incomingRoute.POST(signed('incoming', { CallSid: 'CA' + 'f'.repeat(32), From: '+972501234567', To: '+972531111111' }))).text()
+    expect(xml).toContain('<Redirect')
+    expect(xml).not.toContain('<Client')
+  })
+
+  it('unanswered: voicemail and one “Call back” task; answered: completed', async () => {
+    await incomingRoute.POST(signed('incoming', { CallSid: 'CA' + '8'.repeat(32), From: '+972501234567', To: '+972531111111' }))
+    const call = await prisma.call.findFirstOrThrow({ where: { direction: 'INBOUND' } })
+    const missed = await (await incomingDone.POST(signed('incoming-done', { DialCallStatus: 'no-answer' }, `?callId=${call.id}`))).text()
+    expect(missed).toContain('<Record')
+    await incomingDone.POST(signed('incoming-done', { DialCallStatus: 'no-answer' }, `?callId=${call.id}`)) // retried
+    const tasks = await prisma.activityLog.findMany({ where: { action: 'task.created', metadata: { path: ['callId'], equals: call.id } } })
+    expect(tasks).toHaveLength(1)
+    expect(tasks[0]!.metadata).toMatchObject({ title: 'Call back Dana (missed call)', assigneeId: userId, auto: 'callback' })
+    expect((await prisma.call.findUniqueOrThrow({ where: { id: call.id } })).status).toBe('NO_ANSWER')
+
+    await incomingRoute.POST(signed('incoming', { CallSid: 'CA' + '9'.repeat(32), From: '+972501234567', To: '+972531111111' }))
+    const answered = await prisma.call.findFirstOrThrow({ where: { twilioCallSid: 'CA' + '9'.repeat(32) } })
+    expect(await (await incomingDone.POST(signed('incoming-done', { DialCallStatus: 'completed', DialCallDuration: '73' }, `?callId=${answered.id}`))).text()).toContain('<Hangup/>')
+    expect(await prisma.call.findUniqueOrThrow({ where: { id: answered.id } })).toMatchObject({ status: 'COMPLETED', durationSec: 73 })
   })
 
   it('stores the recording reference only from a signed callback', async () => {

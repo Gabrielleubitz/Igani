@@ -41,16 +41,18 @@ export function userIdFromClient(from: string | null | undefined): string | null
   return m ? m[1]! : null
 }
 
-/** Short-lived browser token: outgoing calls through our TwiML app only (incoming comes with step 2). */
+/** Short-lived browser token: outgoing calls through our TwiML app, and incoming calls to this user's browser. */
 export function voiceToken(c: TwilioConfig, userId: string, ttlSec = 3600): string {
   const { AccessToken } = twilio.jwt
   const token = new AccessToken(c.accountSid, c.apiKeySid, c.apiKeySecret, { identity: identityFor(userId), ttl: ttlSec })
-  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: c.appSid, incomingAllow: false }))
+  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: c.appSid, incomingAllow: true }))
   return token.toJwt()
 }
 
+export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'whisper' | 'incoming' | 'incoming-done' | 'voicemail-done'
+
 /** Public URL of one of our voice webhooks (what Twilio calls, and what its signature is computed over). */
-export function voiceUrl(path: 'twiml' | 'status' | 'dial-done' | 'recording' | 'whisper', callId?: string): string {
+export function voiceUrl(path: VoicePath, callId?: string): string {
   // appUrl() resolves the path itself (appUrl() alone ends in '/', which would make '//api' and break signatures)
   return `${appUrl(`/api/public/voice/${path}`)}${callId ? `?callId=${encodeURIComponent(callId)}` : ''}`
 }
@@ -59,7 +61,7 @@ export function voiceUrl(path: 'twiml' | 'status' | 'dial-done' | 'recording' | 
  * Reads a Twilio webhook (form-encoded) and checks its X-Twilio-Signature against our auth token and the exact public
  * URL. Returns the params, or null when it isn't genuinely from Twilio.
  */
-export async function readTwilioWebhook(req: Request, path: 'twiml' | 'status' | 'dial-done' | 'recording' | 'whisper'): Promise<Record<string, string> | null> {
+export async function readTwilioWebhook(req: Request, path: VoicePath): Promise<Record<string, string> | null> {
   const c = twilioConfig()
   if (!c) return null
   const signature = req.headers.get('x-twilio-signature')
@@ -73,10 +75,26 @@ export async function readTwilioWebhook(req: Request, path: 'twiml' | 'status' |
 }
 
 /** Numbers on the Twilio account, for assigning to teammates. */
-export async function listTwilioNumbers(c: TwilioConfig): Promise<{ sid: string; number: string; name: string; voice: boolean }[]> {
+export async function listTwilioNumbers(c: TwilioConfig): Promise<{ sid: string; number: string; name: string; voice: boolean; voiceUrl: string; voiceAppSid: string }[]> {
   const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
   const rows = await client.incomingPhoneNumbers.list({ limit: 200 })
-  return rows.map((r) => ({ sid: r.sid, number: r.phoneNumber, name: r.friendlyName, voice: r.capabilities?.voice !== false }))
+  return rows.map((r) => ({ sid: r.sid, number: r.phoneNumber, name: r.friendlyName, voice: r.capabilities?.voice !== false, voiceUrl: r.voiceUrl ?? '', voiceAppSid: r.voiceApplicationSid ?? '' }))
+}
+
+/** Where a number's incoming calls go: our CRM webhook, or something else (kept so it can be restored). */
+export const incomingUrl = (): string => voiceUrl('incoming')
+
+/** Point a number's incoming calls at the CRM, returning what it was set to before (for undo). */
+export async function routeNumberToCrm(c: TwilioConfig, numberSid: string): Promise<{ voiceUrl: string; voiceMethod: string; voiceAppSid: string }> {
+  const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
+  const before = await client.incomingPhoneNumbers(numberSid).fetch()
+  await client.incomingPhoneNumbers(numberSid).update({ voiceUrl: incomingUrl(), voiceMethod: 'POST', voiceApplicationSid: '' })
+  return { voiceUrl: before.voiceUrl ?? '', voiceMethod: before.voiceMethod ?? 'POST', voiceAppSid: before.voiceApplicationSid ?? '' }
+}
+
+export async function restoreNumberRouting(c: TwilioConfig, numberSid: string, prev: { voiceUrl: string; voiceMethod: string; voiceAppSid: string }): Promise<void> {
+  const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
+  await client.incomingPhoneNumbers(numberSid).update({ voiceUrl: prev.voiceUrl, voiceMethod: (prev.voiceMethod === 'GET' ? 'GET' : 'POST'), voiceApplicationSid: prev.voiceAppSid })
 }
 
 /** Twilio's own record of a call (the truth when one of our callbacks went missing). Null if it can't be read. */
