@@ -15,7 +15,14 @@ d('meeting tasks', async () => {
     await prisma.booking.deleteMany()
     await prisma.user.deleteMany()
   })
-  afterAll(async () => prisma.$disconnect())
+  afterAll(async () => {
+    // other DB test files share this database and run next: leave no bookings/users behind
+    await prisma.meetingSession.deleteMany()
+    await prisma.activityLog.deleteMany()
+    await prisma.booking.deleteMany()
+    await prisma.user.deleteMany()
+    await prisma.$disconnect()
+  })
 
   async function seed() {
     const a = await prisma.user.create({ data: { email: 'dana@igani.co', name: 'Dana Cohen', role: 'ADMIN' } })
@@ -25,6 +32,22 @@ d('meeting tasks', async () => {
     await prisma.meetingSession.create({ data: { bookingId: bk.id, meetingCode: 'abc-defg-hij', notesStatus: 'READY', fullText: 'Next steps\n- Gabriel: send the proposal\n- Review the deck\n' } })
     return { a, b, c, bk }
   }
+
+  it('a call booked with "Book meeting with team" gets its tasks too, for the teammates invited', async () => {
+    const host = await prisma.user.create({ data: { email: 'gabrielleubitz@igani.co', name: 'Gabriel', role: 'ADMIN' } })
+    const rita = await prisma.user.create({ data: { email: 'rep@igani.co', name: 'Rita Rep', role: 'SALES' } })
+    // booked from the CRM form: an ordinary invite tagged as a team meeting, teammates kept in the activity log
+    const bk = await prisma.booking.create({ data: { status: 'CONFIRMED', source: 'SALES_INVITE', meetUrl: 'https://meet.google.com/xyz-abcd-efg', startTime: new Date('2026-11-03T10:00:00Z'), endTime: new Date('2026-11-03T10:30:00Z'), title: 'Team call', guestName: 'Rita Rep', guestEmail: 'rep@igani.co', hostId: host.id, createdById: host.id } })
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: bk.id, action: 'booking.team_meeting', actorId: host.id } })
+    await prisma.activityLog.create({ data: { entityType: 'BOOKING', entityId: bk.id, action: 'booking.teammates', actorId: host.id, metadata: { userIds: [rita.id] } } })
+    // Gemini writes full Google names
+    await prisma.meetingSession.create({ data: { bookingId: bk.id, meetingCode: 'xyz-abcd-efg', notesStatus: 'READY', fullText: 'Next steps\n- [Gabriel Leubitz] Send the deck\n- [Rita Rep] Call Honey Ltd\n' } })
+    expect(await createMeetingTasks(bk.id)).toBe(2)
+    expect((await loadMeetingTasks(rita.id)).map((t) => t.title)).toEqual(['Call Honey Ltd']) // visible to her, not hidden
+    expect((await loadMeetingTasks(host.id)).map((t) => t.title)).toEqual(['Send the deck'])
+    expect(await createMeetingTasks(bk.id)).toBe(0) // only once
+    expect(await backfillMeetingTasks()).toBe(0)
+  })
 
   it('creates once, on the right people; a second call is a no-op', async () => {
     const { a, b, bk } = await seed()

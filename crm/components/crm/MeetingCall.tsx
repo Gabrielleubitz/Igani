@@ -209,7 +209,7 @@ export function TeamCallActions({ bookingId, canDelete }: { bookingId: string; c
   const pull = (): void =>
     start(async () => {
       const r = await recheckMeetingNotes(bookingId)
-      setMsg(r.ok ? (r.data.status === 'READY' ? 'Action items refreshed from the notes.' : 'No Gemini notes yet. We keep checking.') : r.error)
+      setMsg(r.ok ? (r.data.status !== 'READY' ? 'No Gemini notes yet. We keep checking.' : r.data.created ? `Added ${r.data.created} task${r.data.created === 1 ? '' : 's'} to teammates’ lists.` : 'Action items refreshed from the notes.') : r.error)
       if (r.ok) router.refresh()
     })
   const del = (): void => {

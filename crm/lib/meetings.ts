@@ -281,7 +281,11 @@ async function trackNotes(b: BookingRow, s: MeetingSession, api: MeetingApi, now
     })
     if (done.count === 1) {
       await logOnLead(b, 'meeting.notes', { docUrl: link.docUrl, summary: (summary ?? text).slice(0, 1200) })
-      await createMeetingTasks(b.id).catch((err: unknown) => console.error('[meetings] action-item tasks failed', err))
+      await createMeetingTasks(b.id).catch(async (err: unknown) => {
+        // Recorded so the team meeting page can say so (the hourly job and "Pull action items" retry it)
+        console.error('[meetings] action-item tasks failed', err)
+        await logActivity({ entityType: 'BOOKING', entityId: b.id, action: 'meeting.tasks_failed', metadata: { error: err instanceof Error ? err.message.slice(0, 300) : String(err).slice(0, 300) } }).catch(() => undefined)
+      })
     }
   } catch (err) {
     await prisma.meetingSession.update({

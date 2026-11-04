@@ -14,7 +14,7 @@ import { BookingError } from '@/lib/bookings'
 import { sendContactEmail } from '@/lib/email'
 import { assertCanSeeLead } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
-import { setMeetingTaskDone } from '@/lib/meeting-tasks'
+import { createMeetingTasks, setMeetingTaskDone } from '@/lib/meeting-tasks'
 import { loadTasks } from '@/lib/tasks'
 import { formatDateTime } from '@/lib/format'
 import { GmailNotConnectedError, hasGmailAccess } from '@/lib/google'
@@ -309,7 +309,7 @@ export async function tidyMeetingNotes(bookingId: string): Promise<ActionResult<
 }
 
 /** "Check again" on a call: look for its Gemini notes right now (also after we gave up). */
-export async function recheckMeetingNotes(bookingId: string): Promise<ActionResult<{ status: string | null }>> {
+export async function recheckMeetingNotes(bookingId: string): Promise<ActionResult<{ status: string | null; created: number }>> {
   try {
     const user = await requireUser()
     const id = z.string().cuid().parse(bookingId)
@@ -319,8 +319,11 @@ export async function recheckMeetingNotes(bookingId: string): Promise<ActionResu
     if (b.leadId) await assertCanSeeLead(b.leadId, user)
     else if (b.hostId !== user.id && user.role !== 'ADMIN') return { ok: false, error: 'Meeting not found.' }
     const s = await syncMeeting(id, { force: true })
+    // Team calls: if their tasks were never created (first attempt failed), create them now. Never twice.
+    const created = s?.notesStatus === 'READY' ? await createMeetingTasks(id) : 0 // does nothing for client calls or if already created
     refresh(b.leadId ?? undefined)
-    return { ok: true, data: { status: s?.notesStatus ?? null } }
+    revalidatePath('/sales/tasks')
+    return { ok: true, data: { status: s?.notesStatus ?? null, created } }
   } catch (err) {
     return toActionError(err)
   }

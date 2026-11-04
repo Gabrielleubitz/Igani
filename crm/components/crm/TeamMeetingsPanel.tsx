@@ -65,6 +65,21 @@ export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promi
     }
   }
   const itemsById = new Map((await Promise.all(rows.map((b) => (b.meeting ? getMeetingActionItems(b.id).catch(() => null) : null)))).flatMap((i) => (i ? [[i.bookingId, i] as const] : [])))
+  // Were this call's action items turned into tasks? (created once, when the notes were pulled)
+  const ids = rows.map((b) => b.id)
+  const [taskLogs, failLogs] = ids.length
+    ? await Promise.all([
+        prisma.activityLog.findMany({ where: { entityType: 'USER', action: 'task.created', OR: ids.map((id) => ({ metadata: { path: ['bookingId'], equals: id } })) }, select: { metadata: true } }),
+        prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'meeting.tasks_failed', entityId: { in: ids } }, orderBy: { createdAt: 'desc' }, select: { entityId: true, createdAt: true } }),
+      ])
+    : [[], []]
+  const tasksFor = new Map<string, number>()
+  for (const l of taskLogs) {
+    const id = (l.metadata as { bookingId?: string } | null)?.bookingId
+    if (id) tasksFor.set(id, (tasksFor.get(id) ?? 0) + 1)
+  }
+  const failedAt = new Map<string, Date>()
+  for (const l of failLogs) if (!failedAt.has(l.entityId)) failedAt.set(l.entityId, l.createdAt)
   return (
     <section className="space-y-4 border-t pt-6">
       <MeetingSyncTrigger everyMs={120_000} />
@@ -105,6 +120,20 @@ export async function TeamMeetingsPanel({ adminId }: { adminId: string }): Promi
                 ) : null}
               </div>
               {call ? <MeetingCall m={call} /> : null}
+              {b.meeting?.notesStatus === 'READY' && items?.team.length ? (
+                tasksFor.get(b.id) ? (
+                  <p className="mt-2 text-xs text-emerald-400">
+                    ✓ {tasksFor.get(b.id)} task{tasksFor.get(b.id) === 1 ? '' : 's'} added to teammates&apos; lists.{' '}
+                    <a href="/sales/tasks?scope=all" className="underline underline-offset-2">
+                      See tasks
+                    </a>
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs text-amber-400">
+                    {failedAt.has(b.id) ? `Adding the tasks failed on ${formatDateTime(failedAt.get(b.id)!, me.timeZone)}.` : 'These action items are not on anyone’s task list yet.'} Click “Pull action items” to add them (they are only ever added once).
+                  </p>
+                )
+              ) : null}
               <TeamCallActions bookingId={b.id} canDelete={b.source === 'TEAM_MEETING'} />
               {items && (items.team.length || items.followUps.length) ? (
                 <div className="mt-3 grid gap-3 border-t pt-3 text-sm sm:grid-cols-2">

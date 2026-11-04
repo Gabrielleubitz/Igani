@@ -19,6 +19,20 @@ describe('meeting action items -> tasks', () => {
     expect(matchPerson('dl', people)?.id).toBe('u3')
     expect(matchPerson('Dana', people)).toBeNull()
   })
+  it('matches the full Google name Gemini writes, even when the CRM only has a first name (and the reverse)', () => {
+    const team = [
+      { id: 'g', name: 'Gabriel', email: 'gabrielleubitz@igani.co' },
+      { id: 'r', name: 'Rita Rep', email: 'rep@igani.co' },
+    ]
+    expect(matchPerson('Gabriel Leubitz', team)?.id).toBe('g')
+    expect(matchPerson('gabrielleubitz', team)?.id).toBe('g')
+    expect(matchPerson('Rita', team)?.id).toBe('r')
+    expect(matchPerson('Rita Rep', team)?.id).toBe('r')
+    expect(matchPerson('Sarah Klein', team)).toBeNull()
+    // two Danas: an exact full name is still clear, a first name alone is not
+    expect(matchPerson('Dana Cohen', people)?.id).toBe('u1')
+    expect(matchPerson('Dana', people)).toBeNull()
+  })
   it('unmatched owners go to the host', () => {
     expect(planMeetingTasks(['Gabriel: ship it', 'Dana: call back', 'Review deck'], people, 'u1')).toEqual([
       { assigneeId: 'u2', title: 'Ship it' },

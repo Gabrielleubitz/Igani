@@ -20,21 +20,36 @@ export function splitAction(line: string): { who: string | null; title: string }
   return { who: null, title: line.trim() }
 }
 
-/** Picks the teammate a name refers to (full name, first name or email prefix); null if unknown/ambiguous. */
+const norm = (s: string | null | undefined): string => (s ?? '').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim()
+const first = (s: string): string => s.split(' ')[0] ?? ''
+
+/**
+ * Does `who` (as Gemini wrote it) refer to this teammate? Gemini uses the full Google name ("Gabriel Leubitz") while
+ * the CRM may only have "Gabriel", or the other way round, so: same full name, same first name, or the email prefix
+ * ("gabrielleubitz" / "gabriel.leubitz") with or without spaces.
+ */
+function refersTo(who: string, p: Person): boolean {
+  const w = norm(who)
+  const name = norm(p.name)
+  const local = norm((p.email ?? '').split('@')[0]).replace(/\s/g, '')
+  if (!w) return false
+  if (name && (name === w || first(name) === first(w))) return true
+  return !!local && (local === w.replace(/\s/g, '') || local === first(w))
+}
+
+/** Picks the teammate a name refers to; null if unknown or if it fits more than one teammate. */
 export function matchPerson(who: string | null, people: Person[]): Person | null {
   if (!who) return null
-  const w = who.toLowerCase()
-  const hits = people.filter((p) => {
-    const name = (p.name ?? '').toLowerCase()
-    return (name && (name === w || name.split(/\s+/)[0] === w)) || (p.email ?? '').toLowerCase().split('@')[0] === w
-  })
+  // An exact full name wins (two Danas on the team: "Dana Cohen" is still clear)
+  const exact = people.filter((p) => norm(p.name) && norm(p.name) === norm(who))
+  if (exact.length === 1) return exact[0]!
+  const hits = people.filter((p) => refersTo(who, p))
   return hits.length === 1 ? hits[0]! : null
 }
 
 /** True when a name fits more than one teammate (so we can't say it is an outsider). */
 function isAmbiguous(who: string, people: Person[]): boolean {
-  const w = who.toLowerCase()
-  return people.filter((p) => (p.name ?? '').toLowerCase().split(/\s+/)[0] === w || (p.email ?? '').toLowerCase().split('@')[0] === w).length > 1
+  return !matchPerson(who, people) && people.filter((p) => refersTo(who, p)).length > 1
 }
 
 /** Gemini footer lines that the notes parser sometimes picks up as "actions". */
@@ -77,10 +92,30 @@ export interface MeetingActionItems {
   followUps: FollowUp[]
 }
 
-/** Team members who were in the call (invited attendees + host). Only they get its tasks. */
-async function meetingAttendees(b: { hostId: string; attendees: unknown }): Promise<Person[]> {
+/**
+ * Team calls come two ways: imported from Google Calendar (source TEAM_MEETING) and booked here with
+ * "Book meeting with team" (source SALES_INVITE, tagged booking.team_meeting). Both get meeting tasks.
+ */
+async function teamCallIds(bookingIds: string[]): Promise<Set<string>> {
+  if (!bookingIds.length) return new Set()
+  const tagged = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.team_meeting', entityId: { in: bookingIds } }, select: { entityId: true } })
+  return new Set(tagged.map((t) => t.entityId))
+}
+
+/** Teammates invited with "Book meeting with team" (kept in the activity log), per booking. */
+async function invitedTeammates(bookingIds: string[]): Promise<Map<string, string[]>> {
+  const out = new Map<string, string[]>()
+  if (!bookingIds.length) return out
+  const logs = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.teammates', entityId: { in: bookingIds } }, orderBy: { createdAt: 'asc' }, select: { entityId: true, metadata: true } })
+  for (const l of logs) out.set(l.entityId, (((l.metadata as { userIds?: unknown } | null)?.userIds as unknown[] | undefined) ?? []).filter((i): i is string => typeof i === 'string'))
+  return out
+}
+
+/** Team members who were in the call: host, invited attendees (by email) and teammates added when booking. Only they get its tasks. */
+async function meetingAttendees(b: { id: string; hostId: string; attendees: unknown }): Promise<Person[]> {
   const emails = (Array.isArray(b.attendees) ? b.attendees : []).filter((e): e is string => typeof e === 'string').map((e) => e.toLowerCase())
-  return prisma.user.findMany({ where: { role: { not: null }, OR: [{ email: { in: emails, mode: 'insensitive' } }, { id: b.hostId }] }, select: { id: true, name: true, email: true } })
+  const added = (await invitedTeammates([b.id])).get(b.id) ?? []
+  return prisma.user.findMany({ where: { role: { not: null }, OR: [{ email: { in: emails, mode: 'insensitive' } }, { id: { in: [b.hostId, ...added] } }] }, select: { id: true, name: true, email: true } })
 }
 
 /** Fetches a call's action items grouped per team member, plus follow-ups for people who aren't on the team. */
@@ -105,7 +140,8 @@ export async function getMeetingActionItems(bookingId: string): Promise<MeetingA
 /** Turns a call's action items into tasks on each person's list. Safe to call twice: does nothing if already created. */
 export async function createMeetingTasks(bookingId: string): Promise<number> {
   const b = await prisma.booking.findUnique({ where: { id: bookingId }, include: { meeting: true, host: { select: { id: true, name: true, email: true } } } })
-  if (!b?.meeting || b.source !== 'TEAM_MEETING') return 0
+  if (!b?.meeting) return 0
+  if (b.source !== 'TEAM_MEETING' && !(await teamCallIds([b.id])).has(b.id)) return 0
   const dup = await prisma.activityLog.findFirst({ where: { entityType: 'USER', action: 'task.created', metadata: { path: ['bookingId'], equals: bookingId } }, select: { id: true } })
   if (dup) return 0
   const notes = organizedFor(b.meeting).notes
@@ -130,11 +166,12 @@ async function dropNonAttendeeTasks<T extends { entityId: string; action: string
   const created = logs.filter((l) => l.action === 'task.created').map((l) => ({ l, m: l.metadata as { taskId?: string; auto?: string; bookingId?: string } | null })).filter((x) => x.m?.auto === 'meeting' && x.m.bookingId && x.m.taskId)
   if (!created.length) return logs
   const bookings = await prisma.booking.findMany({ where: { id: { in: [...new Set(created.map((x) => x.m!.bookingId!))] } }, select: { id: true, hostId: true, attendees: true } })
+  const added = await invitedTeammates(bookings.map((b) => b.id))
   const emails = new Set<string>()
   for (const b of bookings) for (const e of Array.isArray(b.attendees) ? b.attendees : []) if (typeof e === 'string') emails.add(e.toLowerCase())
   const users = emails.size ? await prisma.user.findMany({ where: { email: { in: [...emails], mode: 'insensitive' } }, select: { id: true, email: true } }) : []
   const idByEmail = new Map(users.map((u) => [(u.email ?? '').toLowerCase(), u.id]))
-  const allowed = new Map(bookings.map((b) => [b.id, new Set([b.hostId, ...(Array.isArray(b.attendees) ? b.attendees : []).filter((e): e is string => typeof e === 'string').map((e) => idByEmail.get(e.toLowerCase())).filter((x): x is string => !!x)])]))
+  const allowed = new Map(bookings.map((b) => [b.id, new Set([b.hostId, ...(added.get(b.id) ?? []), ...(Array.isArray(b.attendees) ? b.attendees : []).filter((e): e is string => typeof e === 'string').map((e) => idByEmail.get(e.toLowerCase())).filter((x): x is string => !!x)])]))
   const hidden = new Set<string>()
   for (const { l, m } of created) {
     const ok = allowed.get(m!.bookingId!)
@@ -174,7 +211,11 @@ export async function setMeetingTaskDone(actor: { id: string; role: string }, ow
 
 /** Creates tasks for team meetings whose notes were pulled before this feature existed (no-op for ones already done). */
 export async function backfillMeetingTasks(): Promise<number> {
-  const rows = await prisma.booking.findMany({ where: { source: 'TEAM_MEETING', status: { not: 'CANCELLED' }, meeting: { is: { notesStatus: 'READY' } } }, select: { id: true } })
+  const tagged = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.team_meeting' }, select: { entityId: true } })
+  const rows = await prisma.booking.findMany({
+    where: { OR: [{ source: 'TEAM_MEETING' }, { id: { in: tagged.map((t) => t.entityId) } }], status: { not: 'CANCELLED' }, meeting: { is: { notesStatus: 'READY' } } },
+    select: { id: true },
+  })
   let n = 0
   for (const r of rows) n += await createMeetingTasks(r.id).catch(() => 0)
   return n
