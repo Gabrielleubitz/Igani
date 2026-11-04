@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { ContactEmail } from '@/emails/ContactEmail'
 import { BookingInvite } from '@/emails/BookingInvite'
 import { avatarEmailUrl, avatarPath, googlePhotoAtSize, isGooglePhoto } from '@/lib/avatar'
+import { pictureFromIdToken } from '@/lib/avatar-sync'
 
 const PHOTO = 'https://lh3.googleusercontent.com/a/ACg8ocK123abc=s96-c'
 
@@ -13,6 +14,17 @@ describe('profile photos', () => {
     for (const bad of ['http://lh3.googleusercontent.com/a/x', 'https://evil.com/a.png', 'https://lh3.googleusercontent.com.evil.com/x', null, '']) expect(isGooglePhoto(bad)).toBe(false)
     expect(googlePhotoAtSize(PHOTO)).toBe('https://lh3.googleusercontent.com/a/ACg8ocK123abc=s256-c')
     expect(googlePhotoAtSize('https://lh3.googleusercontent.com/a/xyz')).toBe('https://lh3.googleusercontent.com/a/xyz=s256-c')
+    // older Google photo links keep working
+    expect(googlePhotoAtSize('https://lh5.googleusercontent.com/-ab/AAAAAAAAAAI/AAAA/xyz/s96-c/photo.jpg')).toBe('https://lh5.googleusercontent.com/-ab/AAAAAAAAAAI/AAAA/xyz/s256-c/photo.jpg')
+    expect(googlePhotoAtSize('https://lh3.googleusercontent.com/-ab/x/photo.jpg')).toBe('https://lh3.googleusercontent.com/-ab/x/photo.jpg')
+  })
+
+  it('reads the photo from the stored sign-in token', () => {
+    const jwt = (claims: object): string => `h.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`
+    expect(pictureFromIdToken(jwt({ email: 'g@igani.co', picture: PHOTO }))).toBe(PHOTO)
+    expect(pictureFromIdToken(jwt({ picture: 'https://evil.com/x.png' }))).toBeNull()
+    expect(pictureFromIdToken('garbage')).toBeNull()
+    expect(pictureFromIdToken(null)).toBeNull()
   })
 
   it('links to our cached copy, versioned so a new photo shows at once', () => {

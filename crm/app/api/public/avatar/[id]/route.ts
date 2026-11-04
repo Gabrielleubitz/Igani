@@ -1,4 +1,5 @@
 import { googlePhotoAtSize, isGooglePhoto } from '@/lib/avatar'
+import { forgetDeadAvatar } from '@/lib/avatar-sync'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -13,6 +14,8 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
   const user = await prisma.user.findUnique({ where: { id }, select: { image: true, role: true } })
   if (!user?.role || !isGooglePhoto(user.image)) return new Response(null, { status: 404, headers: { 'cache-control': 'public, max-age=300' } })
   const res = await fetch(googlePhotoAtSize(user.image), { signal: AbortSignal.timeout(8000), cache: 'no-store' }).catch(() => null)
+  // Google says this photo is gone (not a network blip): forget it so a fresh one is fetched
+  if (res && (res.status === 404 || res.status === 410)) await forgetDeadAvatar(id, user.image).catch(() => undefined)
   const type = res?.headers.get('content-type') ?? ''
   if (!res?.ok || !/^image\/(jpeg|png|webp|gif)$/.test(type.split(';')[0]!.trim())) return new Response(null, { status: 404, headers: { 'cache-control': 'public, max-age=300' } })
   const body = await res.arrayBuffer()

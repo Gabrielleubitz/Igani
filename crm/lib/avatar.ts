@@ -23,8 +23,16 @@ export function isGooglePhoto(url: string | null | undefined): url is string {
 /** Ask Google for a crisp square of `size` px (their URLs end in "=s96-c" or similar). */
 export function googlePhotoAtSize(url: string, size = 256): string {
   const u = new URL(url)
-  if (/=[swhc0-9-]+$/.test(u.pathname)) u.pathname = u.pathname.replace(/=[swhc0-9-]+$/, `=s${size}-c`)
-  else u.pathname = `${u.pathname}=s${size}-c`
+  if (/=[swhcp0-9-]+$/.test(u.pathname)) {
+    // new style: …/a/ACg8oc…=s96-c
+    u.pathname = u.pathname.replace(/=[swhcp0-9-]+$/, `=s${size}-c`)
+  } else if (/\/s\d+(-c)?\//.test(u.pathname)) {
+    // older style: …/AAAA/s96-c/photo.jpg
+    u.pathname = u.pathname.replace(/\/s\d+(-c)?\//, `/s${size}-c/`)
+  } else if (!/\.[a-z]{3,4}$/i.test(u.pathname)) {
+    u.pathname = `${u.pathname}=s${size}-c`
+  }
+  // anything else is fetched as it is
   u.search = ''
   return u.toString()
 }
