@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
 import { ensureRecordingSid, fetchRecordingAudio } from './call-recording'
+import { PLAYBOOK, computeMetrics, scoreFromRubric, type TranscriptSeg } from './call-coaching'
 import { prisma } from './prisma'
 
 /**
@@ -25,7 +26,13 @@ const Clamp = (min: number, max: number) => z.number().transform((n) => Math.max
 const Str = (max: number) => z.string().transform((s) => s.trim().slice(0, max))
 const List = (max: number, len = 240) => z.array(Str(len)).transform((a) => a.filter(Boolean).slice(0, max))
 
+const Status = z.enum(['covered', 'partly', 'missing', 'not_expected'])
+const Qual = z.object({ status: Status, note: z.string().nullable().transform((x) => (x ? x.trim().slice(0, 240) || null : null)) })
+const Count = Clamp(0, 200)
+
+/** v2 (research-based coaching). Fields added in v2 are optional so analyses saved before still read. */
 export const CallAnalysis = z.object({
+  v: z.number().optional(),
   isSalesCall: z.boolean(),
   callType: Str(60),
   language: Str(20),
@@ -33,79 +40,106 @@ export const CallAnalysis = z.object({
   outcome: z.object({ label: Str(120), score: Clamp(0, 100) }),
   sentiment: z.enum(['positive', 'neutral', 'negative']),
   nextStep: z.string().nullable().transform((s) => (s ? s.trim().slice(0, 300) || null : null)),
+  nextStepQuality: z.enum(['specific', 'vague', 'none']).optional(),
   clientNeeds: List(8),
-  objections: z.array(z.object({ objection: Str(240), response: Str(300), handledWell: z.boolean() })).transform((a) => a.slice(0, 8)),
+  objections: z.array(z.object({ objection: Str(240), response: Str(300), handledWell: z.boolean(), better: z.string().nullable().optional() })).transform((a) => a.slice(0, 8).map((o) => ({ ...o, better: o.better ? o.better.trim().slice(0, 300) : null }))),
   actionItems: z.array(z.object({ owner: z.enum(['rep', 'client']), text: Str(240) })).transform((a) => a.filter((x) => x.text).slice(0, 10)),
   talkRatioRep: Clamp(0, 100),
   questionsAsked: Clamp(0, 500),
-  scores: z.object({ opening: Clamp(1, 5), discovery: Clamp(1, 5), value: Clamp(1, 5), objections: Clamp(1, 5), closing: Clamp(1, 5) }),
+  scores: z.object({ opening: Clamp(1, 5), discovery: Clamp(1, 5), listening: Clamp(1, 5).optional(), value: Clamp(1, 5), objections: Clamp(1, 5), closing: Clamp(1, 5) }),
   overallScore: Clamp(0, 100),
   strengths: List(5),
   improvements: List(5),
   moments: z
     .array(z.object({ at: z.number().nullable(), clientSaid: z.string().nullable(), repSaid: Str(400), better: Str(400), why: Str(300) }))
     .transform((a) => a.slice(0, 5).map((m) => ({ ...m, at: m.at == null ? null : Math.max(0, Math.round(m.at)), clientSaid: m.clientSaid ? m.clientSaid.trim().slice(0, 300) : null }))),
+  qualification: z.object({ pain: Qual, impact: Qual, decisionMaker: Qual, decisionProcess: Qual, budget: Qual, timeline: Qual, alternatives: Qual }).optional(),
+  spin: z.object({ situation: Count, problem: Count, implication: Count, needPayoff: Count }).optional(),
+  buyingSignals: List(6).optional(),
+  riskSignals: List(6).optional(),
+  nextQuestions: List(6).optional(),
+  focus: z.array(z.object({ skill: Str(80), why: Str(240), drill: Str(300), sayThis: Str(300) })).transform((a) => a.slice(0, 2)).optional(),
+  metrics: z
+    .object({
+      talkRatioRep: z.number(),
+      repSeconds: z.number(),
+      clientSeconds: z.number(),
+      longestMonologueSec: z.number(),
+      longestMonologueAt: z.number().nullable(),
+      longestClientStretchSec: z.number(),
+      repQuestions: z.number(),
+      questionSpread: z.tuple([z.number(), z.number(), z.number()]),
+      switchesPerMin: z.number(),
+    })
+    .optional(),
 })
 export type CallAnalysis = z.infer<typeof CallAnalysis>
 
-const SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['speakers', 'analysis'],
-  properties: {
-    speakers: { type: 'array', description: 'One entry per transcript segment, in order: who spoke it', items: { type: 'string', enum: ['rep', 'client'] } },
-    analysis: {
-      type: 'object',
-      additionalProperties: false,
-      required: ['isSalesCall', 'callType', 'language', 'summary', 'outcome', 'sentiment', 'nextStep', 'clientNeeds', 'objections', 'actionItems', 'talkRatioRep', 'questionsAsked', 'scores', 'overallScore', 'strengths', 'improvements', 'moments'],
-      properties: {
-        isSalesCall: { type: 'boolean' },
-        callType: { type: 'string' },
-        language: { type: 'string' },
-        summary: { type: 'string' },
-        outcome: { type: 'object', additionalProperties: false, required: ['label', 'score'], properties: { label: { type: 'string' }, score: { type: 'number' } } },
-        sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
-        nextStep: { type: ['string', 'null'] },
-        clientNeeds: { type: 'array', items: { type: 'string' } },
-        objections: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['objection', 'response', 'handledWell'], properties: { objection: { type: 'string' }, response: { type: 'string' }, handledWell: { type: 'boolean' } } } },
-        actionItems: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['owner', 'text'], properties: { owner: { type: 'string', enum: ['rep', 'client'] }, text: { type: 'string' } } } },
-        talkRatioRep: { type: 'number' },
-        questionsAsked: { type: 'number' },
-        scores: { type: 'object', additionalProperties: false, required: ['opening', 'discovery', 'value', 'objections', 'closing'], properties: { opening: { type: 'number' }, discovery: { type: 'number' }, value: { type: 'number' }, objections: { type: 'number' }, closing: { type: 'number' } } },
-        overallScore: { type: 'number' },
-        strengths: { type: 'array', items: { type: 'string' } },
-        improvements: { type: 'array', items: { type: 'string' } },
-        moments: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['at', 'clientSaid', 'repSaid', 'better', 'why'], properties: { at: { type: ['number', 'null'] }, clientSaid: { type: ['string', 'null'] }, repSaid: { type: 'string' }, better: { type: 'string' }, why: { type: 'string' } } } },
-      },
-    },
-  },
-} as const
+const STR = { type: 'string' } as const
+const STRS = { type: 'array', items: STR } as const
+const NUM = { type: 'number' } as const
+const QUAL = { type: 'object', additionalProperties: false, required: ['status', 'note'], properties: { status: { type: 'string', enum: ['covered', 'partly', 'missing', 'not_expected'] }, note: { type: ['string', 'null'] } } } as const
+const obj = (props: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(props), properties: props })
 
-const PROMPT = `You are a senior B2B sales coach reviewing a recorded phone call made by a salesperson ("rep") at Igani, a web
-development studio (websites, booking systems, e-commerce, dashboards, automations), with a prospect or client ("client").
+const SPEAKER_SCHEMA = obj({ speakers: { type: 'array', description: 'One entry per transcript segment, in order: who spoke it', items: { type: 'string', enum: ['rep', 'client'] } } })
 
-You get the call transcript as numbered segments with timestamps. Return JSON matching the schema:
-- speakers: for EVERY segment, in order, who said it ("rep" or "client"). The rep places the call and usually speaks first after the greeting.
-- analysis:
-  - isSalesCall: false for voicemail, wrong number, or non-sales chats (then keep the rest short and scores at 3).
-  - callType: e.g. "Discovery call", "Follow-up", "Closing call", "Voicemail".
-  - language: the language spoken (e.g. "Hebrew", "English").
-  - summary: 3–5 sentences, factual.
-  - outcome: label (e.g. "Meeting booked", "Proposal requested", "Not interested") and score 0–100 for how good the outcome is for the sale.
-  - nextStep: the concrete next step agreed, or null if none.
-  - clientNeeds: what the client needs or cares about, in their terms.
-  - objections: each objection, how the rep responded, and whether it was handled well.
-  - actionItems: things the rep or the client committed to.
-  - talkRatioRep: estimated % of talking done by the rep (0–100). Good discovery calls are around 40–55.
-  - questionsAsked: number of genuine questions the rep asked.
-  - scores (1–5 each): opening, discovery (needs uncovered), value (tied the offer to their needs), objections (handling), closing (secured a next step).
-  - overallScore: 0–100, consistent with the rubric.
-  - strengths / improvements: 2–4 each, specific to THIS call, not generic advice.
-  - moments: up to 3 coaching moments. Each: at (seconds, from the segment), clientSaid (what the client said just before, or null),
-    repSaid (the rep's actual words, quoted in the original language), better (what the rep could have said, in the same language),
-    why (one sentence, in English, why the better version works).
-Write everything in English except quotes, which stay in the call's language. Never invent facts that aren't in the transcript.
-No markdown, no em dashes.`
+const ANALYSIS_SCHEMA = obj({
+  isSalesCall: { type: 'boolean' },
+  callType: STR,
+  language: STR,
+  summary: STR,
+  outcome: obj({ label: STR, score: NUM }),
+  sentiment: { type: 'string', enum: ['positive', 'neutral', 'negative'] },
+  nextStep: { type: ['string', 'null'] },
+  nextStepQuality: { type: 'string', enum: ['specific', 'vague', 'none'] },
+  clientNeeds: STRS,
+  objections: { type: 'array', items: obj({ objection: STR, response: STR, handledWell: { type: 'boolean' }, better: { type: ['string', 'null'] } }) },
+  actionItems: { type: 'array', items: obj({ owner: { type: 'string', enum: ['rep', 'client'] }, text: STR }) },
+  scores: obj({ opening: NUM, discovery: NUM, listening: NUM, value: NUM, objections: NUM, closing: NUM }),
+  qualification: obj({ pain: QUAL, impact: QUAL, decisionMaker: QUAL, decisionProcess: QUAL, budget: QUAL, timeline: QUAL, alternatives: QUAL }),
+  spin: obj({ situation: NUM, problem: NUM, implication: NUM, needPayoff: NUM }),
+  buyingSignals: STRS,
+  riskSignals: STRS,
+  strengths: STRS,
+  improvements: STRS,
+  focus: { type: 'array', items: obj({ skill: STR, why: STR, drill: STR, sayThis: STR }) },
+  nextQuestions: STRS,
+  moments: { type: 'array', items: obj({ at: { type: ['number', 'null'] }, clientSaid: { type: ['string', 'null'] }, repSaid: STR, better: STR, why: STR }) },
+})
+
+const SPEAKER_PROMPT = `You label who is speaking in a phone call transcript between a salesperson at Igani ("rep") and a client
+("client"). Return one label per segment, in order. Use the content: the rep introduces Igani, asks about the client's
+business, explains what Igani builds, proposes next steps; the client describes their business, needs and concerns.
+Speakers alternate often but not always. Return JSON matching the schema.`
+
+const PROMPT = `You are a senior sales coach reviewing one recorded call by a salesperson ("rep") at Igani with a prospect or
+client ("client"). You get the transcript (segments with timestamps and speakers) and metrics MEASURED from the recording.
+Trust the measured metrics over your own impression; refer to them in your coaching where they matter.
+
+${PLAYBOOK}
+
+Return JSON matching the schema:
+- isSalesCall: false for voicemail, wrong numbers and non-sales chats (then keep everything short; scores 3).
+- callType: e.g. "Discovery call", "Proposal follow-up", "Closing call", "Support", "Voicemail".
+- language; summary (3–5 factual sentences); outcome (label + 0–100 for how good the result is for the sale).
+- nextStep: the agreed next step or null; nextStepQuality: specific (dated, who/what), vague, or none.
+- clientNeeds: in the client's terms. objections: each with the rep's response, handledWell (per LAER), and better: a
+  stronger response in the call's language (null if it was handled well).
+- actionItems: commitments by the rep or the client.
+- scores: 1–5 per the rubric (opening, discovery, listening, value, objections, closing). Be calibrated: 3 is solid,
+  5 is rare. Use the measured talk ratio, monologue and question metrics when scoring discovery and listening.
+- qualification: for each item, covered / partly / missing / not_expected (for this stage) and a short note on what
+  was learned or what's missing.
+- spin: how many of the rep's questions were situation, problem, implication and need-payoff questions.
+- buyingSignals / riskSignals: short, specific, from this call (empty if none).
+- strengths (2–4, first one = the best moment) and improvements (2–4): specific to this call, quote it.
+- focus: the 1–2 changes that would most improve the next call: skill, why it matters, a short drill, and sayThis:
+  the exact words to try next time, in the call's language.
+- nextQuestions: 3–5 questions the rep should ask next time (in the call's language) to fill the gaps.
+- moments: up to 3 coaching moments: at (seconds), clientSaid (or null), repSaid (verbatim), better (same language),
+  why (one sentence in English).
+Write in English except quotes and suggested lines, which stay in the call's language. Never invent facts. No markdown,
+no em dashes.`
 
 async function transcribe(audio: Blob, key: string): Promise<{ text: string; segments: { start: number; end: number; text: string }[] }> {
   const form = new FormData()
@@ -120,20 +154,19 @@ async function transcribe(audio: Blob, key: string): Promise<{ text: string; seg
   return { text: body.text ?? segments.map((s) => s.text).join(' '), segments }
 }
 
-export async function analyseSegments(segments: { start: number; end: number; text: string }[], key: string, context = 'Outgoing call: the rep called the client.'): Promise<{ speakers: ('rep' | 'client')[]; analysis: CallAnalysis }> {
+async function chat(key: string, system: string, user: string, name: string, schema: object, effort: 'low' | 'medium'): Promise<unknown> {
   const model = process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
-  const lines = segments.map((s, i) => `[${i}] (${Math.floor(s.start / 60)}:${String(Math.floor(s.start % 60)).padStart(2, '0')}, ${s.start.toFixed(0)}s) ${s.text}`).join('\n')
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify({
       model,
-      ...(reasoning ? { reasoning_effort: 'medium' } : { temperature: 0.2 }),
-      response_format: { type: 'json_schema', json_schema: { name: 'call_analysis', strict: true, schema: SCHEMA } },
+      ...(reasoning ? { reasoning_effort: effort } : { temperature: 0.2 }),
+      response_format: { type: 'json_schema', json_schema: { name, strict: true, schema } },
       messages: [
-        { role: 'system', content: PROMPT },
-        { role: 'user', content: `${context}\nTranscript (${segments.length} segments):\n${lines}` },
+        { role: 'system', content: system },
+        { role: 'user', content: user },
       ],
     }),
     signal: AbortSignal.timeout(240_000),
@@ -142,9 +175,30 @@ export async function analyseSegments(segments: { start: number; end: number; te
   const body = (await res.json()) as { choices?: { message?: { content?: string; refusal?: string } }[] }
   const msg = body.choices?.[0]?.message
   if (msg?.refusal) throw new Error('The analysis was declined.')
-  const raw = JSON.parse(msg?.content ?? '{}') as { speakers?: unknown; analysis?: unknown }
-  const analysis = CallAnalysis.parse(raw.analysis)
-  const speakers = Array.isArray(raw.speakers) ? raw.speakers.map((s) => (s === 'client' ? 'client' : 'rep') as 'rep' | 'client') : []
+  return JSON.parse(msg?.content ?? '{}')
+}
+
+const mmss = (sec: number): string => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
+
+/**
+ * Two passes: (1) who said each line, (2) metrics measured from the timestamps, then the coaching analysis with those
+ * numbers in hand. The score is the rubric average (consistent from call to call), not the model's own number.
+ */
+export async function analyseSegments(segments: { start: number; end: number; text: string }[], key: string, context = 'Outgoing call: the rep called the client.'): Promise<{ speakers: ('rep' | 'client')[]; analysis: CallAnalysis }> {
+  const numbered = segments.map((s, i) => `[${i}] (${mmss(s.start)}) ${s.text}`).join('\n')
+  const voicemail = /^Voicemail/.test(context)
+  const sp = voicemail ? { speakers: segments.map(() => 'client') } : ((await chat(key, SPEAKER_PROMPT, `${context}\n${numbered}`, 'speakers', SPEAKER_SCHEMA, 'low')) as { speakers?: unknown })
+  const speakers = segments.map((_, i) => ((Array.isArray(sp.speakers) ? sp.speakers[i] : null) === 'client' ? 'client' : 'rep') as 'rep' | 'client')
+  const lines: TranscriptSeg[] = segments.map((s, i) => ({ ...s, speaker: speakers[i]! }))
+  const metrics = computeMetrics(lines)
+  const measured = metrics
+    ? `Measured from the recording: rep talk ${metrics.talkRatioRep}% (rep ${mmss(metrics.repSeconds)}, client ${mmss(metrics.clientSeconds)}); longest rep monologue ${mmss(metrics.longestMonologueSec)}${metrics.longestMonologueAt != null ? ` at ${mmss(metrics.longestMonologueAt)}` : ''}; longest client stretch ${mmss(metrics.longestClientStretchSec)}; rep questions ${metrics.repQuestions} (by third of the call: ${metrics.questionSpread.join(' / ')}); speaker switches ${metrics.switchesPerMin}/min.`
+    : 'Metrics: not enough speech to measure.'
+  const transcript = lines.map((l, i) => `[${i}] (${mmss(l.start)}, ${Math.round(l.start)}s) ${l.speaker.toUpperCase()}: ${l.text}`).join('\n')
+  const raw = (await chat(key, PROMPT, `${context}\n${measured}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium')) as Record<string, unknown>
+  const analysis = CallAnalysis.parse({ ...raw, v: 2, talkRatioRep: metrics?.talkRatioRep ?? 50, questionsAsked: metrics?.repQuestions ?? 0, overallScore: 0, metrics: metrics ?? undefined })
+  // from the validated (1–5) scores, so one odd value from the model can't skew it
+  analysis.overallScore = scoreFromRubric(analysis.scores)
   return { speakers, analysis }
 }
 

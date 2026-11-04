@@ -1,4 +1,5 @@
-import { ArrowLeft, CheckCircle2, MessageCircleQuestion, Target, TriangleAlert, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, CircleDashed, Crosshair, MessageCircleQuestion, Target, TrendingUp, TriangleAlert, XCircle } from 'lucide-react'
+import { BENCHMARKS } from '@/lib/call-coaching'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Transcript } from '@/components/calls/CallView'
@@ -114,7 +115,8 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                       </div>
                       <div className="rounded-lg border p-3">
                         <div className="text-xs text-muted-foreground">Next step</div>
-                        <div className={cn('mt-0.5 font-medium', !a.nextStep && 'text-amber-300')}>{a.nextStep ?? 'None agreed'}</div>
+                        <div className={cn('mt-0.5 font-medium', (!a.nextStep || a.nextStepQuality === 'vague') && 'text-amber-300')}>{a.nextStep ?? 'None agreed'}</div>
+                        {a.nextStepQuality === 'vague' ? <div className="mt-1 text-[11px] text-amber-300/80">Vague: no date or owner. Book a specific time before hanging up.</div> : a.nextStepQuality === 'specific' ? <div className="mt-1 text-[11px] text-emerald-300/80">Specific and dated</div> : null}
                       </div>
                     </div>
                     {a.clientNeeds.length ? (
@@ -137,8 +139,8 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                     <CardTitle className="text-base">Scorecard</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 text-sm">
-                    {RUBRIC.map((r) => {
-                      const v = a.scores[r.key]
+                    {RUBRIC.filter((r) => a.scores[r.key] != null).map((r) => {
+                      const v = a.scores[r.key]!
                       return (
                         <div key={r.key} title={r.hint}>
                           <div className="flex justify-between text-xs">
@@ -153,26 +155,97 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                         </div>
                       )
                     })}
-                    <div className="grid grid-cols-2 gap-2 border-t pt-3">
-                      <div>
-                        <div className="text-xs text-muted-foreground">Talk / listen</div>
-                        <div className="mt-1 flex h-2 overflow-hidden rounded-full bg-amber-400/70" title={`${rep} ${a.talkRatioRep}% · client ${100 - a.talkRatioRep}%`}>
-                          <span className="h-full bg-primary" style={{ width: `${a.talkRatioRep}%` }} />
+                    {a.metrics ? (
+                      <div className="space-y-2.5 border-t pt-3">
+                        {(() => {
+                          const m = a.metrics
+                          const talkOk = m.talkRatioRep <= BENCHMARKS.talkRatio.max && (!/discovery/i.test(a.callType) || m.talkRatioRep <= BENCHMARKS.talkRatio.discoveryHigh + 5)
+                          const monoOk = m.longestMonologueSec <= BENCHMARKS.monologueSec
+                          const qOk = !/discovery/i.test(a.callType) || (m.repQuestions >= BENCHMARKS.questions.low - 3 && m.repQuestions <= BENCHMARKS.questions.high + 4)
+                          const row = (label: string, value: React.ReactNode, target: string, ok: boolean) => (
+                            <div className="flex items-baseline justify-between gap-2 text-xs">
+                              <span className="text-muted-foreground">{label}</span>
+                              <span className="text-end">
+                                <span className={cn('font-semibold tabular-nums', ok ? 'text-emerald-300' : 'text-amber-300')}>{value}</span>
+                                <span className="block text-[10px] text-muted-foreground">{target}</span>
+                              </span>
+                            </div>
+                          )
+                          return (
+                            <>
+                              <div>
+                                <div className="mb-1 flex h-2 overflow-hidden rounded-full bg-amber-400/70" title={`${rep} ${m.talkRatioRep}% · client ${100 - m.talkRatioRep}%`}>
+                                  <span className="h-full bg-primary" style={{ width: `${m.talkRatioRep}%` }} />
+                                </div>
+                                {row('Talk time', `${m.talkRatioRep}% ${rep} · ${100 - m.talkRatioRep}% client`, 'top reps ~43–46% on discovery, under 65% always', talkOk)}
+                              </div>
+                              {row('Longest monologue', <>{fmtDuration(m.longestMonologueSec)} {m.longestMonologueAt != null ? <SeekButton at={m.longestMonologueAt} label="play" /> : null}</>, 'keep it under 2:00', monoOk)}
+                              {row('Questions asked', `${m.repQuestions} · spread ${m.questionSpread.join(' / ')}`, '11–14 on discovery, spread over the call', qOk)}
+                              {row('Client’s longest stretch', fmtDuration(m.longestClientStretchSec), 'longer = they opened up', m.longestClientStretchSec >= 30)}
+                            </>
+                          )
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 border-t pt-3">
+                        <div>
+                          <div className="text-xs text-muted-foreground">Talk / listen</div>
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            {rep} {a.talkRatioRep}% · client {100 - a.talkRatioRep}%
+                          </div>
                         </div>
-                        <div className="mt-1 text-[11px] text-muted-foreground">
-                          {rep} {a.talkRatioRep}% · client {100 - a.talkRatioRep}%
+                        <div>
+                          <div className="text-xs text-muted-foreground">Questions asked</div>
+                          <div className="mt-0.5 flex items-center gap-1.5 text-lg font-semibold tabular-nums">
+                            <MessageCircleQuestion className="h-4 w-4 text-primary" aria-hidden /> {a.questionsAsked}
+                          </div>
                         </div>
                       </div>
-                      <div>
-                        <div className="text-xs text-muted-foreground">Questions asked</div>
-                        <div className="mt-0.5 flex items-center gap-1.5 text-lg font-semibold tabular-nums">
-                          <MessageCircleQuestion className="h-4 w-4 text-primary" aria-hidden /> {a.questionsAsked}
-                        </div>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
+
+              {a.focus?.length ? (
+                <Card className="border-primary/40">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Crosshair className="h-4 w-4 text-primary" aria-hidden /> Focus for the next call
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {a.focus.map((f) => (
+                      <div key={f.skill} className="space-y-2 rounded-xl border p-4 text-sm">
+                        <div className="font-semibold">{f.skill}</div>
+                        <p className="text-muted-foreground">{f.why}</p>
+                        <div className="rounded-lg bg-emerald-500/10 px-3 py-2 ring-1 ring-emerald-500/25">
+                          <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300">Say this</div>
+                          <p dir="auto" className="mt-0.5">
+                            {f.sayThis}
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-semibold text-foreground/80">Drill: </span>
+                          {f.drill}
+                        </p>
+                      </div>
+                    ))}
+                    {a.nextQuestions?.length ? (
+                      <div>
+                        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Ask next time</div>
+                        <ul className="space-y-1 text-sm">
+                          {a.nextQuestions.map((q) => (
+                            <li key={q} className="flex gap-2">
+                              <MessageCircleQuestion className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                              <span dir="auto">{q}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              ) : null}
 
               <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
                 <Card>
@@ -244,6 +317,107 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                 </Card>
               ) : null}
 
+              {a.qualification || a.buyingSignals?.length || a.riskSignals?.length ? (
+                <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
+                  {a.qualification ? (
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base">Qualification</CardTitle>
+                        <p className="text-xs text-muted-foreground">What we know about the deal after this call</p>
+                      </CardHeader>
+                      <CardContent>
+                        <ul className="space-y-2 text-sm">
+                          {(
+                            [
+                              ['pain', 'Pain'],
+                              ['impact', 'Impact / cost of the problem'],
+                              ['decisionMaker', 'Decision maker'],
+                              ['decisionProcess', 'Decision process'],
+                              ['budget', 'Budget'],
+                              ['timeline', 'Timeline'],
+                              ['alternatives', 'Alternatives'],
+                            ] as const
+                          ).map(([k, label]) => {
+                            const q = a.qualification![k]
+                            return (
+                              <li key={k} className="flex gap-2">
+                                {q.status === 'covered' ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-label="Covered" /> : q.status === 'partly' ? <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" aria-label="Partly" /> : q.status === 'missing' ? <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" aria-label="Missing" /> : <CircleDashed className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-label="Not expected yet" />}
+                                <span className="min-w-0">
+                                  <span className="font-medium">{label}</span>
+                                  {q.status === 'not_expected' ? <span className="text-xs text-muted-foreground"> · not expected yet</span> : null}
+                                  {q.note ? (
+                                    <span dir="auto" className="block text-xs text-muted-foreground">
+                                      {q.note}
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                        {a.spin ? (
+                          <div className="mt-4 border-t pt-3">
+                            <div className="mb-1.5 text-xs text-muted-foreground">Question types (SPIN)</div>
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                              {(
+                                [
+                                  ['situation', 'Situation'],
+                                  ['problem', 'Problem'],
+                                  ['implication', 'Implication'],
+                                  ['needPayoff', 'Need-payoff'],
+                                ] as const
+                              ).map(([k, label]) => (
+                                <div key={k} className="rounded-lg border px-1 py-2">
+                                  <div className={cn('text-lg font-semibold tabular-nums', (k === 'implication' || k === 'needPayoff') && a.spin![k] === 0 && 'text-amber-300')}>{a.spin![k]}</div>
+                                  <div className="text-[10px] text-muted-foreground">{label}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  ) : null}
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Signals</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 text-sm">
+                      <div>
+                        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-emerald-300">Buying signals</div>
+                        {a.buyingSignals?.length ? (
+                          <ul className="space-y-1.5">
+                            {a.buyingSignals.map((x) => (
+                              <li key={x} className="flex gap-2">
+                                <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+                                <span>{x}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-muted-foreground">None this call.</p>
+                        )}
+                      </div>
+                      <div>
+                        <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-rose-300">Risks</div>
+                        {a.riskSignals?.length ? (
+                          <ul className="space-y-1.5">
+                            {a.riskSignals.map((x) => (
+                              <li key={x} className="flex gap-2">
+                                <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" aria-hidden />
+                                <span>{x}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-muted-foreground">None this call.</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : null}
+
               <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
                 <Card>
                   <CardHeader className="pb-2">
@@ -262,6 +436,12 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                               <span dir="auto" className="block text-muted-foreground">
                                 {o.response}
                               </span>
+                              {o.better ? (
+                                <span dir="auto" className="mt-1.5 block rounded-lg bg-emerald-500/10 px-2.5 py-1.5 text-sm ring-1 ring-emerald-500/25">
+                                  <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300">Stronger: </span>
+                                  {o.better}
+                                </span>
+                              ) : null}
                             </span>
                           </li>
                         ))}

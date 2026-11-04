@@ -45,11 +45,16 @@ d('call analysis', async () => {
 
   beforeEach(async () => {
     openaiCalls = 0
-    vi.stubGlobal('fetch', async (url: string) => {
+    vi.stubGlobal('fetch', async (url: string, init?: unknown) => {
       openaiCalls++
       if (String(url).includes('/audio/transcriptions'))
         return Response.json({ text: 'שלום דנה', segments: [{ start: 0, end: 4, text: 'שלום דנה, מדבר גבריאל מאיגני' }, { start: 4, end: 9, text: 'היי, כן, חיכיתי' }, { start: 40, end: 45, text: 'It sounds expensive' }] })
-      if (String(url).includes('/chat/completions')) return Response.json({ choices: [{ message: { content: JSON.stringify({ speakers: ['rep', 'client', 'client'], analysis }) } }] })
+      if (String(url).includes('/chat/completions')) {
+        // pass 1 labels speakers, pass 2 analyses
+        const req = JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')) as { response_format?: { json_schema?: { name?: string } } }
+        const content = req.response_format?.json_schema?.name === 'speakers' ? { speakers: ['rep', 'client', 'client'] } : analysis
+        return Response.json({ choices: [{ message: { content: JSON.stringify(content) } }] })
+      }
       return new Response('unexpected', { status: 500 })
     })
     await prisma.call.deleteMany()
@@ -78,12 +83,16 @@ d('call analysis', async () => {
     const a = asAnalysis(row.analysis)!
     expect(a.outcome.score).toBe(100)
     expect(a.scores.closing).toBe(5)
+    // the score is the rubric average (4,5,4,3,5 → 4.2 → 80), not the model's own number
+    expect(a.overallScore).toBe(80)
+    // measured from the timestamps, not guessed: rep spoke 4 s of 13 s
+    expect(a.metrics).toMatchObject({ repSeconds: 4, clientSeconds: 10, talkRatioRep: 29 })
     expect(a.moments[0]!.at).toBe(42)
     expect((row.transcript as { speaker: string }[]).map((l) => l.speaker)).toEqual(['rep', 'client', 'client'])
     expect(await prisma.activityLog.count({ where: { entityId: leadId, action: 'call.analyzed' } })).toBe(1)
     // a second run (cron, webhook retry) does nothing
     expect(await analyzeCall(call.id)).toBe('busy')
-    expect(openaiCalls).toBe(2)
+    expect(openaiCalls).toBe(3) // transcription + speakers + analysis
   })
 
   it('skips recordings too short to coach, and gives up after three failed attempts', async () => {

@@ -1,9 +1,10 @@
 /** Shared bits for showing calls and their analysis. */
-export const RUBRIC: { key: 'opening' | 'discovery' | 'value' | 'objections' | 'closing'; label: string; hint: string }[] = [
+export const RUBRIC: { key: 'opening' | 'discovery' | 'listening' | 'value' | 'objections' | 'closing'; label: string; hint: string }[] = [
   { key: 'opening', label: 'Opening', hint: 'Set the tone and the reason for the call' },
-  { key: 'discovery', label: 'Discovery', hint: 'Uncovered needs with good questions' },
+  { key: 'discovery', label: 'Discovery', hint: 'Uncovered real pain, impact and urgency (SPIN depth)' },
+  { key: 'listening', label: 'Listening', hint: 'Paraphrased, followed up, built on what the client said' },
   { key: 'value', label: 'Value', hint: 'Tied what we build to their needs' },
-  { key: 'objections', label: 'Objections', hint: 'Handled concerns calmly and with substance' },
+  { key: 'objections', label: 'Objections', hint: 'Listened, acknowledged, explored, responded, checked it was resolved' },
   { key: 'closing', label: 'Next step', hint: 'Secured a clear, dated next step' },
 ]
 
