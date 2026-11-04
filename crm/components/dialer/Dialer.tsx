@@ -51,7 +51,8 @@ const PROSPECT_OUTCOMES: { key: string; label: string }[] = [
 
 interface DialerApi {
   dial: (phone: string, lead?: { id: string; name: string } | null, prospect?: ProspectRef | null) => void
-  open: () => void
+  /** open the phone, optionally on a tab (e.g. 'lists' for "Start calling") */
+  open: (tab?: 'keypad' | 'contacts' | 'lists' | 'recent') => void
 }
 const DialerContext = createContext<DialerApi | null>(null)
 /** null outside the dialer (no line, marketing users): callers fall back to a plain tel: link. */
@@ -340,7 +341,16 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     [getEngine, resetEngine, session],
   )
 
-  const api = useMemo<DialerApi>(() => ({ dial: (p, l, pr) => void dial(p, l, pr), open: () => setOpen(true) }), [dial])
+  const api = useMemo<DialerApi>(
+    () => ({
+      dial: (p, l, pr) => void dial(p, l, pr),
+      open: (t) => {
+        if (t) setTab(t)
+        setOpen(true)
+      },
+    }),
+    [dial],
+  )
 
   const hangup = (): void => {
     if (active.current) active.current.hangup()
