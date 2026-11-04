@@ -6,7 +6,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'What results can a new website deliver?',
-    a: 'A professional website builds credibility and attracts new clients; on previous projects, our clients\' web search traffic grew by around 20%. We can also integrate the systems your company relies on into a single back end that tracks new clients and automates routine work, supporting productivity and profitability. The scope is tailored to what matters most to your business.',
+    a: 'A professional website builds credibility and attracts new clients; on previous projects, our clients\' web search traffic grew by 17% on average. We can also integrate the systems your company relies on into a single back end that tracks new clients and automates routine work, supporting productivity and profitability. The scope is tailored to what matters most to your business.',
   },
   {
     q: 'How long does a project take?',
