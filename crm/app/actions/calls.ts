@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
-import { CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, leadForNumber } from '@/lib/calls'
+import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, leadForNumber, reconcileCall } from '@/lib/calls'
 import { leadName } from '@/lib/format'
 import { assertCanSeeLead, leadScope } from '@/lib/lead-access'
 import { dialProblem, formatPhone, toE164 } from '@/lib/phone-numbers'
@@ -42,10 +42,16 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     const problem = dialProblem(to, await getSetting('voice.countries'))
     if (problem || !to) throw new BookingError(problem ?? 'That doesn’t look like a phone number.', 'INVALID_STATE')
 
-    // One call at a time. Calls that never reached Twilio (closed tab, no microphone) are closed after 2 minutes.
-    await prisma.call.updateMany({ where: { userId: user.id, status: 'INITIATED', startedAt: { lt: new Date(Date.now() - 2 * 60_000) } }, data: { status: 'FAILED', endedAt: new Date() } })
-    const live = await prisma.call.findFirst({ where: { userId: user.id, status: { in: ['RINGING', 'IN_PROGRESS'] }, startedAt: { gt: new Date(Date.now() - 3 * 3600_000) } }, select: { id: true } })
-    if (live) throw new BookingError('You’re already on a call. Hang up first.', 'SLOT_TAKEN')
+    // One call at a time. Anything that still looks live is checked with Twilio first (a lost callback must
+    // never lock someone out), then the volume limits.
+    const open = await prisma.call.findMany({ where: { userId: user.id, status: { in: [...LIVE_STATUSES] } }, select: { id: true } })
+    for (const c of open) if (await reconcileCall(c.id)) throw new BookingError('You’re already on a call. Hang up first.', 'SLOT_TAKEN')
+    const [lastMinute, today] = await Promise.all([
+      prisma.call.count({ where: { userId: user.id, simulated: false, startedAt: { gt: new Date(Date.now() - 60_000) } } }),
+      prisma.call.count({ where: { userId: user.id, simulated: false, startedAt: { gt: new Date(Date.now() - 24 * 3600_000) } } }),
+    ])
+    if (lastMinute >= CALL_LIMITS.perMinute) throw new BookingError('That’s a lot of calls in a minute. Wait a moment and try again.', 'SLOT_TAKEN')
+    if (today >= CALL_LIMITS.perDay) throw new BookingError(`You’ve reached the limit of ${CALL_LIMITS.perDay} calls in 24 hours. Ask an admin if you need more.`, 'SLOT_TAKEN')
 
     let lead: StartedCall['lead'] = null
     if (data.leadId) {
@@ -61,6 +67,19 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
       select: { id: true },
     })
     return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, record, demo } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** The user's calls that still look live, checked with Twilio and closed if they're really over. */
+export async function clearStuckCalls(): Promise<ActionResult<{ stillLive: number }>> {
+  try {
+    const user = await requireUser([...callers])
+    const open = await prisma.call.findMany({ where: { userId: user.id, status: { in: [...LIVE_STATUSES] } }, select: { id: true } })
+    let stillLive = 0
+    for (const c of open) if (await reconcileCall(c.id)) stillLive++
+    return { ok: true, data: { stillLive } }
   } catch (err) {
     return toActionError(err)
   }
@@ -114,10 +133,12 @@ export async function saveCallWrapUp(input: z.input<typeof WrapInput>): Promise<
     const data = WrapInput.parse(input)
     const call = await prisma.call.findUnique({ where: { id: data.callId } })
     if (!call || call.userId !== user.id) throw new BookingError('Call not found.', 'NOT_FOUND')
-    // A wrap-up can come before Twilio's last callback; make sure the call reads as over
-    if (!FINAL_STATUSES.includes(call.status)) await advanceCall(call.id, { status: call.answeredAt ? 'COMPLETED' : 'CANCELED' })
+    // A wrap-up can come before Twilio's last callback. Twilio decides whether the call is over; a wrap-up can
+    // never end a call that is still connected (that would also lift the one-call-at-a-time rule).
+    if (!FINAL_STATUSES.includes(call.status)) await reconcileCall(call.id)
+    const firstWrapUp = !call.outcome
     await prisma.call.update({ where: { id: call.id }, data: { outcome: data.outcome, notes: data.notes || null } })
-    if (call.leadId) {
+    if (call.leadId && firstWrapUp) {
       await logActivity({ entityType: 'LEAD', entityId: call.leadId, actorId: user.id, action: 'call.outcome', metadata: { callId: call.id, outcome: data.outcome, notes: data.notes || null } })
       if (data.outcome === 'connected') {
         const moved = await prisma.lead.updateMany({ where: { id: call.leadId, status: 'NEW' }, data: { status: 'CONTACTED' } })

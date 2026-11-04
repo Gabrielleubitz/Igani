@@ -41,11 +41,11 @@ export function userIdFromClient(from: string | null | undefined): string | null
   return m ? m[1]! : null
 }
 
-/** Short-lived browser token: outgoing calls through our TwiML app (incoming is allowed for step 2). */
+/** Short-lived browser token: outgoing calls through our TwiML app only (incoming comes with step 2). */
 export function voiceToken(c: TwilioConfig, userId: string, ttlSec = 3600): string {
   const { AccessToken } = twilio.jwt
   const token = new AccessToken(c.accountSid, c.apiKeySid, c.apiKeySecret, { identity: identityFor(userId), ttl: ttlSec })
-  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: c.appSid, incomingAllow: true }))
+  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: c.appSid, incomingAllow: false }))
   return token.toJwt()
 }
 
@@ -77,6 +77,19 @@ export async function listTwilioNumbers(c: TwilioConfig): Promise<{ sid: string;
   const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
   const rows = await client.incomingPhoneNumbers.list({ limit: 200 })
   return rows.map((r) => ({ sid: r.sid, number: r.phoneNumber, name: r.friendlyName, voice: r.capabilities?.voice !== false }))
+}
+
+/** Twilio's own record of a call (the truth when one of our callbacks went missing). Null if it can't be read. */
+export async function fetchTwilioCall(c: TwilioConfig, callSid: string): Promise<{ status: string; duration: number | null } | null> {
+  if (!/^CA[0-9a-f]{32}$/i.test(callSid)) return null
+  try {
+    const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
+    const call = await client.calls(callSid).fetch()
+    const d = Number.parseInt(String(call.duration ?? ''), 10)
+    return { status: call.status, duration: Number.isFinite(d) ? d : null }
+  } catch {
+    return null
+  }
 }
 
 export const twiml = (): InstanceType<typeof twilio.twiml.VoiceResponse> => new twilio.twiml.VoiceResponse()

@@ -11,6 +11,7 @@ import { canOpenLeadTask, createAutoTask, loadTasks, taskOwner } from '@/lib/tas
 import { localHour } from '@/lib/time'
 import { syncAllMailboxes } from '@/lib/mail-sync'
 import { backfillMeetingTasks } from '@/lib/meeting-tasks'
+import { reconcileCall } from '@/lib/calls'
 import { syncDueMeetings } from '@/lib/meetings'
 import { syncCalendarChanges } from '@/lib/calendar-sync'
 
@@ -127,9 +128,10 @@ async function run(): Promise<Record<string, number>> {
     return { checked: 0, failed: 1 }
   })
   await backfillMeetingTasks().catch((err: unknown) => console.error('[cron] meeting task backfill failed', err))
-  // Dialer: calls Twilio never picked up (closed tab) and calls whose last callback never came are closed
-  await prisma.call.updateMany({ where: { status: 'INITIATED', startedAt: { lt: new Date(Date.now() - 10 * 60_000) } }, data: { status: 'FAILED', endedAt: new Date() } }).catch((err: unknown) => console.error('[cron] stale call sweep failed', err))
-  await prisma.call.updateMany({ where: { status: { in: ['RINGING', 'IN_PROGRESS'] }, startedAt: { lt: new Date(Date.now() - 4 * 3600_000) } }, data: { status: 'COMPLETED', endedAt: new Date() } }).catch((err: unknown) => console.error('[cron] stale call sweep failed', err))
+  // Dialer: calls that still look live after 15 minutes are checked with Twilio and closed if they're over
+  // (a lost callback must not leave anyone "on a call")
+  const stuck = await prisma.call.findMany({ where: { status: { in: ['INITIATED', 'RINGING', 'IN_PROGRESS'] }, startedAt: { lt: new Date(Date.now() - 15 * 60_000) } }, select: { id: true }, take: 100 })
+  for (const c of stuck) await reconcileCall(c.id).catch((err: unknown) => console.error('[cron] call reconcile failed', c.id, err))
   const followUps = await createFollowUps()
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()

@@ -9,8 +9,20 @@ export const DIAL_COUNTRIES = {
 } as const
 export type DialCountry = keyof typeof DIAL_COUNTRIES
 
-/** Premium-rate and other numbers that cost a fortune or are commonly abused for toll fraud. */
-const BLOCKED_PREFIXES = ['+1900', '+1976', '+9721900', '+9721919', '+9721599']
+/**
+ * +1 is shared by the US, Canada and ~20 Caribbean / Atlantic countries — the classic premium-rate and "one ring"
+ * fraud destinations. "US / Canada" means only US and Canadian area codes: these +1 area codes are refused.
+ */
+const NANP_ABROAD = new Set(['242', '246', '264', '268', '284', '345', '441', '473', '649', '658', '664', '721', '758', '767', '784', '809', '829', '849', '868', '869', '876'])
+/** US special-rate and non-geographic codes (premium, personal / machine-to-machine, invalid service codes) */
+const NANP_SPECIAL = new Set(['900', '976', '500', '521', '522', '523', '524', '525', '526', '527', '528', '529', '533', '544', '566', '577', '588', '700', '710', '950', '958', '959'])
+
+/**
+ * Israel allowlist (after +972): 5x mobiles, 7x VoIP, 2/3/4/8/9 landlines and 1-800 toll-free.
+ * Everything else (1-900 / 1-599 premium, 1-700 shared-cost, 1-212 lines, short codes) is refused.
+ */
+const IL_ALLOWED = [/^5\d{8}$/, /^7[2-9]\d{7}$/, /^[23489]\d{7}$/, /^1800\d{6}$/]
+
 
 /** "+972 50-123 4567", "050 1234567", "00972501234567", "(212) 555-0100" → E.164, or null if it isn't a phone number. */
 export function normalizePhone(input: string, defaultCountry: DialCountry = 'IL'): string | null {
@@ -54,11 +66,20 @@ export function countryOf(e164: string): DialCountry | null {
 /** Why we won't dial this number, or null when it's fine. */
 export function dialProblem(e164: string | null, allowed: readonly DialCountry[]): string | null {
   if (!e164) return 'That doesn’t look like a phone number.'
-  if (BLOCKED_PREFIXES.some((p) => e164.startsWith(p))) return 'Premium-rate numbers can’t be called from the CRM.'
   const c = countryOf(e164)
   if (!c || !allowed.includes(c)) return `Calls to this country aren’t enabled (allowed: ${allowed.map((x) => DIAL_COUNTRIES[x].label).join(', ')}).`
-  if (c === 'IL' && !/^\+972\d{8,9}$/.test(e164)) return 'That Israeli number has the wrong length.'
-  if (c === 'US' && !/^\+1[2-9]\d{9}$/.test(e164)) return 'That US number has the wrong length.'
+  if (c === 'IL') {
+    const rest = e164.slice(4)
+    if (/^1(9|5|7|2)/.test(rest)) return 'Premium-rate and special numbers can’t be called from the CRM.'
+    if (!IL_ALLOWED.some((r) => r.test(rest))) return 'That isn’t a valid Israeli number.'
+    return null
+  }
+  // US / Canada: NXX-NXX-XXXX, no N11 service codes, no Caribbean or premium area codes
+  const m = e164.match(/^\+1([2-9]\d{2})([2-9]\d{2})\d{4}$/)
+  if (!m) return 'That US number has the wrong length or format.'
+  const [, area, exchange] = m as unknown as [string, string, string]
+  if (NANP_ABROAD.has(area)) return 'That +1 number is in the Caribbean, not the US or Canada. Those calls aren’t enabled.'
+  if (NANP_SPECIAL.has(area) || /^\d11$/.test(area) || /^\d11$/.test(exchange)) return 'Premium-rate and special numbers can’t be called from the CRM.'
   return null
 }
 

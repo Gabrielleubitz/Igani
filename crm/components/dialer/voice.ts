@@ -15,6 +15,8 @@ export interface ActiveCall {
 export interface VoiceEngine {
   kind: 'twilio' | 'demo'
   connect(callId: string, to: string): Promise<ActiveCall>
+  /** false once the session can't be trusted (token refresh failed, device error): build a new one */
+  healthy(): boolean
   destroy(): void
 }
 
@@ -41,9 +43,18 @@ export async function twilioEngine(token: string): Promise<VoiceEngine> {
   const { Device } = await import('@twilio/voice-sdk')
   // SDK 2.x: ringing state is always on and Opus is preferred by default
   const device = new Device(token, { closeProtection: 'You’re on a call. Leave and hang up?', logLevel: 'error' })
+  let ok = true
   device.on('tokenWillExpire', async () => {
-    const t = await fetchVoiceToken()
-    if ('token' in t) device.updateToken(t.token)
+    try {
+      const t = await fetchVoiceToken()
+      if ('token' in t) device.updateToken(t.token)
+      else ok = false // signed out or line removed: the next call asks again and shows why
+    } catch {
+      ok = false
+    }
+  })
+  device.on('error', () => {
+    ok = false
   })
   return {
     kind: 'twilio',
@@ -58,6 +69,7 @@ export async function twilioEngine(token: string): Promise<VoiceEngine> {
         hangup: () => call.disconnect(),
       }
     },
+    healthy: () => ok && device.state !== 'destroyed',
     destroy: () => device.destroy(),
   }
 }
@@ -108,6 +120,7 @@ export function demoEngine(): VoiceEngine {
         hangup: () => end(state === 'live' ? 'COMPLETED' : 'CANCELED'),
       }
     },
+    healthy: () => true,
     destroy: () => undefined,
   }
 }

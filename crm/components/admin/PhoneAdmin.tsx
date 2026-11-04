@@ -83,8 +83,10 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; con
       </label>
       <label className="block space-y-1">
         <span className="font-medium">Message the other side hears first</span>
-        <Input value={v.consent} onChange={(e) => setV({ ...v, consent: e.target.value })} maxLength={300} disabled={!v.record} placeholder="Leave empty for no message" />
-        <span className="block text-xs text-muted-foreground">Played as they answer, before you’re connected. Many places require telling people a call is recorded.</span>
+        <Input value={v.consent} onChange={(e) => setV({ ...v, consent: e.target.value })} maxLength={300} disabled={!v.record} placeholder="e.g. This call may be recorded for quality and training." />
+        <span className={`block text-xs ${v.record && !v.consent.trim() ? 'text-amber-400' : 'text-muted-foreground'}`}>
+          {v.record && !v.consent.trim() ? 'Required while recording is on: people must be told a call is recorded.' : 'Played as they answer, before you’re connected. Required by law in many places (incl. several US states).'}
+        </span>
       </label>
       <fieldset className="space-y-1">
         <legend className="font-medium">Countries you can call</legend>
@@ -103,7 +105,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; con
         <span className="block text-xs text-muted-foreground">Premium-rate numbers are always blocked. Twilio’s own geo permissions must allow these countries too.</span>
       </fieldset>
       <div className="flex items-center gap-3">
-        <Button onClick={save} disabled={pending || v.countries.length === 0}>
+        <Button onClick={save} disabled={pending || v.countries.length === 0 || (v.record && !v.consent.trim())}>
           {pending ? 'Saving…' : 'Save'}
         </Button>
         {msg ? <span className={`text-xs ${msg.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{msg.text}</span> : null}

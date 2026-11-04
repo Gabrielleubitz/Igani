@@ -27,10 +27,25 @@ describe('phone numbers', () => {
     expect(dialProblem('+12125550100', both)).toBeNull()
     expect(dialProblem('+12125550100', ['IL'])).toMatch(/aren’t enabled/)
     expect(dialProblem('+447911123456', both)).toMatch(/aren’t enabled/)
-    expect(dialProblem('+19005551234', both)).toMatch(/Premium/)
-    expect(dialProblem('+97219001234', both)).toMatch(/Premium/)
-    expect(dialProblem('+9725012', both)).toMatch(/wrong length/)
+    expect(dialProblem('+19005551234', both)).toMatch(/special/)
+    expect(dialProblem('+97219001234', both)).toMatch(/special/)
+    expect(dialProblem('+9725012', both)).toMatch(/valid Israeli/)
     expect(dialProblem(null, both)).toMatch(/phone number/)
+    // +1 is shared with the Caribbean: only real US / Canada area codes
+    expect(dialProblem('+18765551234', both)).toMatch(/Caribbean/) // Jamaica
+    expect(dialProblem('+18095551234', both)).toMatch(/Caribbean/) // Dominican Republic
+    expect(dialProblem('+12845551234', both)).toMatch(/Caribbean/) // BVI
+    expect(dialProblem('+14165551234', both)).toBeNull() // Toronto
+    expect(dialProblem('+18005551234', both)).toBeNull() // toll-free
+    expect(dialProblem('+12124115555', both)).toMatch(/special/) // N11 exchange
+    expect(dialProblem('+15005551234', both)).toMatch(/special/)
+    // Israel: allowlist
+    expect(dialProblem('+97231234567', both)).toBeNull() // Tel Aviv landline
+    expect(dialProblem('+972721234567', both)).toBeNull() // VoIP
+    expect(dialProblem('+9721800123456', both)).toBeNull() // toll-free
+    expect(dialProblem('+9721700123456', both)).toMatch(/special/)
+    expect(dialProblem('+9721599123456', both)).toMatch(/special/)
+    expect(dialProblem('+97261234567', both)).toMatch(/valid Israeli/)
   })
 
   it('formats for display', () => {

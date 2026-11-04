@@ -1,4 +1,4 @@
-import { getSetting } from '@/lib/settings'
+import { SETTING_DEFAULTS, getSetting } from '@/lib/settings'
 import { readTwilioWebhook, twiml } from '@/lib/twilio'
 
 export const dynamic = 'force-dynamic'
@@ -8,7 +8,6 @@ export async function POST(req: Request): Promise<Response> {
   const p = await readTwilioWebhook(req, 'whisper')
   if (!p) return new Response('Forbidden', { status: 403 })
   const r = twiml()
-  const consent = (await getSetting('voice.record')) ? await getSetting('voice.consentMessage') : ''
-  if (consent) r.say(consent)
+  if (await getSetting('voice.record')) r.say((await getSetting('voice.consentMessage')).trim() || SETTING_DEFAULTS['voice.consentMessage'])
   return new Response(r.toString(), { headers: { 'content-type': 'text/xml; charset=utf-8' } })
 }

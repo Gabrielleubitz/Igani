@@ -4,6 +4,7 @@ import { logActivity } from './audit'
 import { leadName } from './format'
 import { toE164 } from './phone-numbers'
 import { prisma } from './prisma'
+import { fetchTwilioCall, twilioConfig } from './twilio'
 
 /** Calls that are over. A call only ever moves forward, and never out of one of these. */
 export const FINAL_STATUSES: readonly CallStatus[] = ['COMPLETED', 'BUSY', 'NO_ANSWER', 'FAILED', 'CANCELED']
@@ -95,3 +96,45 @@ export async function leadForNumber(e164: string, where: Prisma.LeadWhereInput):
   const hit = candidates.find((l) => l.phone && toE164(l.phone) === e164)
   return hit ? { id: hit.id, name: leadName(hit) } : null
 }
+
+/** Per person: calls a minute and a day (stops a stolen session or a script from running up the phone bill). */
+export const CALL_LIMITS = { perMinute: 6, perDay: 300 }
+
+/**
+ * If a call still looks live in the CRM, ask Twilio whether it really is (a final callback can get lost). Closes it
+ * with Twilio's own result when it's over. Without Twilio's answer, a call is only closed once it's clearly stale.
+ * Returns true when the call is still live.
+ */
+export async function reconcileCall(callId: string): Promise<boolean> {
+  const call = await prisma.call.findUnique({ where: { id: callId } })
+  if (!call || FINAL_STATUSES.includes(call.status)) return false
+  const ageMin = (Date.now() - call.startedAt.getTime()) / 60_000
+  const c = twilioConfig()
+  if (call.simulated || !call.twilioCallSid) {
+    // never reached Twilio (or a demo call): over once it's a few minutes old
+    // (a demo call can't outlive its page, so one a minute old with no word from the browser is over)
+    if (ageMin > (call.simulated ? 1 : 2)) {
+      await advanceCall(call.id, { status: call.answeredAt ? 'COMPLETED' : call.status === 'INITIATED' ? 'FAILED' : 'NO_ANSWER' })
+      return false
+    }
+    return true
+  }
+  if (c) {
+    const leg = await fetchTwilioCall(c, call.childCallSid ?? call.twilioCallSid)
+    const status = leg ? fromTwilioStatus(leg.status) : null
+    if (status && FINAL_STATUSES.includes(status)) {
+      await advanceCall(call.id, { status: status === 'COMPLETED' && !call.answeredAt && call.childCallSid === null ? 'CANCELED' : status, durationSec: leg?.duration ?? null })
+      return false
+    }
+    if (status) return true
+  }
+  // Twilio couldn't be asked: calls can't run past the time limit, so anything older is over
+  if (ageMin > MAX_CALL_MIN + 5) {
+    await advanceCall(call.id, { status: call.answeredAt ? 'COMPLETED' : 'NO_ANSWER' })
+    return false
+  }
+  return true
+}
+
+/** Longest a single call may run (Twilio hangs up at this point). */
+export const MAX_CALL_MIN = 90

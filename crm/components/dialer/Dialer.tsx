@@ -1,9 +1,9 @@
 'use client'
 
 import { ArrowUpRight, Check, Delete, Grid3x3, History, Mic, MicOff, Phone, PhoneOff, Search, Users, X } from 'lucide-react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { abandonCall, recentCalls, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
+import { abandonCall, clearStuckCalls, recentCalls, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { cn } from '@/lib/utils'
 import { formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
 import { demoEngine, fetchVoiceToken, twilioEngine, voiceErrorText, type ActiveCall, type VoiceEngine } from './voice'
@@ -18,7 +18,9 @@ interface Session {
   endedAt: number | null
   muted: boolean
   /** How it ended, for the wrap-up's suggestion */
-  ended: 'answered' | 'no_answer' | 'busy' | 'canceled' | null
+  ended: 'answered' | 'no_answer' | 'busy' | 'canceled' | 'failed' | null
+  /** The other phone rang (so "didn't pick up" rather than "didn't go through") */
+  rang: boolean
 }
 
 const OUTCOMES: { key: string; label: string }[] = [
@@ -53,13 +55,46 @@ const initials = (name: string | undefined, fallback: string): string =>
     .map((x) => x[0]!.toUpperCase())
     .join('') || fallback
 
+/* ───────────────────────── root ───────────────────────── */
+
+const CRM_PATH = /^\/(sales|admin|marketing)(\/|$)/
+
+/**
+ * Mounted once in the root layout, so a live call survives moving between Sales, Admin and Marketing (each has its
+ * own layout). Asks the server whether this person can call; always renders the same tree so pages never remount.
+ */
+export function DialerRoot({ children }: { children: React.ReactNode }): React.ReactElement {
+  const pathname = usePathname() ?? ''
+  const crm = CRM_PATH.test(pathname)
+  const [cfg, setCfg] = useState<{ number: string | null; demo: boolean } | null>(null)
+  const checked = useRef<string | null>(null)
+  useEffect(() => {
+    // Check on entering the CRM, and again on later pages until calling is available (e.g. a line was just assigned)
+    if (!crm || cfg || checked.current === pathname) return
+    checked.current = pathname
+    void fetch('/api/voice/status', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { enabled?: boolean; number?: string | null; demo?: boolean } | null) => setCfg(d?.enabled ? { number: d.number ?? null, demo: Boolean(d.demo) } : null))
+      .catch(() => undefined)
+  }, [crm, cfg, pathname])
+  // Signed out: forget, check again after the next sign-in (adjusting state during render, not in an effect)
+  if (pathname === '/login' && cfg) {
+    setCfg(null) // the next CRM page has a new path, so the check runs again
+  }
+  return (
+    <DialerProvider enabled={Boolean(cfg)} visible={crm} number={cfg?.number ?? null} demo={cfg?.demo ?? false}>
+      {children}
+    </DialerProvider>
+  )
+}
+
 /* ───────────────────────── provider + floating UI ───────────────────────── */
 
 /**
  * The CRM dialer: a floating phone button on every page for teammates with a line. Wraps the app so any "Call" link
  * can open it pre-filled (useDialer). One call at a time; every call ends in a short wrap-up saved on the lead.
  */
-export function DialerProvider({ number, demo, children }: { number: string | null; demo: boolean; children: React.ReactNode }): React.ReactElement {
+export function DialerProvider({ enabled, visible, number, demo, children }: { enabled: boolean; visible: boolean; number: string | null; demo: boolean; children: React.ReactNode }): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<'keypad' | 'contacts' | 'recent'>('keypad')
@@ -72,6 +107,8 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
   const engine = useRef<VoiceEngine | null>(null)
   const active = useRef<ActiveCall | null>(null)
   const busy = useRef(false)
+  /** Hung up while still connecting: drop the call the moment it connects */
+  const canceled = useRef(false)
 
   const live = session && session.phase !== 'wrapup'
   useEffect(() => {
@@ -86,14 +123,25 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
     return () => window.clearTimeout(t)
   }, [notice])
 
+  /** Throw the phone session away (bad or expired token, dropped connection); the next call builds a fresh one. */
+  const resetEngine = useCallback(() => {
+    try {
+      engine.current?.destroy()
+    } catch {
+      /* already gone */
+    }
+    engine.current = null
+  }, [])
+
   const getEngine = useCallback(async (): Promise<VoiceEngine> => {
-    if (engine.current) return engine.current
+    if (engine.current?.healthy()) return engine.current
+    if (engine.current) resetEngine()
     const t = await fetchVoiceToken()
     if ('demo' in t) engine.current = demoEngine()
     else if ('token' in t) engine.current = await twilioEngine(t.token)
     else throw new Error(t.error)
     return engine.current
-  }, [])
+  }, [resetEngine])
 
   const dial = useCallback(
     async (phone: string, lead?: { id: string; name: string } | null) => {
@@ -101,7 +149,14 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
         setOpen(true)
         return
       }
+      if (session?.phase === 'wrapup') {
+        // never lose an unsaved wrap-up
+        setOpen(true)
+        setError('Save the last call first, then dial again.')
+        return
+      }
       busy.current = true
+      canceled.current = false
       setError(null)
       setOpen(true)
       setShowPad(false)
@@ -112,7 +167,7 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
           return
         }
         const call = res.data
-        setSession({ call, phase: 'connecting', answeredAt: null, endedAt: null, muted: false, ended: null })
+        setSession({ call, phase: 'connecting', answeredAt: null, endedAt: null, muted: false, ended: null, rang: false })
         let eng: VoiceEngine
         try {
           eng = await getEngine()
@@ -126,30 +181,37 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
         try {
           c = await eng.connect(call.callId, call.to)
         } catch (e) {
+          resetEngine()
           await abandonCall(call.callId, 'failed')
           setSession(null)
           setError(voiceErrorText(e as { message?: string; code?: number }))
           return
         }
+        if (canceled.current) {
+          // hung up while it was still connecting
+          c.hangup()
+          return
+        }
         active.current = c
         const finish = (ended: Session['ended']): void => {
           active.current = null
-          setSession((s) => (s ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: s.answeredAt ? 'answered' : ended } : s))
+          setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: s.answeredAt ? 'answered' : s.rang ? ended : 'failed' } : s))
           setOpen(true)
         }
-        c.on('ringing', () => setSession((s) => (s && s.phase === 'connecting' ? { ...s, phase: 'ringing' } : s)))
+        c.on('ringing', () => setSession((s) => (s && s.phase === 'connecting' ? { ...s, phase: 'ringing', rang: true } : s)))
         c.on('accept', () => setSession((s) => (s ? { ...s, phase: 'live', answeredAt: Date.now() } : s)))
         c.on('disconnect', () => finish('no_answer'))
         c.on('cancel', () => finish('canceled'))
         c.on('error', (e) => {
           setError(voiceErrorText(e))
-          finish('canceled')
+          resetEngine()
+          finish('failed')
         })
       } finally {
         busy.current = false
       }
     },
-    [getEngine, session],
+    [getEngine, resetEngine, session],
   )
 
   const api = useMemo<DialerApi>(() => ({ dial: (p, l) => void dial(p, l), open: () => setOpen(true) }), [dial])
@@ -157,6 +219,7 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
   const hangup = (): void => {
     if (active.current) active.current.hangup()
     else if (session && session.phase !== 'wrapup') {
+      canceled.current = true
       void abandonCall(session.call.callId, 'canceled')
       setSession((s) => (s ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'canceled' } : s))
     }
@@ -175,8 +238,10 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
   }
 
   return (
-    <DialerContext.Provider value={api}>
+    <DialerContext.Provider value={enabled ? api : null}>
       {children}
+      {enabled && (visible || live) ? (
+        <>
       <FloatingButton session={session} now={now} open={open} onClick={() => setOpen((o) => !o)} />
       {open ? (
         <div
@@ -223,7 +288,22 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
               </nav>
               {error ? (
                 <div role="alert" className="mx-4 mt-3 flex items-start gap-2 rounded-xl bg-rose-500/10 px-3 py-2 text-xs text-rose-200 ring-1 ring-rose-500/25">
-                  <span className="flex-1">{error}</span>
+                  <span className="flex-1">
+                    {error}
+                    {/already on a call/i.test(error) ? (
+                      <button
+                        type="button"
+                        className="ms-1 underline underline-offset-2"
+                        onClick={async () => {
+                          const r = await clearStuckCalls()
+                          setError(r.ok ? (r.data.stillLive ? 'Twilio says that call is still connected. Hang it up first.' : null) : r.error)
+                          if (r.ok && !r.data.stillLive) setNotice('All clear. You can call now.')
+                        }}
+                      >
+                        Check again
+                      </button>
+                    ) : null}
+                  </span>
                   <button type="button" onClick={() => setError(null)} aria-label="Dismiss" className="text-rose-300 hover:text-rose-100">
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -242,6 +322,8 @@ export function DialerProvider({ number, demo, children }: { number: string | nu
             </>
           )}
         </div>
+      ) : null}
+        </>
       ) : null}
     </DialerContext.Provider>
   )
@@ -607,7 +689,7 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
       <div>
         <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Call ended</div>
         <div className="mt-1 text-lg font-semibold">{name ?? session.call.display}</div>
-        <div className="text-sm text-muted-foreground">{answered ? `Talked for ${fmt(talked)}` : session.ended === 'canceled' ? 'Hung up before they answered' : 'They didn’t pick up'}</div>
+        <div className="text-sm text-muted-foreground">{answered ? `Talked for ${fmt(talked)}` : session.ended === 'failed' ? 'The call didn’t go through' : session.ended === 'canceled' ? 'Hung up before they answered' : session.ended === 'busy' ? 'The line was busy' : 'They didn’t pick up'}</div>
       </div>
       <fieldset>
         <legend className="mb-2 text-sm font-medium">How did it go?</legend>

@@ -1,6 +1,10 @@
 import { PrismaClient } from '@prisma/client'
 import twilio from 'twilio'
-import { afterAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+// Twilio's REST lookup is replaced: tests never reach the network
+const twilioCall = { value: null as { status: string; duration: number | null } | null }
+vi.mock('@/lib/twilio', async (orig) => ({ ...(await orig<typeof import('@/lib/twilio')>()), fetchTwilioCall: async () => twilioCall.value }))
 
 const testDb = process.env.TEST_DATABASE_URL
 if (testDb) process.env.DATABASE_URL = testDb
@@ -17,7 +21,7 @@ Object.assign(process.env, {
 const d = testDb ? describe : describe.skip
 
 d('dialer: webhooks and call state', async () => {
-  const { advanceCall } = await import('@/lib/calls')
+  const { advanceCall, reconcileCall } = await import('@/lib/calls')
   const twimlRoute = await import('@/app/api/public/voice/twiml/route')
   const statusRoute = await import('@/app/api/public/voice/status/route')
   const recordingRoute = await import('@/app/api/public/voice/recording/route')
@@ -40,6 +44,7 @@ d('dialer: webhooks and call state', async () => {
     await prisma.lead.deleteMany()
     await prisma.user.deleteMany()
     await prisma.siteSetting.deleteMany()
+    twilioCall.value = null
     userId = (await prisma.user.create({ data: { email: 'rep@igani.co', name: 'Rita', role: 'SALES' } })).id
     await prisma.phoneLine.create({ data: { userId, number: '+972531111111' } })
     leadId = (await prisma.lead.create({ data: { email: 'dana@x.com', firstName: 'Dana', phone: '050-123-4567' } })).id
@@ -112,6 +117,44 @@ d('dialer: webhooks and call state', async () => {
     await advanceCall(call.id, { status: 'NO_ANSWER' })
     await advanceCall(call.id, { status: 'COMPLETED', durationSec: 30 }) // can't change a finished call
     expect(await prisma.call.findUniqueOrThrow({ where: { id: call.id } })).toMatchObject({ status: 'NO_ANSWER', durationSec: 0, answeredAt: null })
+  })
+
+  it('two calls at once: the second is refused when Twilio asks to dial it', async () => {
+    const first = await newCall()
+    const second = await newCall()
+    expect(await (await twimlRoute.POST(signed('twiml', { CallSid: 'CA' + '1'.repeat(32), From: `client:u_${userId}`, callId: first.id }))).text()).toContain('<Dial')
+    expect(await (await twimlRoute.POST(signed('twiml', { CallSid: 'CA' + '2'.repeat(32), From: `client:u_${userId}`, callId: second.id }))).text()).toContain('already on another call')
+    expect((await prisma.call.findUniqueOrThrow({ where: { id: second.id } })).status).toBe('FAILED')
+  })
+
+  it('recording is never silent: an empty consent message still plays the default notice', async () => {
+    await prisma.siteSetting.create({ data: { key: 'voice.consentMessage', value: '' } })
+    const call = await newCall()
+    expect(await (await twimlRoute.POST(signed('twiml', { CallSid: 'CA' + '3'.repeat(32), From: `client:u_${userId}`, callId: call.id }))).text()).toContain('/api/public/voice/whisper')
+    const whisper = await import('@/app/api/public/voice/whisper/route')
+    expect(await (await whisper.POST(signed('whisper', {}, `?callId=${call.id}`))).text()).toContain('may be recorded')
+  })
+
+  it('a call that still looks live is closed with Twilio’s own result (no lock-out), a live one stays live', async () => {
+    const lost = await newCall({ status: 'IN_PROGRESS', twilioCallSid: 'CA' + '4'.repeat(32), childCallSid: 'CA' + '5'.repeat(32), answeredAt: new Date() })
+    twilioCall.value = { status: 'completed', duration: 42 }
+    expect(await reconcileCall(lost.id)).toBe(false)
+    expect(await prisma.call.findUniqueOrThrow({ where: { id: lost.id } })).toMatchObject({ status: 'COMPLETED', durationSec: 42 })
+    const live = await newCall({ status: 'IN_PROGRESS', twilioCallSid: 'CA' + '6'.repeat(32), answeredAt: new Date() })
+    twilioCall.value = { status: 'in-progress', duration: null }
+    expect(await reconcileCall(live.id)).toBe(true)
+    // Twilio unreachable: only a call older than the maximum length is closed
+    twilioCall.value = null
+    const old = await newCall({ status: 'RINGING', twilioCallSid: 'CA' + '7'.repeat(32), startedAt: new Date(Date.now() - 3 * 3600_000) })
+    expect(await reconcileCall(old.id)).toBe(false)
+    expect((await prisma.call.findUniqueOrThrow({ where: { id: old.id } })).status).toBe('NO_ANSWER')
+  })
+
+  it('deleting a teammate keeps the company’s call records', async () => {
+    const call = await newCall()
+    await prisma.phoneLine.deleteMany()
+    await prisma.user.delete({ where: { id: userId } })
+    expect(await prisma.call.findUniqueOrThrow({ where: { id: call.id } })).toMatchObject({ userId: null })
   })
 
   it('stores the recording reference only from a signed callback', async () => {

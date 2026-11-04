@@ -678,7 +678,8 @@ model PhoneLine {
 /// One phone call made (or, from step 2, received) in the CRM. See docs/DIALER.md.
 model Call {
   id              String        @id @default(cuid())
-  userId          String
+  /// Who made the call (kept as empty if the teammate is deleted: company call records stay)
+  userId          String?
   leadId          String?
   direction       CallDirection
   status          CallStatus    @default(INITIATED)
@@ -704,7 +705,7 @@ model Call {
   /// true for calls made in the development demo mode (never in production)
   simulated       Boolean       @default(false)
 
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   @@index([userId, startedAt])

@@ -1,7 +1,7 @@
-import { advanceCall } from '@/lib/calls'
+import { FINAL_STATUSES, MAX_CALL_MIN, advanceCall } from '@/lib/calls'
 import { dialProblem } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
-import { getSetting } from '@/lib/settings'
+import { SETTING_DEFAULTS, getSetting } from '@/lib/settings'
 import { readTwilioWebhook, twiml, userIdFromClient, voiceUrl } from '@/lib/twilio'
 
 export const dynamic = 'force-dynamic'
@@ -28,22 +28,38 @@ export async function POST(req: Request): Promise<Response> {
   const call = await prisma.call.findUnique({ where: { id: callId }, include: { user: { select: { phoneLine: true, role: true } } } })
   const fresh = call && Date.now() - call.startedAt.getTime() < 2 * 60_000
   if (!call || call.userId !== userId || call.direction !== 'OUTBOUND' || call.status !== 'INITIATED' || call.twilioCallSid || !fresh || call.simulated) return refuse()
-  const line = call.user.phoneLine
-  if (!line?.active || line.number !== call.fromNumber || !(call.user.role === 'ADMIN' || call.user.role === 'SALES')) return refuse('Your phone line is not active. Ask an admin.')
+  const line = call.user?.phoneLine
+  if (!call.user || !line?.active || line.number !== call.fromNumber || !(call.user.role === 'ADMIN' || call.user.role === 'SALES')) return refuse('Your phone line is not active. Ask an admin.')
   if (dialProblem(call.toNumber, await getSetting('voice.countries'))) {
     await advanceCall(call.id, { status: 'FAILED' })
     return refuse('This number cannot be called from the CRM.')
   }
-  // Claim the call for this Twilio leg (a replayed request can't dial twice)
-  const claimed = await prisma.call.updateMany({ where: { id: call.id, twilioCallSid: null }, data: { twilioCallSid: p.CallSid } })
-  if (!claimed.count) return refuse()
+  // One live call per person, checked and claimed under a lock on their line: two browser connects at the same
+  // moment (several tabs, a script) can't both dial. A replayed request can't dial twice either (twilioCallSid).
+  const claim = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "PhoneLine" WHERE "userId" = ${userId} FOR UPDATE`
+    const other = await tx.call.findFirst({
+      where: { userId, id: { not: call.id }, twilioCallSid: { not: null }, status: { notIn: [...FINAL_STATUSES] }, startedAt: { gt: new Date(Date.now() - (MAX_CALL_MIN + 5) * 60_000) } },
+      select: { id: true },
+    })
+    if (other) return 'busy' as const
+    const claimed = await tx.call.updateMany({ where: { id: call.id, twilioCallSid: null }, data: { twilioCallSid: p.CallSid } })
+    return claimed.count ? ('ok' as const) : ('used' as const)
+  })
+  if (claim === 'busy') {
+    await advanceCall(call.id, { status: 'FAILED' })
+    return refuse('You are already on another call.')
+  }
+  if (claim !== 'ok') return refuse()
 
-  const [record, consent] = await Promise.all([getSetting('voice.record'), getSetting('voice.consentMessage')])
+  const [record, consentSetting] = await Promise.all([getSetting('voice.record'), getSetting('voice.consentMessage')])
+  // Recording is never silent: an empty message falls back to the default notice
+  const consent = consentSetting.trim() || SETTING_DEFAULTS['voice.consentMessage']
   const r = twiml()
   const dial = r.dial({
     callerId: line.number,
     answerOnBridge: true, // the browser keeps hearing the real ringing, and "answered" means the person picked up
-    timeLimit: 2 * 3600,
+    timeLimit: MAX_CALL_MIN * 60,
     timeout: 40,
     action: voiceUrl('dial-done', call.id),
     method: 'POST',
@@ -55,7 +71,7 @@ export async function POST(req: Request): Promise<Response> {
       statusCallbackMethod: 'POST',
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       // Recording consent: the person called hears it right after answering, before the two sides are connected
-      ...(record && consent ? { url: voiceUrl('whisper', call.id), method: 'POST' as const } : {}),
+      ...(record ? { url: voiceUrl('whisper', call.id), method: 'POST' as const } : {}),
     },
     call.toNumber,
   )
