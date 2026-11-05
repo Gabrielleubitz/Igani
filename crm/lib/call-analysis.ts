@@ -5,6 +5,7 @@ import { logActivity } from './audit'
 import { ensureRecordingSid, fetchRecordingAudio } from './call-recording'
 import { PLAYBOOK, computeMetrics, scoreFromRubric, type TranscriptSeg } from './call-coaching'
 import { prisma } from './prisma'
+import { LESSON_INDEX_PROMPT, STRAIGHT_LINE_CHECKS, STRAIGHT_LINE_PLAYBOOK, snapLesson } from './straight-line'
 
 /**
  * Call analysis (CallMap-style): Whisper transcript → structured analysis and coaching. Runs once per recording, after
@@ -31,6 +32,32 @@ const Qual = z.object({ status: Status, note: z.string().nullable().transform((x
 const Count = Clamp(0, 200)
 
 /** v2 (research-based coaching). Fields added in v2 are optional so analyses saved before still read. */
+const CHECK_IDS = STRAIGHT_LINE_CHECKS.map((c) => c.id)
+const SlScore = Clamp(1, 5).nullable()
+
+/** Straight Line coaching (optional: calls analysed before it was added don't have it). */
+const StraightLine = z
+  .object({
+    scores: z.object({ rapport: SlScore, intelligence: SlScore, control: SlScore, threeTens: SlScore, looping: SlScore, closing: SlScore }),
+    checks: z.array(z.object({ id: z.string(), result: z.enum(['yes', 'no', 'na']), evidence: z.string().nullable() })),
+    lessons: z.array(z.object({ ep: z.number(), startSec: z.number(), why: Str(240) })),
+  })
+  .transform((sl) => {
+    const seen = new Set<string>()
+    const lessons = sl.lessons.flatMap((l) => {
+      const ref = snapLesson(Math.round(l.ep), l.startSec)
+      const key = ref ? `${ref.ep}:${ref.startSec}` : ''
+      if (!ref || seen.has(key)) return []
+      seen.add(key)
+      return [{ ep: ref.ep, startSec: ref.startSec, topic: ref.topic, why: l.why }]
+    })
+    return {
+      scores: sl.scores,
+      checks: sl.checks.filter((c) => CHECK_IDS.includes(c.id)).map((c) => ({ id: c.id, result: c.result, evidence: c.evidence ? c.evidence.trim().slice(0, 240) || null : null })),
+      lessons: lessons.slice(0, 3),
+    }
+  })
+
 export const CallAnalysis = z.object({
   v: z.number().optional(),
   isSalesCall: z.boolean(),
@@ -59,6 +86,7 @@ export const CallAnalysis = z.object({
   riskSignals: List(6).optional(),
   nextQuestions: List(6).optional(),
   focus: z.array(z.object({ skill: Str(80), why: Str(240), drill: Str(300), sayThis: Str(300) })).transform((a) => a.slice(0, 2)).optional(),
+  straightLine: StraightLine.optional(),
   metrics: z
     .object({
       talkRatioRep: z.number(),
@@ -77,6 +105,7 @@ export type CallAnalysis = z.infer<typeof CallAnalysis>
 
 const STR = { type: 'string' } as const
 const STRS = { type: 'array', items: STR } as const
+const SLNUM = { type: ['number', 'null'] } as const
 const NUM = { type: 'number' } as const
 const QUAL = { type: 'object', additionalProperties: false, required: ['status', 'note'], properties: { status: { type: 'string', enum: ['covered', 'partly', 'missing', 'not_expected'] }, note: { type: ['string', 'null'] } } } as const
 const obj = (props: Record<string, unknown>) => ({ type: 'object', additionalProperties: false, required: Object.keys(props), properties: props })
@@ -104,6 +133,11 @@ const ANALYSIS_SCHEMA = obj({
   improvements: STRS,
   focus: { type: 'array', items: obj({ skill: STR, why: STR, drill: STR, sayThis: STR }) },
   nextQuestions: STRS,
+  straightLine: obj({
+    scores: obj({ rapport: SLNUM, intelligence: SLNUM, control: SLNUM, threeTens: SLNUM, looping: SLNUM, closing: SLNUM }),
+    checks: { type: 'array', items: obj({ id: { type: 'string', enum: STRAIGHT_LINE_CHECKS.map((c) => c.id) }, result: { type: 'string', enum: ['yes', 'no', 'na'] }, evidence: { type: ['string', 'null'] } }) },
+    lessons: { type: 'array', items: obj({ ep: NUM, startSec: NUM, why: STR }) },
+  }),
   moments: { type: 'array', items: obj({ at: { type: ['number', 'null'] }, clientSaid: { type: ['string', 'null'] }, repSaid: STR, better: STR, why: STR }) },
 })
 
@@ -117,6 +151,11 @@ client ("client"). You get the transcript (segments with timestamps and speakers
 Trust the measured metrics over your own impression; refer to them in your coaching where they matter.
 
 ${PLAYBOOK}
+
+${STRAIGHT_LINE_PLAYBOOK}
+
+LESSON INDEX (episode | start second | topic): cite ONLY these in straightLine.lessons
+${LESSON_INDEX_PROMPT}
 
 Return JSON matching the schema:
 - isSalesCall: false for voicemail, wrong numbers and non-sales chats (then keep everything short; scores 3).
@@ -136,6 +175,10 @@ Return JSON matching the schema:
 - focus: the 1–2 changes that would most improve the next call: skill, why it matters, a short drill, and sayThis:
   the exact words to try next time, in the call's language.
 - nextQuestions: 3–5 questions the rep should ask next time (in the call's language) to fill the gaps.
+- straightLine: coach the call against the Straight Line method above. scores: 1 to 5 per skill, or null when it does not apply
+  (voicemail, support, nothing to judge). checks: one entry for EVERY check id, result yes / no / na, with a short evidence quote
+  or null. lessons: 0 to 3 lessons from the LESSON INDEX that would help this rep most, as { ep, startSec, why } where why says in one
+  sentence what in THIS call the lesson addresses. Do not coach deceptive or pressuring lines.
 - moments: up to 3 coaching moments: at (seconds), clientSaid (or null), repSaid (verbatim), better (same language),
   why (one sentence in English).
 Write in English except quotes and suggested lines, which stay in the call's language. Never invent facts. No markdown,

@@ -16,12 +16,15 @@ export default async function TeamVideosPage(props: { searchParams: Promise<{ v?
   const user = await requireUser()
   if (user.role !== 'SALES') {
     const videos = courseOrder(await listVideos())
+    const sp = await props.searchParams
+    const picked = videos.find((x) => x.id === sp.v)
     return (
       <div className="space-y-5">
         <PageIntro title="The Straight Line" hint="Internal videos for the team. They only play while you are signed in. Salespeople see them one at a time, in order." />
+        {picked ? <LessonPlayer key={picked.id} id={picked.id} title={picked.title} completed nextId={null} startAt={Math.max(0, Number(sp.t) || 0)} /> : null}
         {videos.length === 0 ? <p className="text-sm text-muted-foreground">No videos yet.</p> : null}
         <div className="grid gap-5 lg:grid-cols-2">
-          {videos.map((v) => (
+          {videos.filter((x) => x.id !== picked?.id).map((v) => (
             <PrivateVideo key={v.id} id={v.id} title={v.title} />
           ))}
         </div>

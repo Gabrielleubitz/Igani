@@ -3,6 +3,7 @@ import { BENCHMARKS } from '@/lib/call-coaching'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Transcript } from '@/components/calls/CallView'
+import { StraightLinePanel } from '@/components/calls/StraightLinePanel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { asAnalysis, asTranscript } from '@/lib/call-analysis'
@@ -11,6 +12,9 @@ import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
 import { formatDateTime, leadName } from '@/lib/format'
 import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
+import { listVideos } from '@/lib/video'
+import { courseOrder } from '@/lib/video-core'
+import { unlockedFor } from '@/lib/video-progress'
 import { cn } from '@/lib/utils'
 
 export const metadata = { title: 'Call' }
@@ -31,6 +35,16 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
   const recorded = Boolean(call.recordingSid) || (Boolean(call.twilioCallSid) && call.status === 'COMPLETED' && !call.simulated && (call.durationSec ?? 0) > 0)
   const working = call.analysisStatus === 'processing' || call.analysisStatus === 'pending'
   const tone = a ? scoreTone(a.overallScore) : null
+  // Lesson links in the Straight Line panel: episode number -> video (by its "01 -" title prefix), and whether this viewer has unlocked it
+  const lessons: Record<number, { id: string; unlocked: boolean } | undefined> = {}
+  if (a?.straightLine?.lessons.length) {
+    const course = courseOrder(await listVideos())
+    const open = user.role === 'SALES' ? new Set((await unlockedFor(user.id)).unlocked) : null
+    for (const v of course) {
+      const n = Number(/^\s*(\d+)/.exec(v.title)?.[1])
+      if (n) lessons[n] = { id: v.id, unlocked: open ? open.has(v.id) : true }
+    }
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">
@@ -246,6 +260,8 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                   </CardContent>
                 </Card>
               ) : null}
+
+              {a.straightLine ? <StraightLinePanel sl={a.straightLine} lessons={lessons} /> : null}
 
               <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
                 <Card>
