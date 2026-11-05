@@ -1,4 +1,27 @@
 {
-  "logo": "/offers/cryotherapy-rejuvenate/logo.png?v=1793886814000",
-  "images": []
+  "logo": "/offers/cryotherapy-rejuvenate/logo.png?v=1793887014304",
+  "images": [
+    "/offers/cryotherapy-rejuvenate/admin-cal-day.webp",
+    "/offers/cryotherapy-rejuvenate/admin-guests.webp",
+    "/offers/cryotherapy-rejuvenate/admin-settings.webp",
+    "/offers/cryotherapy-rejuvenate/admin-walkin.webp",
+    "/offers/cryotherapy-rejuvenate/book-1-treatments.webp",
+    "/offers/cryotherapy-rejuvenate/book-2-time.webp",
+    "/offers/cryotherapy-rejuvenate/book-3-review.webp",
+    "/offers/cryotherapy-rejuvenate/book-4-packages.webp",
+    "/offers/cryotherapy-rejuvenate/book-6-waiver.webp",
+    "/offers/cryotherapy-rejuvenate/g-cal-month.webp",
+    "/offers/cryotherapy-rejuvenate/g-email.webp",
+    "/offers/cryotherapy-rejuvenate/g-packages-admin.webp",
+    "/offers/cryotherapy-rejuvenate/g-reports.webp",
+    "/offers/cryotherapy-rejuvenate/g-terminal.webp",
+    "/offers/cryotherapy-rejuvenate/g-timesheets.webp",
+    "/offers/cryotherapy-rejuvenate/g-treatments.webp",
+    "/offers/cryotherapy-rejuvenate/g-walkin.webp",
+    "/offers/cryotherapy-rejuvenate/site-1.webp",
+    "/offers/cryotherapy-rejuvenate/site-5.webp",
+    "/offers/cryotherapy-rejuvenate/site-7.webp",
+    "/offers/cryotherapy-rejuvenate/site-hero.webp",
+    "/offers/cryotherapy-rejuvenate/walkthrough-poster.webp"
+  ]
 }

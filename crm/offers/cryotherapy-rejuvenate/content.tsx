@@ -44,8 +44,8 @@ const offer: OfferDefinition = {
     solution: {
       title: { he: 'מה כבר בנוי', en: "What's already built" },
       body: {
-        he: 'שני חלקים שעובדים יחד. דף נחיתה מהיר שמראה את התא, את הטיפול דקה אחר דקה, ולקוחות אמיתיים. ומערכת הזמנות משלכם: הלקוח בוחר טיפול ושעה ומשלם, והצוות רואה הכול ביומן אחד. כל הזמנה נבדקת בשרת, כך שאין כפל הזמנות.',
-        en: 'Two parts that work together. A fast landing page that shows the chamber, the session minute by minute, and real clients. And your own booking system: the client picks a treatment and a time and pays, and staff see everything in one calendar. Every booking is checked on the server, so double bookings cannot happen.',
+        he: 'שני חלקים שעובדים יחד. דף נחיתה מהיר שמראה את התא, את הטיפול, וביקורות אמיתיות. ומערכת הזמנות משלכם: הלקוח בוחר טיפול ושעה ומשלם, והצוות רואה הכול ביומן אחד. כל הזמנה נבדקת בשרת, כך שאין כפל הזמנות.',
+        en: 'Two parts that work together. A fast landing page that shows the chamber, the session, and real reviews. And your own booking system: the client picks a treatment and a time and pays, and staff see everything in one calendar. Every booking is checked on the server, so double bookings cannot happen.',
       },
       points: [
         { he: 'הזמנה בשלושה צעדים: טיפול, שעה, אישור', en: 'Booking in three steps: treatment, time, review' },
@@ -117,12 +117,14 @@ const offer: OfferDefinition = {
         id: 'website',
         device: 'desktop',
         title: { he: 'דף הנחיתה', en: 'The landing page' },
-        caption: { he: 'בנוי סביב התא, עם כפתור הזמנה בכל מסך.', en: 'Built around the chamber, with a booking button on every screen.' },
+        caption: { he: 'cryotherapyrejuvenate.com, כפי שהוא באוויר היום. כפתור הזמנה בכל מסך.', en: 'cryotherapyrejuvenate.com as it is live today. A booking button on every screen.' },
         steps: [
-          { screen: 'siteClip', title: { he: 'גלילה', en: 'Scroll through' }, caption: { he: 'התא נפתח, הטמפרטורה יורדת, והטיפול מוצג דקה אחר דקה.', en: 'The chamber opens, the temperature drops, and the session plays minute by minute.' } },
-          { screen: 'siteHero', title: { he: 'המסך הראשון', en: 'First screen' }, caption: { he: 'מה זה, כמה זה עולה, איפה זה, ואיך מזמינים.', en: 'What it is, what it costs, where it is, and how to book.' } },
-          { screen: 'siteChamber', title: { he: 'התא', en: 'The chamber' }, caption: { he: 'MECOTEC cryo:one+: חשמלי, בלי חנקן, כניסה בגובה הרצפה.', en: 'MECOTEC cryo:one+: electric, no nitrogen, walk-in floor.' } },
-          { screen: 'siteStories', title: { he: 'לקוחות אמיתיים', en: 'Real clients' }, caption: { he: 'עדויות וידאו, ומי עומד מאחורי הקליניקה.', en: 'Video testimonials, and who runs the clinic.' } },
+          { screen: 'siteClip', title: { he: 'גלילה', en: 'Scroll through' }, caption: { he: 'הדלת נפתחת והטמפרטורה יורדת עד ‎-125°F תוך כדי גלילה.', en: 'The door opens and the temperature drops to -125°F as you scroll.' } },
+          { screen: 'siteHero', title: { he: 'המסך הראשון', en: 'First screen' }, caption: { he: 'מה זה, איפה זה, טלפון, וכפתור הזמנה.', en: 'What it is, where it is, the phone number, and a booking button.' } },
+          { screen: 'siteSession', title: { he: 'הטיפול', en: 'The session' }, caption: { he: 'שלוש דקות בתא, בווידאו אמיתי מהקליניקה.', en: 'Three minutes in the chamber, in real video from the clinic.' } },
+          { screen: 'siteServices', title: { he: 'שירותים', en: 'Services' }, caption: { he: 'קריותרפיה, טיפול ממוקד, סאונה ומנויים, עם המספרים שחשובים.', en: 'Whole-body, localized, sauna and memberships, with the numbers that matter.' } },
+          { screen: 'siteNeighbors', title: { he: 'מי אנחנו', en: 'Who runs it' }, caption: { he: 'הצוות המקומי, וקריותרפיה לספורטאים.', en: 'The local team, and cryotherapy for athletes.' } },
+          { screen: 'siteReviews', title: { he: 'ביקורות', en: 'Reviews' }, caption: { he: '5.0 בגוגל, נמשך ישירות מהביקורות.', en: '5.0 on Google, pulled straight from the reviews.' } },
         ],
       },
       {
@@ -130,8 +132,8 @@ const offer: OfferDefinition = {
         device: 'desktop',
         title: { he: 'מסך הצוות', en: 'The staff console' },
         caption: {
-          he: 'נתוני הדגמה, או שמות לקוחות מטושטשים.',
-          en: 'Demo data, or client names blurred.',
+          he: 'נתוני הדגמה בלבד, בלי פרטי לקוחות אמיתיים.',
+          en: 'Demo data only, no real client details.',
         },
         steps: [
           { screen: 'adminDay', title: { he: 'היום', en: 'Today' }, caption: { he: 'כל ההזמנות לפי חדר, מי הגיע, מי לא שילם, וכמה נגבה היום.', en: 'Every booking by room, who arrived, who has not paid, and what was collected today.' } },
@@ -273,8 +275,8 @@ const offer: OfferDefinition = {
         title: { he: 'דף נחיתה', en: 'Landing page' },
         summary: { he: 'דף מהיר ומותאם לטלפון סביב התא, עם SEO מקומי לדיקסון סיטי וסקרנטון.', en: 'A fast, phone-friendly page around the chamber, with local SEO for Dickson City and Scranton.' },
         bullets: [
-          { he: 'הטיפול דקה אחר דקה, עם וידאו אמיתי', en: 'The session minute by minute, with real video' },
-          { he: 'עדויות לקוחות, שאלות נפוצות ובטיחות', en: 'Client testimonials, FAQs and safety' },
+          { he: 'התא והטיפול בווידאו אמיתי מהקליניקה', en: 'The chamber and the session in real video from the clinic' },
+          { he: 'ביקורות גוגל, סיפורי לקוחות והטבות', en: 'Google reviews, client stories and offers' },
         ],
       },
     },
