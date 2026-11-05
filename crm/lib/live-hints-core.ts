@@ -13,7 +13,7 @@ export interface LiveHint {
 }
 
 /** Whisper invents short phrases on silence or noise; drop those instead of treating them as speech. */
-const HALLUCINATIONS = /^(thank you\.?|thanks( for watching)?\.?|you\.?|bye\.?|\.+|okay\.?|ok\.?|uh+\.?|um+\.?|mm+\.?|hmm+\.?|subtitles by.*|transcribed by.*)$/i
+const HALLUCINATIONS = /^(thank you\.?|thanks( for watching)?\.?|you\.?|bye\.?|\.+|okay\.?|ok\.?|uh+\.?|um+\.?|mm+\.?|hmm+\.?|subtitles by.*|transcribed by.*|תודה( רבה)?[.!]?|תודה שצפיתם[.!]?|תודה על הצפייה[.!]?|כתוביות.*|תרגום.*|תמלול.*|הירשמו לערוץ.*|ביי[.!]?)$/i
 export function cleanSpeech(text: string): string {
   const t = text.trim()
   if (!t || HALLUCINATIONS.test(t)) return ''
@@ -42,7 +42,8 @@ export function acceptHint(h: LiveHint | null, recent: string[]): LiveHint | nul
 /** The short rule set the live coach applies (a compact form of the Straight Line playbook). */
 export const LIVE_HINT_RULES = `You are the Straight Line coach whispering to a salesperson (REP) of Igani (a web studio: websites, booking systems,
 e-commerce, dashboards, automations, AI agents) DURING a live phone call with a prospect (CLIENT). You see the last minute or two of
-the conversation. Give at most ONE short hint (max 12 words, imperative, plain words, same language as the call), or none.
+the conversation, which may be in Hebrew, English or both. Give at most ONE short hint (max 12 words, imperative, plain words, in the
+language the request names), or none. Judge Hebrew and English calls by the same rules.
 Only speak when it is useful RIGHT NOW. Silence is fine. Never repeat a hint already shown.
 
 Straight Line rules to apply:

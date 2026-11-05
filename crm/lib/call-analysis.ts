@@ -1,4 +1,5 @@
 import 'server-only'
+import { CALL_LANG_LABEL, TRANSCRIBE_PROMPT, callLanguage, coachingLanguage, reviewLanguageRule } from './call-language'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
@@ -76,6 +77,9 @@ export const CallAnalysis = z.object({
   isSalesCall: z.boolean(),
   callType: Str(60),
   language: Str(20),
+  /** detected from the transcript: spoken language, and the language this review is written in */
+  lang: z.enum(['he', 'en', 'mixed']).optional(),
+  reviewIn: z.enum(['he', 'en']).optional(),
   summary: Str(1200),
   outcome: z.object({ label: Str(120), score: Clamp(0, 100) }),
   sentiment: z.enum(['positive', 'neutral', 'negative']),
@@ -162,7 +166,7 @@ const ANALYSIS_SCHEMA = obj({
 })
 
 const SPEAKER_PROMPT = `You label who is speaking in a phone call transcript between a salesperson at Igani ("rep") and a client
-("client"). Return one label per segment, in order. Use the content: the rep introduces Igani, asks about the client's
+("client"). The call may be in Hebrew, English or both. Return one label per segment, in order. Use the content: the rep introduces Igani, asks about the client's
 business, explains what Igani builds, proposes next steps; the client describes their business, needs and concerns.
 Speakers alternate often but not always. Return JSON matching the schema.`
 
@@ -214,10 +218,11 @@ Return JSON matching the schema:
   good loops, falling with doubt, stalls and pushy lines; actAt = the level at which they would act (usually 8 to 10); a yes means
   the curve reaches it. Base every point on the transcript. Do not invent. For voicemail or non-sales calls return empty arrays.
 - moments: up to 3 coaching moments where the rep left the line or missed a Straight Line step: at (seconds), step (which step:
-  rapport, intelligence, control, threeTens, looping, closing or ethics), clientSaid (or null), repSaid (verbatim), better (same language),
-  why (one sentence in English).
-Write in English except quotes and suggested lines, which stay in the call's language. Never invent facts. No markdown,
-no em dashes.`
+  rapport, intelligence, control, threeTens, looping, closing or ethics), clientSaid (or null), repSaid (verbatim), better (in the review language),
+  why (one sentence in the review language).
+Write in the review language the request names (English unless it says otherwise); quotes stay exactly as spoken. Calls may be in
+Hebrew, English or switch between them mid-sentence: understand both equally and judge the rep the same way in either language
+(Hebrew phone etiquette is more direct; do not mark that as rude). Never invent facts. No markdown, no em dashes.`
 
 async function transcribe(audio: Blob, key: string): Promise<{ text: string; segments: { start: number; end: number; text: string }[] }> {
   const form = new FormData()
@@ -225,6 +230,8 @@ async function transcribe(audio: Blob, key: string): Promise<{ text: string; seg
   form.append('model', process.env.OPENAI_TRANSCRIBE_MODEL || 'whisper-1')
   form.append('response_format', 'verbose_json')
   form.append('timestamp_granularities[]', 'segment')
+  // Hebrew, English or both: a bilingual sample keeps each language as spoken
+  if (!/gpt-4o/.test(process.env.OPENAI_TRANSCRIBE_MODEL ?? '')) form.append('prompt', TRANSCRIBE_PROMPT)
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(240_000) })
   if (!res.ok) throw new Error(res.status === 429 ? 'OpenAI is busy or out of credit.' : `Transcription failed (${res.status}).`)
   const body = (await res.json()) as { text?: string; segments?: { start: number; end: number; text: string }[] }
@@ -279,8 +286,11 @@ export async function analyseSegments(segments: { start: number; end: number; te
     ? `Measured from the recording: rep talk ${metrics.talkRatioRep}% (rep ${mmss(metrics.repSeconds)}, client ${mmss(metrics.clientSeconds)}); longest rep monologue ${mmss(metrics.longestMonologueSec)}${metrics.longestMonologueAt != null ? ` at ${mmss(metrics.longestMonologueAt)}` : ''}; longest client stretch ${mmss(metrics.longestClientStretchSec)}; rep questions ${metrics.repQuestions} (by third of the call: ${metrics.questionSpread.join(' / ')}); speaker switches ${metrics.switchesPerMin}/min.`
     : 'Metrics: not enough speech to measure.'
   const transcript = lines.map((l, i) => `[${i}] (${mmss(l.start)}, ${Math.round(l.start)}s) ${l.speaker.toUpperCase()}: ${l.text}`).join('\n')
-  const raw = (await chat(key, PROMPT, `${context}\n${measured}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium')) as Record<string, unknown>
-  const analysis = CallAnalysis.parse({ ...raw, v: 2, talkRatioRep: metrics?.talkRatioRep ?? 50, questionsAsked: metrics?.repQuestions ?? 0, overallScore: 0, metrics: metrics ?? undefined })
+  const said = segments.map((s) => s.text).join(' ')
+  const lang = callLanguage(said)
+  const reviewIn = coachingLanguage(said)
+  const raw = (await chat(key, PROMPT, `${context}\n${measured}\nSpoken language (measured): ${CALL_LANG_LABEL[lang]}.\n${reviewLanguageRule(reviewIn, lang)}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium')) as Record<string, unknown>
+  const analysis = CallAnalysis.parse({ ...raw, v: 2, language: CALL_LANG_LABEL[lang], lang, reviewIn, talkRatioRep: metrics?.talkRatioRep ?? 50, questionsAsked: metrics?.repQuestions ?? 0, overallScore: 0, metrics: metrics ?? undefined })
   // from the validated (1–5) scores, so one odd value from the model can't skew it
   analysis.overallScore = scoreFromAnalysis(analysis)
   return { speakers, analysis }

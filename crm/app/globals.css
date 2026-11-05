@@ -118,3 +118,6 @@ html.light .text-lime-100:not(.dark, .dark *), html.light .text-lime-200:not(.da
 
 /* While switching light/dark: colors cross-fade briefly */
 html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after { transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease !important; }
+
+/* Hebrew and English side by side (call reviews): each paragraph takes the direction of its own text */
+@layer base { .bidi-auto :where(p, li, blockquote, dd, dt, td, th, h2, h3, h4, span, div) { unicode-bidi: plaintext; } }

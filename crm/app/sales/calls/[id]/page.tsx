@@ -513,7 +513,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="bidi-auto mx-auto max-w-4xl space-y-5">
       <AnalysisRefresher active={working} />
       <Link href="/sales/calls" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-4 w-4" /> All calls
