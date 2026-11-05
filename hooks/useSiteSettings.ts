@@ -8,6 +8,8 @@ const defaultSettings: SiteSettings = {
   businessPhone: '',
   businessAddress: '',
   whatsappNumber: '',
+  officePhoneIsrael: '',
+  officePhoneUs: '',
   linkedinUrl: '',
   instagramUrl: '',
   facebookUrl: '',

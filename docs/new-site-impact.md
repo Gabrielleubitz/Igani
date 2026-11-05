@@ -6,7 +6,7 @@ Everything else (`/salescrm`, `/what-we-build`, `/about`, `/faq`, `/privacy`, `/
 ## Brought back on the new pages
 | Feature | How it works now |
 |---|---|
-| Contact form | Posts to `/api/leads` (Firestore, admin email, Google Sheet, CRM). Shows success only after a 2xx; shows a phone/email fallback on error. Honeypot and timing trap kept. |
+| Contact form | Posts to `/api/contact`, exactly like the old home form: saved under Admin → Messages, forwarded to the CRM, emailed to the admin. Shows success only after a 2xx; shows a phone/email fallback on error. Honeypot and timing trap kept. |
 | Hotjar | `<script src="/hotjar.js">` on every page. `app/hotjar.js/route.ts` reads `NEXT_PUBLIC_HOTJAR_ID` (same variable as before). Does nothing if the variable is unset. |
 | Vercel Analytics | `/_vercel/insights/script.js` on every page (works on Vercel; 404 only on local dev). |
 | Google Search Console | Same verification meta tag on every page. |
@@ -22,8 +22,8 @@ Everything else (`/salescrm`, `/what-we-build`, `/about`, `/faq`, `/privacy`, `/
 
 ## Affected, not carried over (decide)
 - **Promo banner** (Admin → Banner, shown on the old home page): not on the new pages.
-- **Admin-managed site settings** (meta title/description, phone numbers, WhatsApp, social links in Admin → Settings): the new pages have these hard-coded. Edits in admin no longer change the new pages.
-- **Backend-admin "Messages"**: the old home form saved to Messages via `/api/contact`; the new form goes to Leads via `/api/leads`. New enquiries appear under Leads (and in the CRM), not Messages.
+- **Admin-managed settings (DONE)**: `public/new-site/site-settings.js` reads `/api/admin/site-settings` and applies email, WhatsApp number and two new fields, Israel office phone and US office phone (Admin → Settings), to every page. Empty fields keep the built-in defaults. Not covered: meta title/description and the copyright line (the static pages' text is fixed in the HTML).
+- **Messages (DONE)**: the new form saves to Admin → Messages again.
 - **Hebrew**: the old site had a Hebrew toggle; the new site is English only. TODO: add Hebrew.
 - **Other pages** (`/about`, `/faq`, team profiles, `/privacy`, `/terms`, `/salescrm`, `/what-we-build`) keep their own look, so they will not match the new site's design until restyled.
 - **Old in-page links** such as `/#work` or `/#process` (ads, emails, old posts) no longer have a target on the new home; the page opens at the top. The new sections are `#problem`, `#services`, `#inside`, `#approach`, `#team`, `#contact`.

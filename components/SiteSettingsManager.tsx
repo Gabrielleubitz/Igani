@@ -9,6 +9,8 @@ interface SiteSettings {
   businessPhone: string
   businessAddress: string
   whatsappNumber: string
+  officePhoneIsrael: string
+  officePhoneUs: string
 
   // Social Media
   linkedinUrl: string
@@ -38,6 +40,8 @@ const defaultSettings: SiteSettings = {
   businessPhone: '',
   businessAddress: '',
   whatsappNumber: '',
+  officePhoneIsrael: '',
+  officePhoneUs: '',
   linkedinUrl: '',
   instagramUrl: '',
   facebookUrl: '',
@@ -202,6 +206,32 @@ export function SiteSettingsManager() {
               value={settings.whatsappNumber}
               onChange={(e) => updateSetting('whatsappNumber', e.target.value)}
               placeholder="+1 555 123 4567"
+              className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              Israel office phone (new site)
+            </label>
+            <input
+              type="tel"
+              value={settings.officePhoneIsrael}
+              onChange={(e) => updateSetting('officePhoneIsrael', e.target.value)}
+              placeholder="09-376-1325"
+              className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-300 mb-2">
+              US office phone (new site)
+            </label>
+            <input
+              type="tel"
+              value={settings.officePhoneUs}
+              onChange={(e) => updateSetting('officePhoneUs', e.target.value)}
+              placeholder="+1 (570) 634-8730"
               className="w-full px-4 py-3 bg-slate-900/60 border border-slate-600 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 text-white placeholder-slate-500"
             />
           </div>

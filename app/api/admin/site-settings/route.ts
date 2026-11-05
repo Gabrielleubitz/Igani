@@ -7,6 +7,8 @@ interface SiteSettings {
   businessPhone: string
   businessAddress: string
   whatsappNumber: string
+  officePhoneIsrael?: string
+  officePhoneUs?: string
   linkedinUrl: string
   instagramUrl: string
   facebookUrl: string
@@ -69,6 +71,8 @@ export async function GET() {
         businessPhone: '',
         businessAddress: '',
         whatsappNumber: '',
+        officePhoneIsrael: '',
+        officePhoneUs: '',
         linkedinUrl: '',
         instagramUrl: '',
         facebookUrl: '',
