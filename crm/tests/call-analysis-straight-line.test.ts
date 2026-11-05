@@ -5,7 +5,7 @@ vi.mock('@/lib/prisma', () => ({ prisma: {} }))
 vi.mock('@/lib/call-recording', () => ({ ensureRecordingSid: async () => null, fetchRecordingAudio: async () => null }))
 vi.mock('@/lib/audit', () => ({ logActivity: async () => undefined }))
 
-import { CallAnalysis } from '@/lib/call-analysis'
+import { CallAnalysis, scoreFromAnalysis } from '@/lib/call-analysis'
 
 const base = {
   isSalesCall: true, callType: 'Discovery call', language: 'en', summary: 's', outcome: { label: 'ok', score: 60 }, sentiment: 'neutral', nextStep: null,
@@ -31,5 +31,17 @@ describe('Straight Line block in the call analysis', () => {
     expect(a.straightLine?.lessons).toHaveLength(3)
     expect(a.straightLine?.lessons[0]).toMatchObject({ ep: 3, startSec: 1574 })
     expect(a.straightLine?.lessons.map((l) => l.ep)).toEqual([3, 7, 9])
+  })
+  it('scores the call by the Straight Line skills, skipping not-applicable ones, and falls back to the old rubric', () => {
+    const sl = (scores: Record<string, number | null>) => CallAnalysis.parse({ ...base, straightLine: { verdict: 'v', scores: { rapport: null, intelligence: null, control: null, threeTens: null, looping: null, closing: null, ...scores }, checks: [], lessons: [] } })
+    expect(scoreFromAnalysis(sl({ rapport: 4, intelligence: 4, control: 4 }))).toBe(75)
+    expect(scoreFromAnalysis(sl({ rapport: 3, closing: 5 }))).toBe(75)
+    expect(scoreFromAnalysis(sl({ rapport: 3, intelligence: 3 }))).toBe(50)
+    expect(scoreFromAnalysis(sl({}))).toBe(50) // all not applicable: the old rubric (all 3s)
+    expect(scoreFromAnalysis(CallAnalysis.parse(base))).toBe(50)
+  })
+  it('keeps the step on a moment and drops unknown steps', () => {
+    const a = CallAnalysis.parse({ ...base, moments: [{ at: 10, step: 'looping', clientSaid: null, repSaid: 'a', better: 'b', why: 'c' }, { at: 20, step: 'nonsense', clientSaid: null, repSaid: 'a', better: 'b', why: 'c' }, { at: 30, clientSaid: null, repSaid: 'a', better: 'b', why: 'c' }] })
+    expect(a.moments.map((m) => m.step)).toEqual(['looping', null, null])
   })
 })

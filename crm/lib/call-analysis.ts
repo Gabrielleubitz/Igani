@@ -32,12 +32,14 @@ const Qual = z.object({ status: Status, note: z.string().nullable().transform((x
 const Count = Clamp(0, 200)
 
 /** v2 (research-based coaching). Fields added in v2 are optional so analyses saved before still read. */
+export const STEPS = ['rapport', 'intelligence', 'control', 'threeTens', 'looping', 'closing', 'ethics'] as const
 const CHECK_IDS = STRAIGHT_LINE_CHECKS.map((c) => c.id)
 const SlScore = Clamp(1, 5).nullable()
 
 /** Straight Line coaching (optional: calls analysed before it was added don't have it). */
 const StraightLine = z
   .object({
+    verdict: Str(300).optional(),
     scores: z.object({ rapport: SlScore, intelligence: SlScore, control: SlScore, threeTens: SlScore, looping: SlScore, closing: SlScore }),
     checks: z.array(z.object({ id: z.string(), result: z.enum(['yes', 'no', 'na']), evidence: z.string().nullable() })),
     lessons: z.array(z.object({ ep: z.number(), startSec: z.number(), why: Str(240) })),
@@ -52,6 +54,7 @@ const StraightLine = z
       return [{ ep: ref.ep, startSec: ref.startSec, topic: ref.topic, why: l.why }]
     })
     return {
+      verdict: sl.verdict,
       scores: sl.scores,
       checks: sl.checks.filter((c) => CHECK_IDS.includes(c.id)).map((c) => ({ id: c.id, result: c.result, evidence: c.evidence ? c.evidence.trim().slice(0, 240) || null : null })),
       lessons: lessons.slice(0, 3),
@@ -78,8 +81,8 @@ export const CallAnalysis = z.object({
   strengths: List(5),
   improvements: List(5),
   moments: z
-    .array(z.object({ at: z.number().nullable(), clientSaid: z.string().nullable(), repSaid: Str(400), better: Str(400), why: Str(300) }))
-    .transform((a) => a.slice(0, 5).map((m) => ({ ...m, at: m.at == null ? null : Math.max(0, Math.round(m.at)), clientSaid: m.clientSaid ? m.clientSaid.trim().slice(0, 300) : null }))),
+    .array(z.object({ at: z.number().nullable(), step: z.enum(STEPS).nullable().optional().catch(null), clientSaid: z.string().nullable(), repSaid: Str(400), better: Str(400), why: Str(300) }))
+    .transform((a) => a.slice(0, 5).map((m) => ({ ...m, step: m.step ?? null, at: m.at == null ? null : Math.max(0, Math.round(m.at)), clientSaid: m.clientSaid ? m.clientSaid.trim().slice(0, 300) : null }))),
   qualification: z.object({ pain: Qual, impact: Qual, decisionMaker: Qual, decisionProcess: Qual, budget: Qual, timeline: Qual, alternatives: Qual }).optional(),
   spin: z.object({ situation: Count, problem: Count, implication: Count, needPayoff: Count }).optional(),
   buyingSignals: List(6).optional(),
@@ -134,11 +137,12 @@ const ANALYSIS_SCHEMA = obj({
   focus: { type: 'array', items: obj({ skill: STR, why: STR, drill: STR, sayThis: STR }) },
   nextQuestions: STRS,
   straightLine: obj({
+    verdict: STR,
     scores: obj({ rapport: SLNUM, intelligence: SLNUM, control: SLNUM, threeTens: SLNUM, looping: SLNUM, closing: SLNUM }),
     checks: { type: 'array', items: obj({ id: { type: 'string', enum: STRAIGHT_LINE_CHECKS.map((c) => c.id) }, result: { type: 'string', enum: ['yes', 'no', 'na'] }, evidence: { type: ['string', 'null'] } }) },
     lessons: { type: 'array', items: obj({ ep: NUM, startSec: NUM, why: STR }) },
   }),
-  moments: { type: 'array', items: obj({ at: { type: ['number', 'null'] }, clientSaid: { type: ['string', 'null'] }, repSaid: STR, better: STR, why: STR }) },
+  moments: { type: 'array', items: obj({ at: { type: ['number', 'null'] }, step: { type: ['string', 'null'], enum: [...STEPS, null] }, clientSaid: { type: ['string', 'null'] }, repSaid: STR, better: STR, why: STR }) },
 })
 
 const SPEAKER_PROMPT = `You label who is speaking in a phone call transcript between a salesperson at Igani ("rep") and a client
@@ -146,9 +150,12 @@ const SPEAKER_PROMPT = `You label who is speaking in a phone call transcript bet
 business, explains what Igani builds, proposes next steps; the client describes their business, needs and concerns.
 Speakers alternate often but not always. Return JSON matching the schema.`
 
-const PROMPT = `You are a senior sales coach reviewing one recorded call by a salesperson ("rep") at Igani with a prospect or
-client ("client"). You get the transcript (segments with timestamps and speakers) and metrics MEASURED from the recording.
-Trust the measured metrics over your own impression; refer to them in your coaching where they matter.
+const PROMPT = `You are the Straight Line teacher reviewing one recorded call by a salesperson ("rep") at Igani with a prospect or
+client ("client"). Our sales method is the Straight Line (described below). EVERYTHING you write about the call is judged by it and
+worded in its terms (the line, the first four seconds, the three tens, the first no, looping, the soft close). Name the step each
+comment relates to. Generic sales advice that is not in the method is secondary. You get the transcript (segments with timestamps
+and speakers) and metrics MEASURED from the recording. Trust the measured metrics over your own impression and use them as
+supporting facts.
 
 ${PLAYBOOK}
 
@@ -165,21 +172,25 @@ Return JSON matching the schema:
 - clientNeeds: in the client's terms. objections: each with the rep's response, handledWell (per LAER), and better: a
   stronger response in the call's language (null if it was handled well).
 - actionItems: commitments by the rep or the client.
-- scores: 1–5 per the rubric (opening, discovery, listening, value, objections, closing). Be calibrated: 3 is solid,
-  5 is rare. Use the measured talk ratio, monologue and question metrics when scoring discovery and listening.
+- scores: 1–5 for opening, discovery, listening, value, objections, closing. Derive them from your Straight Line scores
+  (opening from rapport, discovery and listening from intelligence, value from threeTens, objections from looping, closing from
+  closing). Be calibrated: 3 is solid, 5 is rare. Use the measured talk ratio, monologue and question metrics when scoring discovery and listening.
 - qualification: for each item, covered / partly / missing / not_expected (for this stage) and a short note on what
   was learned or what's missing.
 - spin: how many of the rep's questions were situation, problem, implication and need-payoff questions.
 - buyingSignals / riskSignals: short, specific, from this call (empty if none).
-- strengths (2–4, first one = the best moment) and improvements (2–4): specific to this call, quote it.
-- focus: the 1–2 changes that would most improve the next call: skill, why it matters, a short drill, and sayThis:
+- strengths (2–4, first one = the best moment) and improvements (2–4): specific to this call, quote it, and say which Straight Line
+  idea each is an example of.
+- focus: the 1–2 Straight Line changes that would most improve the next call: skill (a Straight Line skill), why it matters, a short drill, and sayThis:
   the exact words to try next time, in the call's language.
 - nextQuestions: 3–5 questions the rep should ask next time (in the call's language) to fill the gaps.
-- straightLine: coach the call against the Straight Line method above. scores: 1 to 5 per skill, or null when it does not apply
+- straightLine: this is the heart of the review. verdict: ONE sentence in the teacher's voice on how the rep did on the line (for
+  example where they stayed on it and where they left it). scores: 1 to 5 per skill, or null when it does not apply
   (voicemail, support, nothing to judge). checks: one entry for EVERY check id, result yes / no / na, with a short evidence quote
   or null. lessons: 0 to 3 lessons from the LESSON INDEX that would help this rep most, as { ep, startSec, why } where why says in one
   sentence what in THIS call the lesson addresses. Do not coach deceptive or pressuring lines.
-- moments: up to 3 coaching moments: at (seconds), clientSaid (or null), repSaid (verbatim), better (same language),
+- moments: up to 3 coaching moments where the rep left the line or missed a Straight Line step: at (seconds), step (which step:
+  rapport, intelligence, control, threeTens, looping, closing or ethics), clientSaid (or null), repSaid (verbatim), better (same language),
   why (one sentence in English).
 Write in English except quotes and suggested lines, which stay in the call's language. Never invent facts. No markdown,
 no em dashes.`
@@ -223,6 +234,12 @@ async function chat(key: string, system: string, user: string, name: string, sch
 
 const mmss = (sec: number): string => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 
+/** The headline score: the Straight Line skills (averaged, 'not applicable' skipped) when present, else the older rubric. */
+export function scoreFromAnalysis(a: Pick<CallAnalysis, 'scores' | 'straightLine'>): number {
+  const sl = a.straightLine ? Object.values(a.straightLine.scores).filter((v): v is number => typeof v === 'number') : []
+  return sl.length ? scoreFromRubric(Object.fromEntries(sl.map((v, i) => [String(i), v]))) : scoreFromRubric(a.scores)
+}
+
 /**
  * Two passes: (1) who said each line, (2) metrics measured from the timestamps, then the coaching analysis with those
  * numbers in hand. The score is the rubric average (consistent from call to call), not the model's own number.
@@ -241,7 +258,7 @@ export async function analyseSegments(segments: { start: number; end: number; te
   const raw = (await chat(key, PROMPT, `${context}\n${measured}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium')) as Record<string, unknown>
   const analysis = CallAnalysis.parse({ ...raw, v: 2, talkRatioRep: metrics?.talkRatioRep ?? 50, questionsAsked: metrics?.repQuestions ?? 0, overallScore: 0, metrics: metrics ?? undefined })
   // from the validated (1–5) scores, so one odd value from the model can't skew it
-  analysis.overallScore = scoreFromRubric(analysis.scores)
+  analysis.overallScore = scoreFromAnalysis(analysis)
   return { speakers, analysis }
 }
 

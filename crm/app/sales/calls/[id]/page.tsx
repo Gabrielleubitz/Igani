@@ -6,7 +6,7 @@ import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Tra
 import { StraightLinePanel } from '@/components/calls/StraightLinePanel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
-import { asAnalysis, asTranscript } from '@/lib/call-analysis'
+import { STEPS, asAnalysis, asTranscript } from '@/lib/call-analysis'
 import { CALL_STATUS_LABEL, RUBRIC, scoreTone } from '@/lib/call-ui'
 import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
 import { formatDateTime, leadName } from '@/lib/format'
@@ -16,6 +16,8 @@ import { listVideos } from '@/lib/video'
 import { courseOrder } from '@/lib/video-core'
 import { unlockedFor } from '@/lib/video-progress'
 import { cn } from '@/lib/utils'
+
+const STEP_LABEL: Record<(typeof STEPS)[number], string> = { rapport: 'Rapport', intelligence: 'Questions', control: 'Control', threeTens: 'Three tens', looping: 'Looping', closing: 'Closing', ethics: 'Ethics' }
 
 export const metadata = { title: 'Call' }
 export const dynamic = 'force-dynamic'
@@ -46,82 +48,21 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
     }
   }
 
-  return (
-    <div className="mx-auto max-w-4xl space-y-5">
-      <AnalysisRefresher active={working} />
-      <Link href="/sales/calls" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" /> All calls
-      </Link>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {call.lead ? (
-              <Link href={`/sales/leads/${call.lead.id}`} className="hover:underline">
-                {leadName(call.lead)}
-              </Link>
-            ) : (
-              formatPhone(call.toNumber)
-            )}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {[call.lead?.company, call.lead ? formatPhone(call.toNumber) : null, `${call.user ? (call.user.name ?? call.user.email) : 'Former teammate'} called`, formatDateTime(call.startedAt, me.timeZone)].filter(Boolean).join(' · ')}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_STATUS_LABEL[call.status] ?? call.status}</span>
-            {call.durationSec ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">Talk time {fmtDuration(call.durationSec)}</span> : null}
-            {call.outcome ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_OUTCOMES[call.outcome as keyof typeof CALL_OUTCOMES] ?? call.outcome}</span> : null}
-            {a ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{a.callType}</span> : null}
-          </div>
-        </div>
-        {a && tone ? (
-          <div className={cn('flex items-center gap-3 rounded-2xl px-4 py-3 ring-1', tone.bg, tone.ring)}>
-            <div className={cn('text-4xl font-semibold tabular-nums', tone.text)}>{a.overallScore}</div>
-            <div className="text-xs leading-tight text-muted-foreground">
-              Call score
-              <br />
-              out of 100
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      <CallPlayerProvider src={recorded ? `/api/calls/${call.id}/recording` : null} durationSec={call.recordingSec ?? call.durationSec}>
-        <div className="mt-5 space-y-5">
-          {call.notes ? (
-            <Card>
-              <CardContent className="pt-[var(--card-pad)] text-sm">
-                <span className="text-muted-foreground">{rep}’s note: </span>
-                {call.notes}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {!a ? (
-            <Card>
-              <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-[var(--card-pad)] text-sm">
-                <span className="text-muted-foreground">
-                  {working
-                    ? 'Analyzing the call: transcript, summary and coaching. This usually takes under a minute.'
-                    : call.analysisStatus === 'failed'
-                      ? `The analysis didn’t finish: ${call.analysisError ?? 'unknown error'}.`
-                      : call.analysisStatus === 'skipped'
-                        ? (call.analysisError ?? 'This call wasn’t analyzed.')
-                        : recorded
-                          ? 'This call hasn’t been analyzed yet.'
-                          : 'No recording, so there’s nothing to analyze.'}
-                </span>
-                {working ? null : recorded ? <ReanalyzeButton callId={call.id} label="Analyze now" /> : null}
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <div className="grid gap-5 md:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
+const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.ReactElement => {
+    const summary = (
+      <>
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Summary</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4 text-sm">
                     <p className="leading-relaxed">{a.summary}</p>
+                    {a.straightLine?.verdict ? (
+                      <div className="rounded-lg bg-primary/10 px-3 py-2 ring-1 ring-primary/30">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">The Straight Line says</div>
+                        <p dir="auto" className="mt-0.5">{a.straightLine.verdict}</p>
+                      </div>
+                    ) : null}
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-lg border p-3">
                         <div className="text-xs text-muted-foreground">Outcome</div>
@@ -148,6 +89,10 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                     ) : null}
                   </CardContent>
                 </Card>
+      </>
+    )
+    const scorecard = (
+      <>
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">Scorecard</CardTitle>
@@ -218,13 +163,15 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                     )}
                   </CardContent>
                 </Card>
-              </div>
-
+      </>
+    )
+    const focus = (
+      <>
               {a.focus?.length ? (
                 <Card className="border-primary/40">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-base">
-                      <Crosshair className="h-4 w-4 text-primary" aria-hidden /> Focus for the next call
+                      <Crosshair className="h-4 w-4 text-primary" aria-hidden /> {a.straightLine ? 'Do this next call' : 'Focus for the next call'}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -260,9 +207,10 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                   </CardContent>
                 </Card>
               ) : null}
-
-              {a.straightLine ? <StraightLinePanel sl={a.straightLine} lessons={lessons} /> : null}
-
+      </>
+    )
+    const wellwork = (
+      <>
               <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
                 <Card>
                   <CardHeader className="pb-2">
@@ -295,17 +243,23 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                   </CardContent>
                 </Card>
               </div>
-
+      </>
+    )
+    const moments = (
+      <>
               {a.moments.length ? (
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">Coaching moments</CardTitle>
-                    <p className="text-sm text-muted-foreground">Real moments from the call, and a stronger way to handle them.</p>
+                    <CardTitle className="text-base">{a.straightLine ? 'Where you left the line' : 'Coaching moments'}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{a.straightLine ? 'The moments the Straight Line would have handled differently.' : 'Real moments from the call, and a stronger way to handle them.'}</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {a.moments.map((m, i) => (
                       <div key={i} className="space-y-2 rounded-xl border p-4 text-sm">
-                        {m.at != null ? <SeekButton at={m.at} /> : null}
+                        <div className="flex flex-wrap items-center gap-2">
+                          {m.at != null ? <SeekButton at={m.at} /> : null}
+                          {m.step ? <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-primary">{STEP_LABEL[m.step]}</span> : null}
+                        </div>
                         {m.clientSaid ? (
                           <div>
                             <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">Client said</div>
@@ -332,7 +286,10 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                   </CardContent>
                 </Card>
               ) : null}
-
+      </>
+    )
+    const qual = (
+      <>
               {a.qualification || a.buyingSignals?.length || a.riskSignals?.length ? (
                 <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
                   {a.qualification ? (
@@ -433,7 +390,10 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                   </Card>
                 </div>
               ) : null}
-
+      </>
+    )
+    const objact = (
+      <>
               <div className="grid gap-5 md:grid-cols-2 [&>*]:min-w-0">
                 <Card>
                   <CardHeader className="pb-2">
@@ -487,7 +447,10 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                   </CardContent>
                 </Card>
               </div>
-
+      </>
+    )
+    const transcript = (
+      <>
               {lines.length ? (
                 <Card>
                   <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
@@ -499,7 +462,114 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
                   </CardContent>
                 </Card>
               ) : null}
-            </>
+      </>
+    )
+    if (a.straightLine) {
+      // The Straight Line teaches: its score, comments, drills and lessons come first; the CallMap data is supporting facts
+      return (
+        <>
+          {summary}
+          <StraightLinePanel sl={a.straightLine} lessons={lessons} />
+          {moments}
+          {focus}
+          {wellwork}
+          <details className="group rounded-xl border">
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground">Call data (CallMap): talk time, questions, qualification, objections</summary>
+            <div className="space-y-5 p-4 [&>*]:min-w-0">
+              {scorecard}
+              {qual}
+              {objact}
+            </div>
+          </details>
+          {transcript}
+        </>
+      )
+    }
+    return (
+      <>
+        <div className="grid gap-5 md:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
+          {summary}
+          {scorecard}
+        </div>
+        {focus}
+        {wellwork}
+        {moments}
+        {qual}
+        {objact}
+        {transcript}
+      </>
+    )
+  }
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-5">
+      <AnalysisRefresher active={working} />
+      <Link href="/sales/calls" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> All calls
+      </Link>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {call.lead ? (
+              <Link href={`/sales/leads/${call.lead.id}`} className="hover:underline">
+                {leadName(call.lead)}
+              </Link>
+            ) : (
+              formatPhone(call.toNumber)
+            )}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {[call.lead?.company, call.lead ? formatPhone(call.toNumber) : null, `${call.user ? (call.user.name ?? call.user.email) : 'Former teammate'} called`, formatDateTime(call.startedAt, me.timeZone)].filter(Boolean).join(' · ')}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_STATUS_LABEL[call.status] ?? call.status}</span>
+            {call.durationSec ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">Talk time {fmtDuration(call.durationSec)}</span> : null}
+            {call.outcome ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_OUTCOMES[call.outcome as keyof typeof CALL_OUTCOMES] ?? call.outcome}</span> : null}
+            {a ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{a.callType}</span> : null}
+          </div>
+        </div>
+        {a && tone ? (
+          <div className={cn('flex items-center gap-3 rounded-2xl px-4 py-3 ring-1', tone.bg, tone.ring)}>
+            <div className={cn('text-4xl font-semibold tabular-nums', tone.text)}>{a.overallScore}</div>
+            <div className="text-xs leading-tight text-muted-foreground">
+              {a.straightLine ? 'Straight Line score' : 'Call score'}
+              <br />
+              out of 100
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <CallPlayerProvider src={recorded ? `/api/calls/${call.id}/recording` : null} durationSec={call.recordingSec ?? call.durationSec}>
+        <div className="mt-5 space-y-5">
+          {call.notes ? (
+            <Card>
+              <CardContent className="pt-[var(--card-pad)] text-sm">
+                <span className="text-muted-foreground">{rep}’s note: </span>
+                {call.notes}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          {!a ? (
+            <Card>
+              <CardContent className="flex flex-wrap items-center justify-between gap-3 pt-[var(--card-pad)] text-sm">
+                <span className="text-muted-foreground">
+                  {working
+                    ? 'Analyzing the call: transcript, summary and coaching. This usually takes under a minute.'
+                    : call.analysisStatus === 'failed'
+                      ? `The analysis didn’t finish: ${call.analysisError ?? 'unknown error'}.`
+                      : call.analysisStatus === 'skipped'
+                        ? (call.analysisError ?? 'This call wasn’t analyzed.')
+                        : recorded
+                          ? 'This call hasn’t been analyzed yet.'
+                          : 'No recording, so there’s nothing to analyze.'}
+                </span>
+                {working ? null : recorded ? <ReanalyzeButton callId={call.id} label="Analyze now" /> : null}
+              </CardContent>
+            </Card>
+          ) : (
+            renderAnalysis(a)
           )}
         </div>
       </CallPlayerProvider>
