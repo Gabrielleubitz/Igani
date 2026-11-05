@@ -30,6 +30,14 @@ const NAMES: Record<string, string> = {
   'sheet-team': 'Our team',
   'sheet-process': 'The process',
   'sheet-contact': 'Get in touch',
+  // the new home page (static site)
+  clients: 'Clients',
+  problem: 'The problem',
+  services: 'Your website',
+  inside: 'Inside the platform',
+  approach: 'How we work',
+  team: 'The team',
+  contact: 'Get in touch',
 }
 
 /** A section id as a name: known ones from the pages' menus, others tidied ("build-what" → "Build what"). */

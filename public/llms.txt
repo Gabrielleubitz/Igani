@@ -1,43 +1,29 @@
 # IGANI
 
-> IGANI designs and builds websites and software solutions that help companies grow and operate more effectively, with a focus on service businesses and real estate professionals. Based in Netanya, Israel.
+> IGANI builds the website, the CRM and the AI sales tools behind it, for businesses that sell. Offices in Israel and the United States.
 
-IGANI builds custom websites meant to win the first impression: clients judge a service business by its site before they ever call. Work includes real estate agent websites (with home-valuation and showing-request forms and Matterport 3D tours), brand-led sites for service businesses, and landing pages.
+IGANI starts with a website and adds the back end a business needs: a sales back end (CRM with call recording, transcripts and AI call review), a marketing back end (answering every lead and showing what works) and an AI back end (meeting notes, tasks and contracts signed online). Each system runs on the customer's own domain and server.
 
 ## Main pages
-- [Home](https://www.igani.co/): what IGANI builds, selected work, the process and how to get in touch
-- [Websites for real estate agents](https://realestate.igani.co): sites for agents and brokerages
+- [Home](https://www.igani.co/): what IGANI builds, how it works, the team and how to get in touch
+- [Sales back end](https://www.igani.co/sales): CRM with AI call review, so managers see what every rep says
+- [Marketing back end](https://www.igani.co/marketing): answer every lead and know what works
+- [AI back end](https://www.igani.co/ai): AI notes, tasks and signed contracts
+- [All capabilities](https://www.igani.co/build): everything that can be added to a website
+- [What we build](https://www.igani.co/what-we-build): examples of what IGANI has built
+- [Sales CRM with AI call review](https://www.igani.co/salescrm): a focused page on the sales CRM
 - [About IGANI](https://www.igani.co/about): the studio and its founders
-- [Frequently asked questions](https://www.igani.co/faq): timelines, pricing, what is included, languages, the process and after-delivery support
-- [Get in touch](https://www.igani.co/#contact): the contact form, section 5 of the home page
-
-## How a project works
-1. Intro meeting
-2. Demo and preview: a working preview of the site before any commitment
-3. Structuring and closing down the specs
-4. Contract signed
-5. Delivery
-
-## What IGANI builds
-- Websites for real estate agents and brokerages (home-valuation and showing-request forms, Matterport 3D tours)
-- Brand-led websites for service businesses
-- Landing pages
+- [Frequently asked questions](https://www.igani.co/faq)
+- [Get in touch](https://www.igani.co/#contact): the contact form
 
 ## Founders
 - [Ilan Leubitz](https://www.igani.co/about/team/ilan-leubitz)
 - [Amitay Hanson](https://www.igani.co/about/team/amitay-hanson)
 - [Gabriel Leubitz](https://www.igani.co/about/team/gabriel-leubitz)
 
-## Selected work
-- Gabai Real Estate: https://www.gabairealestate.com/
-- Nogilates: https://nogilates.co
-- Callmap: https://callmap.ai
-- Cryotherapy Rejuvenate: https://www.cryotherapyrejuvenate.com/
-- Caleno: https://caleno.co
-
 ## Contact
-- Location: Netanya, Israel
 - Email: info@igani.co
-- Gabriel: +972 58-447-7757
-- Amitay: +972 54-540-8814
+- Israel office: 09-376-1325
+- US office: +1 (570) 634-8730
+- WhatsApp: https://wa.me/972584477757
 - Instagram: https://www.instagram.com/igani.co/
