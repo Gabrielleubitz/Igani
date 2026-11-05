@@ -200,6 +200,7 @@ export const siteContent: SiteContent = {
   
   footer: {
     allRightsReserved: { en: 'All rights reserved', he: 'כל הזכויות שמורות' },
+    whatWeBuild: { en: 'What we build', he: 'מה אנחנו בונים' },
     faq: { en: 'FAQ', he: 'שאלות נפוצות' },
     privacy: { en: 'Privacy', he: 'פרטיות' },
     terms: { en: 'Terms', he: 'תנאים' },

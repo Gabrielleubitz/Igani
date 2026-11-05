@@ -302,6 +302,11 @@ export function SalesCrmLanding() {
           </div>
         </section>
 
+        {/* Part of the bigger picture */}
+        <section className="mx-auto max-w-4xl px-4 pb-4 text-center sm:px-6">
+          <p className="text-white/55">This is one of the things Igani builds. We build websites, and whatever your business needs behind them. <Link href="/what-we-build" className="text-[#8fb4f5] underline underline-offset-4">See what else we build</Link></p>
+        </section>
+
         {/* FAQ */}
         <section className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-24">
           <motion.h2 {...fade} className="border-0 pb-0 text-center text-3xl font-bold tracking-tight text-white sm:text-4xl">Questions</motion.h2>

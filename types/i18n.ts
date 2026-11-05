@@ -117,6 +117,7 @@ export interface SiteContent {
   // Footer
   footer: {
     allRightsReserved: I18nText
+    whatWeBuild: I18nText
     faq: I18nText
     privacy: I18nText
     terms: I18nText
