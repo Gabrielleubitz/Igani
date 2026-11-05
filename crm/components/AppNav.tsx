@@ -16,6 +16,7 @@ import {
   SquareKanban,
   Sun,
   FileText,
+  FlaskConical,
   FileSignature,
   TrendingUp,
   UserCog,
@@ -55,6 +56,7 @@ const ICONS: Record<string, LucideIcon> = {
   phone: Phone,
   calls: PhoneCall,
   callLists: ListChecks,
+  tests: FlaskConical,
   settings: Settings,
 }
 
@@ -73,6 +75,7 @@ const ICON_COLOR: Record<string, string> = {
   hours: 'text-orange-400',
   documents: 'text-cyan-400',
   marketing: 'text-pink-400',
+  tests: 'text-orange-400',
   overview: 'text-[#6aa6ff]',
   bookings: 'text-violet-400',
   pages: 'text-cyan-400',

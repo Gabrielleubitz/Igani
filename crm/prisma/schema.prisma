@@ -118,6 +118,7 @@ model User {
   phoneLine       PhoneLine?
   calls           Call[]
   smsMessages     SmsMessage[]
+  meetRooms       MeetRoom[]
   callLists       CallList[]
   mailboxEmails   EmailMessage[]
   mailboxSync     MailboxSync?
@@ -858,4 +859,38 @@ model Prospect {
   @@unique([listId, placeId])
   @@index([listId, status])
   @@index([phone])
+}
+
+/// Igani Meet (admin Tests tab): a video room on Jitsi (8x8 JaaS), with invites for teammates and outside emails.
+model MeetRoom {
+  id          String       @id @default(cuid())
+  /// the room name on Jitsi and in links (/meet/<code>): random, unguessable
+  code        String       @unique
+  title       String
+  hostId      String?
+  scheduledAt DateTime?
+  durationMin Int          @default(30)
+  endedAt     DateTime?
+  createdAt   DateTime     @default(now())
+  host        User?        @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  invites     MeetInvite[]
+
+  @@index([hostId, createdAt])
+}
+
+/// One person invited to a room. The token in their link lets them in; teammates are linked by userId.
+model MeetInvite {
+  id        String    @id @default(cuid())
+  roomId    String
+  email     String
+  name      String?
+  userId    String?
+  token     String    @unique
+  sentAt    DateTime?
+  sendError String?
+  joinedAt  DateTime?
+  createdAt DateTime  @default(now())
+  room      MeetRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, email])
 }

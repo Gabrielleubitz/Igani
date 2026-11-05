@@ -10,6 +10,7 @@ import { BookingInvite } from '@/emails/BookingInvite'
 import { BookingRequested } from '@/emails/BookingRequested'
 import { ContactEmail } from '@/emails/ContactEmail'
 import { MeetingReminder } from '@/emails/MeetingReminder'
+import { MeetInvite } from '@/emails/MeetInvite'
 import { NewLeadAlert, type NewLeadAlertProps } from '@/emails/NewLeadAlert'
 import { OfferSigned, type OfferSignedProps } from '@/emails/OfferSigned'
 import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
@@ -276,4 +277,21 @@ export async function sendSalesContractSignedEmail(
   const element = SalesContractSigned({ ...a, logoUrl: logoUrl(), ...(await brand()) })
   const subject = a.audience === 'admin' ? `Signed: sales commission agreement (${a.repName})` : 'Signed: your Igani sales commission agreement'
   return send({ to, subject, html: await render(element), text: await render(element, { plainText: true }), attachments: [{ ...pdf, contentType: 'application/pdf' }] })
+}
+
+/** Igani Meet invite: the personal join link, with a calendar entry when the call has a time. */
+export async function sendMeetInviteEmail(a: { to: string; guestName: string | null; title: string; hostName: string; hostEmail: string; joinUrl: string; start: Date | null; durationMin: number; timeZone: string; uid: string }): Promise<string> {
+  const when = a.start ? new Intl.DateTimeFormat('en-US', { timeZone: a.timeZone, dateStyle: 'full', timeStyle: 'short', timeZoneName: 'short' }).format(a.start) : null
+  const element = MeetInvite({ title: a.title, hostName: a.hostName, guestName: a.guestName, joinUrl: a.joinUrl, when, hostPhotoUrl: await avatarEmailUrlFor(a.hostEmail), logoUrl: logoUrl(), ...(await brand()) })
+  const ics = a.start
+    ? buildIcs({ uid: `${a.uid}@app.igani.co`, start: a.start, end: new Date(a.start.getTime() + a.durationMin * 60_000), title: a.title, description: `Join on Igani Meet: ${a.joinUrl}`, location: a.joinUrl, url: a.joinUrl, organizerName: a.hostName, organizerEmail: a.hostEmail, attendeeName: a.guestName ?? a.to, attendeeEmail: a.to })
+    : null
+  return send({
+    to: a.to,
+    replyTo: a.hostEmail,
+    subject: `${a.hostName} invited you to a video call: ${a.title}`,
+    html: await render(element),
+    text: await render(element, { plainText: true }),
+    ...(ics ? { attachments: [{ filename: 'igani-meet.ics', content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; method=REQUEST' }] } : {}),
+  })
 }
