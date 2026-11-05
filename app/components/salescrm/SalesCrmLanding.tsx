@@ -6,6 +6,7 @@ import { motion } from 'framer-motion'
 import { ArrowRight, BarChart3, Check, Headphones, LineChart, ListChecks, Mic, PhoneCall, ScrollText, Sparkles, Users } from 'lucide-react'
 import { IganiLogo } from '@/components/IganiLogo'
 import { ReviewMock } from './ReviewMock'
+import { ProductTour } from './ProductTour'
 
 const INPUT =
   'w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white placeholder-white/30 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]'
@@ -157,6 +158,15 @@ export function SalesCrmLanding() {
               </motion.div>
             ))}
           </div>
+        </section>
+
+        {/* Interactive product tour */}
+        <section id="tour" className="mx-auto max-w-6xl scroll-mt-20 px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24">
+          <motion.div {...fade} className="mx-auto max-w-2xl text-center">
+            <h2 className="border-0 pb-0 text-3xl font-bold tracking-tight text-white sm:text-4xl">See it inside the CRM</h2>
+            <p className="mt-4 text-lg text-white/60">Click through a call from dial to review.</p>
+          </motion.div>
+          <ProductTour />
         </section>
 
         {/* Reps and managers */}
