@@ -25,9 +25,21 @@ export function PhoneLineRow({ userId, name, role, current, numbers, takenBy }: 
     start(async () => {
       setMsg(null)
       const sid = numbers?.find((n) => n.number === value)?.sid ?? null
-      const r = value.trim() ? await assignPhoneLine({ userId, number: value, twilioSid: sid }) : await removePhoneLine(userId)
-      setMsg(r.ok ? { ok: true, text: value.trim() ? 'Saved' : 'Removed' } : { ok: false, text: r.error })
-      if (r.ok) router.refresh()
+      if (!value.trim()) {
+        const r = await removePhoneLine(userId)
+        setMsg(r.ok ? { ok: true, text: 'Removed' } : { ok: false, text: r.error })
+        if (r.ok) router.refresh()
+        return
+      }
+      const r = await assignPhoneLine({ userId, number: value, twilioSid: sid })
+      if (!r.ok) return setMsg({ ok: false, text: r.error })
+      const incoming = r.data.incoming
+      setMsg(
+        incoming === 'routed' || incoming === 'already'
+          ? { ok: true, text: 'Saved · calls in and out work in the CRM' }
+          : { ok: false, text: incoming === 'not-found' ? 'Saved for calling out. This number isn’t in the Twilio account, so incoming calls can’t ring in the CRM.' : 'Saved for calling out. Couldn’t set up incoming calls (check the Twilio connection above).' },
+      )
+      router.refresh()
     })
   return (
     <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">

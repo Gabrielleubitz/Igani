@@ -7,13 +7,47 @@ import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { normalizePhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
-import { restoreNumberRouting, routeNumberToCrm, twilioConfig } from '@/lib/twilio'
+import { incomingUrl, listTwilioNumbers, restoreNumberRouting, routeNumberToCrm, twilioConfig } from '@/lib/twilio'
 import { toActionError, type ActionResult } from './result'
 
 const Assign = z.object({ userId: z.string().cuid(), number: z.string().trim().min(3).max(40), twilioSid: z.string().regex(/^PN[0-9a-f]{32}$/i).nullish() })
 
-/** Admin: give a teammate (admin or salesperson) a Twilio number. One number per person, one person per number. */
-export async function assignPhoneLine(input: z.input<typeof Assign>): Promise<ActionResult> {
+/** What happened to the number's incoming calls when it was assigned. */
+export type IncomingSetup = 'routed' | 'already' | 'not-found' | 'failed' | 'no-twilio'
+
+/**
+ * Point a number's incoming calls at the CRM, saving where they went before (only the first time, so routing twice never
+ * overwrites the original with our own URL).
+ */
+async function routeToCrm(sid: string, actorId: string): Promise<void> {
+  const c = twilioConfig()
+  if (!c) throw new BookingError('Twilio is not connected.', 'INVALID_STATE')
+  const before = await routeNumberToCrm(c, sid)
+  await prisma.siteSetting.upsert({ where: { key: `voice.routing:${sid}` }, create: { key: `voice.routing:${sid}`, value: before }, update: {} })
+  await logActivity({ entityType: 'SETTING', entityId: `voice.routing:${sid}`, actorId, action: 'phone.incoming_routed', metadata: { before } })
+}
+
+/** A newly assigned number rings in the CRM straight away. Never fails the assignment: reports what happened instead. */
+async function setUpIncoming(number: string, knownSid: string | null, actorId: string): Promise<{ setup: IncomingSetup; sid: string | null }> {
+  const c = twilioConfig()
+  if (!c) return { setup: 'no-twilio', sid: knownSid }
+  try {
+    const found = (await listTwilioNumbers(c)).find((n) => (knownSid ? n.sid === knownSid : n.number === number))
+    if (!found) return { setup: 'not-found', sid: knownSid }
+    if (found.voiceUrl === incomingUrl() && !found.voiceAppSid) return { setup: 'already', sid: found.sid }
+    await routeToCrm(found.sid, actorId)
+    return { setup: 'routed', sid: found.sid }
+  } catch (err) {
+    console.error('[phone] could not route incoming calls', err)
+    return { setup: 'failed', sid: knownSid }
+  }
+}
+
+/**
+ * Admin: give a teammate (admin or salesperson) a Twilio number. One number per person, one person per number. Its
+ * incoming calls are pointed at the CRM at the same time (the earlier routing is kept for undo).
+ */
+export async function assignPhoneLine(input: z.input<typeof Assign>): Promise<ActionResult<{ incoming: IncomingSetup }>> {
   try {
     const admin = await requireUser(['ADMIN'])
     const data = Assign.parse(input)
@@ -25,8 +59,10 @@ export async function assignPhoneLine(input: z.input<typeof Assign>): Promise<Ac
     if (taken && taken.userId !== data.userId) throw new BookingError('That number already belongs to another teammate.', 'SLOT_TAKEN')
     await prisma.phoneLine.upsert({ where: { userId: data.userId }, create: { userId: data.userId, number, twilioSid: data.twilioSid ?? null }, update: { number, twilioSid: data.twilioSid ?? null, active: true } })
     await logActivity({ entityType: 'USER', entityId: data.userId, actorId: admin.id, action: 'phone.line_assigned', metadata: { number } })
+    const incoming = await setUpIncoming(number, data.twilioSid ?? null, admin.id)
+    if (incoming.sid && !data.twilioSid) await prisma.phoneLine.update({ where: { userId: data.userId }, data: { twilioSid: incoming.sid } })
     revalidatePath('/admin/phone')
-    return { ok: true, data: undefined }
+    return { ok: true, data: { incoming: incoming.setup } }
   } catch (err) {
     return toActionError(err)
   }
@@ -55,13 +91,7 @@ type Routing = { voiceUrl: string; voiceMethod: string; voiceAppSid: string }
 export async function routeIncomingToCrm(numberSid: string): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
-    const sid = NumberSid.parse(numberSid)
-    const c = twilioConfig()
-    if (!c) throw new BookingError('Twilio is not connected.', 'INVALID_STATE')
-    const before = await routeNumberToCrm(c, sid)
-    // keep the original only the first time (routing twice must not overwrite it with our own URL)
-    await prisma.siteSetting.upsert({ where: { key: `voice.routing:${sid}` }, create: { key: `voice.routing:${sid}`, value: before }, update: {} })
-    await logActivity({ entityType: 'SETTING', entityId: `voice.routing:${sid}`, actorId: admin.id, action: 'phone.incoming_routed', metadata: { before } })
+    await routeToCrm(NumberSid.parse(numberSid), admin.id)
     revalidatePath('/admin/phone')
     return { ok: true, data: undefined }
   } catch (err) {
