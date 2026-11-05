@@ -1,0 +1,116 @@
+/* Editorial skin for the inner pages: same look as the home (home3.css), applied over the shared components. */
+.ed { --font-sans: "Inter", system-ui, -apple-system, sans-serif; --font-display: "Newsreader", Georgia, serif; font-family: var(--font-sans); background: #fff; color: var(--ink); }
+.ed [data-theme=dark] { color: var(--ink); }
+.ed main { overflow-x: clip; }
+
+/* type */
+.ed .ig-hero, .ed .ig-h2, .ed .ig-h3, .ed .ig-h4 { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.015em; }
+.ed .ig-hero { font-size: clamp(44px, 6.4vw, 92px); line-height: 1; }
+.ed .ig-h2 { font-size: clamp(34px, 4.4vw, 58px); line-height: 1.06; }
+.ed .ig-h3 { font-size: clamp(24px, 2.4vw, 32px); line-height: 1.15; }
+.ed .ig-accent { font-family: var(--font-display); font-style: italic; font-size: 1em; color: #173f88; padding: 0; }
+.ed [data-theme=dark] .ig-accent { color: #9ec0f5; }
+.ed .ig-stop { display: none; }
+.ed .ig-lead { font-size: 18px; line-height: 1.65; color: #39435a; }
+.ed [data-theme=dark] .ig-lead { color: rgba(255,255,255,.75); }
+.ed .ig-kicker { font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: #6a7183; }
+.ed .ig-label { border-top-color: #0d1626; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; font-weight: 600; color: #6a7183; }
+.ed .ig-label b { font: 400 15px/1 var(--font-display); letter-spacing: 0; color: #1f55b5; opacity: 1; }
+.ed [data-theme=dark] .ig-label { border-top-color: rgba(255,255,255,.3); color: rgba(255,255,255,.6); }
+.ed [data-theme=dark] .ig-label b { color: #9ec0f5; }
+
+/* buttons */
+.ed .ig-btn { border-radius: 2px; font-weight: 500; }
+.ed .ig-btn--primary { background: #0b1d38; color: #fff; box-shadow: none; }
+.ed .ig-btn--primary:hover { background: #173f88; }
+.ed [data-theme=dark] .ig-btn--primary { background: #fff; color: #0b1d38; }
+.ed .ig-btn--ghost { border-color: #cfcbc1; color: #0d1626; background: transparent; }
+.ed .ig-btn--link { color: #173f88; }
+
+/* page rhythm: flat bands */
+.ed .hero { background: #fff; padding: 72px 0 96px; border-bottom: 1px solid #e2dfd7; }
+.ed .hero::after { display: none; }
+.ed .sheet { margin-top: 0; border-radius: 0; box-shadow: none; }
+.ed .sheet--200 { background: #f6f5f1; border-top: 1px solid #e2dfd7; border-bottom: 1px solid #e2dfd7; }
+.ed .sheet--000 { background: #fff; }
+.ed .sheet--400 { background: #0b1d38; }
+.ed .sheet--paper { background: #f6f5f1; }
+
+/* cards: hairlines, square */
+.ed .ig-card { border-radius: 2px; border-color: #e2dfd7; background: #fff; box-shadow: none; }
+.ed a.ig-card:hover, .ed .ig-card--link:hover { transform: none; border-color: #0d1626; }
+.ed .sheet--200 .ig-card { background: #fff; }
+.ed [data-theme=dark] .ig-card { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12); }
+.ed .ig-tile { border-radius: 2px; }
+.ed .ig-badge { border-radius: 2px; }
+
+/* product screens stay dark, framed like the home's case study */
+.ed .ig-frame, .ed .tour, .ed .hub { border-radius: 4px; }
+.ed .tour { box-shadow: 0 40px 80px -40px rgba(13,22,38,.45); }
+.ed .mini { border-radius: 4px; }
+.ed .stack::before, .ed .xr::before, .ed .flow::before { display: none; }
+
+/* crumbs + problem badge in the solution heroes */
+.ed .crumbs, .ed .crumbs a { color: #6a7183; }
+.ed .prob { border-radius: 2px; }
+
+/* forms + FAQ */
+.ed .form { border-radius: 2px; background: #f6f5f1; border-color: #e2dfd7; }
+.ed .ig-input { border-radius: 2px; background: #fff; }
+.ed .picks span { border-radius: 2px; }
+.ed .contacts a { border-radius: 2px; background: #fff; border-color: #e2dfd7; }
+.ed .faq summary { font-weight: 500; }
+.ed .hero--product .ig-hero { font-size: clamp(40px, 5vw, 70px); line-height: 1.02; }
+/* step-by-step demos on the light page */
+.ed .tour__step { border-radius: 2px; border-color: #e2dfd7; background: rgba(255,255,255,.6); color: #0d1626; }
+.ed .tour__step b { color: #0d1626; font-weight: 500; }
+.ed .tour__step b i { color: #1f55b5; font-family: var(--font-display); }
+.ed .tour__step span { color: #39435a; }
+.ed .tour__step:hover { border-color: #b9b4a8; }
+.ed .tour__step[aria-current="step"] { background: #fff; border-color: #1f55b5; box-shadow: inset 3px 0 0 #1f55b5; }
+.ed .tour__say, .ed .tour__note { color: #39435a; }
+.ed .tour__ctrl .ig-btn { border-radius: 2px; }
+
+/* compact step control */
+.ed .tc { display: flex; align-items: center; gap: 14px; }
+.ed .tc__b { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 40px; min-width: 40px; padding: 0 12px; border: 1px solid #cfcbc1; border-radius: 999px; color: #0d1626; font: 500 14px/1 var(--font-sans); transition: border-color 200ms, background-color 200ms, color 200ms; }
+.ed .tc__b svg { width: 16px; height: 16px; transition: transform 200ms; }
+.ed .tc__b:hover { border-color: #0d1626; }
+.ed .tc__b:focus-visible { outline: 2px solid #1f55b5; outline-offset: 2px; }
+.ed .tc__b:disabled { opacity: .35; cursor: default; }
+.ed .tc__b--next { padding: 0 16px 0 18px; border-color: #0b1d38; background: #0b1d38; color: #fff; }
+.ed .tc__b--next:hover { background: #173f88; border-color: #173f88; } .ed .tc__b--next:hover svg { transform: translateX(3px); }
+.ed .tc__n { font: 400 15px/1 var(--font-display); color: #6a7183; font-variant-numeric: tabular-nums; } .ed .tc__n b { font-weight: 400; color: #0d1626; }
+/* demo caption: inset to line up with the text inside the step cards */
+.ed .tour__say { padding: 4px 18px 0 19px; border-left: 2px solid #e2dfd7; margin-left: 0; }
+.ed .tour__ctrl.tc { padding-left: 19px; }
+/* hero problem line: editorial, no pill, no icon tile */
+.ed .hero--product .ig-row > .ig-tile { display: none; }
+.ed .prob { display: grid; gap: 4px; padding: 2px 0 2px 16px; border: 0; border-left: 2px solid #b3261e; border-radius: 0; background: none; font: italic 400 clamp(18px, 1.6vw, 21px)/1.35 var(--font-display); color: #0d1626; }
+.ed .prob em { font: 600 11px/1 var(--font-sans); font-style: normal; letter-spacing: .16em; text-transform: uppercase; color: #b3261e; background: none; padding: 0; border-radius: 0; }
+/* phones: the four steps become a slim numbered progress line */
+@media (max-width: 1023px) {
+  .ed .tour__steps { position: relative; display: grid !important; grid-template-columns: repeat(4, 1fr); gap: 0 !important; padding: 4px 0 2px; }
+  .ed .tour__steps::before { content: ""; position: absolute; left: 12.5%; right: 12.5%; top: 18px; height: 1px; background: #cfcbc1; }
+  .ed .tour__step, .ed .tour__step:hover, .ed .tour__step[aria-current="step"] { position: relative; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; text-align: center; }
+  .ed .tour__step b { display: grid; justify-items: center; gap: 8px; font: 400 12.5px/1.25 var(--font-sans); color: #6a7183; }
+  .ed .tour__step b i { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #f6f5f1; border: 1px solid #cfcbc1; font: 400 14px/1 var(--font-display); font-style: normal; color: #6a7183; transition: all 250ms; }
+  .ed .tour__step[aria-current="step"] b { color: #0d1626; font-weight: 600; }
+  .ed .tour__step[aria-current="step"] b i { background: #0b1d38; border-color: #0b1d38; color: #fff; box-shadow: 0 0 0 4px rgba(31,85,181,.14); }
+  .ed .tour__step b { visibility: visible; }
+  .ed .tour__step:not([aria-current="step"]) b { font-size: 0; gap: 0; } .ed .tour__step:not([aria-current="step"]) b i { font-size: 14px; }
+  .ed .tour__say { margin-top: 18px; padding: 0; border-left: 0; font-size: 16px; }
+  .ed .tour__ctrl.tc { padding-left: 0; margin-top: 14px; }
+}
+
+/* closing call to action on inner pages */
+.ed .cta3 { background: #fff; }
+.ed .cta3__band { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 28px 48px; padding: 56px clamp(28px, 5vw, 64px); background: #0b1d38; color: #fff; }
+.ed .cta3__band h2 { margin: 0; max-width: 24ch; font: 400 clamp(30px, 3.8vw, 48px)/1.1 var(--font-display); letter-spacing: -0.015em; color: #fff; }
+.ed .cta3__band h2 em { font-style: italic; color: #9ec0f5; }
+.ed .cta3__band .ig-btn--primary { background: #fff; color: #0b1d38; padding: 16px 26px; }
+.ed .cta3__band .ig-btn--primary:hover { background: #dbe6ff; }
+.ed .cta3__faq { margin-top: 96px; display: grid; grid-template-columns: 1fr 1.6fr; gap: 64px; }
+.ed .cta3__faq h3 { margin: 0; font: 400 36px/1.1 var(--font-display); }
+.ed .cta3__faq .faq { margin-top: 0; border-top: 1px solid #e2dfd7; }
+@media (max-width: 860px) { .ed .cta3__faq { grid-template-columns: 1fr; gap: 24px; margin-top: 72px; } .ed .cta3__band { padding: 40px 24px; } }
