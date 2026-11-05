@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { analyzeSite, compareVersions, detectPlatform, phpEnded, phpVersion, tamperSigns, wpPlugins } from '@/lib/site-audit-core'
+import { acceptAiPoints, analyzeSite, compareVersions, oldLibraries, oldServer, platformRetired, detectPlatform, phpEnded, phpVersion, tamperSigns, wpPlugins } from '@/lib/site-audit-core'
 import { normalizeSiteUrl } from '@/lib/site-audit'
 
 const NOW = new Date('2026-11-05T10:00:00Z')
@@ -107,5 +107,52 @@ describe('site check: address input', () => {
     expect(normalizeSiteUrl('http://example.com/page')).toBe('http://example.com/page')
     expect(normalizeSiteUrl('not a site')).toBeNull()
     expect(normalizeSiteUrl('localhost')).toBeNull()
+  })
+})
+
+describe('site check: not only WordPress', () => {
+  it('detects other CMSs, shops and apps', () => {
+    expect(detectPlatform('<meta name="generator" content="Joomla! - Open Source Content Management">', {})).toMatchObject({ name: 'Joomla', kind: 'cms' })
+    expect(detectPlatform('<meta name="generator" content="Drupal 7 (https://www.drupal.org)">', {})).toMatchObject({ name: 'Drupal', version: '7' })
+    expect(detectPlatform('<script src="/catalog/view/theme/default/x.js">', {}).name).toBe('OpenCart')
+    expect(detectPlatform('<script src="/_next/static/chunks/a.js">', {})).toMatchObject({ name: 'Next.js', kind: 'app' })
+    expect(detectPlatform('<html><body>hello</body></html>', {})).toMatchObject({ name: 'Custom or unknown', kind: 'custom' })
+  })
+  it('flags retired platform versions, old libraries and old servers', () => {
+    expect(platformRetired({ name: 'Drupal', version: '7', kind: 'cms' })).toMatch(/Drupal 7/)
+    expect(platformRetired({ name: 'Drupal', version: '11', kind: 'cms' })).toBeNull()
+    expect(oldLibraries('<script src="/js/jquery-1.12.4.min.js"></script><link href="/css/bootstrap/3.3.7/bootstrap.css">')).toEqual([{ name: 'jQuery', version: '1.12.4' }, { name: 'Bootstrap', version: '3.3.7' }])
+    expect(oldLibraries('<script src="/js/jquery-3.7.1.min.js"></script>')).toEqual([])
+    expect(oldServer({ server: 'Apache/2.2.15 (CentOS)' })).toBe('Apache 2.2')
+    expect(oldServer({ server: 'nginx/1.26.0' })).toBeNull()
+  })
+  it('a non-WordPress report has no WordPress findings but still lists real problems', () => {
+    const html = '<html><head><meta name="generator" content="Joomla! 3.9"></head><body><script src="/j/jquery-1.11.0.js"></script><p>hi</p></body></html>'
+    const r = analyzeSite({ ...base, html, headers: { server: 'Apache/2.2.34' } })
+    const ids = r.findings.map((f) => f.id)
+    expect(ids).toEqual(expect.arrayContaining(['platform-retired', 'old-libs', 'old-server', 'mobile']))
+    expect(ids.some((i) => i.startsWith('wp-'))).toBe(false)
+  })
+})
+
+describe('site check: AI points are only kept when the page backs them', () => {
+  const page = 'Welcome to Acme Plumbing. We fix pipes since 1998. Call us anytime.'
+  it('keeps a point whose quote is on the page and drops invented ones', () => {
+    const out = acceptAiPoints(
+      [
+        { title: 'No prices', detail: 'Visitors cannot tell what it costs.', say: 'Do you show prices?', quote: 'We fix pipes since 1998', level: 'medium' },
+        { title: 'Invented', detail: 'x', say: 'y', quote: 'We won the 2024 national award', level: 'medium' },
+        { title: 'Too short a quote', detail: 'x', say: 'y', quote: 'Acme', level: 'medium' },
+        { title: '', detail: 'x', say: 'y', quote: 'Call us anytime', level: 'low' },
+      ],
+      page,
+    )
+    expect(out.map((o) => o.title)).toEqual(['No prices'])
+    expect(out[0]).toMatchObject({ source: 'ai', group: 'more' })
+  })
+  it('matches quotes regardless of spacing and case and never rates above medium', () => {
+    const out = acceptAiPoints([{ title: 'A', detail: 'b', say: 'c', quote: 'WELCOME   to acme plumbing', level: 'high' }], page)
+    expect(out).toHaveLength(1)
+    expect(out[0]!.level).toBe('low')
   })
 })

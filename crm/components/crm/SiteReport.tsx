@@ -13,6 +13,7 @@ const GROUPS: { id: Group; label: string; icon: typeof ShieldAlert }[] = [
   { id: 'security', label: 'Security (WordPress, PHP, signs of a hack)', icon: ShieldAlert },
   { id: 'cost', label: 'Costly set-ups', icon: Wallet },
   { id: 'basics', label: 'Basics (speed, phones, contact)', icon: Info },
+  { id: 'more', label: 'More to raise (read from the page by AI)', icon: Info },
 ]
 const TONE: Record<Finding['level'], string> = {
   high: 'border-rose-500/40 bg-rose-500/10 text-rose-300',
@@ -78,7 +79,7 @@ export function SiteReportView({ report }: { report: SiteReport }): React.ReactE
           </div>
         )
       })}
-      <p className="text-xs text-muted-foreground">Based on what any visitor’s browser can see. It points to things worth checking; it is not a full security test.</p>
+      <p className="text-xs text-muted-foreground">Based on what any visitor’s browser can see.{report.ai ? ' The last group is written by AI from the page text, and each point quotes the page.' : ''} It points to things worth checking; it is not a full security test.</p>
     </div>
   )
 }

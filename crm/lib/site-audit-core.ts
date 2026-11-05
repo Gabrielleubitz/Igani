@@ -6,7 +6,7 @@
  */
 
 export type Level = 'high' | 'medium' | 'low' | 'good'
-export type Group = 'security' | 'cost' | 'basics'
+export type Group = 'security' | 'cost' | 'basics' | 'more'
 
 export interface Finding {
   id: string
@@ -17,6 +17,8 @@ export interface Finding {
   detail: string
   /** a sentence the salesman can say, or null */
   say: string | null
+  /** where it came from: a fixed rule, or the AI reading the page (checked against the page) */
+  source?: 'rule' | 'ai'
 }
 
 export interface SiteSnapshot {
@@ -41,11 +43,13 @@ export interface SiteSnapshot {
 
 export interface SiteReport {
   url: string
-  platform: { name: string; version: string | null; kind: 'wordpress' | 'hosted' | 'custom' }
+  platform: { name: string; version: string | null; kind: 'wordpress' | 'cms' | 'app' | 'hosted' | 'custom' }
   findings: Finding[]
   /** the best one or two things to say first */
   opener: string | null
   checkedAt: string
+  /** true when an AI read of the page added points */
+  ai?: boolean
 }
 
 function host(u: string): string {
@@ -79,16 +83,73 @@ export function compareVersions(a: string, b: string): number {
   return 0
 }
 
+const CMS: { name: string; test: RegExp; version?: RegExp }[] = [
+  { name: 'Joomla', test: /<meta[^>]+generator[^>]+Joomla|\/media\/system\/js\/|\/components\/com_[a-z]+\//i, version: /Joomla!?\s+([\d.]+)/i },
+  { name: 'Drupal', test: /<meta[^>]+generator[^>]+Drupal|drupalSettings|\/sites\/default\/files\//i, version: /Drupal\s+(\d+(?:\.\d+)*)/i },
+  { name: 'Magento', test: /\/static\/version\d+\/frontend\/|Mage\.Cookies|\/media\/catalog\/product\//i },
+  { name: 'PrestaShop', test: /<meta[^>]+generator[^>]+PrestaShop|\/modules\/ps_[a-z]+\//i, version: /PrestaShop\s+([\d.]+)/i },
+  { name: 'OpenCart', test: /catalog\/view\/theme\/|index\.php\?route=common/i },
+  { name: 'Ghost', test: /<meta[^>]+generator[^>]+Ghost/i, version: /Ghost\s+([\d.]+)/i },
+]
+const APPS: { name: string; test: RegExp; version?: RegExp }[] = [
+  { name: 'Next.js', test: /\/_next\/static\/|__NEXT_DATA__/i },
+  { name: 'Nuxt', test: /\/_nuxt\/|__NUXT__/i },
+  { name: 'Gatsby', test: /\/page-data\/|___gatsby/i },
+  { name: 'Angular', test: /\bng-version=["']/i, version: /ng-version=["']([\d.]+)/i },
+]
+
+/** What the site is built on. WordPress first, then other CMSs and shops, hosted builders, modern apps; otherwise unknown. */
 export function detectPlatform(html: string, headers: Record<string, string>): SiteReport['platform'] {
   const gen = html.match(/<meta[^>]+name=["']generator["'][^>]+content=["']([^"']+)["']/i)?.[1] ?? html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']generator["']/i)?.[1] ?? ''
+  const hdr = Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\n')
   const wp = /\/wp-content\/|\/wp-includes\/|wp-json/i.test(html) || /^WordPress/i.test(gen) || /wp-json/i.test(headers.link ?? '')
-  if (wp) {
-    const v = gen.match(/WordPress\s+([\d.]+)/i)?.[1] ?? null
-    return { name: 'WordPress', version: v, kind: 'wordpress' }
-  }
-  const host = HOSTED.find((h) => h.test.test(html) || h.test.test(Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join('\n')))
+  if (wp) return { name: 'WordPress', version: gen.match(/WordPress\s+([\d.]+)/i)?.[1] ?? null, kind: 'wordpress' }
+  const probe = `${html}\n${hdr}`
+  const cms = CMS.find((c) => c.test.test(probe) || (c.name === 'Drupal' && /x-generator:\s*Drupal/i.test(hdr)))
+  if (cms) return { name: cms.name, version: (cms.version && (gen.match(cms.version)?.[1] ?? hdr.match(cms.version)?.[1])) || null, kind: 'cms' }
+  const host = HOSTED.find((h) => h.test.test(probe))
   if (host) return { name: host.name, version: null, kind: 'hosted' }
+  const app = APPS.find((a) => a.test.test(html))
+  if (app) return { name: app.name, version: (app.version && html.match(app.version)?.[1]) || null, kind: 'app' }
   return { name: gen ? gen.split(/\s+/)[0]! : 'Custom or unknown', version: null, kind: 'custom' }
+}
+
+/** Platform releases that no longer get security fixes (by major version). */
+export function platformRetired(p: SiteReport['platform']): string | null {
+  const major = p.version ? num(p.version)[0] ?? 0 : null
+  if (major === null) return null
+  if (p.name === 'Joomla' && major <= 3) return `Joomla ${major} stopped getting security fixes in 2023`
+  if (p.name === 'Drupal' && (major <= 9)) return `Drupal ${major} no longer gets security fixes`
+  if (p.name === 'PrestaShop' && major <= 1 && p.version && compareVersions(p.version, '1.7') < 0) return 'This PrestaShop line no longer gets security fixes'
+  if (p.name === 'Angular' && major < 16) return `Angular ${major} no longer gets security fixes`
+  return null
+}
+
+/** Old front-end libraries visible in the page's script and style addresses. */
+export function oldLibraries(html: string): { name: string; version: string }[] {
+  const out: { name: string; version: string }[] = []
+  const urls = [...html.matchAll(/(?:src|href)=["']([^"']+)["']/gi)].map((m) => m[1]!)
+  for (const u of urls) {
+    const jq = u.match(/jquery(?:[-.]|\/)(\d+\.\d+(?:\.\d+)?)(?:\.min)?(?:\.js|\/)/i)?.[1]
+    if (jq && num(jq)[0]! < 3) out.push({ name: 'jQuery', version: jq })
+    const bs = u.match(/bootstrap(?:[-.]|\/)(\d+\.\d+(?:\.\d+)?)/i)?.[1]
+    if (bs && num(bs)[0]! < 4) out.push({ name: 'Bootstrap', version: bs })
+    const ng = u.match(/angular(?:\.min)?\.js|angularjs\/(1\.\d+(?:\.\d+)?)/i)
+    if (ng && /angularjs\/1\.|\/1\.\d+\.\d+\/angular/i.test(u)) out.push({ name: 'AngularJS', version: u.match(/1\.\d+(?:\.\d+)?/)?.[0] ?? '1.x' })
+  }
+  return out.filter((o, i, a) => a.findIndex((x) => x.name === o.name && x.version === o.version) === i)
+}
+
+/** Server software the response announces, when it is a version that is long retired. */
+export function oldServer(headers: Record<string, string>): string | null {
+  const v = headers.server ?? ''
+  const ap = v.match(/Apache\/(\d+\.\d+)/i)?.[1]
+  if (ap && compareVersions(ap, '2.4') < 0) return `Apache ${ap}`
+  const iis = v.match(/IIS\/(\d+\.\d+)/i)?.[1]
+  if (iis && compareVersions(iis, '8.5') < 0) return `IIS ${iis}`
+  const ng = v.match(/nginx\/(\d+\.\d+)/i)?.[1]
+  if (ng && compareVersions(ng, '1.18') < 0) return `nginx ${ng}`
+  return null
 }
 
 // ─── PHP ───────────────────────────────────────────────────────────────────
@@ -202,6 +263,15 @@ export function analyzeSite(s: SiteSnapshot): SiteReport {
     if (paid.length) f.push(F({ id: 'cost-paid-plugins', group: 'cost', level: 'medium', title: `Paid add-ons: ${paid.join(', ')}`, detail: 'These need a licence every year to keep getting updates. Skip one and the site stops being patched.', say: `Your site depends on paid add-ons (${paid.slice(0, 3).join(', ')}) that each charge a yearly licence. Are you paying for those every year?` }))
   }
 
+  // Security: other platforms, old libraries, old server software (WordPress is handled above; this runs for any site)
+  const retired = platformRetired(platform)
+  if (retired) f.push(F({ id: 'platform-retired', group: 'security', level: 'high', title: `${platform.name} ${platform.version} is retired`, detail: `${retired}. Sites left on it collect holes that are never fixed.`, say: `Your site runs on ${platform.name} ${platform.version}, which no longer gets security fixes. Is anyone planning to move it?` }))
+  else if (platform.kind === 'cms' || platform.kind === 'app') f.push(F({ id: 'platform-seen', group: 'basics', level: 'good', title: `Built on ${platform.name}${platform.version ? ` ${platform.version}` : ''}`, detail: 'Not an old or retired version as far as we can tell.', say: null }))
+  const libs = oldLibraries(s.html)
+  if (libs.length) f.push(F({ id: 'old-libs', group: 'security', level: 'medium', title: `Old front-end code: ${libs.map((l) => `${l.name} ${l.version}`).join(', ')}`, detail: 'These versions are no longer maintained and have known weaknesses. It also shows the site has not been rebuilt in years.', say: `Your site still uses ${libs[0]!.name} ${libs[0]!.version}, which is years out of date. That usually means the whole site was built a long time ago.` }))
+  const srv = oldServer(s.headers)
+  if (srv) f.push(F({ id: 'old-server', group: 'security', level: 'medium', title: `Old server software: ${srv}`, detail: 'The server announces a version that is long retired, so new holes are not fixed.', say: `The server your site sits on announces ${srv}, which is very old. Who looks after your hosting?` }))
+
   // Security: PHP
   const php = phpVersion(s.headers)
   if (php) {
@@ -238,4 +308,40 @@ export function analyzeSite(s: SiteSnapshot): SiteReport {
   f.sort((a, b) => ORDER[a.level] - ORDER[b.level])
   const say = f.filter((x) => x.say && (x.level === 'high' || x.level === 'medium')).slice(0, 2).map((x) => x.say as string)
   return { url: s.url, platform, findings: f, opener: say.length ? say.join(' ') : null, checkedAt: now.toISOString() }
+}
+
+// ─── AI points, accepted only when the page backs them ────────────────────
+
+export interface RawAiPoint {
+  title?: unknown
+  detail?: unknown
+  say?: unknown
+  quote?: unknown
+  level?: unknown
+}
+
+const squash = (t: string): string => t.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim()
+
+/**
+ * The AI only reads and phrases. A point is kept when it quotes something that is really on the page (or in the facts
+ * we detected); anything else is dropped, so nothing is invented. AI points never rate above "worth raising".
+ */
+export function acceptAiPoints(raw: RawAiPoint[], haystack: string): Finding[] {
+  const hay = squash(haystack)
+  const out: Finding[] = []
+  for (const p of raw) {
+    const title = typeof p.title === 'string' ? p.title.trim().slice(0, 120) : ''
+    const detail = typeof p.detail === 'string' ? p.detail.trim().slice(0, 300) : ''
+    const say = typeof p.say === 'string' ? p.say.trim().slice(0, 260) : ''
+    const quote = typeof p.quote === 'string' ? squash(p.quote) : ''
+    if (!title || !detail || quote.length < 8 || !hay.includes(quote)) continue
+    out.push({ id: `ai-${out.length + 1}`, group: 'more', level: p.level === 'medium' ? 'medium' : 'low', title, detail: `${detail} (On the page: “${(p.quote as string).trim().slice(0, 140)}”)`, say: say || null, source: 'ai' })
+    if (out.length >= 5) break
+  }
+  return out
+}
+
+/** Plain-text list of what the rules detected, handed to the AI so it does not repeat it. */
+export function factsText(r: SiteReport): string {
+  return [`Platform: ${r.platform.name}${r.platform.version ? ` ${r.platform.version}` : ''}`, ...r.findings.filter((f) => f.level !== 'good').map((f) => `Already found: ${f.title}`)].join('\n')
 }

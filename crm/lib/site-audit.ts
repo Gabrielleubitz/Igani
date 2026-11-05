@@ -1,5 +1,6 @@
 import 'server-only'
-import { fetchRaw } from './site-scan'
+import { aiPoints } from './site-audit-ai'
+import { fetchRaw, visibleText } from './site-scan'
 import { analyzeSite, type SiteReport } from './site-audit-core'
 
 let latestWp: { v: string; at: number } | null = null
@@ -59,5 +60,9 @@ export async function auditSite(rawUrl: string): Promise<SiteReport | null> {
       latest,
     }
   }
-  return analyzeSite({ url: home.url, status: home.status, headers: home.headers, html: home.body, ms: home.ms, wp })
+  const report = analyzeSite({ url: home.url, status: home.status, headers: home.headers, html: home.body, ms: home.ms, wp })
+  // The AI reads the page's visible text and adds customer-side points; only points backed by a quote from the page are kept.
+  const extra = await aiPoints(report, visibleText(home.body))
+  if (extra.length) return { ...report, findings: [...report.findings, ...extra], ai: true }
+  return report
 }
