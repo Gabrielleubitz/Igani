@@ -4,6 +4,8 @@ import { ArrowLeft, CheckCircle2, CircleDashed, Crosshair, Download, MessageCirc
 import { BENCHMARKS } from '@/lib/call-coaching'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { relationToCall } from '@/lib/call-access-db'
+import { ShareCall } from '@/components/calls/ShareCall'
 import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Transcript } from '@/components/calls/CallView'
 import { StraightLineChart } from '@/components/calls/StraightLineChart'
 import { ScoreBreakdown, TonalityCard } from '@/components/calls/ScoreBreakdown'
@@ -34,7 +36,18 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
   const user = await requireUser(['ADMIN', 'SALES'])
   const { id } = await props.params
   const call = await prisma.call.findUnique({ where: { id }, include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, company: true } }, user: { select: { name: true, email: true } } } })
-  if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) notFound()
+  if (!call) notFound()
+  const relation = await relationToCall(user, call)
+  if (!relation) notFound()
+  const isShared = relation === 'shared'
+  const [people, sharedRows] =
+    user.role === 'ADMIN'
+      ? await Promise.all([
+          prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] }, ...(call.userId ? { id: { not: call.userId } } : {}) }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }),
+          prisma.callShare.findMany({ where: { callId: call.id }, select: { user: { select: { id: true, name: true, email: true } } } }),
+        ])
+      : [[], []]
+  const toPerson = (u: { id: string; name: string | null; email: string | null }): { id: string; name: string } => ({ id: u.id, name: u.name ?? u.email ?? 'Teammate' })
   const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } })
   const a = asAnalysis(call.analysis)
   const statusTone: Tone = call.status === 'COMPLETED' ? 'emerald' : call.status === 'FAILED' || call.status === 'CANCELED' ? 'rose' : call.status === 'NO_ANSWER' || call.status === 'BUSY' ? 'amber' : 'sky'
@@ -465,7 +478,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
                 <Card>
                   <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-base">Transcript</CardTitle>
-                    <ReanalyzeButton callId={call.id} />
+                    {isShared ? null : <ReanalyzeButton callId={call.id} />}
                   </CardHeader>
                   <CardContent>
                     <Transcript lines={lines} repName={rep} />
@@ -571,6 +584,12 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
       </div>
 
       <CallPlayerProvider src={recorded ? `/api/calls/${call.id}/recording` : null} durationSec={call.recordingSec ?? call.durationSec}>
+        {user.role === 'ADMIN' ? (
+          <div className="mt-3">
+            <ShareCall callId={call.id} candidates={people.map(toPerson)} shared={sharedRows.map((r) => toPerson(r.user))} />
+          </div>
+        ) : null}
+        {isShared ? <p className="mt-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">This call was shared with you. It is not counted in your call numbers or average score.</p> : null}
         {recorded || lines.length ? (
           <div className="mt-3 flex flex-wrap gap-4 text-sm">
             {recorded ? (
@@ -609,7 +628,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
                           ? 'This call hasn’t been analyzed yet.'
                           : 'No recording, so there’s nothing to analyze.'}
                 </span>
-                {working ? null : recorded ? <ReanalyzeButton callId={call.id} label="Analyze now" /> : null}
+                {working || isShared ? null : recorded ? <ReanalyzeButton callId={call.id} label="Analyze now" /> : null}
               </CardContent>
             </Card>
           ) : (

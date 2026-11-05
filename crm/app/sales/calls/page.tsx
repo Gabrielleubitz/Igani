@@ -45,6 +45,7 @@ function loadCalls(where: Prisma.CallWhereInput, take: number) {
     select: {
       id: true,
       leadId: true,
+      userId: true,
       prospectId: true,
       direction: true,
       status: true,
@@ -99,7 +100,7 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
   const since = range === 'today' ? localMidnight(now, tz) : range === '7d' ? localMidnight(now, tz, -6) : range === '30d' ? localMidnight(now, tz, -29) : null
 
   const base: Prisma.CallWhereInput = {
-    AND: [{ simulated: false }, person ? { userId: person } : {}, since ? { startedAt: { gte: since } } : {}, searchWhere(q) ?? {}],
+    AND: [{ simulated: false }, isAdmin ? (person ? { userId: person } : {}) : { OR: [{ userId: user.id }, { shares: { some: { userId: user.id } } }] }, since ? { startedAt: { gte: since } } : {}, searchWhere(q) ?? {}],
   }
   const where = (v: View): Prisma.CallWhereInput => ({ AND: [base, VIEW_WHERE[v]] })
 
@@ -267,7 +268,7 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
                 </header>
                 <ul className="divide-y divide-border/60 overflow-hidden rounded-2xl border bg-card/60">
                   {day.groups.map((g) => (
-                    <CallGroup key={g[0].id} calls={g} isAdmin={isAdmin && !person} time={(d) => timeFmt.format(d)} />
+                    <CallGroup key={g[0].id} calls={g} isAdmin={isAdmin && !person} viewerId={user.id} time={(d) => timeFmt.format(d)} />
                   ))}
                 </ul>
               </section>
@@ -320,13 +321,13 @@ const who = (c: Row): { name: string; sub: string | null } => {
 }
 
 /** One contact on one day: the latest call as the row, earlier tries folded underneath. */
-function CallGroup({ calls, isAdmin, time }: { calls: [Row, ...Row[]]; isAdmin: boolean; time: (d: Date) => string }): React.ReactElement {
+function CallGroup({ calls, isAdmin, viewerId, time }: { calls: [Row, ...Row[]]; isAdmin: boolean; viewerId: string; time: (d: Date) => string }): React.ReactElement {
   const [c, ...earlier] = calls
   const l = look(c)
   const p = who(c)
   const a = asAnalysis(c.analysis)
   const score = a?.isSalesCall ? a.overallScore : null
-  const rep = isAdmin ? (c.user ? (c.user.name ?? c.user.email) : 'Former teammate') : null
+  const rep = isAdmin ? (c.user ? (c.user.name ?? c.user.email) : 'Former teammate') : c.userId !== viewerId ? `Shared with you${c.user ? ` · ${c.user.name ?? c.user.email}` : ''}` : null
   return (
     <li>
       <Link href={`/sales/calls/${c.id}`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-muted/30">

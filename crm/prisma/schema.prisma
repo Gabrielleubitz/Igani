@@ -117,6 +117,7 @@ model User {
   leadNotes       LeadNote[]
   phoneLine       PhoneLine?
   calls           Call[]
+  callShares      CallShare[] @relation("CallSharedWith")
   smsMessages     SmsMessage[]
   meetRooms       MeetRoom[]
   callLists       CallList[]
@@ -788,10 +789,26 @@ model Call {
   user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  shares   CallShare[]
 
   @@index([userId, startedAt])
   @@index([leadId, startedAt])
   @@index([prospectId])
+}
+
+/// An admin adds a salesman to someone else's call so he can open it (recording, transcript, review) from his own Calls list.
+/// It is only visible to him: it is NOT counted in his call numbers or average score.
+model CallShare {
+  callId     String
+  userId     String
+  sharedById String?
+  createdAt  DateTime @default(now())
+
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user User @relation("CallSharedWith", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([callId, userId])
+  @@index([userId])
 }
 
 // ─── Call lists (cold calling) ───────────────────────────────────────────────

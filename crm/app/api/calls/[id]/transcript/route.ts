@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { currentUserOrNull } from '@/lib/auth'
 import { asTranscript } from '@/lib/call-analysis'
 import { safeFileName, transcriptText } from '@/lib/call-download'
+import { relationToCall } from '@/lib/call-access-db'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -14,9 +15,9 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
   if (!/^[a-z0-9]{20,40}$/i.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const call = await prisma.call.findUnique({
     where: { id },
-    select: { userId: true, startedAt: true, transcript: true, lead: { select: { firstName: true, lastName: true, company: true } }, user: { select: { name: true } } },
+    select: { id: true, userId: true, startedAt: true, transcript: true, lead: { select: { firstName: true, lastName: true, company: true } }, user: { select: { name: true } } },
   })
-  if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!call || !(await relationToCall(user, call))) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const lines = asTranscript(call.transcript)
   if (!lines.length) return NextResponse.json({ error: 'No transcript for this call' }, { status: 404 })
   const who = call.lead ? [call.lead.firstName, call.lead.lastName].filter(Boolean).join(' ') || call.lead.company || null : null

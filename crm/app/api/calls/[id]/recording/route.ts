@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { currentUserOrNull } from '@/lib/auth'
 import { ensureRecordingSid, fetchRecordingAudio } from '@/lib/call-recording'
 import { safeFileName } from '@/lib/call-download'
+import { relationToCall } from '@/lib/call-access-db'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -12,8 +13,8 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
   const user = await currentUserOrNull()
   if (!user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
   if (!/^[a-z0-9]{20,40}$/i.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const call = await prisma.call.findUnique({ where: { id }, select: { userId: true, startedAt: true, lead: { select: { firstName: true, lastName: true, company: true } } } })
-  if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const call = await prisma.call.findUnique({ where: { id }, select: { id: true, userId: true, startedAt: true, lead: { select: { firstName: true, lastName: true, company: true } } } })
+  if (!call || !(await relationToCall(user, call))) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const sid = await ensureRecordingSid(id)
   if (!sid) return NextResponse.json({ error: 'No recording for this call' }, { status: 404 })
   const download = new URL(req.url).searchParams.get('download') === '1'
