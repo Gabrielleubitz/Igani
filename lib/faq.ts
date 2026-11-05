@@ -10,7 +10,7 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'How long does a project take?',
-    a: 'Timelines depend on scope. A focused landing page is typically delivered within one to two weeks. Larger projects with custom back-end functionality and automations usually take three to four weeks.',
+    a: 'Timelines depend on scope. A base site, with a simple front end and back end, takes one to two weeks. More complex builds take two to four weeks, depending on what you need.',
   },
   {
     q: 'How is a project priced?',

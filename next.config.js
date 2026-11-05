@@ -25,6 +25,9 @@ const nextConfig = {
   async redirects() {
     return [
       { source: '/packages', destination: '/', permanent: true },
+      // The old dark landing pages are replaced by the new site's pages (query strings, like ad tags, are kept)
+      { source: '/salescrm', destination: '/sales', permanent: true },
+      { source: '/what-we-build', destination: '/build', permanent: true },
       { source: '/index.html', destination: '/', permanent: true },
       { source: '/sales.html', destination: '/sales', permanent: true },
       { source: '/marketing.html', destination: '/marketing', permanent: true },

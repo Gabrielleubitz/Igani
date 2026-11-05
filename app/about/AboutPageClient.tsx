@@ -2,10 +2,8 @@
 
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { User, Plus, Mail, Instagram, Linkedin, ArrowRight } from 'lucide-react'
-import { PageIntro, PageShell, SerifAccent } from '@/app/components/landing/fx/PageShell'
-import { MagneticButton } from '@/app/components/landing/fx/MagneticButton'
+import { NewSiteShell } from '@/components/newsite/NewSiteShell'
 import { getAboutUsSections, getAboutUsSettings, getPackageFAQs, getTeamMembers, orderFounders } from '@/lib/firestore'
 import { AboutUsSection, AboutUsSettings, PackageFAQ, TeamMember } from '@/types'
 import { T } from '@/components/T'
@@ -29,139 +27,74 @@ function phoneToWhatsAppHref(phone: string): string {
   return `https://wa.me/${digits}`
 }
 
-function TeamMemberCard({
-  member,
-  index,
-  expanded,
-  onToggleBio,
-}: {
-  member: TeamMember
-  index: number
-  expanded: boolean
-  onToggleBio: () => void
-}) {
+/** "Our *story*" -> the starred word in the display italic, like the headlines on the new site. */
+function Accent({ text }: { text: string }) {
+  return (
+    <>
+      {text.split('*').map((seg, i) => (i % 2 === 1 ? <em key={i}>{seg}</em> : <span key={i}>{seg}</span>))}
+    </>
+  )
+}
+
+function TeamMemberCard({ member, expanded, onToggleBio }: { member: TeamMember; expanded: boolean; onToggleBio: () => void }) {
   const whatsappHref = member.phone ? phoneToWhatsAppHref(member.phone) : ''
   const emailTrimmed = member.email?.trim() ?? ''
   const mailtoHref = emailTrimmed ? `mailto:${emailTrimmed}` : ''
-  const hasContact = !!(
-    whatsappHref ||
-    mailtoHref ||
-    member.instagramUrl?.trim() ||
-    member.linkedinUrl?.trim()
-  )
   const showReadMore = member.bio.length > TEAM_BIO_READ_MORE_AT
-
+  const profile = `/about/team/${teamMemberSlug(member.name)}`
   return (
-    <motion.div
-      id={teamMemberSlug(member.name)}
-      initial={{ y: 30 }}
-      whileInView={{ y: 0 }}
-      transition={{ duration: 0.7, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
-      viewport={{ once: true, margin: '0px 0px -10% 0px' }}
-      className={`flex h-full flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#061225]/80 shadow-[0_40px_120px_-40px_rgba(0,0,0,0.9)] backdrop-blur-xl ${hasContact ? 'group' : ''}`}
-    >
-      {/* Compact header: small round photo, name and title on the right */}
-      <div className="flex items-center gap-5 p-6 pb-0 md:p-7 md:pb-0">
-        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-[#4080E0]/25 to-[#081833] ring-1 ring-white/15 sm:h-24 sm:w-24">
-          {member.imageUrl ? (
-            <img src={member.imageUrl} alt={member.name} className="h-full w-full object-cover object-[50%_20%]" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <User className="h-9 w-9 text-[#9ec0f5]/80" />
-            </div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-2xl font-semibold tracking-[-0.02em] text-white">
-            <Link
-              href={`/about/team/${teamMemberSlug(member.name)}`}
-              className="transition-colors hover:text-[#80A0E0]"
-            >
-              {member.name}
-            </Link>
-          </h3>
-          <p className="font-display !mt-1 text-lg text-[#dbe6ff]">{member.position}</p>
-        </div>
-      </div>
-      <div className="flex flex-1 flex-col p-6 pt-5 md:p-7 md:pt-5">
-        {hasContact && (
-          <div className="mb-4">
-            <div className="flex flex-wrap items-center gap-2">
-                {whatsappHref && (
-                  <a
-                    href={whatsappHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-emerald-400 transition-colors hover:bg-white/20 hover:text-emerald-300"
-                    title={`WhatsApp ${member.phone}`}
-                    aria-label={`Message ${member.name} on WhatsApp`}
-                  >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                    </svg>
-                  </a>
-                )}
-                {mailtoHref && (
-                  <a
-                    href={mailtoHref}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-slate-200 transition-colors hover:bg-white/20 hover:text-white"
-                    title={emailTrimmed}
-                    aria-label={`Email ${member.name}`}
-                  >
-                    <Mail className="h-4 w-4" />
-                  </a>
-                )}
-                {member.instagramUrl?.trim() && (
-                  <a
-                    href={member.instagramUrl.trim()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-pink-400 transition-colors hover:bg-white/20 hover:text-pink-300"
-                    title="Instagram"
-                    aria-label={`${member.name} on Instagram`}
-                  >
-                    <Instagram className="h-4 w-4" />
-                  </a>
-                )}
-                {member.linkedinUrl?.trim() && (
-                  <a
-                    href={member.linkedinUrl.trim()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-sky-400 transition-colors hover:bg-white/20 hover:text-sky-300"
-                    title="LinkedIn"
-                    aria-label={`${member.name} on LinkedIn`}
-                  >
-                    <Linkedin className="h-4 w-4" />
-                  </a>
-                )}
-              </div>
+    <div id={teamMemberSlug(member.name)} className="ab__m">
+      <div className="ab__mh">
+        {member.imageUrl ? (
+          <img src={member.imageUrl} alt={member.name} className="ab__ph" />
+        ) : (
+          <div className="ab__ph ab__ph--none">
+            <User size={22} />
           </div>
         )}
-        <p
-          className={`text-[15px] leading-relaxed text-white/70 ${!expanded && showReadMore ? 'line-clamp-4' : ''}`}
-        >
-          {member.bio}
-        </p>
-        {showReadMore && (
-          <button
-            type="button"
-            onClick={onToggleBio}
-            className="mt-4 self-start text-sm font-medium text-[#9ec0f5] underline decoration-white/20 underline-offset-4 transition-colors hover:text-white"
-            aria-expanded={expanded}
-          >
-            {expanded ? <T>Read less</T> : <T>Read more</T>}
-          </button>
-        )}
-        <Link
-          href={`/about/team/${teamMemberSlug(member.name)}`}
-          className="group/link mt-auto inline-flex items-center gap-2 self-start pt-6 text-sm font-semibold text-white transition-colors hover:text-[#9ec0f5]"
-        >
-          <T>View profile</T>
-          <ArrowRight className="h-4 w-4 transition-transform group-hover/link:translate-x-0.5" />
-        </Link>
+        <div>
+          <h3>
+            <Link href={profile}>{member.name}</Link>
+          </h3>
+          <p className="ab__pos">{member.position}</p>
+        </div>
       </div>
-    </motion.div>
+      <p className={expanded ? 'ab__bio' : 'ab__bio ab__bio--clamp'}>{member.bio}</p>
+      {showReadMore && (
+        <button type="button" className="ab__more" onClick={onToggleBio} aria-expanded={expanded}>
+          {expanded ? <T>Read less</T> : <T>Read more</T>}
+        </button>
+      )}
+      <div className="ab__links">
+        <Link href={profile} className="ab__prof">
+          <T>View profile</T> <ArrowRight size={14} />
+        </Link>
+        <span className="ab__ic">
+          {whatsappHref && (
+            <a href={whatsappHref} target="_blank" rel="noopener noreferrer" title={`WhatsApp ${member.phone}`} aria-label={`Message ${member.name} on WhatsApp`}>
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden>
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+            </a>
+          )}
+          {mailtoHref && (
+            <a href={mailtoHref} title={emailTrimmed} aria-label={`Email ${member.name}`}>
+              <Mail size={18} />
+            </a>
+          )}
+          {member.instagramUrl?.trim() && (
+            <a href={member.instagramUrl.trim()} target="_blank" rel="noopener noreferrer" title="Instagram" aria-label={`${member.name} on Instagram`}>
+              <Instagram size={18} />
+            </a>
+          )}
+          {member.linkedinUrl?.trim() && (
+            <a href={member.linkedinUrl.trim()} target="_blank" rel="noopener noreferrer" title="LinkedIn" aria-label={`${member.name} on LinkedIn`}>
+              <Linkedin size={18} />
+            </a>
+          )}
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -235,121 +168,77 @@ export default function AboutPageClient() {
     },
   ]
 
-  return (
-    <PageShell>
-      <PageIntro label="About" aside="three founders, one room." title={settings.pageTitle} sub={settings.pageSubtitle} />
+  const stories = sections.length > 0
+    ? sections.map((sec) => ({ id: sec.id, title: sec.title, html: sec.content, paragraphs: [] as string[] }))
+    : defaultSections.map((sec) => ({ id: sec.id, title: sec.title, html: '', paragraphs: sec.paragraphs }))
 
-      {/* Story: editorial rows — index + title on the left, the words on the right */}
-      <section className="relative pb-24 sm:pb-32">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+  return (
+    <NewSiteShell>
+      <section className="ab ab--intro">
+        <div className="ab__w">
+          <p className="crumbs">
+            <a href="/">Home</a> <span>/</span> About
+          </p>
+          <h1>{settings.pageTitle}</h1>
+          <p className="ab__sub">{settings.pageSubtitle}</p>
+        </div>
+      </section>
+
+      <section className="ab">
+        <div className="ab__w">
           {isLoading ? (
-            <div className="space-y-6" aria-busy="true">
-              {[0, 1].map((i) => (
-                <div key={i} className="h-48 animate-pulse rounded-3xl border border-white/[0.06] bg-white/[0.02]" />
-              ))}
-            </div>
+            <p aria-busy="true" className="ab__sub">Loading…</p>
           ) : (
-            <div>
-              {(sections.length > 0
-                ? sections.map((sec) => ({ id: sec.id, title: sec.title, html: sec.content }))
-                : defaultSections.map((sec) => ({ id: sec.id, title: sec.title, paragraphs: sec.paragraphs }))
-              ).map((section, index) => (
-                <motion.div
-                  key={section.id}
-                  initial={{ y: 30 }}
-                  whileInView={{ y: 0 }}
-                  viewport={{ once: true, margin: '0px 0px -10% 0px' }}
-                  transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-                  className="grid gap-6 border-t border-white/[0.12] py-12 lg:grid-cols-[0.8fr_1.4fr] lg:gap-16 lg:py-16"
-                >
-                  <div>
-                    <span className="font-display text-5xl italic leading-none text-[#4080E0]">0{index + 1}</span>
-                    <h2 className="mt-4 border-none pb-0 text-3xl font-semibold tracking-[-0.02em] text-white sm:text-4xl">
-                      <SerifAccent text={section.title} />
-                    </h2>
+            stories.map((section, index) => (
+              <div key={section.id} className="ab__row">
+                <div className="ab__k">
+                  <span>0{index + 1}</span>
+                  <h2><Accent text={section.title} /></h2>
+                </div>
+                {section.html ? (
+                  <div className="ab__html" dangerouslySetInnerHTML={{ __html: section.html }} />
+                ) : (
+                  <div className="ab__html">
+                    {section.paragraphs.map((para) => (
+                      <p key={para}><T>{para}</T></p>
+                    ))}
                   </div>
-                  {'html' in section && section.html ? (
-                    <div
-                      className="max-w-none text-lg leading-relaxed text-white/70 [&_a]:text-[#9ec0f5] [&_a]:underline [&_li]:mt-2 [&_p+p]:mt-4 [&_strong]:font-semibold [&_strong]:text-white [&_ul]:list-disc [&_ul]:ps-5"
-                      dangerouslySetInnerHTML={{ __html: section.html }}
-                    />
-                  ) : (
-                    <div className="space-y-4 text-lg leading-relaxed text-white/70">
-                      {'paragraphs' in section &&
-                        section.paragraphs?.map((para) => (
-                          <p key={para} className="first:!mt-0">
-                            <T>{para}</T>
-                          </p>
-                        ))}
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
+                )}
+              </div>
+            ))
           )}
         </div>
       </section>
 
-      {/* Team */}
       {teamMembers.length > 0 && (
-        <section id="team" className="relative scroll-mt-24 bg-[#081833] py-24 sm:py-32" aria-labelledby="team-heading">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-            <div className="mb-10 flex items-baseline justify-between gap-6 border-t border-white/[0.12] pt-3 text-[13px] text-white/60">
-              <span>The team</span>
-              <span className="hidden sm:block">you&rsquo;ll talk to us, not an account manager.</span>
-            </div>
-            <h2
-              id="team-heading"
-              className="mb-12 max-w-3xl border-none pb-0 text-balance text-4xl font-semibold leading-[1.0] tracking-[-0.025em] text-white sm:text-5xl lg:text-6xl"
-            >
-              <SerifAccent text={settings.teamSectionTitle || 'The people *doing the work*.'} />
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {teamMembers.map((member, index) => (
-                <TeamMemberCard
-                  key={member.id}
-                  member={member}
-                  index={index}
-                  expanded={expandedTeamMemberId === member.id}
-                  onToggleBio={() => {
-                    setExpandedTeamMemberId((prev) => (prev === member.id ? null : member.id))
-                  }}
-                />
+        <section id="team" className="ab ab--tint" aria-labelledby="team-heading">
+          <div className="ab__w">
+            <p className="ab__eb">The team</p>
+            <h2 id="team-heading" className="ab__h2"><Accent text={settings.teamSectionTitle || 'The people *doing the work*.'} /></h2>
+            <div className="ab__grid">
+              {teamMembers.map((member) => (
+                <TeamMemberCard key={member.id} member={member} expanded={expandedTeamMemberId === member.id} onToggleBio={() => setExpandedTeamMemberId((cur) => (cur === member.id ? null : member.id))} />
               ))}
             </div>
           </div>
         </section>
       )}
 
-      {/* FAQ */}
       {faqs.length > 0 && (
-        <section className="relative py-24 sm:py-32">
-          <div className="mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.8fr_1.4fr] lg:gap-16 lg:px-8">
-            <div>
-              <div className="mb-8 border-t border-white/[0.12] pt-3 text-[13px] text-white/60">Questions</div>
-              <h2 className="border-none pb-0 text-4xl font-semibold leading-[1.0] tracking-[-0.025em] text-white sm:text-5xl">
-                <SerifAccent text="Asked *often*." />
-              </h2>
-            </div>
-            <div className="border-b border-white/[0.12]">
+        <section className="ab">
+          <div className="ab__w">
+            <p className="ab__eb">Questions</p>
+            <h2 className="ab__h2"><Accent text="Asked *often*." /></h2>
+            <div className="ab__faq">
               {faqs.map((faq) => {
                 const open = !!expandedFAQ[faq.id]
                 return (
-                  <div key={faq.id} className="border-t border-white/[0.12]">
-                    <button
-                      type="button"
-                      onClick={() => toggleFAQ(faq.id)}
-                      aria-expanded={open}
-                      className="flex w-full items-center justify-between gap-6 py-6 text-left"
-                    >
-                      <h3 className="text-lg font-semibold text-white">{faq.question}</h3>
-                      <Plus className={`h-5 w-5 shrink-0 text-white/60 transition-transform duration-300 ${open ? 'rotate-45 text-white' : ''}`} />
+                  <div key={faq.id} className="ab__q">
+                    <button type="button" onClick={() => toggleFAQ(faq.id)} aria-expanded={open}>
+                      <h3>{faq.question}</h3>
+                      <Plus size={20} className={open ? 'ab__plus ab__plus--open' : 'ab__plus'} />
                     </button>
-                    {open && (
-                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pb-6">
-                        <p className="!mt-0 max-w-2xl leading-relaxed text-white/70">{faq.answer}</p>
-                      </motion.div>
-                    )}
+                    {open && <p>{faq.answer}</p>}
                   </div>
                 )
               })}
@@ -358,23 +247,13 @@ export default function AboutPageClient() {
         </section>
       )}
 
-      {/* Closing call to action — the same blue the home page ends on */}
-      <section className="relative overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#1d4fa3_0%,#0c2552_50%,#0a1f47_100%)] py-24 sm:py-32">
-        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="mx-auto max-w-4xl border-none pb-0 text-balance text-[clamp(40px,6vw,88px)] font-semibold leading-[0.98] tracking-[-0.035em] text-white">
-            <SerifAccent text="Ready to work *together*?" />
-          </h2>
-          <p className="mx-auto !mt-6 max-w-xl text-lg leading-relaxed text-white/75">
-            Tell us what you&rsquo;re building. We&rsquo;ll come back with real questions, not a brochure.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-            <MagneticButton href={CONTACT_HREF}>
-              Start a project
-              <ArrowRight className="h-4 w-4" />
-            </MagneticButton>
-          </div>
+      <section className="ab ab--cta">
+        <div className="ab__w">
+          <h2 className="ab__h2"><Accent text="Ready to work *together*?" /></h2>
+          <p className="ab__sub">Tell us what you&rsquo;re building. We&rsquo;ll come back with real questions, not a brochure.</p>
+          <a className="bt bt--dark" href={CONTACT_HREF}>Book a consultation</a>
         </div>
       </section>
-    </PageShell>
+    </NewSiteShell>
   )
 }

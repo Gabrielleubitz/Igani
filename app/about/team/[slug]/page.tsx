@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
+import { NewSiteShell } from '@/components/newsite/NewSiteShell'
 import { FounderPersonJsonLd } from '@/components/FounderPersonJsonLd'
 import {
   founderProfileUrl,
@@ -69,7 +68,7 @@ export default async function FounderProfilePage({ params }: PageProps) {
   if (!founder) notFound()
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <NewSiteShell>
       <FounderPersonJsonLd slug={params.slug} />
       <script
         type="application/ld+json"
@@ -85,68 +84,33 @@ export default async function FounderProfilePage({ params }: PageProps) {
           }),
         }}
       />
-      <Header showBackButton backButtonText="About IGANI" backButtonHref="/about" />
-
-      <main className="mx-auto max-w-3xl px-4 pb-20 pt-32 sm:px-6">
-        <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.3em] text-[#80A0E0]">
-          {SITE_NAME} · Co-Founder
+      <div className="fp">
+        <p className="crumbs">
+          <Link href="/">Home</Link> <span>/</span> <Link href="/about">About</Link> <span>/</span> {founder.name}
         </p>
-
-        <div className="flex items-center gap-5 sm:gap-7">
-          {founder.imageUrl && (
-            <img
-              src={founder.imageUrl}
-              alt={founder.name}
-              width={144}
-              height={144}
-              className="h-24 w-24 shrink-0 rounded-full object-cover object-[50%_20%] ring-1 ring-[#4080E0]/30 sm:h-36 sm:w-36"
-            />
-          )}
-          <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-5xl">{founder.name}</h1>
-            <p className="!mt-2 text-lg font-medium text-[#4080E0]">{founder.position}</p>
+        <div className="fp__top">
+          {founder.imageUrl && <img src={founder.imageUrl} alt={founder.name} width={112} height={112} className="fp__ph" />}
+          <div>
+            <h1>{founder.name}</h1>
+            <p className="fp__pos">{founder.position}</p>
           </div>
         </div>
-
-        <article className="mt-10 space-y-4 text-lg leading-relaxed text-white/80">
+        <article>
           <p>{founder.bio}</p>
           <p>
-            {founder.name} is part of the leadership team at{' '}
-            <Link href="/" className="text-[#80A0E0] underline-offset-4 hover:underline">
-              {SITE_NAME}
-            </Link>
-            , a product studio building websites, apps, SaaS, and automations for startups and
-            businesses.
+            {founder.name} is part of the leadership team at <Link href="/">{SITE_NAME}</Link>, a product studio building websites, apps, SaaS, and automations for startups and businesses.
           </p>
         </article>
-
-        <div className="mt-10 flex flex-wrap gap-3">
-          <Link
-            href="/about"
-            className="inline-flex items-center rounded-full border border-[#4080E0]/40 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:border-[#4080E0]/80 hover:bg-[#4080E0]/10"
-          >
-            Meet the full team
-          </Link>
-          <Link
-            href={CONTACT_HREF}
-            className="inline-flex items-center rounded-full bg-[#4080E0] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#5090F0]"
-          >
-            Work with {SITE_NAME}
-          </Link>
+        <div className="fp__links">
+          <Link href="/about">Meet the full team</Link>
+          <Link href={CONTACT_HREF}>Work with {SITE_NAME}</Link>
           {founder.linkedinUrl && (
-            <a
-              href={founder.linkedinUrl}
-              target="_blank"
-              rel="noopener noreferrer me"
-              className="inline-flex items-center rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold text-white/80 transition-colors hover:border-white/30 hover:text-white"
-            >
+            <a href={founder.linkedinUrl} target="_blank" rel="noopener noreferrer me">
               LinkedIn
             </a>
           )}
         </div>
-      </main>
-
-      <Footer />
-    </div>
+      </div>
+    </NewSiteShell>
   )
 }
