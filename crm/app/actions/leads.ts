@@ -1,12 +1,13 @@
 'use server'
 
+import { identifyNumber, type CallerId } from '@/lib/caller-id'
 import { LeadStatus } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { logActivity } from '@/lib/audit'
-import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, notifyTeamOfNewLead, phoneKey } from '@/lib/leads'
+import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLeadStatus, findExistingLead, notifyTeamOfNewLead, phoneKey } from '@/lib/leads'
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { applyCommissionChoice } from '@/lib/deals'
@@ -150,6 +151,20 @@ export async function updateLead(leadId: string, input: z.input<typeof leadEditS
   }
 }
 
+/**
+ * Is this number already in the CRM? For the new-contact form: the lead it belongs to (a link only when you may open
+ * it), a call-list business, or the business Google lists at that number.
+ */
+export async function checkContactPhone(phone: string): Promise<ActionResult<CallerId | null>> {
+  try {
+    const user = await requireUser()
+    const p = z.string().trim().min(3).max(40).parse(phone)
+    return { ok: true, data: await identifyNumber(p, user, { lookup: true }) }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
 /** Any role: manually create a contact. Needs an email or a phone; dedupes by email. */
 export async function createLead(input: { email?: string; firstName?: string; lastName?: string; phone?: string; company?: string; source?: string; sourceDetail?: string; tags?: string[] }): Promise<ActionResult<{ id: string }>> {
   try {
@@ -171,10 +186,8 @@ export async function createLead(input: { email?: string; firstName?: string; la
       const exists = await prisma.lead.findUnique({ where: { email: data.email }, select: { id: true } })
       if (exists) throw new BookingError('A lead with this email already exists.', 'INVALID_STATE')
     } else if (data.phone) {
-      // Phone-only: same matching rule as the website forms (last 9 digits), so hand-added contacts don't duplicate.
-      const key = phoneKey(data.phone)
-      const dup = key ? await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) LIMIT 1` : []
-      if (dup.length) throw new BookingError('A lead with this phone number already exists. Search for it in Leads.', 'INVALID_STATE')
+      // Phone-only: same matching rule as the website forms and the dialer, so hand-added contacts don't duplicate.
+      if (await findExistingLead(prisma, undefined, data.phone)) throw new BookingError('A lead with this phone number already exists. Search for it in Leads.', 'INVALID_STATE')
     }
     const lead = await prisma.$transaction(async (tx) => {
       // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.

@@ -385,6 +385,24 @@ model LeadNote {
   @@index([leadId, createdAt])
 }
 
+/// Who a phone number belongs to, from public references (the business's Google listing). A caller-ID directory:
+/// the dialer and incoming calls show "X Real Estate" for a number no contact has yet. One Google lookup per number
+/// (a miss is remembered too, and retried after 30 days).
+model PhoneLabel {
+  /// E.164
+  number    String   @id
+  /// The business at this number (null: looked up, nothing found)
+  company   String?
+  category  String?
+  address   String?
+  website   String?
+  placeId   String?
+  /// google
+  source    String   @default("google")
+  checkedAt DateTime @default(now())
+  createdAt DateTime @default(now())
+}
+
 /// Admin-editable site/CRM settings (key → JSON value). See lib/settings.ts for known keys.
 model SiteSetting {
   key       String   @id

@@ -16,7 +16,7 @@ type Caller = { id: string; role: 'ADMIN' | 'SALES' | 'MARKETING' }
 export async function leadForOutgoingCall(to: string, user: Caller, prospectId?: string | null): Promise<{ id: string; created: boolean }> {
   const found = await prisma.$transaction(async (tx) => {
     // One call to a brand-new number at a time: two agents dialing it together must not create two leads
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'call-lead:' + to.replace(/\D/g, '').slice(-9)}))`
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'call-lead:' + to}))`
     const existing = await findExistingLead(tx, undefined, to)
     if (existing) {
       if (callBlockedByOwner(existing, user)) {
@@ -30,7 +30,11 @@ export async function leadForOutgoingCall(to: string, user: Caller, prospectId?:
       return { id: existing.id, created: false }
     }
     if (prospectId) return null // created below with the business's details
-    const lead = await tx.lead.create({ data: { phone: to, source: 'Dialer', sourceDetail: 'Called from the CRM', tags: ['cold-call'], status: 'NEW', assignedToId: user.role === 'MARKETING' ? null : user.id } })
+    // A number Google lists for a business starts out named after it; the rep adds the person's name after the call
+    const label = await tx.phoneLabel.findUnique({ where: { number: to } })
+    const lead = await tx.lead.create({
+      data: { phone: to, company: label?.company ?? null, website: label?.website ?? null, source: 'Dialer', sourceDetail: 'Called from the CRM', tags: ['cold-call'], status: 'NEW', assignedToId: user.role === 'MARKETING' ? null : user.id },
+    })
     await logActivity({ entityType: 'LEAD', entityId: lead.id, actorId: user.id, action: 'lead.created', metadata: { source: 'Dialer', auto: 'call' } }, tx)
     return { id: lead.id, created: true }
   })

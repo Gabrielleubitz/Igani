@@ -130,36 +130,31 @@ d('find businesses → call list → lead', async () => {
     if (!open.ok) throw new Error(open.error)
     const zion = open.data.prospects.find((p) => p.name === 'Zion Realty')!
 
-    // first call: no answer → still to call, tried once
+    // Every call belongs to a lead: the first dial makes the business a lead (with its Google details), owned by the caller
     const c1 = await startCall({ to: zion.phone, prospectId: zion.id })
     if (!c1.ok) throw new Error(c1.error)
     await ended(c1.data.callId)
     expect(c1.data.prospect).toMatchObject({ id: zion.id, name: 'Zion Realty' })
+    expect(c1.data.lead).toMatchObject({ name: 'Dana Levi', firstName: 'Dana', lastName: 'Levi', company: 'Zion Realty' }) // the person named on its website
     expect((await saveCallWrapUp({ callId: c1.data.callId, outcome: 'no_answer' })).ok).toBe(true)
-    expect(await prisma.prospect.findUniqueOrThrow({ where: { id: zion.id } })).toMatchObject({ status: 'TO_CALL', attempts: 1, lastOutcome: 'no_answer' })
-    expect(await prisma.lead.count()).toBe(0)
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { id: c1.data.lead!.id } })
+    expect(lead).toMatchObject({ company: 'Zion Realty', status: 'NO_ANSWER', assignedToId: repId, source: 'Google Places' })
+    expect(await prisma.prospect.findUniqueOrThrow({ where: { id: zion.id } })).toMatchObject({ status: 'CONVERTED', leadId: lead.id, attempts: 1, lastOutcome: 'no_answer' })
 
-    // second call goes well
+    // second call goes well: the same lead, no duplicate
     const c2 = await startCall({ to: zion.phone, prospectId: zion.id })
     if (!c2.ok) throw new Error(c2.error)
+    expect(c2.data.lead?.id).toBe(lead.id)
     await ended(c2.data.callId)
     const w = await saveCallWrapUp({ callId: c2.data.callId, outcome: 'interested', notes: 'Wants a new site, call Sunday' })
     if (!w.ok) throw new Error(w.error)
-    expect(w.data.madeLead).toBe(true)
-    const lead = await prisma.lead.findUniqueOrThrow({ where: { id: w.data.leadId! } })
-    expect(lead).toMatchObject({ company: 'Zion Realty', status: 'CONTACTED', assignedToId: repId, source: 'Google Places' })
-    // both calls are on the lead now, and the prospect points at it
+    expect(w.data.leadId).toBe(lead.id)
+    expect(await prisma.lead.count()).toBe(1)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: lead.id } })).status).toBe('INTERESTED')
     expect(await prisma.call.count({ where: { leadId: lead.id } })).toBe(2)
     expect(await prisma.prospect.findUniqueOrThrow({ where: { id: zion.id } })).toMatchObject({ status: 'CONVERTED', leadId: lead.id, attempts: 2 })
-    expect(await prisma.activityLog.count({ where: { entityId: lead.id, action: 'call.outcome' } })).toBe(1)
     const left = await dialerProspects(added.data.listId)
     expect(left.ok && left.data.prospects.map((p) => p.name)).toEqual(['Old City Homes'])
-
-    // "interested" only makes sense for list calls
-    const plain = await startCall({ to: '050-111-2233' })
-    if (!plain.ok) throw new Error(plain.error)
-    await ended(plain.data.callId)
-    expect((await saveCallWrapUp({ callId: plain.data.callId, outcome: 'interested' })).ok).toBe(false)
   })
 
   it('"Make lead" links to an existing lead instead of duplicating, and lists are private', async () => {

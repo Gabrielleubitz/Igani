@@ -1,8 +1,9 @@
 import 'server-only'
-import type { CallStatus, Prisma } from '@prisma/client'
+import { Prisma, type CallStatus } from '@prisma/client'
 import { logActivity } from './audit'
 import { leadName } from './format'
 import { formatPhone, toE164 } from './phone-numbers'
+import { phoneMatchSql } from './phone-match'
 import { prisma } from './prisma'
 import { fetchTwilioCall, twilioConfig } from './twilio'
 
@@ -103,12 +104,18 @@ export async function leadIdsByPhoneDigits(digits: string, limit = 200): Promise
   return rows.map((r) => r.id)
 }
 
+/** Leads whose phone is this number however it was written (oldest first). Only ids: the caller applies who-may-see-what. */
+export async function leadIdsForNumber(phone: string, limit = 20): Promise<string[]> {
+  const rows = await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND ${phoneMatchSql(Prisma.sql`phone`, phone)} ORDER BY "createdAt" ASC LIMIT ${limit}`
+  return rows.map((r) => r.id)
+}
+
 /** A lead this user may call whose phone number is this one (so a typed number still lands on the right timeline). */
 export async function leadForNumber(e164: string, where: Prisma.LeadWhereInput): Promise<{ id: string; name: string } | null> {
-  const ids = await leadIdsByPhoneDigits(e164.replace(/\D/g, '').slice(-7), 50)
+  const ids = await leadIdsForNumber(e164)
   if (!ids.length) return null
-  const candidates = await prisma.lead.findMany({ where: { AND: [where, { id: { in: ids } }] }, select: { id: true, firstName: true, lastName: true, email: true, phone: true }, take: 50, orderBy: { updatedAt: 'desc' } })
-  const hit = candidates.find((l) => l.phone && toE164(l.phone) === e164)
+  const candidates = await prisma.lead.findMany({ where: { AND: [where, { id: { in: ids } }] }, select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true }, orderBy: { createdAt: 'asc' } })
+  const hit = candidates[0]
   return hit ? { id: hit.id, name: leadName(hit) } : null
 }
 

@@ -32,8 +32,8 @@ export function formatMoney(n: number | null | undefined): string {
   return n == null ? '—' : n.toLocaleString('en-US')
 }
 
-export function leadName(l: { firstName: string | null; lastName: string | null; email: string | null; phone?: string | null }): string {
-  return [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || l.phone || 'Unnamed contact'
+export function leadName(l: { firstName: string | null; lastName: string | null; email: string | null; phone?: string | null; company?: string | null }): string {
+  return [l.firstName, l.lastName].filter(Boolean).join(' ') || l.company || l.email || l.phone || 'Unnamed contact'
 }
 
 /** Where a lead came from, as presets the team picks from (free text is allowed too). */

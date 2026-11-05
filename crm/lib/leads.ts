@@ -1,5 +1,5 @@
 import 'server-only'
-import type { LeadStatus, Prisma } from '@prisma/client'
+import { Prisma, type LeadStatus } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
 import { sendLeadAssignedEmail, sendNewLeadAlertEmail } from './email'
@@ -8,6 +8,7 @@ import { getSetting } from './settings'
 import { appUrl } from './env'
 import { snapshotWonCommission } from './deals'
 import { moveOpenTasks } from './tasks'
+import { phoneMatchSql, phonePattern } from './phone-match'
 import { prisma } from './prisma'
 
 const optionalText = (max: number) =>
@@ -140,7 +141,7 @@ export async function ingestLead(payload: LeadPayload): Promise<IngestResult> {
   })
 }
 
-/** Match by email first; otherwise by the last 9 digits of the phone (so 058-447… and +97258447… match). */
+/** Match by email first; otherwise by phone number however it was written (058-447…, +97258447…, 02-…, +972 2-…). */
 export async function findExistingLead(db: Prisma.TransactionClient | typeof prisma, email: string | undefined, phone: string | undefined) {
   if (email) {
     const byEmail = await db.lead.findUnique({ where: { email } })
@@ -148,7 +149,9 @@ export async function findExistingLead(db: Prisma.TransactionClient | typeof pri
   }
   const key = phoneKey(phone)
   if (!key) return null
-  const rows = await db.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) ORDER BY "createdAt" ASC LIMIT 1`
+  const rows = phonePattern(phone)
+    ? await db.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND ${phoneMatchSql(Prisma.sql`phone`, phone)} ORDER BY "createdAt" ASC LIMIT 1`
+    : await db.$queryRaw<{ id: string }[]>`SELECT id FROM "Lead" WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 9) = right(${key}, 9) ORDER BY "createdAt" ASC LIMIT 1`
   // Only reuse a phone match when it doesn't belong to someone with a different email.
   const match = rows[0] ? await db.lead.findUnique({ where: { id: rows[0].id } }) : null
   return match && (!email || !match.email) ? match : null

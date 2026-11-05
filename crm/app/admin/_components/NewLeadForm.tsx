@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 import { createLead } from '@/app/actions/leads'
+import { PhoneCheck } from '@/components/crm/PhoneCheck'
 import { SourcePicker } from '@/components/crm/SourcePicker'
 import { Button } from '@/components/ui/button'
 import { Input, Label } from '@/components/ui/input'
@@ -13,6 +14,8 @@ export function NewLeadForm(): React.ReactElement {
   const [pending, start] = useTransition()
   const [formKey, setFormKey] = useState(0)
   const [msg, setMsg] = useState<{ ok: boolean; text: string; id?: string } | null>(null)
+  const [phone, setPhone] = useState('')
+  const [company, setCompany] = useState('')
   return (
     <form
       className="grid grid-cols-2 gap-3"
@@ -35,6 +38,8 @@ export function NewLeadForm(): React.ReactElement {
           setMsg(res.ok ? { ok: true, text: '✓ Lead added.', id: res.data.id } : { ok: false, text: res.error })
           if (res.ok) {
             form.reset()
+            setPhone('')
+            setCompany('')
             setFormKey((k) => k + 1)
           }
           router.refresh()
@@ -55,12 +60,13 @@ export function NewLeadForm(): React.ReactElement {
       </div>
       <div className="space-y-1">
         <Label htmlFor="nl-company">Company</Label>
-        <Input id="nl-company" name="company" />
+        <Input id="nl-company" name="company" value={company} onChange={(e) => setCompany(e.target.value)} />
       </div>
       <div className="space-y-1">
         <Label htmlFor="nl-phone">Phone</Label>
-        <Input id="nl-phone" name="phone" type="tel" />
+        <Input id="nl-phone" name="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
       </div>
+      <PhoneCheck phone={phone} company={company} onUseCompany={setCompany} />
       <SourcePicker key={formKey} idPrefix="nl" />
       <div className="col-span-2 space-y-1">
         <Label htmlFor="nl-tags">Tags</Label>

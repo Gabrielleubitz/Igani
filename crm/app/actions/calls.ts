@@ -3,11 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
-import { requireUser } from '@/lib/auth'
+import { requireUser, type SessionUser } from '@/lib/auth'
+import { identifyNumber, type CallerId } from '@/lib/caller-id'
 import { BookingError } from '@/lib/bookings'
-import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, createMissedCallTask, leadForNumber, leadIdsByPhoneDigits, reconcileCall } from '@/lib/calls'
+import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, createMissedCallTask, leadIdsByPhoneDigits, reconcileCall } from '@/lib/calls'
 import { leadName } from '@/lib/format'
-import { assertCanSeeLead, leadScope } from '@/lib/lead-access'
+import { assertCanSeeLead, canSeeLead, leadScope } from '@/lib/lead-access'
+import { findExistingLead } from '@/lib/leads'
 import { dialProblem, formatPhone, toE164 } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
@@ -23,11 +25,20 @@ const callers = ['ADMIN', 'SALES'] as const
 
 const StartInput = z.object({ to: z.string().trim().min(3).max(40), leadId: z.string().cuid().nullish(), prospectId: z.string().cuid().nullish() })
 
+/** The contact on a call, as the wrap-up shows it (so the rep can put a name to a number). */
+export interface CallContact {
+  id: string
+  name: string
+  firstName: string | null
+  lastName: string | null
+  company: string | null
+}
+
 export interface StartedCall {
   callId: string
   to: string
   display: string
-  lead: { id: string; name: string } | null
+  lead: CallContact | null
   /** a business on a call list (not a lead yet) */
   prospect: { id: string; name: string; listId: string; askFor: string | null } | null
   record: boolean
@@ -62,25 +73,46 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     if (lastMinute >= CALL_LIMITS.perMinute) throw new BookingError('That’s a lot of calls in a minute. Wait a moment and try again.', 'SLOT_TAKEN')
     if (today >= CALL_LIMITS.perDay) throw new BookingError(`You’ve reached the limit of ${CALL_LIMITS.perDay} calls in 24 hours. Ask an admin if you need more.`, 'SLOT_TAKEN')
 
-    let lead: StartedCall['lead'] = null
+    let leadId: string
+    let prospect: StartedCall['prospect'] = null
     if (data.leadId && !data.prospectId) {
       await assertCanSeeLead(data.leadId, user)
-      const l = await prisma.lead.findUniqueOrThrow({ where: { id: data.leadId }, select: { id: true, firstName: true, lastName: true, email: true, phone: true } })
-      lead = { id: l.id, name: leadName(l) }
+      leadId = data.leadId
     } else {
-      if (data.prospectId) await assertCanUseProspect(data.prospectId, user)
+      if (data.prospectId) {
+        const p = await assertCanUseProspect(data.prospectId, user)
+        prospect = { id: p.id, name: p.name, listId: p.listId, askFor: askFor(asDetails(p.details)) }
+      }
       // Every call belongs to a lead: found by phone number, or created now and assigned to the caller
-      const made = await leadForOutgoingCall(to, user, data.prospectId)
-      const l = await prisma.lead.findUniqueOrThrow({ where: { id: made.id }, select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true } })
-      lead = { id: l.id, name: l.company || leadName(l) }
+      leadId = (await leadForOutgoingCall(to, user, data.prospectId)).id
     }
+    const lead = await callContact(leadId)
     const record = await getSetting('voice.record')
     const hints = (await getSetting('voice.hints')) && Boolean(process.env.OPENAI_API_KEY)
     const call = await prisma.call.create({
       data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo },
       select: { id: true },
     })
-    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect: null, record, hints, demo } }
+    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, hints, demo } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+async function callContact(leadId: string): Promise<CallContact> {
+  const l = await prisma.lead.findUniqueOrThrow({ where: { id: leadId }, select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true } })
+  return { id: l.id, name: leadName(l), firstName: l.firstName, lastName: l.lastName, company: l.company }
+}
+
+/**
+ * Who is this number? For the keypad while typing: a lead (yours, or whose it is), a business on a call list, or the
+ * business Google lists at that number (`lookup`, only once the CRM has no name for it).
+ */
+export async function identifyCaller(number: string, opts: { lookup?: boolean } = {}): Promise<ActionResult<CallerId | null>> {
+  try {
+    const user = await requireUser([...callers])
+    const n = z.string().trim().min(3).max(40).parse(number)
+    return { ok: true, data: await identifyNumber(n, user, { lookup: Boolean(opts.lookup) }) }
   } catch (err) {
     return toActionError(err)
   }
@@ -133,10 +165,46 @@ export async function simulateCallProgress(input: z.input<typeof SimInput>): Pro
   }
 }
 
+/**
+ * An unknown caller the rep named in the wrap-up becomes a contact of theirs (or is linked to the existing one with that
+ * number, when they may see it). Returns the lead id, or null when the number is someone else's lead.
+ */
+async function contactForIncoming(call: { id: string; fromNumber: string }, user: SessionUser): Promise<string | null> {
+  const e164 = toE164(call.fromNumber)
+  if (!e164) return null
+  const leadId = await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'call-lead:' + e164}))`
+    const existing = await findExistingLead(tx, undefined, e164)
+    if (existing) return canSeeLead(user, existing) ? existing.id : null
+    const label = await tx.phoneLabel.findUnique({ where: { number: e164 } })
+    const lead = await tx.lead.create({ data: { phone: e164, company: label?.company ?? null, website: label?.website ?? null, source: 'Phone call', sourceDetail: 'Called us', status: 'NEW', assignedToId: user.id } })
+    await logActivity({ entityType: 'LEAD', entityId: lead.id, actorId: user.id, action: 'lead.created', metadata: { source: 'Phone call', auto: 'call' } }, tx)
+    return lead.id
+  })
+  if (leadId) await prisma.call.updateMany({ where: { id: call.id, leadId: null }, data: { leadId } })
+  return leadId
+}
+
+/** Put a name to the number: the person (and business) the rep spoke with, saved on the contact and noted on its timeline. */
+async function nameContact(leadId: string, contact: { firstName?: string; lastName?: string; company?: string }, user: SessionUser, callId: string): Promise<void> {
+  const lead = await prisma.lead.findUnique({ where: { id: leadId }, select: { firstName: true, lastName: true, company: true, assignedToId: true } })
+  if (!lead || !canSeeLead(user, lead)) return
+  const next = { firstName: contact.firstName || null, lastName: contact.lastName || null, company: contact.company || null }
+  // a blank field never wipes what's there
+  const fields = (Object.keys(next) as (keyof typeof next)[]).filter((k) => next[k] && next[k] !== lead[k])
+  if (!fields.length) return
+  await prisma.lead.update({ where: { id: leadId }, data: Object.fromEntries(fields.map((k) => [k, next[k]])) })
+  await logActivity({ entityType: 'LEAD', entityId: leadId, action: 'lead.edited', actorId: user.id, metadata: { fields, via: 'call', callId } })
+}
+
 const WrapInput = z.object({
   callId: z.string().cuid(),
   outcome: z.enum(Object.keys(CALL_OUTCOMES) as [keyof typeof CALL_OUTCOMES, ...(keyof typeof CALL_OUTCOMES)[]]),
   notes: z.string().trim().max(2000).optional(),
+  /** Who they spoke with: saved on the contact (blank = leave as is) */
+  contact: z
+    .object({ firstName: z.string().trim().max(100).optional(), lastName: z.string().trim().max(100).optional(), company: z.string().trim().max(200).optional() })
+    .optional(),
 })
 
 /**
@@ -178,6 +246,11 @@ export async function saveCallWrapUp(input: z.input<typeof WrapInput>): Promise<
         revalidatePath('/sales/call-lists')
       }
     }
+    if (!leadId && data.contact && call.direction === 'INBOUND' && (data.contact.firstName || data.contact.lastName || data.contact.company)) {
+      leadId = await contactForIncoming(call, user)
+      if (leadId) madeLead = true
+    }
+    if (leadId && data.contact) await nameContact(leadId, data.contact, user, call.id)
     if (leadId && firstWrapUp) {
       await logActivity({ entityType: 'LEAD', entityId: leadId, actorId: user.id, action: 'call.outcome', metadata: { callId: call.id, outcome: data.outcome, notes: data.notes || null } })
       // The lead gets the status the agent marked (never pulled back out of the deal stages)
@@ -308,7 +381,10 @@ export interface IncomingCaller {
   callId: string
   number: string
   display: string
-  lead: { id: string; name: string; company: string | null } | null
+  /** The contact the call is filed under (one you can see) */
+  lead: CallContact | null
+  /** Who the number belongs to, as far as the CRM (or Google) knows */
+  id: CallerId | null
 }
 
 /** Who is calling (the contact the incoming webhook matched). Only for the person whose line is ringing. */
@@ -316,9 +392,10 @@ export async function lookupIncoming(callId: string): Promise<ActionResult<Incom
   try {
     const user = await requireUser([...callers])
     const id = z.string().cuid().parse(callId)
-    const call = await prisma.call.findUnique({ where: { id }, include: { lead: { select: { id: true, firstName: true, lastName: true, email: true, company: true } } } })
+    const call = await prisma.call.findUnique({ where: { id }, select: { userId: true, direction: true, fromNumber: true, leadId: true } })
     if (!call || call.userId !== user.id || call.direction !== 'INBOUND') throw new BookingError('Call not found.', 'NOT_FOUND')
-    return { ok: true, data: { callId: id, number: call.fromNumber, display: formatPhone(call.fromNumber), lead: call.lead ? { id: call.lead.id, name: leadName(call.lead), company: call.lead.company } : null } }
+    const [lead, who] = await Promise.all([call.leadId ? callContact(call.leadId) : null, identifyNumber(call.fromNumber, user, { lookup: true }).catch(() => null)])
+    return { ok: true, data: { callId: id, number: call.fromNumber, display: formatPhone(call.fromNumber), lead, id: who } }
   } catch (err) {
     return toActionError(err)
   }

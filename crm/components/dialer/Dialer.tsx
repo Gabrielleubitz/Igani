@@ -4,9 +4,10 @@ import { ArrowUpRight, Check, ChevronDown, ChevronLeft, Delete, Grid3x3, History
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect } from '@/app/actions/call-lists'
-import { abandonCall, clearStuckCalls, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
+import { abandonCall, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { cn } from '@/lib/utils'
-import { formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
+import { dialProblem, formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
+import type { CallerId } from '@/lib/caller-id'
 import { useLiveHints } from './useLiveHints'
 import type { LiveHint } from '@/lib/live-hints-core'
 import { demoEngine, fetchVoiceToken, twilioEngine, voiceErrorText, type ActiveCall, type IncomingCall, type VoiceEngine } from './voice'
@@ -26,6 +27,8 @@ interface Session {
   rang: boolean
   /** who called whom */
   direction: 'out' | 'in'
+  /** The business an unknown caller's number belongs to (call list or Google), offered in the wrap-up */
+  company?: string | null
 }
 
 /** Wrap-up choices for every call. Each one becomes the lead's status. */
@@ -75,6 +78,10 @@ const initials = (name: string | undefined, fallback: string): string =>
     .slice(0, 2)
     .map((x) => x[0]!.toUpperCase())
     .join('') || fallback
+
+/** Who's calling: the contact, else whoever the number belongs to (a call-list business, a Google listing). */
+const callerName = (c: IncomingCaller | null): string | null => c?.lead?.name ?? c?.id?.title ?? null
+const callerLine = (c: IncomingCaller | null): string | null => c?.id?.subtitle ?? c?.lead?.company ?? null
 
 /* ───────────────────────── look ───────────────────────── */
 
@@ -227,7 +234,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
       const caller = r.ok ? r.data : null
       setIncoming((cur) => (cur?.call === call ? { call, caller } : cur))
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && (document.hidden || !document.hasFocus())) {
-        note = new Notification('Incoming call', { body: caller?.lead ? `${caller.lead.name}${caller.lead.company ? ` · ${caller.lead.company}` : ''}\n${caller.display}` : (caller?.display ?? call.from), icon: '/android-chrome-192x192.png', tag: `call-${call.callId}`, requireInteraction: true })
+        note = new Notification('Incoming call', { body: callerName(caller) ? `${callerName(caller)}${callerLine(caller) ? ` · ${callerLine(caller)}` : ''}\n${caller!.display}` : (caller?.display ?? call.from), icon: '/android-chrome-192x192.png', tag: `call-${call.callId}`, requireInteraction: true })
         note.onclick = () => {
           window.focus()
           note?.close()
@@ -262,7 +269,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     const c = call.accept()
     active.current = c
     const display = caller?.display ?? formatPhone(call.from)
-    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ? { id: caller.lead.id, name: caller.lead.name } : null, prospect: null, record: false, hints: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in' })
+    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ?? null, prospect: null, record: false, hints: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in', company: caller?.id?.prospect?.name ?? caller?.id?.label?.company ?? null })
     const finish = (): void => {
       active.current = null
       setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'answered' } : s))
@@ -390,7 +397,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
       {children}
       {enabled && (visible || live) ? (
         <>
-      <FloatingButton session={session} now={now} open={open} incoming={incoming ? (incoming.caller?.lead?.name ?? incoming.caller?.display ?? formatPhone(incoming.call.from)) : null} onClick={() => setOpen((o) => !o)} />
+      <FloatingButton session={session} now={now} open={open} incoming={incoming ? (callerName(incoming.caller) ?? incoming.caller?.display ?? formatPhone(incoming.call.from)) : null} onClick={() => setOpen((o) => !o)} />
       {open ? (
         <div
           role="dialog"
@@ -486,7 +493,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
               ) : null}
               <AlertPrompt />
               <div className="min-h-0 flex-1 overflow-y-auto">
-                {tab === 'keypad' ? <Keypad value={typed} onChange={setTyped} onCall={(p, lead) => void dial(p, lead)} /> : null}
+                {tab === 'keypad' ? <Keypad value={typed} onChange={setTyped} onCall={(p, lead, prospect) => void dial(p, lead, prospect)} /> : null}
                 {tab === 'contacts' ? <Contacts onCall={(c) => void dial(c.phone, { id: c.id, name: c.name })} /> : null}
                 {tab === 'lists' ? <Lists listId={listId} setListId={setListId} onCall={(p) => void dial(p.phone, null, { id: p.id, name: p.name })} /> : null}
                 {tab === 'recent' ? <Recent onCall={(r) => void dial(r.to, r.lead)} /> : null}
@@ -552,7 +559,8 @@ function FloatingButton({ session, now, open, incoming, onClick }: { session: Se
 /* ───────────────────────── incoming ───────────────────────── */
 
 function IncomingView({ caller, from, onAccept, onDecline }: { caller: IncomingCaller | null; from: string; onAccept: () => void; onDecline: () => void }): React.ReactElement {
-  const name = caller?.lead?.name
+  const name = callerName(caller) ?? undefined
+  const line = callerLine(caller)
   const display = caller?.display ?? formatPhone(from)
   return (
     <div className="flex flex-1 flex-col items-center px-6 pb-8 pt-10" role="alertdialog" aria-label={`Incoming call from ${name ?? display}`}>
@@ -564,8 +572,8 @@ function IncomingView({ caller, from, onAccept, onDecline }: { caller: IncomingC
       </div>
       <div className="mt-7 text-center">
         <div className="text-2xl font-semibold">{name ?? display}</div>
-        {caller?.lead?.company ? <div className="mt-0.5 text-sm text-muted-foreground">{caller.lead.company}</div> : null}
-        {name ? <div className="mt-1 text-sm tabular-nums text-muted-foreground">{display}</div> : <div className="mt-1 text-sm text-muted-foreground">Not in your contacts</div>}
+        {line ? <div className="mt-0.5 text-sm text-muted-foreground">{line}</div> : null}
+        {name ? <div className="mt-1 text-sm tabular-nums text-muted-foreground">{display}</div> : <div className="mt-1 text-sm text-muted-foreground">{caller ? 'Not in the CRM yet' : 'Looking up…'}</div>}
       </div>
       <div className="flex-1" />
       <div className="flex w-full items-center justify-center gap-14">
@@ -654,21 +662,39 @@ function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: s
   )
 }
 
-function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: string) => void; onCall: (phone: string, lead: { id: string; name: string } | null) => void }): React.ReactElement {
+function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: string) => void; onCall: (phone: string, lead: { id: string; name: string } | null, prospect: ProspectRef | null) => void }): React.ReactElement {
   const input = useRef<HTMLInputElement>(null)
-  const [match, setMatch] = useState<DialerContact | null>(null)
+  // the answer for the number on screen (an answer for an earlier number is ignored)
+  const [found, setFound] = useState<{ number: string; who: CallerId | null; looking: boolean } | null>(null)
   const e164 = toE164(value)
+  const who = found && found.number === e164 ? found.who : null
+  const looking = Boolean(found && found.number === e164 && found.looking)
 
-  // Who is this number? (a contact you can see with the same number)
+  // Who is this number? A lead (yours, or whose it is), a business on your call lists, else its Google listing
   useEffect(() => {
-    setMatch(null)
     if (!e164) return
+    let stale = false
     const t = window.setTimeout(async () => {
-      const r = await searchDialerContacts(e164.slice(-7))
-      if (r.ok) setMatch(r.data.find((c) => c.phone === e164) ?? null)
-    }, 250)
-    return () => window.clearTimeout(t)
+      const r = await identifyCaller(e164)
+      if (stale || !r.ok) return
+      // nobody in the CRM has a name for it: ask Google, but only for a complete, callable number
+      const ask = Boolean(r.data && !r.data.title && !dialProblem(e164, ['IL', 'US']))
+      setFound({ number: e164, who: r.data, looking: ask })
+      if (!ask) return
+      const g = await identifyCaller(e164, { lookup: true })
+      if (!stale) setFound({ number: e164, who: g.ok ? g.data : r.data, looking: false })
+    }, 300)
+    return () => {
+      stale = true
+      window.clearTimeout(t)
+    }
   }, [e164])
+  const blocked = Boolean(who?.lead?.blocked)
+  const call = useCallback((): void => {
+    if (!e164 || blocked) return
+    const lead = who?.lead?.id ? { id: who.lead.id, name: who.title ?? who.display } : null
+    onCall(value, lead, !who?.lead && who?.prospect ? { id: who.prospect.id, name: who.prospect.name } : null)
+  }, [e164, blocked, who, value, onCall])
 
   // Typing on the keyboard works anywhere in the panel
   useEffect(() => {
@@ -681,11 +707,11 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
           onChange(value + e.key)
         }
       } else if (e.key === 'Backspace' && document.activeElement !== input.current) onChange(value.slice(0, -1))
-      else if (e.key === 'Enter' && e164) onCall(value, match ? { id: match.id, name: match.name } : null)
+      else if (e.key === 'Enter') call()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [value, onChange, onCall, e164, match])
+  }, [value, onChange, call])
 
   return (
     <div className="flex h-full flex-col justify-center gap-4 pb-5 pt-3">
@@ -700,17 +726,22 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
           aria-label="Phone number"
           className="w-full bg-transparent text-center text-[32px] font-normal tabular-nums tracking-wide outline-none placeholder:text-base placeholder:text-muted-foreground/60"
         />
-        <div className="mt-1.5 flex h-7 items-center justify-center truncate text-xs text-muted-foreground" aria-live="polite">
-          {match ? (
-            <span className="inline-flex max-w-full items-center gap-2 truncate rounded-full border border-[#2b4263] bg-[#132540] py-1 pl-1 pr-3 text-foreground">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#1d3354] text-[9px] font-semibold text-[#9cc0ff]">{initials(match.name, '#')}</span>
-              <span className="truncate">
-                {match.name}
-                {match.company ? <span className="text-muted-foreground"> · {match.company}</span> : null}
+        <div className="mt-1.5 flex min-h-7 items-center justify-center text-xs text-muted-foreground" aria-live="polite">
+          {who?.title ? (
+            <span className={cn('inline-flex max-w-full items-center gap-2 rounded-2xl border py-1 pl-1 pr-3 text-left text-foreground', blocked ? 'border-rose-500/40 bg-rose-500/10' : 'border-[#2b4263] bg-[#132540]')}>
+              <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold', who.lead ? 'bg-[#1d3354] text-[#9cc0ff]' : 'bg-amber-500/15 text-amber-200')}>{initials(who.title, '#')}</span>
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{who.title}</span>
+                {who.subtitle || blocked ? <span className={cn('block truncate text-[11px]', blocked ? 'text-rose-200' : 'text-muted-foreground')}>{blocked ? `${who.lead?.owner ?? 'Another rep'}’s lead · you can’t call it` : who.subtitle}</span> : null}
               </span>
             </span>
+          ) : looking ? (
+            <span className="animate-pulse">Looking up {formatPhone(e164!)}…</span>
           ) : e164 ? (
-            formatPhone(e164)
+            <span>
+              {formatPhone(e164)}
+              {who ? <span className="text-muted-foreground/70"> · not in the CRM</span> : null}
+            </span>
           ) : value.length > 3 ? (
             'Keep typing…'
           ) : (
@@ -723,9 +754,9 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
         <span />
         <button
           type="button"
-          disabled={!e164}
-          onClick={() => e164 && onCall(value, match ? { id: match.id, name: match.name } : null)}
-          aria-label={match ? `Call ${match.name}` : 'Call'}
+          disabled={!e164 || blocked}
+          onClick={call}
+          aria-label={who?.title ? `Call ${who.title}` : 'Call'}
           className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#22c55e]/40 bg-[#16a34a] text-white shadow-[0_10px_24px_-10px_rgba(22,163,74,0.9)] transition hover:bg-[#15913f] active:scale-95 disabled:border-[#2b4263] disabled:bg-[#172b47] disabled:text-[#5d7392] disabled:shadow-none"
         >
           <Handset className="h-7 w-7" />
@@ -1058,12 +1089,18 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const name = session.call.lead?.name ?? prospect?.name ?? null
+  const lead = session.call.lead
+  // put a name to the number: who they actually spoke with (a business number reaches a person)
+  const [firstName, setFirstName] = useState(lead?.firstName ?? '')
+  const [lastName, setLastName] = useState(lead?.lastName ?? '')
+  const [company, setCompany] = useState(lead?.company ?? session.company ?? '')
+  const name = [firstName.trim(), lastName.trim()].filter(Boolean).join(' ') || lead?.name || prospect?.name || null
   const save = async (): Promise<void> => {
     if (!outcome) return setError('Pick how it went.')
     setSaving(true)
     setError(null)
-    const r = await saveCallWrapUp({ callId: session.call.callId, outcome: outcome as never, notes: notes.trim() || undefined })
+    const contact = answered ? { firstName: firstName.trim() || undefined, lastName: lastName.trim() || undefined, company: company.trim() || undefined } : undefined
+    const r = await saveCallWrapUp({ callId: session.call.callId, outcome: outcome as never, notes: notes.trim() || undefined, contact })
     setSaving(false)
     if (!r.ok) return setError(r.error)
     onDone(name, r.data.madeLead || (prospect !== null && outcome === 'interested'))
@@ -1100,6 +1137,20 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
           ))}
         </div>
       </fieldset>
+      {answered ? (
+        <fieldset>
+          <legend className="mb-2 text-sm font-medium">
+            Who did you speak with?{' '}
+            {!lead?.firstName && !lead?.lastName ? <span className="font-normal text-amber-200/90">Add their name</span> : null}
+          </legend>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} maxLength={100} placeholder="First name" aria-label="First name" autoComplete="off" className={cn('px-3 py-2', FIELD)} />
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} maxLength={100} placeholder="Last name" aria-label="Last name" autoComplete="off" className={cn('px-3 py-2', FIELD)} />
+            <input value={company} onChange={(e) => setCompany(e.target.value)} maxLength={200} placeholder="Company" aria-label="Company" autoComplete="off" className={cn('col-span-2 px-3 py-2', FIELD)} />
+          </div>
+          {!lead ? <p className="mt-1.5 text-[11px] text-muted-foreground">Add a name and they’re saved as your contact.</p> : null}
+        </fieldset>
+      ) : null}
       <label className="block">
         <span className="mb-1.5 block text-sm font-medium">
           Note{' '}
