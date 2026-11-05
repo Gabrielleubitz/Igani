@@ -1,3 +1,5 @@
+import { ListChecks } from 'lucide-react'
+import { GradientChip } from '@/components/ui/tone'
 import type { ProspectStatus } from '@prisma/client'
 import { ChevronLeft, Clock, ExternalLink, Globe, Mail, MessageCircle, Star, UserRound } from 'lucide-react'
 import Link from 'next/link'
@@ -60,12 +62,17 @@ export default async function CallListPage(props: { params: Promise<{ id: string
         <ChevronLeft className="h-4 w-4" /> Call lists
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3.5">
+        <GradientChip tone="teal" className="mt-0.5">
+          <ListChecks />
+        </GradientChip>
         <div className="min-w-0">
           <h1 dir="auto" className="text-2xl font-semibold tracking-tight">{list.name}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {[list.query ? `Google Maps: “${list.query}”` : null, user.role === 'ADMIN' ? `Called by ${list.ownerId === user.id ? 'you' : list.owner ? (list.owner.name ?? list.owner.email) : 'nobody'}` : null].filter(Boolean).join(' · ')}
             {' · '}Call from here or from the dialer’s Lists tab.
           </p>
+        </div>
         </div>
         <CallListHeader listId={list.id} name={list.name} ownerId={list.ownerId} teammates={team ? team.map((t) => ({ id: t.id, name: t.name ?? t.email ?? 'Teammate' })) : null} />
       </div>

@@ -125,7 +125,11 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
       { accessorKey: 'company', header: 'Company' },
       { id: 'tags', header: 'Tags', accessorFn: (l) => l.tags.join(' '), cell: ({ row }) => (
         <div className="flex flex-wrap items-center gap-1">
-          {row.original.tags.map((t) => <Badge key={t} variant="secondary">{t}</Badge>)}
+          {row.original.tags.map((t) => (
+            <span key={t} className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-indigo-500/25">
+              {t}
+            </span>
+          ))}
           {tagFor === row.original.id ? (
             <form onSubmit={(e) => { e.preventDefault(); addTag(row.original) }}>
               <input autoFocus aria-label="New tag" className="h-6 w-24 rounded border px-1 text-xs" value={tagText} onChange={(e) => setTagText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Escape') { setTagText(''); setTagFor(null) } }} />

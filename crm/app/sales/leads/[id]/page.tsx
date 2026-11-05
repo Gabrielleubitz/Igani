@@ -1,3 +1,4 @@
+import { GRADIENT, STAGE_TONE, Tag } from '@/components/ui/tone'
 import { aiTidyEnabled } from '@/lib/meeting-ai'
 import { organizedFor } from '@/lib/organize-notes'
 import type { Metadata } from 'next'
@@ -318,7 +319,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <div aria-hidden className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/20 text-lg font-semibold text-primary">
+            <div aria-hidden className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-lg font-semibold text-white shadow-lg ring-1 ring-white/15 ${GRADIENT[STAGE_TONE[lead.status]]}`}>
               {(lead.firstName?.[0] ?? lead.email?.[0] ?? '?').toUpperCase()}
               {lead.lastName?.[0]?.toUpperCase() ?? ''}
             </div>
@@ -330,16 +331,19 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <StagePill status={lead.status} />
             {lead.status !== 'WON' && lead.status !== 'LOST' ? (
-              <Badge variant={score >= 65 ? 'default' : 'secondary'} title="Heat score: how far along the deal is plus how complete the contact details are">
-                {scoreLabel(score)} · {score}
-              </Badge>
+              <span title="Heat score: how far along the deal is plus how complete the contact details are">
+                <Tag tone={score >= 65 ? 'rose' : score >= 35 ? 'amber' : 'sky'} className="text-xs">
+                  {score >= 65 ? '🔥 ' : ''}
+                  {scoreLabel(score)} · {score}
+                </Tag>
+              </span>
             ) : null}
-            {stale !== null ? <Badge variant="warning">No contact for {stale} days</Badge> : null}
+            {stale !== null ? <Tag tone="orange" className="text-xs">No contact for {stale} days</Tag> : null}
             {archivedByMe ? <Badge variant="outline">Archived (only for you)</Badge> : null}
-            {unreadEmails ? <Badge variant="success">📨 {unreadEmails} new email{unreadEmails === 1 ? '' : 's'}</Badge> : null}
-            {openTasks ? <Badge variant="outline">{openTasks} open task{openTasks === 1 ? '' : 's'}</Badge> : null}
+            {unreadEmails ? <Tag tone="emerald" className="text-xs">📨 {unreadEmails} new email{unreadEmails === 1 ? '' : 's'}</Tag> : null}
+            {openTasks ? <Tag tone="violet" className="text-xs">{openTasks} open task{openTasks === 1 ? '' : 's'}</Tag> : null}
             {lead.tags.map((t) => (
-              <Link key={t} href={`/sales/leads?tag=${encodeURIComponent(t)}`} className="rounded-full bg-secondary px-2 py-0.5 text-xs hover:bg-secondary/70">
+              <Link key={t} href={`/sales/leads?tag=${encodeURIComponent(t)}`} className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-indigo-500/25 transition hover:bg-indigo-500/25">
                 #{t}
               </Link>
             ))}

@@ -1,3 +1,5 @@
+import { PhoneIncoming, PhoneOutgoing } from 'lucide-react'
+import { GradientChip, Tag, type Tone } from '@/components/ui/tone'
 import { ArrowLeft, CheckCircle2, CircleDashed, Crosshair, MessageCircleQuestion, Target, TrendingUp, TriangleAlert, XCircle } from 'lucide-react'
 import { BENCHMARKS } from '@/lib/call-coaching'
 import Link from 'next/link'
@@ -25,6 +27,18 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // "Analyze again" runs the whole analysis in this request
 
 /** One call: the recording, the analysis and coaching (CallMap-style), and the transcript. The caller and admins only. */
+/** Each wrap-up result in the palette. */
+const OUTCOME_TONE: Record<string, Tone> = {
+  interested: 'emerald',
+  connected: 'blue',
+  callback: 'orange',
+  no_answer: 'amber',
+  voicemail: 'cyan',
+  busy: 'amber',
+  not_interested: 'slate',
+  wrong_number: 'rose',
+}
+
 export default async function CallPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
   const user = await requireUser(['ADMIN', 'SALES'])
   const { id } = await props.params
@@ -32,6 +46,8 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
   if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) notFound()
   const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true } })
   const a = asAnalysis(call.analysis)
+  const statusTone: Tone = call.status === 'COMPLETED' ? 'emerald' : call.status === 'FAILED' || call.status === 'CANCELED' ? 'rose' : call.status === 'NO_ANSWER' || call.status === 'BUSY' ? 'amber' : 'sky'
+  const callTone: Tone = (call.outcome ? OUTCOME_TONE[call.outcome] : null) ?? statusTone
   const lines = asTranscript(call.transcript)
   const rep = call.user?.name?.split(' ')[0] ?? 'Rep'
   // a player only when there is (or may be, if our callback was missed) a Twilio recording
@@ -519,6 +535,10 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
         <ArrowLeft className="h-4 w-4" /> All calls
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3.5">
+        <GradientChip tone={callTone} className="mt-0.5">
+          {call.direction === 'INBOUND' ? <PhoneIncoming /> : <PhoneOutgoing />}
+        </GradientChip>
         <div className="min-w-0">
           <h1 className="text-2xl font-semibold tracking-tight">
             {call.lead ? (
@@ -532,12 +552,14 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
           <p className="mt-1 text-sm text-muted-foreground">
             {[call.lead?.company, call.lead ? formatPhone(call.toNumber) : null, `${call.user ? (call.user.name ?? call.user.email) : 'Former teammate'} called`, formatDateTime(call.startedAt, me.timeZone)].filter(Boolean).join(' · ')}
           </p>
-          <div className="mt-2 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_STATUS_LABEL[call.status] ?? call.status}</span>
-            {call.durationSec ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">Talk time {fmtDuration(call.durationSec)}</span> : null}
-            {call.outcome ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{CALL_OUTCOMES[call.outcome as keyof typeof CALL_OUTCOMES] ?? call.outcome}</span> : null}
-            {a ? <span className="rounded-full border px-2 py-0.5 text-muted-foreground">{a.callType}</span> : null}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Tag tone={statusTone}>{CALL_STATUS_LABEL[call.status] ?? call.status}</Tag>
+            {call.durationSec ? <Tag tone="sky">Talk time {fmtDuration(call.durationSec)}</Tag> : null}
+            {call.outcome ? <Tag tone={OUTCOME_TONE[call.outcome] ?? 'slate'}>{CALL_OUTCOMES[call.outcome as keyof typeof CALL_OUTCOMES] ?? call.outcome}</Tag> : null}
+            {a ? <Tag tone="violet">{a.callType}</Tag> : null}
+            {a?.lang && a.lang !== 'en' ? <Tag tone="cyan">{a.lang === 'he' ? 'עברית' : 'עברית + English'}</Tag> : null}
           </div>
+        </div>
         </div>
         {a && tone ? (
           <div className={cn('flex items-center gap-3 rounded-2xl px-4 py-3 ring-1', tone.bg, tone.ring)}>

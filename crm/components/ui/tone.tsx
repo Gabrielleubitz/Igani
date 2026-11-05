@@ -2,6 +2,7 @@
  * The CRM's accent colors, used sparingly on dark (and light) surfaces: tinted icon chips, small tags, gradient badges
  * for page titles, and stat tiles. One palette so every page speaks the same color language as Today.
  */
+import type { LeadStatus } from '@prisma/client'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -101,4 +102,23 @@ export function StatTile({ icon, tone, label, value, sub, tag, href, muted, clas
   ) : (
     <div className={cls}>{body}</div>
   )
+}
+
+/** Each lead stage in the palette (for gradient avatars and chips; pills use STATUS_TONE in lib/format). */
+export const STAGE_TONE: Record<LeadStatus, Tone> = {
+  NEW: 'sky',
+  NO_ANSWER: 'slate',
+  CALL_BACK: 'orange',
+  VOICEMAIL: 'cyan',
+  BUSY: 'amber',
+  INTERESTED: 'emerald',
+  NOT_INTERESTED: 'slate',
+  WRONG_NUMBER: 'slate',
+  CONTACTED: 'indigo',
+  DEMO_SCHEDULED: 'violet',
+  DEMO_SENT: 'pink',
+  PROPOSAL_SENT: 'amber',
+  SIGNED: 'teal',
+  WON: 'emerald',
+  LOST: 'rose',
 }

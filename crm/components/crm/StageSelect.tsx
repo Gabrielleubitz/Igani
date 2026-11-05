@@ -8,7 +8,7 @@ import { updateLeadStatus } from '@/app/actions/leads'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, Label, Select, Textarea } from '@/components/ui/input'
-import { LEAD_STATUSES, STATUS_LABEL } from '@/lib/format'
+import { LEAD_STATUSES, STATUS_LABEL, STATUS_TONE } from '@/lib/format'
 import { parseShekels } from '@/lib/money'
 import { type CommissionTerms, calculateCommission, formatIls } from '@/lib/commission'
 import { canEditAtStage, stagesFor } from '@/lib/stage-rules'
@@ -138,13 +138,13 @@ export function StageSelect({ leadId, status, quotedPrice, disabled, title, clas
       <Select
         aria-label="Stage"
         title={locked ? 'An admin set this stage, so only an admin can change it' : title}
-        className={cn('h-8 w-40', className)}
+        className={cn('h-8 w-40 font-medium', STATUS_TONE[status], className)}
         disabled={pending || disabled || locked}
         value={status}
         onChange={(e) => request(leadId, e.target.value as LeadStatus, quotedPrice)}
       >
         {(options.includes(status) ? options : [...options, status]).map((s) => (
-          <option key={s} value={s}>
+          <option key={s} value={s} className="bg-background text-foreground">
             {STATUS_LABEL[s]}
           </option>
         ))}
