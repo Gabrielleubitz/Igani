@@ -1,6 +1,6 @@
 import { PhoneIncoming, PhoneOutgoing } from 'lucide-react'
 import { GradientChip, Tag, type Tone } from '@/components/ui/tone'
-import { ArrowLeft, CheckCircle2, CircleDashed, Crosshair, MessageCircleQuestion, Target, TrendingUp, TriangleAlert, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, CircleDashed, Crosshair, Download, MessageCircleQuestion, Target, TrendingUp, TriangleAlert, XCircle } from 'lucide-react'
 import { BENCHMARKS } from '@/lib/call-coaching'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -571,6 +571,20 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
       </div>
 
       <CallPlayerProvider src={recorded ? `/api/calls/${call.id}/recording` : null} durationSec={call.recordingSec ?? call.durationSec}>
+        {recorded || lines.length ? (
+          <div className="mt-3 flex flex-wrap gap-4 text-sm">
+            {recorded ? (
+              <a href={`/api/calls/${call.id}/recording?download=1`} className="inline-flex items-center gap-1.5 text-primary hover:underline">
+                <Download className="h-4 w-4" aria-hidden /> Download recording
+              </a>
+            ) : null}
+            {lines.length ? (
+              <a href={`/api/calls/${call.id}/transcript`} className="inline-flex items-center gap-1.5 text-primary hover:underline">
+                <Download className="h-4 w-4" aria-hidden /> Download transcript
+              </a>
+            ) : null}
+          </div>
+        ) : null}
         <div className="mt-5 space-y-5">
           {call.notes ? (
             <Card>

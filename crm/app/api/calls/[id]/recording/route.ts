@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { currentUserOrNull } from '@/lib/auth'
 import { ensureRecordingSid, fetchRecordingAudio } from '@/lib/call-recording'
+import { safeFileName } from '@/lib/call-download'
 import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
@@ -11,10 +12,19 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
   const user = await currentUserOrNull()
   if (!user) return NextResponse.json({ error: 'Unauthenticated' }, { status: 401 })
   if (!/^[a-z0-9]{20,40}$/i.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const call = await prisma.call.findUnique({ where: { id }, select: { userId: true } })
+  const call = await prisma.call.findUnique({ where: { id }, select: { userId: true, startedAt: true, lead: { select: { firstName: true, lastName: true, company: true } } } })
   if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const sid = await ensureRecordingSid(id)
   if (!sid) return NextResponse.json({ error: 'No recording for this call' }, { status: 404 })
+  const download = new URL(req.url).searchParams.get('download') === '1'
+  // A saved copy: the whole file as an attachment (no seeking), named by date and person.
+  if (download) {
+    const full = await fetchRecordingAudio(sid, null)
+    if (!full?.body) return NextResponse.json({ error: 'The recording is not available right now' }, { status: 502 })
+    const who = call.lead ? [call.lead.firstName, call.lead.lastName].filter(Boolean).join(' ') || call.lead.company : null
+    const name = safeFileName([call.startedAt.toISOString().slice(0, 10), who], 'mp3')
+    return new Response(full.body, { status: 200, headers: { 'content-type': 'audio/mpeg', 'content-disposition': `attachment; filename="${name}"`, 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff' } })
+  }
   const range = req.headers.get('range')
   const audio = await fetchRecordingAudio(sid, range)
   if (!audio?.body) return NextResponse.json({ error: 'The recording is not available right now' }, { status: 502 })
