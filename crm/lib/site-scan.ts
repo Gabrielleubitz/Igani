@@ -82,7 +82,9 @@ function allowedUrl(raw: string): URL | null {
   }
 }
 
-function getOnce(u: URL): Promise<{ status: number; location: string | null; type: string; body: string }> {
+export interface RawResponse { status: number; location: string | null; type: string; body: string; headers: Record<string, string> }
+
+function getOnce(u: URL, anyType = false): Promise<RawResponse> {
   return new Promise((resolve, reject) => {
     const mod = u.protocol === 'https:' ? https : http
     const req = mod.request(
@@ -97,9 +99,11 @@ function getOnce(u: URL): Promise<{ status: number; location: string | null; typ
         const status = res.statusCode ?? 0
         const location = typeof res.headers.location === 'string' ? res.headers.location : null
         const type = String(res.headers['content-type'] ?? '')
-        if ((status >= 300 && status < 400) || !/html|xml/i.test(type)) {
+        const headers: Record<string, string> = {}
+        for (const [k, v] of Object.entries(res.headers)) if (typeof v === 'string') headers[k] = v
+        if ((status >= 300 && status < 400) || (!anyType && !/html|xml/i.test(type))) {
           res.resume()
-          return resolve({ status, location, type, body: '' })
+          return resolve({ status, location, type, body: '', headers })
         }
         const enc = String(res.headers['content-encoding'] ?? '').toLowerCase()
         const stream = enc === 'gzip' ? res.pipe(zlib.createGunzip()) : enc === 'deflate' ? res.pipe(zlib.createInflate()) : enc === 'br' ? res.pipe(zlib.createBrotliDecompress()) : res
@@ -110,12 +114,12 @@ function getOnce(u: URL): Promise<{ status: number; location: string | null; typ
           if (size > MAX_BYTES) {
             req.destroy()
             stream.destroy()
-            resolve({ status, location, type, body: Buffer.concat(chunks).toString('utf8') })
+            resolve({ status, location, type, body: Buffer.concat(chunks).toString('utf8'), headers })
             return
           }
           chunks.push(c)
         })
-        stream.on('end', () => resolve({ status, location, type, body: Buffer.concat(chunks).toString('utf8') }))
+        stream.on('end', () => resolve({ status, location, type, body: Buffer.concat(chunks).toString('utf8'), headers }))
         stream.on('error', reject)
       },
     )
@@ -137,6 +141,25 @@ export async function fetchPage(raw: string): Promise<SitePage | null> {
     }
     if (r.status >= 400 || !r.body) return null
     return { url: u.toString(), html: r.body }
+  }
+  return null
+}
+
+/**
+ * Like fetchPage, but for any content type and with the status, headers, final address and timing, for the site check.
+ * Same guards (public addresses only, 3 redirects, 8 s, 1.5 MB). null when the address can't be read at all.
+ */
+export async function fetchRaw(raw: string): Promise<(RawResponse & { url: string; ms: number }) | null> {
+  let u = allowedUrl(raw)
+  const t0 = Date.now()
+  for (let hop = 0; u && hop < 4; hop++) {
+    const r = await getOnce(u, true).catch(() => null)
+    if (!r) return null
+    if (r.status >= 300 && r.status < 400 && r.location) {
+      u = allowedUrl(new URL(r.location, u).toString())
+      continue
+    }
+    return { ...r, url: u.toString(), ms: Date.now() - t0 }
   }
   return null
 }

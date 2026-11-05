@@ -10,7 +10,7 @@ import { StraightLinePanel } from '@/components/calls/StraightLinePanel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { STEPS, asAnalysis, asTranscript } from '@/lib/call-analysis'
-import { CALL_STATUS_LABEL, RUBRIC, scoreTone } from '@/lib/call-ui'
+import { CALL_STATUS_LABEL, OUTCOME_TONE, RUBRIC, scoreTone } from '@/lib/call-ui'
 import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
 import { formatDateTime, leadName } from '@/lib/format'
 import { formatPhone } from '@/lib/phone-numbers'
@@ -27,17 +27,6 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300 // "Analyze again" runs the whole analysis in this request
 
 /** One call: the recording, the analysis and coaching (CallMap-style), and the transcript. The caller and admins only. */
-/** Each wrap-up result in the palette. */
-const OUTCOME_TONE: Record<string, Tone> = {
-  interested: 'emerald',
-  connected: 'blue',
-  callback: 'orange',
-  no_answer: 'amber',
-  voicemail: 'cyan',
-  busy: 'amber',
-  not_interested: 'slate',
-  wrong_number: 'rose',
-}
 
 export default async function CallPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
   const user = await requireUser(['ADMIN', 'SALES'])

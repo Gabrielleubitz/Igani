@@ -13,3 +13,22 @@ export const scoreTone = (score: number): { text: string; bg: string; ring: stri
   score >= 75 ? { text: 'text-emerald-300', bg: 'bg-emerald-500/15', ring: 'ring-emerald-500/30' } : score >= 50 ? { text: 'text-amber-300', bg: 'bg-amber-500/15', ring: 'ring-amber-500/30' } : { text: 'text-rose-300', bg: 'bg-rose-500/15', ring: 'ring-rose-500/30' }
 
 export const CALL_STATUS_LABEL: Record<string, string> = { INITIATED: 'Starting', RINGING: 'Ringing', IN_PROGRESS: 'On the call', COMPLETED: 'Answered', BUSY: 'Busy', NO_ANSWER: 'No answer', FAILED: 'Failed', CANCELED: 'Hung up' }
+
+/** Each wrap-up result in the palette (tone names from components/ui/tone). */
+export const OUTCOME_TONE: Record<string, 'emerald' | 'blue' | 'orange' | 'amber' | 'cyan' | 'slate' | 'rose'> = {
+  interested: 'emerald',
+  connected: 'blue',
+  callback: 'orange',
+  no_answer: 'amber',
+  voicemail: 'cyan',
+  busy: 'amber',
+  not_interested: 'slate',
+  wrong_number: 'rose',
+}
+
+/** How a call ended, in one of three buckets: a conversation, no one picked up, or still going. */
+export function callResult(c: { status: string; durationSec: number | null }): 'talked' | 'missed' | 'live' {
+  if (c.status === 'COMPLETED' && (c.durationSec ?? 0) > 0) return 'talked'
+  if (c.status === 'INITIATED' || c.status === 'RINGING' || c.status === 'IN_PROGRESS') return 'live'
+  return 'missed'
+}

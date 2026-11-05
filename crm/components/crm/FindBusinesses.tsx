@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, ExternalLink, Globe, ListChecks, Loader2, MapPin, Phone, Search, Star } from 'lucide-react'
+import { Check, ExternalLink, Globe, ShieldAlert, ListChecks, Loader2, MapPin, Phone, Search, Star } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
@@ -8,6 +8,7 @@ import { callListChoices, type ListChoice } from '@/app/actions/call-lists'
 import { addToCallList, findBusinesses, type FoundPlace } from '@/app/actions/places'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { CheckSiteButton, SiteReportView, useSiteCheck } from './SiteReport'
 import { Input, Label, Select } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
@@ -42,6 +43,9 @@ export function FindBusinesses(): React.ReactElement {
   const [target, setTarget] = useState('new')
   const [listName, setListName] = useState('')
   const [owner, setOwner] = useState('')
+  /** the business whose site is being checked (the report shows under it) */
+  const [checking, setChecking] = useState<string | null>(null)
+  const site = useSiteCheck()
   const [added, setAdded] = useState<{ listId: string; listName: string } | null>(null)
 
   useEffect(() => {
@@ -122,6 +126,7 @@ export function FindBusinesses(): React.ReactElement {
       <Button type="button" variant="outline" onClick={() => setOpen(true)}>
         <Search className="me-1.5 h-4 w-4" aria-hidden /> Find businesses
       </Button>
+      <CheckSiteButton />
       <Dialog
         open={open}
         onClose={() => setOpen(false)}
@@ -214,6 +219,32 @@ export function FindBusinesses(): React.ReactElement {
                             </a>
                           ) : null}
                         </span>
+                        {p.website ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                            onClick={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                              if (checking === p.placeId) {
+                                setChecking(null)
+                                site.reset()
+                              } else {
+                                setChecking(p.placeId)
+                                site.run(p.website ?? '')
+                              }
+                            }}
+                          >
+                            <ShieldAlert className="h-3 w-3" aria-hidden /> {checking === p.placeId ? 'Hide what’s wrong with the site' : 'See what’s wrong with the site'}
+                          </button>
+                        ) : null}
+                        {checking === p.placeId ? (
+                          <span className="mt-2 block cursor-default rounded-lg border bg-background p-3" onClick={(e) => e.preventDefault()}>
+                            {site.pending ? <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" aria-hidden /> Reading the site…</span> : null}
+                            {site.error ? <span className="text-xs text-rose-400">{site.error}</span> : null}
+                            {site.report ? <SiteReportView report={site.report} /> : null}
+                          </span>
+                        ) : null}
                         {p.address ? (
                           <span dir="auto" className="flex items-center gap-1 text-xs text-muted-foreground">
                             <MapPin className="h-3 w-3 shrink-0" aria-hidden /> <span className="truncate">{p.address}</span>
