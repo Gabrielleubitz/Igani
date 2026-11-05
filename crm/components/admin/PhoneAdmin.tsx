@@ -60,7 +60,7 @@ export function PhoneLineRow({ userId, name, role, current, numbers, takenBy }: 
 }
 
 /** Recording, and which countries can be called. */
-export function VoiceSettingsForm({ initial }: { initial: { record: boolean; countries: DialCountry[] } }): React.ReactElement {
+export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hints: boolean; countries: DialCountry[] } }): React.ReactElement {
   const router = useRouter()
   const [v, setV] = useState(initial)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -68,7 +68,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; cou
   const save = (): void =>
     start(async () => {
       setMsg(null)
-      const r = await saveSettings({ 'voice.record': v.record, 'voice.countries': v.countries })
+      const r = await saveSettings({ 'voice.record': v.record, 'voice.hints': v.hints, 'voice.countries': v.countries })
       setMsg(r.ok ? { ok: true, text: 'Saved' } : { ok: false, text: r.error })
       if (r.ok) router.refresh()
     })
@@ -79,6 +79,13 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; cou
         <span>
           <span className="font-medium">Record calls</span>
           <span className="block text-xs text-muted-foreground">Both sides, from the moment they answer. Needed later for transcripts, coaching and reviews (CallMap).</span>
+        </span>
+      </label>
+      <label className="flex items-start gap-3">
+        <input type="checkbox" className="mt-1" checked={v.hints} onChange={(e) => setV({ ...v, hints: e.target.checked })} />
+        <span>
+          <span className="font-medium">Live Straight Line hints</span>
+          <span className="block text-xs text-muted-foreground">While a salesperson is on a call, short coaching hints appear on their screen. Their call audio is transcribed live by OpenAI and not stored by us. Each rep can switch it off for themselves.</span>
         </span>
       </label>
       <fieldset className="space-y-1">

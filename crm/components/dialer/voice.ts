@@ -11,6 +11,8 @@ export interface ActiveCall {
   mute(on: boolean): void
   sendDigits(digits: string): void
   hangup(): void
+  /** The audio of both sides (rep's microphone, the client's voice), for live hints. Null where the engine cannot provide it. */
+  streams(): { local: MediaStream | null; remote: MediaStream | null }
 }
 /** A call ringing in this browser. accept() answers it; reject() sends the caller to voicemail. */
 export interface IncomingCall {
@@ -75,6 +77,7 @@ export async function twilioEngine(token: string): Promise<VoiceEngine> {
     mute: (on) => call.mute(on),
     sendDigits: (d) => call.sendDigits(d),
     hangup: () => call.disconnect(),
+    streams: () => ({ local: (call.getLocalStream?.() as MediaStream | undefined) ?? null, remote: (call.getRemoteStream?.() as MediaStream | undefined) ?? null }),
   })
   return {
     kind: 'twilio',
@@ -149,6 +152,7 @@ export function demoEngine(): VoiceEngine {
         mute: () => undefined,
         sendDigits: () => undefined,
         hangup: () => end(state === 'live' ? 'COMPLETED' : 'CANCELED'),
+        streams: () => ({ local: null, remote: null }),
       }
     },
     // Demo: "Simulate incoming call" (development only) rings this browser with a fake caller
@@ -183,6 +187,7 @@ export function demoEngine(): VoiceEngine {
                 void simulateCallProgress({ callId: e.detail.callId, status: 'COMPLETED' })
                 ;(handlers.disconnect ?? []).forEach((h) => h())
               },
+              streams: () => ({ local: null, remote: null }),
             }
           },
           reject: () => {

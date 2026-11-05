@@ -31,6 +31,8 @@ export interface StartedCall {
   /** a business on a call list (not a lead yet) */
   prospect: { id: string; name: string; listId: string; askFor: string | null } | null
   record: boolean
+  /** live Straight Line hints are on (setting + OpenAI key) */
+  hints: boolean
   demo: boolean
 }
 
@@ -73,11 +75,12 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
       lead = { id: l.id, name: l.company || leadName(l) }
     }
     const record = await getSetting('voice.record')
+    const hints = (await getSetting('voice.hints')) && Boolean(process.env.OPENAI_API_KEY)
     const call = await prisma.call.create({
       data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo },
       select: { id: true },
     })
-    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect: null, record, demo } }
+    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect: null, record, hints, demo } }
   } catch (err) {
     return toActionError(err)
   }

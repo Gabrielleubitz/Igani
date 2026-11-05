@@ -23,6 +23,8 @@ export const SETTING_SCHEMAS = {
   'website.tracking': z.object({ home: z.boolean(), realestate: z.boolean() }),
   /** Dialer: record calls (both sides) and which countries may be called */
   'voice.record': z.boolean(),
+  /** Live Straight Line hints on the rep's screen during a call (needs the OpenAI key) */
+  'voice.hints': z.boolean(),
   'voice.countries': z.array(z.enum(['IL', 'US'])).min(1),
   /** Who signs contracts for Igani (shown in the signature box) */
   'contract.signer': z.object({ name: z.string().trim().max(120), title: z.string().trim().max(120), email: z.union([z.literal(''), z.string().trim().email().max(254)]), phone: z.string().trim().max(40) }),
@@ -46,6 +48,7 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'notifications.weeklySummary': true,
   'website.tracking': { home: true, realestate: true },
   'voice.record': true,
+  'voice.hints': true,
   'voice.countries': ['IL', 'US'],
   'contract.signer': { name: '', title: '', email: '', phone: '' },
   'contract.signature': '',

@@ -7,6 +7,8 @@ import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect 
 import { abandonCall, clearStuckCalls, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { cn } from '@/lib/utils'
 import { formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
+import { useLiveHints } from './useLiveHints'
+import type { LiveHint } from '@/lib/live-hints-core'
 import { demoEngine, fetchVoiceToken, twilioEngine, voiceErrorText, type ActiveCall, type IncomingCall, type VoiceEngine } from './voice'
 
 /* ───────────────────────── state ───────────────────────── */
@@ -141,6 +143,13 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   const [notice, setNotice] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [showPad, setShowPad] = useState(false)
+  /** the rep can switch live hints off for themselves (kept in this browser) */
+  const [hintsOn, setHintsOn] = useState(true)
+  useEffect(() => {
+    try {
+      setHintsOn(localStorage.getItem('igani.liveHints') !== 'off')
+    } catch {}
+  }, [])
   const [incoming, setIncoming] = useState<{ call: IncomingCall; caller: IncomingCaller | null } | null>(null)
   const listening = useRef<VoiceEngine | null>(null)
   const sessionRef = useRef<Session | null>(null)
@@ -156,6 +165,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   const canceled = useRef(false)
 
   const live = session && session.phase !== 'wrapup'
+  const { hint: liveHintNow, active: hintsActive } = useLiveHints({ enabled: Boolean(session && session.phase === 'live' && session.direction === 'out' && session.call.hints && hintsOn), callId: session?.call.callId ?? '', answeredAt: session?.answeredAt ?? null, getStreams: () => active.current?.streams() ?? null })
   useEffect(() => {
     if (!live) return
     const t = window.setInterval(() => setNow(Date.now()), 500)
@@ -252,7 +262,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     const c = call.accept()
     active.current = c
     const display = caller?.display ?? formatPhone(call.from)
-    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ? { id: caller.lead.id, name: caller.lead.name } : null, prospect: null, record: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in' })
+    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ? { id: caller.lead.id, name: caller.lead.name } : null, prospect: null, record: false, hints: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in' })
     const finish = (): void => {
       active.current = null
       setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'answered' } : s))
@@ -421,7 +431,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
           {incoming ? (
             <IncomingView caller={incoming.caller} from={incoming.call.from} onAccept={answer} onDecline={decline} />
           ) : session && session.phase !== 'wrapup' ? (
-            <InCall session={session} now={now} showPad={showPad} setShowPad={setShowPad} onMute={toggleMute} onHangup={hangup} onDigit={(d) => active.current?.sendDigits(d)} />
+            <InCall session={session} now={now} showPad={showPad} setShowPad={setShowPad} onMute={toggleMute} onHangup={hangup} onDigit={(d) => active.current?.sendDigits(d)} hint={liveHintNow} hintsActive={hintsActive} hintsOn={hintsOn} onToggleHints={() => setHintsOn((v) => { try { localStorage.setItem('igani.liveHints', v ? 'off' : 'on') } catch {} return !v })} />
           ) : session?.phase === 'wrapup' ? (
             <WrapUp session={session} onDone={onWrapped} />
           ) : (
@@ -937,7 +947,7 @@ function Recent({ onCall }: { onCall: (r: RecentCall) => void }): React.ReactEle
 
 /* ───────────────────────── in call ───────────────────────── */
 
-function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }: { session: Session; now: number; showPad: boolean; setShowPad: (v: boolean) => void; onMute: () => void; onHangup: () => void; onDigit: (d: string) => void }): React.ReactElement {
+function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, hint, hintsActive, hintsOn, onToggleHints }: { session: Session; now: number; showPad: boolean; setShowPad: (v: boolean) => void; onMute: () => void; onHangup: () => void; onDigit: (d: string) => void; hint: LiveHint | null; hintsActive: boolean; hintsOn: boolean; onToggleHints: () => void }): React.ReactElement {
   const { call, phase } = session
   const name = call.lead?.name ?? call.prospect?.name
   const [tones, setTones] = useState('')
@@ -972,6 +982,29 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit }
         ) : null}
         {call.demo ? <div className="mt-2 text-[11px] text-amber-300">Demo call: nobody is actually being called</div> : null}
       </div>
+
+      {session.direction === 'out' && session.call.hints && phase === 'live' ? (
+        <div className="w-full">
+          <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <span>Straight Line coach {hintsOn && hintsActive ? '· listening' : ''}</span>
+            <button type="button" onClick={onToggleHints} className="rounded px-1.5 py-0.5 normal-case tracking-normal hover:bg-white/10" aria-pressed={hintsOn}>
+              {hintsOn ? 'Turn off' : 'Turn on'}
+            </button>
+          </div>
+          {hintsOn ? (
+            <div aria-live="polite" className={cn('mt-1.5 min-h-[3.25rem] rounded-xl border px-3 py-2.5 text-sm', hint ? (hint.tone === 'warn' ? 'border-amber-400/50 bg-amber-500/15 text-amber-100' : hint.tone === 'good' ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-100' : 'border-[#4a7bd0] bg-[#3b78db]/20 text-white') : 'border-[#2b4263] bg-[#172b47] text-muted-foreground')}>
+              {hint ? (
+                <>
+                  <span dir="auto" className="font-medium">{hint.text}</span>
+                  {hint.step ? <span className="ml-2 text-[10px] uppercase tracking-wider opacity-70">{hint.step}</span> : null}
+                </>
+              ) : (
+                'Hints appear here as you talk. Audio is analysed live and not stored.'
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {showPad ? (
         <div className="w-full">
