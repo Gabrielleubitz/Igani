@@ -14,6 +14,9 @@ import { isOpenTask } from '@/lib/team-metrics'
 import { loadRepStats } from '@/lib/team-stats'
 import { tasksForUser } from '@/lib/tasks'
 import { STATUS_LABEL } from '@/lib/format'
+import { StraightLineChart } from '@/components/calls/StraightLineChart'
+import { WeekLineCard } from '@/components/calls/WeekLineCard'
+import { lessonLinksFor, loadRepWeek } from '@/lib/straight-line-week-data'
 
 export const metadata = { title: 'Salesperson' }
 export const dynamic = 'force-dynamic'
@@ -26,6 +29,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
   const now = new Date()
   // Never select the file bytes in a list.
   const agreements = await prisma.agreement.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true } })
+  const [lineWeek, lessons] = await Promise.all([loadRepWeek(user.id).catch(() => null), lessonLinksFor(me)])
   const [stats, tasks, leads, meetings] = await Promise.all([
     loadRepStats(me).then((all) => all.find((r) => r.id === user.id) ?? null),
     tasksForUser(me),
@@ -68,6 +72,29 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
           </Card>
         ))}
       </div>
+      {lineWeek ? (
+        <>
+          <WeekLineCard title={`${display}: week on the Straight Line`} week={lineWeek.week} prevDiscipline={lineWeek.prev.discipline} lessons={lessons} callHref={(id) => `/sales/calls/${id}`} />
+          {lineWeek.recent.length ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>This week’s calls on the line</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-3 md:grid-cols-2">
+                {lineWeek.recent.map((c) => (
+                  <Link key={c.id} href={`/sales/calls/${c.id}`} className="block rounded-lg border p-2 transition hover:border-primary/50">
+                    <div className="mb-1 flex justify-between text-xs text-muted-foreground">
+                      <span className="truncate">{c.who}</span>
+                      <span>{formatDateTime(c.startedAt, user.timeZone)}</span>
+                    </div>
+                    <StraightLineChart map={c.map} durationSec={c.durationSec} compact />
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
+        </>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>

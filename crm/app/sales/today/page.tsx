@@ -33,6 +33,8 @@ import { tasksForUser } from '@/lib/tasks'
 import { startOfLocalDay } from '@/lib/time'
 import { loadToday, type ActionItem, type AgendaItem, type DealRow, type TodayData } from '@/lib/today'
 import { cn } from '@/lib/utils'
+import { WeekLineCard } from '@/components/calls/WeekLineCard'
+import { lessonLinksFor, loadRepWeek } from '@/lib/straight-line-week-data'
 
 export const metadata = { title: 'Today' }
 export const dynamic = 'force-dynamic'
@@ -507,6 +509,8 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const user = await requireUser()
   const d = await loadToday(user)
   const items = await calendarItems(user, d.tz)
+  // Your week on the Straight Line (salespeople and admins who call)
+  const lineWeek = d.seller && user.role !== 'MARKETING' ? await Promise.all([loadRepWeek(user.id), lessonLinksFor(user)]).catch(() => null) : null
   const upcoming = items.filter((i) => new Date(i.end).getTime() > d.now.getTime() && new Date(i.start).getTime() < d.now.getTime() + 7 * 864e5).length
   const needs = d.actionsTotal
   const soon = d.agenda.some((a) => (a.kind === 'meeting' || a.kind === 'team') && Math.abs(a.start.getTime() - d.now.getTime()) < 15 * 60_000)
@@ -549,6 +553,8 @@ export default async function TodayPage(): Promise<React.ReactElement> {
       </header>
 
       <Kpis d={d} />
+
+      {lineWeek ? <WeekLineCard title="Your week on the Straight Line" week={lineWeek[0].week} prevDiscipline={lineWeek[0].prev.discipline} lessons={lineWeek[1]} callHref={(id) => `/sales/calls/${id}`} /> : null}
 
       {/* Two independent columns on desktop (no gaps under a short panel); on a phone one column, most urgent first. */}
       <div className="flex flex-col gap-5 lg:grid lg:grid-cols-12 lg:items-start">

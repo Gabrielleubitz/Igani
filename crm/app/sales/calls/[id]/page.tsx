@@ -3,6 +3,7 @@ import { BENCHMARKS } from '@/lib/call-coaching'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Transcript } from '@/components/calls/CallView'
+import { StraightLineChart } from '@/components/calls/StraightLineChart'
 import { StraightLinePanel } from '@/components/calls/StraightLinePanel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -469,6 +470,16 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
       return (
         <>
           {summary}
+          {a.lineMap ? (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">The call on the line</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <StraightLineChart map={a.lineMap} durationSec={call.recordingSec ?? call.durationSec ?? 0} />
+              </CardContent>
+            </Card>
+          ) : null}
           <StraightLinePanel sl={a.straightLine} lessons={lessons} />
           {moments}
           {focus}

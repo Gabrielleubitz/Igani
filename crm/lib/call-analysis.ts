@@ -5,6 +5,7 @@ import { logActivity } from './audit'
 import { ensureRecordingSid, fetchRecordingAudio } from './call-recording'
 import { PLAYBOOK, computeMetrics, scoreFromRubric, type TranscriptSeg } from './call-coaching'
 import { prisma } from './prisma'
+import { LINE_STAGES, STAGE_STATUSES, normalizeLineMap } from './line-map'
 import { LESSON_INDEX_PROMPT, STRAIGHT_LINE_CHECKS, STRAIGHT_LINE_PLAYBOOK, snapLesson } from './straight-line'
 
 /**
@@ -61,6 +62,15 @@ const StraightLine = z
     }
   })
 
+/** The call drawn on the line (stages, path around the line, action-threshold curve). Optional: older analyses don't have it. */
+const LineMapZ = z
+  .object({
+    stages: z.array(z.object({ key: z.string(), status: z.string(), at: z.number().nullable(), note: z.string().nullable() })),
+    path: z.array(z.object({ t: z.number(), offset: z.number() })),
+    threshold: z.object({ points: z.array(z.object({ t: z.number(), level: z.number() })), actAt: z.number() }),
+  })
+  .transform((m) => normalizeLineMap(m))
+
 export const CallAnalysis = z.object({
   v: z.number().optional(),
   isSalesCall: z.boolean(),
@@ -90,6 +100,7 @@ export const CallAnalysis = z.object({
   nextQuestions: List(6).optional(),
   focus: z.array(z.object({ skill: Str(80), why: Str(240), drill: Str(300), sayThis: Str(300) })).transform((a) => a.slice(0, 2)).optional(),
   straightLine: StraightLine.optional(),
+  lineMap: LineMapZ.nullable().optional().catch(null),
   metrics: z
     .object({
       talkRatioRep: z.number(),
@@ -142,6 +153,11 @@ const ANALYSIS_SCHEMA = obj({
     checks: { type: 'array', items: obj({ id: { type: 'string', enum: STRAIGHT_LINE_CHECKS.map((c) => c.id) }, result: { type: 'string', enum: ['yes', 'no', 'na'] }, evidence: { type: ['string', 'null'] } }) },
     lessons: { type: 'array', items: obj({ ep: NUM, startSec: NUM, why: STR }) },
   }),
+  lineMap: obj({
+    stages: { type: 'array', items: obj({ key: { type: 'string', enum: [...LINE_STAGES] }, status: { type: 'string', enum: [...STAGE_STATUSES] }, at: { type: ['number', 'null'] }, note: { type: ['string', 'null'] } }) },
+    path: { type: 'array', items: obj({ t: NUM, offset: NUM }) },
+    threshold: obj({ points: { type: 'array', items: obj({ t: NUM, level: NUM }) }, actAt: NUM }),
+  }),
   moments: { type: 'array', items: obj({ at: { type: ['number', 'null'] }, step: { type: ['string', 'null'], enum: [...STEPS, null] }, clientSaid: { type: ['string', 'null'] }, repSaid: STR, better: STR, why: STR }) },
 })
 
@@ -189,6 +205,14 @@ Return JSON matching the schema:
   (voicemail, support, nothing to judge). checks: one entry for EVERY check id, result yes / no / na, with a short evidence quote
   or null. lessons: 0 to 3 lessons from the LESSON INDEX that would help this rep most, as { ep, startSec, why } where why says in one
   sentence what in THIS call the lesson addresses. Do not coach deceptive or pressuring lines.
+- lineMap: draw the call on the Straight Line. stages: one entry for each stage of the line (open, questions, bridge, presentation,
+  firstNo, loop, close) with status good (done well), shaky (done but weak), blown (done badly or damaged the call), skipped (the call
+  got there but the rep did not do it, e.g. no bridge) or notReached (the call ended first), at (second it happened, or null) and a
+  short note quoting or describing what happened. path: 10 to 18 points over the whole call {t seconds, offset}: 0 = on the line,
+  +-1 = at a boundary, beyond +-1 = off the line (the rep lost control: chatting, arguing, letting the prospect steer, rambling).
+  threshold: 8 to 14 points {t, level 0 to 10} = how ready the prospect is to act, rising with rapport, a real fit, strong tens and
+  good loops, falling with doubt, stalls and pushy lines; actAt = the level at which they would act (usually 8 to 10); a yes means
+  the curve reaches it. Base every point on the transcript. Do not invent. For voicemail or non-sales calls return empty arrays.
 - moments: up to 3 coaching moments where the rep left the line or missed a Straight Line step: at (seconds), step (which step:
   rapport, intelligence, control, threeTens, looping, closing or ethics), clientSaid (or null), repSaid (verbatim), better (same language),
   why (one sentence in English).

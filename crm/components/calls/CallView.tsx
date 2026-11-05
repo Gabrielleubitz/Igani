@@ -85,6 +85,11 @@ export function CallPlayerProvider({ src, durationSec, children }: { src: string
   )
 }
 
+/** The shared player (seek + current time), or null outside a call page. */
+export function useCallPlayer(): { seek: (sec: number) => void; time: number } | null {
+  return useContext(PlayerContext)
+}
+
 /** "▶ 1:24" — jumps the player to that moment. */
 export function SeekButton({ at, label }: { at: number; label?: string }): React.ReactElement | null {
   const player = useContext(PlayerContext)
