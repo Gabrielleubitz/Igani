@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 /**
  * A course lesson. Reaching the end (watching or scrubbing forward) tells the server, which unlocks the next video.
  */
-export function LessonPlayer({ id, title, completed, nextId }: { id: string; title: string; completed: boolean; nextId: string | null }): React.ReactElement {
+export function LessonPlayer({ id, title, completed, nextId, startAt = 0 }: { id: string; title: string; completed: boolean; nextId: string | null; startAt?: number }): React.ReactElement {
   const router = useRouter()
   const ref = useRef<HTMLVideoElement>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -39,6 +39,10 @@ export function LessonPlayer({ id, title, completed, nextId }: { id: string; tit
           aria-label={title}
           className="aspect-video w-full bg-black"
           onContextMenu={(e) => e.preventDefault()}
+          onLoadedMetadata={(e) => {
+            // A link from a call review opens the lesson at the minute that teaches the point
+            if (startAt > 0 && startAt < e.currentTarget.duration) e.currentTarget.currentTime = startAt
+          }}
           onEnded={() => void finished()}
         />
         <figcaption className="bg-white px-4 py-2.5 text-sm font-medium text-slate-800">{title}</figcaption>

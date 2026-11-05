@@ -12,7 +12,7 @@ export const metadata = { title: 'The Straight Line' }
 export const dynamic = 'force-dynamic'
 
 /** Admins and marketing see every team video. Salespeople get the course: one video at a time, each unlocked by finishing the one before. */
-export default async function TeamVideosPage(props: { searchParams: Promise<{ v?: string }> }): Promise<React.ReactElement> {
+export default async function TeamVideosPage(props: { searchParams: Promise<{ v?: string; t?: string }> }): Promise<React.ReactElement> {
   const user = await requireUser()
   if (user.role !== 'SALES') {
     const videos = courseOrder(await listVideos())
@@ -29,7 +29,8 @@ export default async function TeamVideosPage(props: { searchParams: Promise<{ v?
     )
   }
 
-  const { v } = await props.searchParams
+  const { v, t } = await props.searchParams
+  const startAt = Math.max(0, Math.min(Number(t) || 0, 6 * 3600))
   const { ordered, progress, unlocked } = await unlockedFor(user.id)
   if (ordered.length === 0) return <div className="space-y-5"><PageIntro title="The Straight Line" hint="Your training course." /><p className="text-sm text-muted-foreground">No videos yet.</p></div>
 
@@ -47,7 +48,7 @@ export default async function TeamVideosPage(props: { searchParams: Promise<{ v?
         <div className="h-full bg-primary" style={{ width: `${(doneCount / ordered.length) * 100}%` }} />
       </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <LessonPlayer key={active.id} id={active.id} title={active.title} completed={progress.completed.includes(active.id)} nextId={next?.id ?? null} />
+        <LessonPlayer key={active.id} id={active.id} title={active.title} completed={progress.completed.includes(active.id)} nextId={next?.id ?? null} startAt={v === active.id ? startAt : 0} />
         <aside className="space-y-2">
           {visible.map((o) => {
             const finished = progress.completed.includes(o.id)
