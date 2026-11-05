@@ -7,6 +7,7 @@ import { avatarPath, isGooglePhoto } from '@/lib/avatar'
 import { ensureAvatar } from '@/lib/avatar-sync'
 import { prisma } from '@/lib/prisma'
 import { SignOutButton } from './AuthButtons'
+import { ThemeToggle } from './ThemeToggle'
 import { SessionKeepAlive } from './SessionKeepAlive'
 import { AppNav, GlobalSearch, MobileMenu, type NavNode } from './AppNav'
 
@@ -148,10 +149,13 @@ export async function AppShell({ user, children }: { user: SessionUser; children
       <aside className="relative border-b bg-card/40 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:flex-1 lg:flex-col lg:items-stretch lg:justify-start lg:gap-5 lg:overflow-y-auto lg:px-4 lg:py-5">
           <Link href="/" aria-label="Igani CRM home" className="flex items-center gap-2">
-            <Logo height={32} />
+            {/* the wordmark that reads on the current theme */}
+            <Logo height={32} className="hidden dark:block" />
+            <Logo onLight height={32} className="dark:hidden" />
             <span className="hidden rounded border border-primary/40 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-primary lg:inline">CRM</span>
           </Link>
           <div className="flex items-center gap-2 lg:hidden">
+            <ThemeToggle />
             <MobileMenu nodes={nodes} />
             <SignOutButton />
           </div>
@@ -175,7 +179,8 @@ export async function AppShell({ user, children }: { user: SessionUser; children
             <div className="truncate text-sm font-medium">{user.name ?? user.email}</div>
             <div className="truncate text-xs text-muted-foreground">{ROLE_LABEL[user.role]}</div>
           </div>
-          <SignOutButton />
+          <ThemeToggle />
+          <SignOutButton compact />
         </div>
       </aside>
       <main id="main" className="min-w-0 flex-1 px-4 py-6 sm:px-8 sm:py-8">

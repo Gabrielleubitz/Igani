@@ -450,7 +450,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
         <div
           role="dialog"
           aria-label="Phone"
-          className="fixed inset-x-2 bottom-2 z-[60] flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-[22px] border border-[#2b4060] bg-[#0f1d31] text-foreground shadow-[0_28px_70px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] sm:inset-x-auto sm:bottom-[84px] sm:right-5 sm:h-[min(620px,calc(100dvh-7rem))] sm:w-[372px]"
+          className="dark fixed inset-x-2 bottom-2 z-[60] flex h-[min(640px,calc(100dvh-1rem))] flex-col overflow-hidden rounded-[22px] border border-[#2b4060] bg-[#0f1d31] text-foreground shadow-[0_28px_70px_-12px_rgba(0,0,0,0.75),0_0_0_1px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] sm:inset-x-auto sm:bottom-[84px] sm:right-5 sm:h-[min(620px,calc(100dvh-7rem))] sm:w-[372px]"
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#22344f] bg-[#0b1728] px-5 py-3.5">
             <div className="flex min-w-0 items-center gap-3">
