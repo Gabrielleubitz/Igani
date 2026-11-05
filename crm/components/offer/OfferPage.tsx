@@ -20,8 +20,11 @@ const PHASE_COLS: Record<number, string> = { 1: 'md:grid-cols-1', 2: 'md:grid-co
 /** Link inside an offer that keeps the language: offerHref('/o/x', '/screen/a?step=1#top', 'en') → /o/x/screen/a?step=1&lang=en#top */
 export function offerHref(base: string, path: string, lang: Lang): string {
   const [pathAndQuery = '', hash] = path.split('#', 2)
-  const href = `${base}${pathAndQuery}${pathAndQuery.includes('?') ? '&' : '?'}lang=${lang}`
-  return `${href || '/'}${hash ? `#${hash}` : ''}`
+  // On the offer's own subdomain `base` is '', so the offer root must be '/', not a bare '?lang=…':
+  // a bare query resolves against the current page, which broke "Back to offer" on /screen/...
+  const target = pathAndQuery || (base ? '' : '/')
+  const href = `${base}${target}${target.includes('?') ? '&' : '?'}lang=${lang}`
+  return `${href}${hash ? `#${hash}` : ''}`
 }
 
 // ─── Building blocks of the page ─────────────────────────────────────────────
