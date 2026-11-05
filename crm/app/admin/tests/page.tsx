@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { GradientChip, IconChip, Tag } from '@/components/ui/tone'
 import { requireUser } from '@/lib/auth'
 import { appUrl } from '@/lib/env'
-import { meetAvailable, meetConfigured } from '@/lib/meet'
+import { meetAvailable, meetConfigured, meetSetupProblem } from '@/lib/meet'
 import { prisma } from '@/lib/prisma'
 
 export const metadata = { title: 'Tests' }
@@ -20,6 +20,7 @@ export default async function TestsPage(): Promise<React.ReactElement> {
     prisma.meetRoom.findMany({ orderBy: [{ endedAt: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }], take: 40, include: { host: { select: { name: true, email: true } }, invites: { orderBy: { createdAt: 'asc' } } } }),
   ])
   const configured = meetConfigured()
+  const problem = meetSetupProblem()
   const ready = meetAvailable()
   const fmt = new Intl.DateTimeFormat('en-US', { timeZone: me.timeZone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
   const teammates = team.map((t) => ({ id: t.id, name: t.name ?? t.email!, email: t.email!.toLowerCase() }))
@@ -47,10 +48,18 @@ export default async function TestsPage(): Promise<React.ReactElement> {
             <CardTitle className="text-lg">Igani Meet</CardTitle>
             <p className="text-sm text-muted-foreground">Video calls inside the CRM, in Igani’s look. Invite teammates or anyone by email: guests join from their browser, no account or app.</p>
           </div>
-          {configured ? <Tag tone="emerald">Connected to 8x8</Tag> : ready ? <Tag tone="amber">Test server (this computer only)</Tag> : <Tag tone="rose">Not set up</Tag>}
+          {configured ? <Tag tone="emerald">Connected to 8x8</Tag> : problem ? <Tag tone="rose">8x8 settings need fixing</Tag> : ready ? <Tag tone="amber">Test server (this computer only)</Tag> : <Tag tone="rose">Not set up</Tag>}
         </CardHeader>
         <CardContent className="space-y-5">
-          {!configured ? (
+          {problem ? (
+            <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 p-4 text-sm">
+              <div className="flex items-center gap-2 font-medium text-rose-100">
+                <KeyRound className="h-4 w-4 text-rose-300" /> Calls can’t connect until this is fixed
+              </div>
+              <p className="mt-1.5 text-rose-100/90">{problem}</p>
+              <p className="mt-1.5 text-xs text-rose-100/70">Change it in Vercel → Settings → Environment Variables, then redeploy.</p>
+            </div>
+          ) : !configured ? (
             <div className="rounded-xl border border-amber-400/30 bg-amber-500/5 p-4 text-sm">
               <div className="flex items-center gap-2 font-medium">
                 <KeyRound className="h-4 w-4 text-amber-300" /> To turn it on for everyone

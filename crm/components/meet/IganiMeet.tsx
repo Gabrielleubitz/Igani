@@ -182,6 +182,13 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
               setLiveApi(null)
               setPhase('left')
             }}
+            onFail={(why) => {
+              api.current?.dispose()
+              api.current = null
+              setLiveApi(null)
+              setError(why)
+              setPhase('error')
+            }}
           />
         ) : null}
         <div ref={stage} className="relative mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-2xl ring-1 ring-white/10 sm:mx-4" />
@@ -299,7 +306,7 @@ function RoundButton({ on, onClick, label, icon, danger = false, active = false,
   )
 }
 
-function Live({ api, title, testServer, startMic, startCam, onLeft }: { api: JitsiApi; title: string; testServer: boolean; startMic: boolean; startCam: boolean; onLeft: () => void }): React.ReactElement {
+function Live({ api, title, testServer, startMic, startCam, onLeft, onFail }: { api: JitsiApi; title: string; testServer: boolean; startMic: boolean; startCam: boolean; onLeft: () => void; onFail: (why: string) => void }): React.ReactElement {
   const [mic, setMic] = useState(startMic)
   const [cam, setCam] = useState(startCam)
   const [sharing, setSharing] = useState(false)
@@ -310,16 +317,31 @@ function Live({ api, title, testServer, startMic, startCam, onLeft }: { api: Jit
   const [joinedAt, setJoinedAt] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const leftRef = useRef(onLeft)
+  const failRef = useRef(onFail)
+  const joinedRef = useRef(false)
   useEffect(() => {
     leftRef.current = onLeft
-  }, [onLeft])
+    failRef.current = onFail
+  }, [onLeft, onFail])
 
   useEffect(() => {
     const people = (): void => setCount(Math.max(1, api.getNumberOfParticipants()))
     api.addListener('videoConferenceJoined', () => {
+      joinedRef.current = true
       setJoinedAt(Date.now())
       people()
     })
+    // Jitsi's own messages are hidden (Igani draws the UI), so its errors are turned into ours
+    api.addListener('errorOccurred', (e: { error?: { name?: string; message?: string; isFatal?: boolean } }) => {
+      const name = e.error?.name ?? ''
+      console.error('[igani-meet] error', name, e.error?.message ?? '')
+      if (e.error?.isFatal || /auth|password|notAllowed|membersOnly|conferenceDestroyed|connection\.(droppedError|otherError)/i.test(name))
+        failRef.current(/auth|notAllowed/i.test(name) ? 'The call service didn’t accept the pass for this call. If you’re the host, check the 8x8 settings on the Tests page.' : /membersOnly/i.test(name) ? 'The call hasn’t been opened by the host yet. Try again in a moment.' : 'The connection to the call was lost. Check your internet and try again.')
+    })
+    // never spin forever: if the call hasn't connected after a while, say so
+    const timeout = setTimeout(() => {
+      if (!joinedRef.current) failRef.current('Couldn’t connect to the call. Check your internet connection (or a firewall or VPN blocking video calls) and try again.')
+    }, 30_000)
     api.addListener('participantJoined', people)
     api.addListener('participantLeft', people)
     api.addListener('audioMuteStatusChanged', (e: { muted: boolean }) => setMic(!e.muted))
@@ -330,6 +352,7 @@ function Live({ api, title, testServer, startMic, startCam, onLeft }: { api: Jit
     api.addListener('chatUpdated', (e: { isOpen: boolean; unreadCount: number }) => setChat({ open: e.isOpen, unread: e.unreadCount }))
     api.addListener('readyToClose', () => leftRef.current())
     api.addListener('videoConferenceLeft', () => leftRef.current())
+    return () => clearTimeout(timeout)
   }, [api])
 
   useEffect(() => {

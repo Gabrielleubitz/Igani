@@ -6,7 +6,7 @@ import { currentUserOrNull, requireUser } from '@/lib/auth'
 import { avatarPath } from '@/lib/avatar'
 import { sendMeetInviteEmail } from '@/lib/email'
 import { appUrl } from '@/lib/env'
-import { meetAvailable, meetConfigFor, newInviteToken, newRoomCode, parseInviteEmails, type MeetConfig } from '@/lib/meet'
+import { meetAvailable, meetConfigFor, meetSetupProblem, newInviteToken, newRoomCode, parseInviteEmails, type MeetConfig } from '@/lib/meet'
 import { prisma } from '@/lib/prisma'
 import { zonedInputToDate } from '@/lib/time'
 import { toActionError, type ActionResult } from './result'
@@ -70,7 +70,7 @@ async function sendInvites(roomId: string, inviteIds: string[]): Promise<{ sent:
 export async function createMeetRoom(input: z.input<typeof RoomInput>): Promise<ActionResult<{ code: string; sent: number; failed: number }>> {
   try {
     const user = await requireUser(['ADMIN'])
-    if (!meetAvailable()) return { ok: false, error: 'Igani Meet isn’t set up yet: add the 8x8 keys in Vercel (see the setup box on this page).' }
+    if (!meetAvailable()) return { ok: false, error: meetSetupProblem() ?? 'Igani Meet isn’t set up yet: add the 8x8 keys in Vercel (see the setup box on this page).' }
     const v = RoomInput.parse(input)
     const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true, email: true } })
     const scheduledAt = v.when ? zonedInputToDate(v.when, me.timeZone) : null
@@ -168,7 +168,7 @@ export async function joinMeet(input: { code: string; token: string | null; name
       avatar: teammate ? (avatarPath(teammate) ? appUrl(avatarPath(teammate)!) : null) : null,
       moderator,
     })
-    if (!config) return { ok: false, error: 'Igani Meet isn’t available right now. Please try again later.' }
+    if (!config) return { ok: false, error: moderator && meetSetupProblem() ? `Igani Meet isn’t set up right: ${meetSetupProblem()}` : 'Igani Meet isn’t available right now. Please try again later.' }
     if (invite) await prisma.meetInvite.update({ where: { id: invite.id }, data: { joinedAt: invite.joinedAt ?? new Date(), ...(teammate ? {} : { name }) } })
     return { ok: true, data: { config, name: display } }
   } catch (err) {

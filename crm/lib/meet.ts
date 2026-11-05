@@ -28,12 +28,36 @@ export interface MeetPerson {
   moderator: boolean
 }
 
-function jaas(): { appId: string; kid: string; key: string } | null {
+interface Jaas {
+  appId: string
+  kid: string
+  key: string
+}
+
+/** Reads and checks the three 8x8 settings. A wrong value is named exactly (it would otherwise just hang on "Connecting"). */
+function readJaas(): { ok: Jaas } | { problem: string } | null {
   const appId = process.env.JAAS_APP_ID?.trim()
   const kidRaw = process.env.JAAS_KEY_ID?.trim()
   const key = process.env.JAAS_PRIVATE_KEY?.replace(/\\n/g, '\n').trim()
-  if (!appId || !kidRaw || !key) return null
-  return { appId, kid: kidRaw.includes('/') ? kidRaw : `${appId}/${kidRaw}`, key }
+  if (!appId && !kidRaw && !key) return null
+  if (!appId || !kidRaw || !key) return { problem: `Missing ${[!appId && 'JAAS_APP_ID', !kidRaw && 'JAAS_KEY_ID', !key && 'JAAS_PRIVATE_KEY'].filter(Boolean).join(' and ')} in Vercel.` }
+  if (!/^vpaas-magic-cookie-[a-z0-9]+$/i.test(appId)) return { problem: 'JAAS_APP_ID should look like vpaas-magic-cookie-… (the App ID at the top of the 8x8 console).' }
+  if (/BEGIN|KEY-----|\s/.test(kidRaw) || kidRaw.length > 160) return { problem: 'JAAS_KEY_ID holds a key file, not the key’s ID. In the 8x8 console, API Keys, copy the short Key ID (it looks like vpaas-magic-cookie-…/a1b2c3) and paste only that.' }
+  const kid = kidRaw.includes('/') ? kidRaw : `${appId}/${kidRaw}`
+  if (!kid.startsWith(`${appId}/`) || !/^[A-Za-z0-9_-]{3,80}$/.test(kid.slice(appId.length + 1))) return { problem: 'JAAS_KEY_ID doesn’t match this app. Copy the Key ID of an API key from the same 8x8 app.' }
+  if (/PUBLIC KEY/.test(key) || !/PRIVATE KEY-----/.test(key)) return { problem: 'JAAS_PRIVATE_KEY must be the private key file you downloaded when creating the API key (it starts with -----BEGIN PRIVATE KEY-----), not the public key.' }
+  return { ok: { appId, kid, key } }
+}
+
+function jaas(): Jaas | null {
+  const r = readJaas()
+  return r && 'ok' in r ? r.ok : null
+}
+
+/** What's wrong with the 8x8 settings, if anything (null when fine or not set at all). */
+export function meetSetupProblem(): string | null {
+  const r = readJaas()
+  return r && 'problem' in r ? r.problem : null
 }
 
 export const meetConfigured = (): boolean => jaas() != null
