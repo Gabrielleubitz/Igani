@@ -1,3 +1,5 @@
+import { AlarmClock, CalendarClock, CalendarRange, Inbox } from 'lucide-react'
+import { StatTile, type Tone } from '@/components/ui/tone'
 import { ChevronRight, Search } from 'lucide-react'
 import Link from 'next/link'
 import { TASK_PRIORITIES, type CrmTask } from '@/components/crm/crm-utils'
@@ -166,11 +168,11 @@ export default async function TasksPage(props: { searchParams: Promise<Record<st
   const leadOptions = leadRows.map((l) => ({ id: l.id, label: [leadName(l), l.company].filter(Boolean).join(' · ') }))
 
   const count = (b: Bucket): number => inBucket(b).length
-  const tiles: { id: string; label: string; n: number; tone: string; ring: string }[] = [
-    { id: 'overdue', label: 'Overdue', n: count('overdue'), tone: 'text-red-400', ring: 'border-red-500/30 bg-red-500/[0.06]' },
-    { id: 'today', label: 'Today', n: count('today'), tone: 'text-primary', ring: 'border-primary/30 bg-primary/[0.06]' },
-    { id: 'tomorrow', label: 'Next 7 days', n: count('tomorrow') + count('week'), tone: 'text-foreground', ring: 'border-border' },
-    { id: 'later', label: 'Later / no date', n: count('later') + count('none'), tone: 'text-muted-foreground', ring: 'border-border' },
+  const tiles: { id: string; label: string; n: number; tone: Tone; icon: React.ReactNode; ring: string }[] = [
+    { id: 'overdue', label: 'Overdue', n: count('overdue'), tone: 'rose', icon: <AlarmClock />, ring: 'border-rose-500/30' },
+    { id: 'today', label: 'Today', n: count('today'), tone: 'blue', icon: <CalendarClock />, ring: 'border-primary/30' },
+    { id: 'tomorrow', label: 'Next 7 days', n: count('tomorrow') + count('week'), tone: 'violet', icon: <CalendarRange />, ring: '' },
+    { id: 'later', label: 'Later / no date', n: count('later') + count('none'), tone: 'slate', icon: <Inbox />, ring: '' },
   ]
 
   const row = (item: Item, mode: Section['mode']): React.ReactElement => {
@@ -302,10 +304,7 @@ export default async function TasksPage(props: { searchParams: Promise<Record<st
       {!showDone && !nothing ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {tiles.map((t) => (
-            <a key={t.id} href={byPerson ? undefined : `#${t.id === 'later' && !count('later') ? 'none' : t.id}`} className={`rounded-xl border px-4 py-3 transition-colors hover:bg-muted/30 ${t.n ? t.ring : 'border-border opacity-60'}`}>
-              <div className={`text-2xl font-semibold tabular-nums ${t.n ? t.tone : 'text-muted-foreground'}`}>{t.n}</div>
-              <div className="text-xs text-muted-foreground">{t.label}</div>
-            </a>
+            <StatTile key={t.id} href={byPerson ? undefined : `#${t.id === 'later' && !count('later') ? 'none' : t.id}`} icon={t.icon} tone={t.tone} label={t.label} value={t.n} muted={!t.n} className={t.n ? t.ring : ''} />
           ))}
         </div>
       ) : null}

@@ -96,6 +96,25 @@ export const STATUS_TONE: Record<LeadStatus, string> = {
   LOST: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
 }
 
+/** Just the stage's color, as a dot (filters, legends). */
+export const STATUS_DOT: Record<LeadStatus, string> = {
+  NEW: 'bg-sky-400',
+  NO_ANSWER: 'bg-slate-400',
+  CALL_BACK: 'bg-orange-400',
+  VOICEMAIL: 'bg-cyan-400',
+  BUSY: 'bg-yellow-400',
+  INTERESTED: 'bg-lime-400',
+  NOT_INTERESTED: 'bg-zinc-400',
+  WRONG_NUMBER: 'bg-stone-400',
+  CONTACTED: 'bg-indigo-400',
+  DEMO_SCHEDULED: 'bg-violet-400',
+  DEMO_SENT: 'bg-fuchsia-400',
+  PROPOSAL_SENT: 'bg-amber-400',
+  SIGNED: 'bg-teal-400',
+  WON: 'bg-emerald-400',
+  LOST: 'bg-rose-400',
+}
+
 export function statusLabel(s: string): string {
   return STATUS_LABEL[s as LeadStatus] ?? s
 }

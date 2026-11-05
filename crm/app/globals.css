@@ -116,6 +116,10 @@ html.light .text-purple-100:not(.dark, .dark *), html.light .text-purple-200:not
 html.light .text-fuchsia-100:not(.dark, .dark *), html.light .text-fuchsia-200:not(.dark, .dark *), html.light .text-fuchsia-300:not(.dark, .dark *), html.light .text-fuchsia-400:not(.dark, .dark *) { color: #a21caf; }
 html.light .text-lime-100:not(.dark, .dark *), html.light .text-lime-200:not(.dark, .dark *), html.light .text-lime-300:not(.dark, .dark *), html.light .text-lime-400:not(.dark, .dark *) { color: #4d7c0f; }
 
+html.light .text-slate-100:not(.dark, .dark *), html.light .text-slate-200:not(.dark, .dark *), html.light .text-slate-300:not(.dark, .dark *), html.light .text-slate-400:not(.dark, .dark *) { color: #475569; }
+html.light .text-zinc-100:not(.dark, .dark *), html.light .text-zinc-200:not(.dark, .dark *), html.light .text-zinc-300:not(.dark, .dark *), html.light .text-zinc-400:not(.dark, .dark *) { color: #52525b; }
+html.light .text-stone-100:not(.dark, .dark *), html.light .text-stone-200:not(.dark, .dark *), html.light .text-stone-300:not(.dark, .dark *), html.light .text-stone-400:not(.dark, .dark *) { color: #57534e; }
+
 /* While switching light/dark: colors cross-fade briefly */
 html.theme-switching *, html.theme-switching *::before, html.theme-switching *::after { transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease !important; }
 

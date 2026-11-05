@@ -61,10 +61,37 @@ const ICONS: Record<string, LucideIcon> = {
 /** A menu entry as the server sends it: icons are names (mapped to lucide icons here), folders have children. */
 export type NavNode = { id: string; label: string; icon?: string; href?: string; badge?: number; children?: NavNode[] }
 
+/** Each entry's icon color (the same palette as the page badges). Settings stays neutral. */
+const ICON_COLOR: Record<string, string> = {
+  today: 'text-amber-400',
+  contacts: 'text-[#6aa6ff]',
+  board: 'text-indigo-400',
+  tasks: 'text-emerald-400',
+  meetings: 'text-violet-400',
+  reports: 'text-sky-400',
+  invite: 'text-pink-400',
+  hours: 'text-orange-400',
+  documents: 'text-cyan-400',
+  marketing: 'text-pink-400',
+  overview: 'text-[#6aa6ff]',
+  bookings: 'text-violet-400',
+  pages: 'text-cyan-400',
+  team: 'text-indigo-400',
+  performance: 'text-emerald-400',
+  audit: 'text-sky-400',
+  offers: 'text-amber-400',
+  videos: 'text-rose-400',
+  teamMeetings: 'text-violet-400',
+  website: 'text-cyan-400',
+  phone: 'text-emerald-400',
+  calls: 'text-emerald-400',
+  callLists: 'text-teal-400',
+}
+
 function toMenu(nodes: NavNode[]): MenuNode[] {
   return nodes.map((n) => {
     const Icon = n.icon ? ICONS[n.icon] : undefined
-    return { id: n.id, label: n.label, href: n.href, badge: n.badge, icon: Icon ? <Icon aria-hidden /> : undefined, children: n.children ? toMenu(n.children) : undefined }
+    return { id: n.id, label: n.label, href: n.href, badge: n.badge, icon: Icon ? <Icon aria-hidden className={n.icon ? ICON_COLOR[n.icon] : undefined} /> : undefined, children: n.children ? toMenu(n.children) : undefined }
   })
 }
 

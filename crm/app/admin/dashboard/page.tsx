@@ -1,3 +1,5 @@
+import { Banknote, Briefcase, CalendarCheck, CalendarDays, CircleCheck, HandCoins, Hourglass, Target, Trophy, UserPlus, Users, Wallet } from 'lucide-react'
+import { StatTile, Tag, type Tone } from '@/components/ui/tone'
 import Link from 'next/link'
 import { CommissionPayRow } from '@/components/admin/CommissionPayRow'
 import { commissionStatus } from '@/lib/commission'
@@ -69,18 +71,17 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     const s = commissionStatus(r)
     return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
   }, { total: 0, paid: 0, payable: 0, pending: 0 })
-  const tiles: { label: string; value: string | number; href: string; hint?: string; tone?: string }[] = [
-    { label: 'Open deals', value: total - won - lost, href: '/sales/board' },
-    { label: 'Pipeline value', value: `₪${formatMoney(openValue._sum.quotedPrice ?? 0)}`, href: '/sales/board' },
-    { label: 'Leads', value: total, href: '/sales/leads' },
-    { label: 'New this week', value: newWeek, href: '/sales/leads' },
-    { label: 'Waiting for an owner', value: unassigned, href: '/sales/leads?assignee=none', tone: unassigned ? 'text-amber-300' : undefined },
-    { label: `Quiet > ${staleDays} days`, value: staleCount, href: '/sales/today', tone: staleCount ? 'text-amber-300' : undefined },
-    { label: 'Won', value: won, href: '/sales/leads?status=WON' },
-    { label: 'Revenue (won deals)', value: `₪${formatMoney(wonValue._sum.quotedPrice ?? 0)}`, href: '/sales/leads?status=WON' },
-    { label: 'Win rate (closed deals)', value: closed ? `${Math.round((won / closed) * 100)}%` : '—', href: '/sales/reports' },
-    { label: 'Meetings next 24h', value: today, href: '/sales' },
-    { label: 'Awaiting approval', value: pendingApprovals, href: '/admin/bookings', tone: pendingApprovals ? 'text-amber-300' : undefined },
+  const tiles: { label: string; value: string | number; href: string; icon: React.ReactNode; tone: Tone; tag?: React.ReactNode }[] = [
+    { label: 'Open deals', value: total - won - lost, href: '/sales/board', icon: <Briefcase />, tone: 'blue' },
+    { label: 'Pipeline value', value: `₪${formatMoney(openValue._sum.quotedPrice ?? 0)}`, href: '/sales/board', icon: <Wallet />, tone: 'emerald' },
+    { label: 'Leads', value: total, href: '/sales/leads', icon: <Users />, tone: 'sky', tag: newWeek ? <Tag tone="emerald">+{newWeek} this week</Tag> : undefined },
+    { label: 'Waiting for an owner', value: unassigned, href: '/sales/leads?assignee=none', icon: <UserPlus />, tone: unassigned ? 'amber' : 'slate' },
+    { label: `Quiet > ${staleDays} days`, value: staleCount, href: '/sales/today', icon: <Hourglass />, tone: staleCount ? 'orange' : 'slate' },
+    { label: 'Won', value: won, href: '/sales/leads?status=WON', icon: <Trophy />, tone: 'amber' },
+    { label: 'Revenue (won deals)', value: `₪${formatMoney(wonValue._sum.quotedPrice ?? 0)}`, href: '/sales/leads?status=WON', icon: <Banknote />, tone: 'teal' },
+    { label: 'Win rate (closed deals)', value: closed ? `${Math.round((won / closed) * 100)}%` : '—', href: '/sales/reports', icon: <Target />, tone: 'pink' },
+    { label: 'Meetings next 24h', value: today, href: '/sales', icon: <CalendarDays />, tone: 'violet' },
+    { label: 'Awaiting approval', value: pendingApprovals, href: '/admin/bookings', icon: <CalendarCheck />, tone: pendingApprovals ? 'rose' : 'slate', tag: pendingApprovals ? <Tag tone="rose">needs you</Tag> : undefined },
   ]
   const board = reps
     .map((r) => ({
@@ -101,10 +102,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
       <PageIntro title="Overview" hint="A snapshot of the whole business: leads, pipeline, meetings and how each teammate is doing. Click any number to dig in." />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {tiles.map((t) => (
-          <Link key={t.label} href={t.href} className="rounded-lg border bg-card p-4 transition-colors hover:bg-muted/40">
-            <div className={`text-2xl font-semibold tabular-nums ${t.tone ?? ''}`}>{t.value}</div>
-            <div className="text-xs text-muted-foreground">{t.label}</div>
-          </Link>
+          <StatTile key={t.label} href={t.href} icon={t.icon} tone={t.tone} label={t.label} value={t.value} tag={t.tag} />
         ))}
       </div>
       <Card>
@@ -113,16 +111,15 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: 'Total owed', value: owed.total, tone: '' },
-              { label: 'Paid', value: owed.paid, tone: 'text-emerald-400' },
-              { label: 'Payable now', value: owed.payable, tone: owed.payable ? 'text-amber-300' : '' },
-              { label: 'Pending (client has not paid yet)', value: owed.pending, tone: '' },
-            ].map((t) => (
-              <div key={t.label} className="rounded-lg border p-3">
-                <div className={`text-xl font-semibold tabular-nums ${t.tone}`}>₪{formatMoney(t.value)}</div>
-                <div className="text-xs text-muted-foreground">{t.label}</div>
-              </div>
+            {(
+              [
+                { label: 'Total owed', value: owed.total, tone: 'blue', icon: <Wallet /> },
+                { label: 'Paid', value: owed.paid, tone: 'emerald', icon: <CircleCheck /> },
+                { label: 'Payable now', value: owed.payable, tone: owed.payable ? 'amber' : 'slate', icon: <HandCoins /> },
+                { label: 'Pending (client has not paid yet)', value: owed.pending, tone: 'violet', icon: <Hourglass /> },
+              ] satisfies { label: string; value: number; tone: Tone; icon: React.ReactNode }[]
+            ).map((t) => (
+              <StatTile key={t.label} icon={t.icon} tone={t.tone} label={t.label} value={`₪${formatMoney(t.value)}`} />
             ))}
           </div>
           {commissionRows.length > 0 ? (

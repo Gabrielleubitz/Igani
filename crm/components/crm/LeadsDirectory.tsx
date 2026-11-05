@@ -7,7 +7,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { Popover } from '@/components/ui/popover'
 import { Select } from '@/components/ui/input'
 import type { SessionUser } from '@/lib/auth'
-import { LEAD_STATUSES, STATUS_LABEL, leadName } from '@/lib/format'
+import { LEAD_STATUSES, STATUS_DOT, STATUS_LABEL, STATUS_TONE, leadName } from '@/lib/format'
 import { leadScope } from '@/lib/lead-access'
 import { PAGE_SIZE, buildLeadWhere, parseLeadFilters } from '@/lib/lead-query'
 import { prisma } from '@/lib/prisma'
@@ -79,8 +79,9 @@ export async function LeadsDirectory({ searchParams, basePath, user }: { searchP
           All <span className="ml-1 tabular-nums text-muted-foreground">{allCount}</span>
         </Link>
         {LEAD_STATUSES.map((s) => (
-          <Link key={s} href={link({ status: s, page: undefined })} className={`whitespace-nowrap rounded-full border px-3 py-1 text-sm ${f.status === s ? 'border-primary/50 bg-primary/15 font-medium' : 'text-muted-foreground hover:bg-muted'}`}>
-            {STATUS_LABEL[s]} <span className="ml-1 tabular-nums text-muted-foreground">{counts.get(s) ?? 0}</span>
+          <Link key={s} href={link({ status: s, page: undefined })} className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-sm ${f.status === s ? `${STATUS_TONE[s]} font-medium` : 'text-muted-foreground hover:bg-muted'}`}>
+            <span aria-hidden className={`h-2 w-2 rounded-full ${STATUS_DOT[s]} ${counts.get(s) ? '' : 'opacity-60'}`} />
+            {STATUS_LABEL[s]} <span className="tabular-nums opacity-70">{counts.get(s) ?? 0}</span>
           </Link>
         ))}
       </nav>
