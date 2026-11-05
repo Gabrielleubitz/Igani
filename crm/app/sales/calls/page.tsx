@@ -6,6 +6,7 @@ import { PageIntro } from '@/components/PageIntro'
 import { EmptyState } from '@/components/ui/empty-state'
 import { IconChip, StatTile, Tag, type Tone } from '@/components/ui/tone'
 import { requireUser } from '@/lib/auth'
+import { avatarPath } from '@/lib/avatar'
 import { asAnalysis } from '@/lib/call-analysis'
 import { CALL_STATUS_LABEL, OUTCOME_TONE, callResult, scoreTone } from '@/lib/call-ui'
 import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
@@ -106,7 +107,7 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
     loadCalls(where(view), limit),
     Promise.all(VIEWS.map((v) => prisma.call.count({ where: where(v) }))),
     prisma.call.findMany({ where: { simulated: false, startedAt: { gte: new Date(now.getTime() - 30 * DAY) }, ...(isAdmin ? {} : { userId: user.id }) }, select: { userId: true, status: true, durationSec: true, analysis: true, startedAt: true } }),
-    isAdmin ? prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
+    isAdmin ? prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true, image: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
   ])
   const count = Object.fromEntries(VIEWS.map((v, i) => [v, counts[i] ?? 0])) as Record<View, number>
 
@@ -129,6 +130,7 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
   }
   const avg = (xs: number[]): number | null => (xs.length ? Math.round(xs.reduce((s, x) => s + x, 0) / xs.length) : null)
   const nameOf = new Map(people.map((p) => [p.id, p.name ?? p.email ?? 'Teammate']))
+  const photoOf = new Map(people.map((p) => [p.id, avatarPath(p)]))
   const team = [...stats.values()].reduce((t, s) => ({ calls: t.calls + s.calls, today: t.today + s.today, connected: t.connected + s.connected, talk: t.talk + s.talk, scores: [...t.scores, ...s.scores] }), { calls: 0, today: 0, connected: 0, talk: 0, scores: [] as number[] })
   const mine = isAdmin ? team : (stats.get(user.id) ?? { calls: 0, today: 0, connected: 0, talk: 0, scores: [] })
   const avgScore = avg(mine.scores)
@@ -214,7 +216,14 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
                       <tr key={id} className={cn(person === id && 'bg-primary/5')}>
                         <td className="py-2.5">
                           <Link href={id === 'gone' ? '/sales/calls' : `/sales/calls?person=${id}`} className="inline-flex items-center gap-2 font-medium hover:underline">
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-violet-600 text-[11px] font-semibold text-white">{name.charAt(0).toUpperCase()}</span>
+                            <span aria-hidden className="relative flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-indigo-400 to-violet-600 text-[11px] font-semibold text-white ring-1 ring-border">
+                              {name.charAt(0).toUpperCase()}
+                              {/* the photo covers the initial once loaded; if it fails, the initial stays */}
+                              {photoOf.get(id) ? (
+                                // eslint-disable-next-line @next/next/no-img-element -- our own cached square avatar
+                                <img src={photoOf.get(id) ?? undefined} alt="" width={28} height={28} loading="lazy" decoding="async" referrerPolicy="no-referrer" className="absolute inset-0 h-full w-full object-cover" />
+                              ) : null}
+                            </span>
                             {name}
                           </Link>
                         </td>
