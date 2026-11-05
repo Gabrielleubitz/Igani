@@ -25,7 +25,7 @@ describe('live hints rules', () => {
   })
   it('has a strict schema and the ethics rule in the coach prompt', () => {
     expect(HINT_SCHEMA.required).toEqual(['hint', 'step', 'tone'])
-    expect(LIVE_HINT_RULES).toMatch(/Never pressure/)
+    expect(LIVE_HINT_RULES).toMatch(/never pressure/i)
     expect(LIVE_HINT_RULES).toMatch(/at most ONE/)
   })
 })
