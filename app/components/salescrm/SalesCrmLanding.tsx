@@ -7,6 +7,7 @@ import { ArrowRight, BarChart3, Check, Headphones, LineChart, ListChecks, Mic, P
 import { IganiLogo } from '@/components/IganiLogo'
 import { ReviewMock } from './ReviewMock'
 import { ProductTour } from './ProductTour'
+import { Origin, Outputs, RoiCalculator } from './ValueSections'
 
 const INPUT =
   'w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white placeholder-white/30 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]'
@@ -98,10 +99,10 @@ export function SalesCrmLanding() {
           <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <span className="inline-block rounded-full border border-[#4080E0]/40 bg-[#4080E0]/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[#9bbcf5]">Sales CRM with AI call review</span>
             <h1 className="mt-5 border-0 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
-              Know what happens on <span className="bg-gradient-to-r from-[#6ea1f2] to-[#7ee0b0] bg-clip-text text-transparent">every sales call.</span>
+              Your reps talk to the leads you paid for. <span className="bg-gradient-to-r from-[#6ea1f2] to-[#7ee0b0] bg-clip-text text-transparent">Do you know what they say?</span>
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-white/70">
-              A CRM that records, transcribes and reviews every call. Reps get clear coaching right after each one. Managers see how the whole team is really doing. Built into the website we build for your company.
+              Most sales teams are never listened to. This CRM records every call and checks it against a proven sales method. Managers finally see what is being said. Reps learn after every call, stay motivated, and close more.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <a href="#demo" className="inline-flex items-center gap-2 rounded-full bg-[#4080E0] px-6 py-3.5 text-base font-semibold text-white shadow-[0_12px_34px_-12px_rgba(64,128,224,0.9)] transition hover:bg-[#5a93ea]">
@@ -138,6 +139,9 @@ export function SalesCrmLanding() {
           </div>
         </section>
 
+        <RoiCalculator />
+        <Origin />
+
         {/* How it works */}
         <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <motion.div {...fade} className="mx-auto max-w-2xl text-center">
@@ -168,6 +172,8 @@ export function SalesCrmLanding() {
           </motion.div>
           <ProductTour />
         </section>
+
+        <Outputs />
 
         {/* Reps and managers */}
         <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24">
