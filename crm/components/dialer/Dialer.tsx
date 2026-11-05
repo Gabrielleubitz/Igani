@@ -1,6 +1,8 @@
 'use client'
 
-import { ArrowUpRight, Check, ChevronDown, ChevronLeft, Delete, Grid3x3, History, ListChecks, Mic, MicOff, Search, Users, X } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronDown, ChevronLeft, Delete, Grid3x3, History, ListChecks, MessageCircle, Mic, MicOff, Search, Users, X } from 'lucide-react'
+import { smsUnread } from '@/app/actions/sms'
+import { Messages } from './Messages'
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect } from '@/app/actions/call-lists'
@@ -59,8 +61,11 @@ const PROSPECT_OUTCOMES: { key: string; label: string }[] = [
 interface DialerApi {
   dial: (phone: string, lead?: { id: string; name: string } | null, prospect?: ProspectRef | null) => void
   /** open the phone, optionally on a tab (e.g. 'lists' for "Start calling") */
-  open: (tab?: 'keypad' | 'contacts' | 'lists' | 'recent') => void
+  open: (tab?: Tab) => void
+  /** open the conversation with this number in the Messages tab */
+  text: (phone: string) => void
 }
+type Tab = 'keypad' | 'contacts' | 'lists' | 'recent' | 'messages'
 const DialerContext = createContext<DialerApi | null>(null)
 /** null outside the dialer (no line, marketing users): callers fall back to a plain tel: link. */
 export const useDialer = (): DialerApi | null => useContext(DialerContext)
@@ -82,6 +87,41 @@ const initials = (name: string | undefined, fallback: string): string =>
 /** Who's calling: the contact, else whoever the number belongs to (a call-list business, a Google listing). */
 const callerName = (c: IncomingCaller | null): string | null => c?.lead?.name ?? c?.id?.title ?? null
 const callerLine = (c: IncomingCaller | null): string | null => c?.id?.subtitle ?? c?.lead?.company ?? null
+
+/**
+ * Unread texts on your line, checked every 20 s while the CRM is in front. A new one also shows a desktop alert when
+ * the CRM is in the background and alerts are allowed.
+ */
+function useSmsUnread(enabled: boolean): { count: number; refresh: () => void } {
+  const [count, setCount] = useState(0)
+  const last = useRef<number | null>(null)
+  const refresh = useCallback(() => {
+    void smsUnread().then((r) => {
+      if (!r.ok) return
+      if (last.current !== null && r.data > last.current && document.visibilityState !== 'visible' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('New text message', { body: 'Open the phone in the CRM to read it.', icon: '/android-chrome-192x192.png', tag: 'igani-sms' })
+        } catch {
+          /* not allowed here */
+        }
+      }
+      last.current = r.data
+      setCount(r.data)
+    })
+  }, [])
+  useEffect(() => {
+    if (!enabled) return
+    const first = window.setTimeout(refresh, 0)
+    const t = window.setInterval(refresh, 20_000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.clearTimeout(first)
+      window.clearInterval(t)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [enabled, refresh])
+  return { count, refresh }
+}
 
 /* ───────────────────────── look ───────────────────────── */
 
@@ -141,7 +181,10 @@ export function DialerRoot({ children }: { children: React.ReactNode }): React.R
 export function DialerProvider({ enabled, visible, number, demo, children }: { enabled: boolean; visible: boolean; number: string | null; demo: boolean; children: React.ReactNode }): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [tab, setTab] = useState<'keypad' | 'contacts' | 'lists' | 'recent'>('keypad')
+  const [tab, setTab] = useState<Tab>('keypad')
+  /** the conversation open in the Messages tab ('' = writing a new one) */
+  const [smsThread, setSmsThread] = useState<string | null>(null)
+  const unread = useSmsUnread(enabled)
   /** the call list open in the Lists tab (kept while a call and its wrap-up run) */
   const [listId, setListId] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
@@ -367,6 +410,11 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
         if (t) setTab(t)
         setOpen(true)
       },
+      text: (p) => {
+        setSmsThread(toE164(p) ?? p)
+        setTab('messages')
+        setOpen(true)
+      },
     }),
     [dial],
   )
@@ -397,7 +445,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
       {children}
       {enabled && (visible || live) ? (
         <>
-      <FloatingButton session={session} now={now} open={open} incoming={incoming ? (callerName(incoming.caller) ?? incoming.caller?.display ?? formatPhone(incoming.call.from)) : null} onClick={() => setOpen((o) => !o)} />
+      <FloatingButton session={session} now={now} open={open} unread={unread.count} incoming={incoming ? (callerName(incoming.caller) ?? incoming.caller?.display ?? formatPhone(incoming.call.from)) : null} onClick={() => setOpen((o) => !o)} />
       {open ? (
         <div
           role="dialog"
@@ -443,23 +491,30 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
             <WrapUp session={session} onDone={onWrapped} />
           ) : (
             <>
-              <nav className="mx-4 mt-4 grid shrink-0 grid-cols-4 gap-1 rounded-xl border border-[#22344f] bg-[#0b1728] p-1" aria-label="Phone views">
+              <nav className="mx-4 mt-4 grid shrink-0 grid-cols-5 gap-1 rounded-xl border border-[#22344f] bg-[#0b1728] p-1" aria-label="Phone views">
                 {(
                   [
                     ['keypad', 'Keypad', Grid3x3],
                     ['contacts', 'Contacts', Users],
                     ['lists', 'Lists', ListChecks],
                     ['recent', 'Recent', History],
+                    ['messages', 'Messages', MessageCircle],
                   ] as const
                 ).map(([k, label, Icon]) => (
                   <button
                     key={k}
                     type="button"
-                    onClick={() => setTab(k)}
+                    onClick={() => {
+                      // tapping Messages again goes back to the list of conversations
+                      if (k === 'messages' && tab === 'messages') setSmsThread(null)
+                      setTab(k)
+                    }}
                     aria-current={tab === k ? 'page' : undefined}
-                    className={cn('flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition', tab === k ? 'bg-[#1d3354] text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] ring-1 ring-[#33507a]' : 'text-muted-foreground hover:text-foreground')}
+                    aria-label={k === 'messages' && unread.count ? `Messages, ${unread.count} unread` : undefined}
+                    className={cn('relative flex flex-col items-center justify-center gap-1 rounded-lg py-1.5 text-[10.5px] font-medium transition', tab === k ? 'bg-[#1d3354] text-white shadow-[0_1px_2px_rgba(0,0,0,0.4)] ring-1 ring-[#33507a]' : 'text-muted-foreground hover:text-foreground')}
                   >
-                    <Icon className="h-3.5 w-3.5" aria-hidden /> {label}
+                    <Icon className="h-4 w-4" aria-hidden /> {label}
+                    {k === 'messages' && unread.count ? <span className="absolute right-1.5 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#3b78db] px-1 text-[9px] font-bold text-white">{unread.count > 99 ? '99+' : unread.count}</span> : null}
                   </button>
                 ))}
               </nav>
@@ -492,8 +547,9 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
                 </div>
               ) : null}
               <AlertPrompt />
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {tab === 'keypad' ? <Keypad value={typed} onChange={setTyped} onCall={(p, lead, prospect) => void dial(p, lead, prospect)} /> : null}
+              <div className={cn('min-h-0 flex-1', tab === 'messages' ? 'flex flex-col' : 'overflow-y-auto')}>
+                {tab === 'messages' ? <Messages thread={smsThread} setThread={setSmsThread} onCall={(p) => void dial(p)} onRead={unread.refresh} /> : null}
+                {tab === 'keypad' ? <Keypad value={typed} onChange={setTyped} onCall={(p, lead, prospect) => void dial(p, lead, prospect)} onText={(p) => api.text(p)} /> : null}
                 {tab === 'contacts' ? <Contacts onCall={(c) => void dial(c.phone, { id: c.id, name: c.name })} /> : null}
                 {tab === 'lists' ? <Lists listId={listId} setListId={setListId} onCall={(p) => void dial(p.phone, null, { id: p.id, name: p.name })} /> : null}
                 {tab === 'recent' ? <Recent onCall={(r) => void dial(r.to, r.lead)} /> : null}
@@ -508,7 +564,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   )
 }
 
-function FloatingButton({ session, now, open, incoming, onClick }: { session: Session | null; now: number; open: boolean; incoming: string | null; onClick: () => void }): React.ReactElement {
+function FloatingButton({ session, now, open, unread, incoming, onClick }: { session: Session | null; now: number; open: boolean; unread: number; incoming: string | null; onClick: () => void }): React.ReactElement {
   if (incoming && !open) {
     return (
       <button type="button" onClick={onClick} aria-label={`Incoming call from ${incoming}. Show the phone`} className="fixed bottom-5 right-5 z-[59] flex h-[52px] items-center gap-2.5 rounded-2xl border border-white/15 bg-[#16a34a] pl-3.5 pr-4 text-sm font-semibold text-white shadow-[0_12px_28px_-10px_rgba(0,0,0,0.8)]">
@@ -551,7 +607,13 @@ function FloatingButton({ session, now, open, incoming, onClick }: { session: Se
       )}
     >
       {open ? <ChevronDown className="h-5 w-5" /> : <Handset className="h-6 w-6" />}
-      {session?.phase === 'wrapup' && !open ? <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-[#020d1a] bg-amber-400" aria-label="Wrap-up waiting" /> : null}
+      {session?.phase === 'wrapup' && !open ? (
+        <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-2 border-[#020d1a] bg-amber-400" aria-label="Wrap-up waiting" />
+      ) : unread && !open ? (
+        <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-[#020d1a] bg-rose-500 px-1 text-[10px] font-bold" aria-label={`${unread} unread texts`}>
+          {unread > 99 ? '99+' : unread}
+        </span>
+      ) : null}
     </button>
   )
 }
@@ -662,7 +724,7 @@ function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: s
   )
 }
 
-function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: string) => void; onCall: (phone: string, lead: { id: string; name: string } | null, prospect: ProspectRef | null) => void }): React.ReactElement {
+function Keypad({ value, onChange, onCall, onText }: { value: string; onChange: (v: string) => void; onCall: (phone: string, lead: { id: string; name: string } | null, prospect: ProspectRef | null) => void; onText: (phone: string) => void }): React.ReactElement {
   const input = useRef<HTMLInputElement>(null)
   // the answer for the number on screen (an answer for an earlier number is ignored)
   const [found, setFound] = useState<{ number: string; who: CallerId | null; looking: boolean } | null>(null)
@@ -751,7 +813,13 @@ function Keypad({ value, onChange, onCall }: { value: string; onChange: (v: stri
       </div>
       <KeyGrid onKey={(k) => onChange(value + k)} onLong={(k) => onChange(value + k)} />
       <div className="grid grid-cols-3 items-center px-9">
-        <span />
+        {e164 && !blocked ? (
+          <button type="button" onClick={() => onText(e164)} aria-label="Text this number" title="Send a text" className="mx-auto flex h-12 w-12 items-center justify-center rounded-full text-[#8ea3c0] transition hover:bg-[#172b47] hover:text-foreground">
+            <MessageCircle className="h-6 w-6" />
+          </button>
+        ) : (
+          <span />
+        )}
         <button
           type="button"
           disabled={!e164 || blocked}

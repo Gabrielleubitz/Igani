@@ -7,7 +7,7 @@ import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { normalizePhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
-import { incomingUrl, listTwilioNumbers, restoreNumberRouting, routeNumberToCrm, twilioConfig } from '@/lib/twilio'
+import { listTwilioNumbers, restoreNumberRouting, routeNumberToCrm, routedToCrm, smsUrl, twilioConfig, type NumberRouting } from '@/lib/twilio'
 import { toActionError, type ActionResult } from './result'
 
 const Assign = z.object({ userId: z.string().cuid(), number: z.string().trim().min(3).max(40), twilioSid: z.string().regex(/^PN[0-9a-f]{32}$/i).nullish() })
@@ -23,7 +23,11 @@ async function routeToCrm(sid: string, actorId: string): Promise<void> {
   const c = twilioConfig()
   if (!c) throw new BookingError('Twilio is not connected.', 'INVALID_STATE')
   const before = await routeNumberToCrm(c, sid)
-  await prisma.siteSetting.upsert({ where: { key: `voice.routing:${sid}` }, create: { key: `voice.routing:${sid}`, value: before }, update: {} })
+  const key = `voice.routing:${sid}`
+  const saved = (await prisma.siteSetting.findUnique({ where: { key } }))?.value as NumberRouting | undefined
+  // keep the original routing; a routing saved before texting existed gains the original text settings now
+  if (!saved) await prisma.siteSetting.create({ data: { key, value: before } })
+  else if (saved.smsUrl === undefined && before.smsUrl !== undefined && before.smsUrl !== smsUrl()) await prisma.siteSetting.update({ where: { key }, data: { value: { ...saved, smsUrl: before.smsUrl, smsMethod: before.smsMethod, smsAppSid: before.smsAppSid } } })
   await logActivity({ entityType: 'SETTING', entityId: `voice.routing:${sid}`, actorId, action: 'phone.incoming_routed', metadata: { before } })
 }
 
@@ -34,7 +38,7 @@ async function setUpIncoming(number: string, knownSid: string | null, actorId: s
   try {
     const found = (await listTwilioNumbers(c)).find((n) => (knownSid ? n.sid === knownSid : n.number === number))
     if (!found) return { setup: 'not-found', sid: knownSid }
-    if (found.voiceUrl === incomingUrl() && !found.voiceAppSid) return { setup: 'already', sid: found.sid }
+    if (routedToCrm(found)) return { setup: 'already', sid: found.sid }
     await routeToCrm(found.sid, actorId)
     return { setup: 'routed', sid: found.sid }
   } catch (err) {
@@ -85,7 +89,6 @@ export async function removePhoneLine(userId: string): Promise<ActionResult> {
 }
 
 const NumberSid = z.string().regex(/^PN[0-9a-f]{32}$/i)
-type Routing = { voiceUrl: string; voiceMethod: string; voiceAppSid: string }
 
 /** Admin: make a Twilio number's incoming calls ring in the CRM. Its previous routing is saved for undo. */
 export async function routeIncomingToCrm(numberSid: string): Promise<ActionResult> {
@@ -108,7 +111,7 @@ export async function restoreIncomingRouting(numberSid: string): Promise<ActionR
     if (!c) throw new BookingError('Twilio is not connected.', 'INVALID_STATE')
     const saved = await prisma.siteSetting.findUnique({ where: { key: `voice.routing:${sid}` } })
     if (!saved) throw new BookingError('There is no earlier routing saved for this number.', 'INVALID_STATE')
-    await restoreNumberRouting(c, sid, saved.value as Routing)
+    await restoreNumberRouting(c, sid, saved.value as NumberRouting)
     await prisma.siteSetting.delete({ where: { key: `voice.routing:${sid}` } })
     await logActivity({ entityType: 'SETTING', entityId: `voice.routing:${sid}`, actorId: admin.id, action: 'phone.incoming_restored', metadata: { restored: saved.value } })
     revalidatePath('/admin/phone')

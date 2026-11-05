@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle } from 'lucide-react'
 import Link from 'next/link'
-import { IncomingRoutingRow, PhoneLineRow, VoiceSettingsForm, type TwilioNumber } from '@/components/admin/PhoneAdmin'
+import { IncomingRoutingRow, PhoneLineRow, VoiceSettingsForm } from '@/components/admin/PhoneAdmin'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -9,7 +9,7 @@ import { formatDateTime, leadName } from '@/lib/format'
 import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
-import { dialerDemo, incomingUrl, listTwilioNumbers, twilioConfig, twilioSetup } from '@/lib/twilio'
+import { dialerDemo, listTwilioNumbers, routedToCrm, twilioConfig, twilioSetup, type TwilioNumberInfo } from '@/lib/twilio'
 
 export const metadata = { title: 'Phone' }
 export const dynamic = 'force-dynamic'
@@ -20,7 +20,7 @@ const STATUS: Record<string, string> = { INITIATED: 'Starting', RINGING: 'Ringin
 export default async function PhoneAdminPage(): Promise<React.ReactElement> {
   const admin = await requireUser(['ADMIN'])
   const config = twilioConfig()
-  let numbers: (TwilioNumber & { voiceUrl: string; voiceAppSid: string })[] | null = null
+  let numbers: TwilioNumberInfo[] | null = null
   let numbersError: string | null = null
   if (config) {
     try {
@@ -106,7 +106,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
                   sid={n.sid}
                   number={n.number}
                   owner={owner ? (owner.name ?? owner.email ?? 'Teammate') : null}
-                  routed={n.voiceUrl === incomingUrl() && !n.voiceAppSid}
+                  routed={routedToCrm(n)}
                   canUndo={savedRouting.has(n.sid)}
                   elsewhere={n.voiceAppSid ? `a TwiML app (${n.voiceAppSid.slice(0, 8)}…)` : n.voiceUrl.replace(/^https?:\/\//, '').slice(0, 60)}
                 />

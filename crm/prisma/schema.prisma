@@ -117,6 +117,7 @@ model User {
   leadNotes       LeadNote[]
   phoneLine       PhoneLine?
   calls           Call[]
+  smsMessages     SmsMessage[]
   callLists       CallList[]
   mailboxEmails   EmailMessage[]
   mailboxSync     MailboxSync?
@@ -211,15 +212,16 @@ model Lead {
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
-  assignedTo User?          @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  bookings   Booking[]
-  notes      LeadNote[]
-  emails     EmailMessage[]
-  documents  LeadDocument[]
-  archives   LeadArchive[]
-  offers     Offer[]
-  calls      Call[]
-  prospects  Prospect[]
+  assignedTo  User?          @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  bookings    Booking[]
+  notes       LeadNote[]
+  emails      EmailMessage[]
+  documents   LeadDocument[]
+  archives    LeadArchive[]
+  offers      Offer[]
+  calls       Call[]
+  smsMessages SmsMessage[]
+  prospects   Prospect[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -706,6 +708,41 @@ model PhoneLine {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum SmsDirection {
+  INBOUND
+  OUTBOUND
+}
+
+/// A text message to or from a teammate's line (the Messages tab of the dialer). Threads are per line and other number.
+model SmsMessage {
+  id          String       @id @default(cuid())
+  /// Whose line it went through (null if that teammate was removed: the company keeps the record)
+  userId      String?
+  /// The contact with that number, when there is one
+  leadId      String?
+  direction   SmsDirection
+  /// Our line and the other party, both E.164
+  lineNumber  String
+  otherNumber String
+  body        String       @db.Text
+  /// Pictures or files sent with an incoming message (count only; open them in Twilio)
+  media       Int          @default(0)
+  twilioSid   String?      @unique
+  /// queued | sending | sent | delivered | undelivered | failed | received
+  status      String
+  error       String?
+  /// When the teammate opened an incoming message
+  readAt      DateTime?
+  createdAt   DateTime     @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+
+  @@index([userId, otherNumber, createdAt])
+  @@index([userId, direction, readAt])
+  @@index([leadId, createdAt])
 }
 
 /// One phone call made (or, from step 2, received) in the CRM. See docs/DIALER.md.

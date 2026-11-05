@@ -49,7 +49,7 @@ export function voiceToken(c: TwilioConfig, userId: string, ttlSec = 3600): stri
   return token.toJwt()
 }
 
-export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done'
+export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done' | 'sms' | 'sms-status'
 
 /** Public URL of one of our voice webhooks (what Twilio calls, and what its signature is computed over). */
 export function voiceUrl(path: VoicePath, callId?: string): string {
@@ -75,26 +75,83 @@ export async function readTwilioWebhook(req: Request, path: VoicePath): Promise<
 }
 
 /** Numbers on the Twilio account, for assigning to teammates. */
-export async function listTwilioNumbers(c: TwilioConfig): Promise<{ sid: string; number: string; name: string; voice: boolean; voiceUrl: string; voiceAppSid: string }[]> {
+export interface TwilioNumberInfo {
+  sid: string
+  number: string
+  name: string
+  voice: boolean
+  /** can receive text messages */
+  sms: boolean
+  voiceUrl: string
+  voiceAppSid: string
+  smsUrl: string
+  smsAppSid: string
+}
+
+export async function listTwilioNumbers(c: TwilioConfig): Promise<TwilioNumberInfo[]> {
   const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
   const rows = await client.incomingPhoneNumbers.list({ limit: 200 })
-  return rows.map((r) => ({ sid: r.sid, number: r.phoneNumber, name: r.friendlyName, voice: r.capabilities?.voice !== false, voiceUrl: r.voiceUrl ?? '', voiceAppSid: r.voiceApplicationSid ?? '' }))
+  return rows.map((r) => ({
+    sid: r.sid,
+    number: r.phoneNumber,
+    name: r.friendlyName,
+    voice: r.capabilities?.voice !== false,
+    sms: Boolean(r.capabilities?.sms),
+    voiceUrl: r.voiceUrl ?? '',
+    voiceAppSid: r.voiceApplicationSid ?? '',
+    smsUrl: r.smsUrl ?? '',
+    smsAppSid: r.smsApplicationSid ?? '',
+  }))
+}
+
+/** Incoming calls ring in the CRM, and (when the number takes texts) incoming texts land in the Messages tab. */
+export function routedToCrm(n: Pick<TwilioNumberInfo, 'sms' | 'voiceUrl' | 'voiceAppSid' | 'smsUrl' | 'smsAppSid'>): boolean {
+  return n.voiceUrl === incomingUrl() && !n.voiceAppSid && (!n.sms || (n.smsUrl === smsUrl() && !n.smsAppSid))
 }
 
 /** Where a number's incoming calls go: our CRM webhook, or something else (kept so it can be restored). */
 export const incomingUrl = (): string => voiceUrl('incoming')
+export const smsUrl = (): string => voiceUrl('sms')
 
-/** Point a number's incoming calls at the CRM, returning what it was set to before (for undo). */
-export async function routeNumberToCrm(c: TwilioConfig, numberSid: string): Promise<{ voiceUrl: string; voiceMethod: string; voiceAppSid: string }> {
-  const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
-  const before = await client.incomingPhoneNumbers(numberSid).fetch()
-  await client.incomingPhoneNumbers(numberSid).update({ voiceUrl: incomingUrl(), voiceMethod: 'POST', voiceApplicationSid: '' })
-  return { voiceUrl: before.voiceUrl ?? '', voiceMethod: before.voiceMethod ?? 'POST', voiceAppSid: before.voiceApplicationSid ?? '' }
+/** A number's routing before the CRM took it over (the sms fields are missing in routings saved before texting existed). */
+export type NumberRouting = {
+  voiceUrl: string
+  voiceMethod: string
+  voiceAppSid: string
+  smsUrl?: string
+  smsMethod?: string
+  smsAppSid?: string
 }
 
-export async function restoreNumberRouting(c: TwilioConfig, numberSid: string, prev: { voiceUrl: string; voiceMethod: string; voiceAppSid: string }): Promise<void> {
+/** Point a number's incoming calls (and texts, if it takes them) at the CRM, returning what it was set to before (for undo). */
+export async function routeNumberToCrm(c: TwilioConfig, numberSid: string): Promise<NumberRouting> {
   const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
-  await client.incomingPhoneNumbers(numberSid).update({ voiceUrl: prev.voiceUrl, voiceMethod: (prev.voiceMethod === 'GET' ? 'GET' : 'POST'), voiceApplicationSid: prev.voiceAppSid })
+  const before = await client.incomingPhoneNumbers(numberSid).fetch()
+  const sms = Boolean(before.capabilities?.sms)
+  await client.incomingPhoneNumbers(numberSid).update({ voiceUrl: incomingUrl(), voiceMethod: 'POST', voiceApplicationSid: '', ...(sms ? { smsUrl: smsUrl(), smsMethod: 'POST', smsApplicationSid: '' } : {}) })
+  return {
+    voiceUrl: before.voiceUrl ?? '',
+    voiceMethod: before.voiceMethod ?? 'POST',
+    voiceAppSid: before.voiceApplicationSid ?? '',
+    ...(sms ? { smsUrl: before.smsUrl ?? '', smsMethod: before.smsMethod ?? 'POST', smsAppSid: before.smsApplicationSid ?? '' } : {}),
+  }
+}
+
+export async function restoreNumberRouting(c: TwilioConfig, numberSid: string, prev: NumberRouting): Promise<void> {
+  const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
+  await client.incomingPhoneNumbers(numberSid).update({
+    voiceUrl: prev.voiceUrl,
+    voiceMethod: prev.voiceMethod === 'GET' ? 'GET' : 'POST',
+    voiceApplicationSid: prev.voiceAppSid,
+    ...(prev.smsUrl !== undefined ? { smsUrl: prev.smsUrl, smsMethod: prev.smsMethod === 'GET' ? 'GET' : 'POST', smsApplicationSid: prev.smsAppSid ?? '' } : {}),
+  })
+}
+
+/** Send a text from one of our numbers. Twilio reports delivery to the status URL. */
+export async function sendTwilioSms(c: TwilioConfig, msg: { from: string; to: string; body: string; statusCallback: string }): Promise<{ sid: string; status: string }> {
+  const client = twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })
+  const m = await client.messages.create({ from: msg.from, to: msg.to, body: msg.body, statusCallback: msg.statusCallback })
+  return { sid: m.sid, status: m.status }
 }
 
 /** Twilio's own record of a call (the truth when one of our callbacks went missing). Null if it can't be read. */

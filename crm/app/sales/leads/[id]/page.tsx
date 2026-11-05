@@ -198,6 +198,10 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
         const how = m.answered ? `talked ${talk}` : ({ BUSY: 'busy', NO_ANSWER: 'no answer', FAILED: 'didn’t go through', CANCELED: 'hung up before they answered' } as Record<string, string>)[s(m.status)] ?? 'not answered'
         return { title: `📞 ${m.direction === 'INBOUND' ? 'Call from' : 'Called'} ${formatPhone(s(m.direction === 'INBOUND' ? m.from : m.to))} · ${how}` }
       }
+      case 'sms.sent':
+        return { title: `💬 Text to ${formatPhone(s(m.to))}`, body: s(m.body) || undefined }
+      case 'sms.received':
+        return { title: `💬 Text from ${formatPhone(s(m.from))}`, body: s(m.body) || (m.media ? 'Picture or file (open it in Twilio)' : undefined) }
       case 'call.analyzed':
         return { title: `Call summary${m.outcome ? `: ${s(m.outcome)}` : ''}`, body: [s(m.summary), m.nextStep ? `Next step: ${s(m.nextStep)}` : ''].filter(Boolean).join('\n') || undefined }
       case 'call.outcome':
