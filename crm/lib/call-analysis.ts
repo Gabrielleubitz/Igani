@@ -4,7 +4,9 @@ import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { logActivity } from './audit'
 import { ensureRecordingSid, fetchRecordingAudio } from './call-recording'
-import { PLAYBOOK, computeMetrics, scoreFromRubric, type TranscriptSeg } from './call-coaching'
+import { PLAYBOOK, computeMetrics, type TranscriptSeg } from './call-coaching'
+import { buildScore, deliveryMetrics } from './call-score'
+import { judgeTonality } from './call-tonality'
 import { prisma } from './prisma'
 import { LINE_STAGES, STAGE_STATUSES, normalizeLineMap } from './line-map'
 import { LESSON_INDEX_PROMPT, STRAIGHT_LINE_CHECKS, STRAIGHT_LINE_PLAYBOOK, snapLesson } from './straight-line'
@@ -43,6 +45,8 @@ const StraightLine = z
   .object({
     verdict: Str(300).optional(),
     scores: z.object({ rapport: SlScore, intelligence: SlScore, control: SlScore, threeTens: SlScore, looping: SlScore, closing: SlScore }),
+    /** one line per skill: the evidence behind its grade */
+    why: z.record(z.string(), z.string().nullable()).optional().catch(undefined),
     checks: z.array(z.object({ id: z.string(), result: z.enum(['yes', 'no', 'na']), evidence: z.string().nullable() })),
     lessons: z.array(z.object({ ep: z.number(), startSec: z.number(), why: Str(240) })),
   })
@@ -58,6 +62,7 @@ const StraightLine = z
     return {
       verdict: sl.verdict,
       scores: sl.scores,
+      why: sl.why ? Object.fromEntries(Object.entries(sl.why).flatMap(([k, v]) => (v && v.trim() ? [[k, v.trim().slice(0, 240)]] : []))) : undefined,
       checks: sl.checks.filter((c) => CHECK_IDS.includes(c.id)).map((c) => ({ id: c.id, result: c.result, evidence: c.evidence ? c.evidence.trim().slice(0, 240) || null : null })),
       lessons: lessons.slice(0, 3),
     }
@@ -105,6 +110,19 @@ export const CallAnalysis = z.object({
   focus: z.array(z.object({ skill: Str(80), why: Str(240), drill: Str(300), sayThis: Str(300) })).transform((a) => a.slice(0, 2)).optional(),
   straightLine: StraightLine.optional(),
   lineMap: LineMapZ.nullable().optional().catch(null),
+  /** v3: how the rep sounded (from the audio) and pace / fillers (from the timestamps) */
+  tonality: z
+    .object({
+      dims: z.record(z.string(), z.number().nullable()),
+      summary: z.string(),
+      clientMood: z.enum(['warming', 'steady', 'cooling']).nullable(),
+      moments: z.array(z.object({ at: z.number().nullable(), note: z.string(), tryThis: z.string().nullable() })),
+      coveredSec: z.number().nullable().optional(),
+    })
+    .nullable()
+    .optional()
+    .catch(null),
+  delivery: z.object({ repWpm: z.number(), fillersPerMin: z.number(), fillers: z.array(z.string()) }).nullable().optional().catch(null),
   metrics: z
     .object({
       talkRatioRep: z.number(),
@@ -154,6 +172,7 @@ const ANALYSIS_SCHEMA = obj({
   straightLine: obj({
     verdict: STR,
     scores: obj({ rapport: SLNUM, intelligence: SLNUM, control: SLNUM, threeTens: SLNUM, looping: SLNUM, closing: SLNUM }),
+    why: obj({ rapport: { type: ['string', 'null'] }, intelligence: { type: ['string', 'null'] }, control: { type: ['string', 'null'] }, threeTens: { type: ['string', 'null'] }, looping: { type: ['string', 'null'] }, closing: { type: ['string', 'null'] } }),
     checks: { type: 'array', items: obj({ id: { type: 'string', enum: STRAIGHT_LINE_CHECKS.map((c) => c.id) }, result: { type: 'string', enum: ['yes', 'no', 'na'] }, evidence: { type: ['string', 'null'] } }) },
     lessons: { type: 'array', items: obj({ ep: NUM, startSec: NUM, why: STR }) },
   }),
@@ -180,6 +199,22 @@ supporting facts.
 ${PLAYBOOK}
 
 ${STRAIGHT_LINE_PLAYBOOK}
+
+SCORING ANCHORS (straightLine.scores, 1 to 5; null when the call never reached that part). Score what the REP did, not how good
+the lead was. Every 4 or 5 needs a quote that proves it; without one it is at most 3. 3 is solid, 4 is clearly good, 5 is rare.
+- rapport: 1 = flat or mumbled opener, no reason for the call, or pushy; 3 = clear intro and reason, polite, some connection;
+  5 = sharp, enthusiastic and expert in the first seconds, client warms up and engages, care is obvious.
+- intelligence: 1 = pitched without asking; 3 = several relevant questions, the basic need is known; 5 = big-picture to specific,
+  pain, impact and timeline found in the client's own words and paraphrased back.
+- control: 1 = the client steered, long off-topic stretches, the rep rambled; 3 = mostly on track with some drift; 5 = every tangent
+  brought back politely, a clear agenda, the client followed the rep's lead.
+- threeTens: 1 = no case for the solution, the rep or Igani; 3 = fit explained in general terms; 5 = a tailored case tied to the
+  client's words and the client said they believe it.
+- looping: null if no objection or stall came up; 1 = quit or argued at the first no; 3 = acknowledged and answered once;
+  5 = explored the real concern, came back from a new angle and the client moved.
+- closing: 1 = no ask; 2 = "I'll send you something"; 3 = asked for a next step, but vague; 5 = calm, specific, dated next step the
+  client agreed to.
+straightLine.why: for each skill, one short line with the evidence (a quote or what happened) behind its grade, or null.
 
 LESSON INDEX (episode | start second | topic): cite ONLY these in straightLine.lessons
 ${LESSON_INDEX_PROMPT}
@@ -265,17 +300,16 @@ async function chat(key: string, system: string, user: string, name: string, sch
 
 const mmss = (sec: number): string => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 
-/** The headline score: the Straight Line skills (averaged, 'not applicable' skipped) when present, else the older rubric. */
-export function scoreFromAnalysis(a: Pick<CallAnalysis, 'scores' | 'straightLine'>): number {
-  const sl = a.straightLine ? Object.values(a.straightLine.scores).filter((v): v is number => typeof v === 'number') : []
-  return sl.length ? scoreFromRubric(Object.fromEntries(sl.map((v, i) => [String(i), v]))) : scoreFromRubric(a.scores)
+/** The headline score, built from skills, tonality, the measured conversation and the result (see lib/call-score). */
+export function scoreFromAnalysis(a: CallAnalysis): number {
+  return buildScore(a).total
 }
 
 /**
  * Two passes: (1) who said each line, (2) metrics measured from the timestamps, then the coaching analysis with those
  * numbers in hand. The score is the rubric average (consistent from call to call), not the model's own number.
  */
-export async function analyseSegments(segments: { start: number; end: number; text: string }[], key: string, context = 'Outgoing call: the rep called the client.'): Promise<{ speakers: ('rep' | 'client')[]; analysis: CallAnalysis }> {
+export async function analyseSegments(segments: { start: number; end: number; text: string }[], key: string, context = 'Outgoing call: the rep called the client.', opts: { audio?: Blob; durationSec?: number | null } = {}): Promise<{ speakers: ('rep' | 'client')[]; analysis: CallAnalysis }> {
   const numbered = segments.map((s, i) => `[${i}] (${mmss(s.start)}) ${s.text}`).join('\n')
   const voicemail = /^Voicemail/.test(context)
   const sp = voicemail ? { speakers: segments.map(() => 'client') } : ((await chat(key, SPEAKER_PROMPT, `${context}\n${numbered}`, 'speakers', SPEAKER_SCHEMA, 'low')) as { speakers?: unknown })
@@ -289,9 +323,14 @@ export async function analyseSegments(segments: { start: number; end: number; te
   const said = segments.map((s) => s.text).join(' ')
   const lang = callLanguage(said)
   const reviewIn = coachingLanguage(said)
-  const raw = (await chat(key, PROMPT, `${context}\n${measured}\nSpoken language (measured): ${CALL_LANG_LABEL[lang]}.\n${reviewLanguageRule(reviewIn, lang)}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium')) as Record<string, unknown>
-  const analysis = CallAnalysis.parse({ ...raw, v: 2, language: CALL_LANG_LABEL[lang], lang, reviewIn, talkRatioRep: metrics?.talkRatioRep ?? 50, questionsAsked: metrics?.repQuestions ?? 0, overallScore: 0, metrics: metrics ?? undefined })
-  // from the validated (1–5) scores, so one odd value from the model can't skew it
+  const delivery = voicemail ? null : deliveryMetrics(lines)
+  // the voice is judged from the audio at the same time as the words are reviewed
+  const [raw, tonality] = await Promise.all([
+    chat(key, PROMPT, `${context}\n${measured}${delivery ? `\nRep pace ${delivery.repWpm} words/min; filler words ${delivery.fillersPerMin}/min.` : ''}\nSpoken language (measured): ${CALL_LANG_LABEL[lang]}.\n${reviewLanguageRule(reviewIn, lang)}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium') as Promise<Record<string, unknown>>,
+    opts.audio && !voicemail ? judgeTonality(opts.audio, lines, { key, durationSec: opts.durationSec ?? null, reviewLanguage: reviewIn }) : Promise.resolve(null),
+  ])
+  const analysis = CallAnalysis.parse({ ...raw, v: 3, language: CALL_LANG_LABEL[lang], lang, reviewIn, talkRatioRep: metrics?.talkRatioRep ?? 50, questionsAsked: metrics?.repQuestions ?? 0, overallScore: 0, metrics: metrics ?? undefined, delivery, tonality })
+  // built from the validated parts (lib/call-score), so one odd value from a model can't skew it
   analysis.overallScore = scoreFromAnalysis(analysis)
   return { speakers, analysis }
 }
@@ -333,7 +372,7 @@ export async function analyzeCall(callId: string, opts: { force?: boolean } = {}
           ? 'Incoming call: the client called Igani and the rep answered.'
           : 'Voicemail: the caller left a message; nobody from Igani speaks. Mark every segment "client", isSalesCall false, and summarise who called and what they want.'
         : 'Outgoing call: the rep called the client.'
-    const { speakers, analysis } = await analyseSegments(segments.slice(0, 800), key, context)
+    const { speakers, analysis } = await analyseSegments(segments.slice(0, 800), key, context, { audio, durationSec: call.recordingSec ?? null })
     const transcript: TranscriptLine[] = segments.map((s, i) => ({ ...s, speaker: speakers[i] ?? 'rep' }))
     await prisma.call.update({
       where: { id: callId },
@@ -351,7 +390,10 @@ export async function analyzeCall(callId: string, opts: { force?: boolean } = {}
 
 export const asAnalysis = (v: unknown): CallAnalysis | null => {
   const r = CallAnalysis.safeParse(v)
-  return r.success ? r.data : null
+  if (!r.success) return null
+  // always scored with the current formula, so every call (old or new) is compared on the same scale
+  r.data.overallScore = scoreFromAnalysis(r.data)
+  return r.data
 }
 export const asTranscript = (v: unknown): TranscriptLine[] =>
   Array.isArray(v) ? (v as TranscriptLine[]).filter((l) => l && typeof l.text === 'string' && typeof l.start === 'number').map((l) => ({ ...l, speaker: l.speaker === 'client' ? 'client' : 'rep' })) : []

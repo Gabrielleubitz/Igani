@@ -48,7 +48,7 @@ export default function Page(): React.ReactElement {
         <CardHeader className="pb-2"><CardTitle className="text-base">The call on the line</CardTitle></CardHeader>
         <CardContent><StraightLineChart map={a.lineMap as LineMap} durationSec={a.call.durationSec} /></CardContent>
       </Card>
-      <StraightLinePanel sl={{ verdict: a.verdict, scores: a.scores, checks: a.checks, lessons: a.lessons }} lessons={lessons} />
+      <StraightLinePanel sl={{ verdict: a.verdict, scores: a.scores, why: a.why, checks: a.checks, lessons: a.lessons }} lessons={lessons} />
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-base">Where you left the line</CardTitle></CardHeader>
         <CardContent className="space-y-4">

@@ -83,8 +83,10 @@ d('call analysis', async () => {
     const a = asAnalysis(row.analysis)!
     expect(a.outcome.score).toBe(100)
     expect(a.scores.closing).toBe(5)
-    // the score is the rubric average (4,5,4,3,5 → 4.2 → 80), not the model's own number
-    expect(a.overallScore).toBe(80)
+    // the score is built from its parts, not the model's own number: skills 80 (4,5,4,3,5), conversation 75 (measured),
+    // result 70 (a next step without a quality mark counts as vague; outcome 100), weighted 40/15/20 → 76
+    expect(a.overallScore).toBe(76)
+    expect(a.tonality ?? null).toBeNull() // the stub recording is too short to listen to
     // measured from the timestamps, not guessed: rep spoke 4 s of 13 s
     expect(a.metrics).toMatchObject({ repSeconds: 4, clientSeconds: 10, talkRatioRep: 29 })
     expect(a.moments[0]!.at).toBe(42)

@@ -32,13 +32,22 @@ describe('Straight Line block in the call analysis', () => {
     expect(a.straightLine?.lessons[0]).toMatchObject({ ep: 3, startSec: 1574 })
     expect(a.straightLine?.lessons.map((l) => l.ep)).toEqual([3, 7, 9])
   })
-  it('scores the call by the Straight Line skills, skipping not-applicable ones, and falls back to the old rubric', () => {
+  it('scores the skills part by the Straight Line skills, skipping not-applicable ones, and falls back to the old rubric', () => {
     const sl = (scores: Record<string, number | null>) => CallAnalysis.parse({ ...base, straightLine: { verdict: 'v', scores: { rapport: null, intelligence: null, control: null, threeTens: null, looping: null, closing: null, ...scores }, checks: [], lessons: [] } })
-    expect(scoreFromAnalysis(sl({ rapport: 4, intelligence: 4, control: 4 }))).toBe(75)
-    expect(scoreFromAnalysis(sl({ rapport: 3, closing: 5 }))).toBe(75)
-    expect(scoreFromAnalysis(sl({ rapport: 3, intelligence: 3 }))).toBe(50)
-    expect(scoreFromAnalysis(sl({}))).toBe(50) // all not applicable: the old rubric (all 3s)
-    expect(scoreFromAnalysis(CallAnalysis.parse(base))).toBe(50)
+    // same average (4) whichever skills applied
+    expect(scoreFromAnalysis(sl({ rapport: 3, closing: 5 }))).toBe(scoreFromAnalysis(sl({ rapport: 4, intelligence: 4, control: 4 })))
+    expect(scoreFromAnalysis(sl({ rapport: 4, intelligence: 4, control: 4 }))).toBeGreaterThan(scoreFromAnalysis(sl({ rapport: 3, intelligence: 3 })))
+    // all not applicable: the old rubric (all 3s), same as an analysis without the block
+    expect(scoreFromAnalysis(sl({}))).toBe(scoreFromAnalysis(CallAnalysis.parse(base)))
+  })
+  it('keeps the evidence line per skill', () => {
+    const a = CallAnalysis.parse({ ...base, straightLine: { verdict: 'v', scores: { rapport: 4, intelligence: null, control: null, threeTens: null, looping: null, closing: null }, why: { rapport: '  "Hi Dana, great to catch you"  ', intelligence: null, control: '' }, checks: [], lessons: [] } })
+    expect(a.straightLine?.why).toEqual({ rapport: '"Hi Dana, great to catch you"' })
+  })
+  it('scores every saved analysis with the current formula when read', async () => {
+    const { asAnalysis } = await import('@/lib/call-analysis')
+    expect(asAnalysis({ ...base, overallScore: 99 })!.overallScore).toBe(scoreFromAnalysis(CallAnalysis.parse(base)))
+    expect(asAnalysis({ ...base, v: 3, overallScore: 0 })!.overallScore).toBe(scoreFromAnalysis(CallAnalysis.parse(base)))
   })
   it('keeps the step on a moment and drops unknown steps', () => {
     const a = CallAnalysis.parse({ ...base, moments: [{ at: 10, step: 'looping', clientSaid: null, repSaid: 'a', better: 'b', why: 'c' }, { at: 20, step: 'nonsense', clientSaid: null, repSaid: 'a', better: 'b', why: 'c' }, { at: 30, clientSaid: null, repSaid: 'a', better: 'b', why: 'c' }] })

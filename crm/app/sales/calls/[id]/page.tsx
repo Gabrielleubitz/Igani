@@ -6,11 +6,13 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Transcript } from '@/components/calls/CallView'
 import { StraightLineChart } from '@/components/calls/StraightLineChart'
+import { ScoreBreakdown, TonalityCard } from '@/components/calls/ScoreBreakdown'
 import { StraightLinePanel } from '@/components/calls/StraightLinePanel'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { STEPS, asAnalysis, asTranscript } from '@/lib/call-analysis'
 import { CALL_STATUS_LABEL, OUTCOME_TONE, RUBRIC, scoreTone } from '@/lib/call-ui'
+import { buildScore } from '@/lib/call-score'
 import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
 import { formatDateTime, leadName } from '@/lib/format'
 import { formatPhone } from '@/lib/phone-numbers'
@@ -55,6 +57,8 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
   }
 
 const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.ReactElement => {
+    const breakdown = a.isSalesCall ? <ScoreBreakdown score={buildScore(a)} /> : null
+    const voice = <TonalityCard tonality={a.tonality} delivery={a.delivery} lang={a.lang} />
     const summary = (
       <>
                 <Card>
@@ -475,6 +479,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
       return (
         <>
           {summary}
+          {breakdown}
           {a.lineMap ? (
             <Card>
               <CardHeader className="pb-2">
@@ -486,6 +491,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
             </Card>
           ) : null}
           <StraightLinePanel sl={a.straightLine} lessons={lessons} />
+          {voice}
           {moments}
           {focus}
           {wellwork}
@@ -507,6 +513,8 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
           {summary}
           {scorecard}
         </div>
+        {breakdown}
+        {voice}
         {focus}
         {wellwork}
         {moments}
@@ -554,7 +562,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
           <div className={cn('flex items-center gap-3 rounded-2xl px-4 py-3 ring-1', tone.bg, tone.ring)}>
             <div className={cn('text-4xl font-semibold tabular-nums', tone.text)}>{a.overallScore}</div>
             <div className="text-xs leading-tight text-muted-foreground">
-              {a.straightLine ? 'Straight Line score' : 'Call score'}
+              Call score
               <br />
               out of 100
             </div>

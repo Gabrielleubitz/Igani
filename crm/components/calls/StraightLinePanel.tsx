@@ -36,6 +36,11 @@ export function StraightLinePanel({ sl, lessons }: { sl: SL; lessons: Record<num
                 <div key={s.key} className={`rounded-lg px-3 py-2 ring-1 ${t.bg} ${t.ring}`}>
                   <div className="text-xs text-muted-foreground">{s.label}</div>
                   <div className={`text-lg font-semibold ${t.text}`}>{v}/5</div>
+                  {sl.why?.[s.key] ? (
+                    <p dir="auto" className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                      {sl.why[s.key]}
+                    </p>
+                  ) : null}
                 </div>
               )
             })}
