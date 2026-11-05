@@ -4,12 +4,13 @@ import { useState } from 'react'
 
 /** Interactive model of the CRM (sample data only, nothing here is a real call): live call → review → weekly scorecard → manager view. */
 
-type Tab = 'live' | 'review' | 'week' | 'team'
+type Tab = 'leads' | 'live' | 'review' | 'week' | 'team'
 const TABS: { id: Tab; label: string; blurb: string }[] = [
-  { id: 'live', label: '1 · On the call', blurb: 'The rep dials from the browser. The call is recorded and a short hint appears while they talk.' },
-  { id: 'review', label: '2 · Review', blurb: 'Minutes later the call is transcribed and scored. Click a stage to see what happened and what to say instead.' },
-  { id: 'week', label: '3 · Rep scorecard', blurb: 'Each rep sees their week: score trend and the one habit to work on next.' },
-  { id: 'team', label: '4 · Manager view', blurb: 'Managers see every rep and every call, and can open any review.' },
+  { id: 'leads', label: '1 · Leads', blurb: 'Every lead in one list, with its status. A rep opens a name for notes, tasks and meetings, or calls straight from here.' },
+  { id: 'live', label: '2 · On the call', blurb: 'The rep dials from the browser. The call is recorded and a short hint appears while they talk.' },
+  { id: 'review', label: '3 · Review', blurb: 'Minutes later the call is transcribed and scored. Click a stage to see what happened and what to say instead.' },
+  { id: 'week', label: '4 · Rep scorecard', blurb: 'Each rep sees their week: score trend and the one habit to work on next.' },
+  { id: 'team', label: '5 · Manager view', blurb: 'Managers see every rep and every call, and can open any review.' },
 ]
 
 const STAGES = [
@@ -36,6 +37,47 @@ const REPS = [
 const Chip = ({ children, tone }: { children: React.ReactNode; tone: 'g' | 'a' | 'r' | 'n' }) => (
   <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${tone === 'g' ? 'bg-emerald-400/15 text-emerald-300' : tone === 'a' ? 'bg-amber-400/15 text-amber-300' : tone === 'r' ? 'bg-red-400/15 text-red-300' : 'bg-white/10 text-white/60'}`}>{children}</span>
 )
+
+const LEAD_STATUS: [string, string][] = [['All', ''], ['New', '#38bdf8'], ['No answer (NA)', '#94a3b8'], ['Call back', '#fb923c'], ['Voicemail', '#22d3ee'], ['Busy', ''], ['Interested', ''], ['Not interested', ''], ['Wrong number', '']]
+const LEADS = [
+  ['Dana L.', 'Sample Realty', 'New', '2 min ago'],
+  ['Avi M.', 'Sample Homes', 'Call back', 'Today 16:00'],
+  ['Noa K.', 'Sample Insurance', 'Interested', 'Yesterday'],
+  ['Eli S.', 'Sample Studio', 'No answer (NA)', 'Yesterday'],
+  ['Maya R.', 'Sample Agency', 'New', '3 hours ago'],
+  ['Omer B.', 'Sample Brokers', 'Not interested', 'Mon'],
+]
+
+function Leads() {
+  const [f, setF] = useState('All')
+  const rows = LEADS.filter((l) => f === 'All' || l[2] === f)
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-xl font-bold text-white">Leads</div>
+          <p className="text-sm text-white/55">Everyone in the CRM. Search, filter, change a stage, or open a name.</p>
+        </div>
+        <span className="hidden rounded-xl bg-[#4080E0] px-4 py-2 text-sm font-semibold text-white sm:block">+ Add lead</span>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {LEAD_STATUS.map(([n, c]) => (
+          <button key={n} onClick={() => setF(n)} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm ${f === n ? 'border-[#4080E0] bg-[#4080E0]/20 text-white' : 'border-white/10 text-white/65 hover:bg-white/5'}`}>
+            {c ? <span className="h-2 w-2 rounded-full" style={{ background: c }} /> : null}{n} <span className="text-white/40">{n === 'All' ? LEADS.length : LEADS.filter((l) => l[2] === n).length}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-4 overflow-hidden rounded-2xl border border-white/10">
+        {rows.length === 0 ? <div className="p-6 text-center text-white/50">No leads in this stage.</div> : rows.map((l) => (
+          <div key={l[0]} className="flex items-center justify-between gap-3 border-b border-white/5 px-4 py-3 last:border-0">
+            <div><div className="font-semibold text-white">{l[0]}</div><div className="text-sm text-white/50">{l[1]}</div></div>
+            <div className="text-right"><div className="text-sm text-white/80">{l[2]}</div><div className="text-xs text-white/40">{l[3]}</div></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function Live() {
   return (
@@ -155,7 +197,7 @@ function Team() {
 }
 
 export function ProductTour() {
-  const [tab, setTab] = useState<Tab>('review')
+  const [tab, setTab] = useState<Tab>('leads')
   const cur = TABS.find((t) => t.id === tab)!
   return (
     <div className="mx-auto mt-10 max-w-4xl">
@@ -167,7 +209,7 @@ export function ProductTour() {
       </div>
       <p className="mx-auto mt-4 max-w-xl text-center text-white/60">{cur.blurb}</p>
       <div className="mt-6 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.8)] sm:p-7">
-        {tab === 'live' && <Live />}{tab === 'review' && <Review />}{tab === 'week' && <Week />}{tab === 'team' && <Team />}
+        {tab === 'leads' && <Leads />}{tab === 'live' && <Live />}{tab === 'review' && <Review />}{tab === 'week' && <Week />}{tab === 'team' && <Team />}
       </div>
       <p className="mt-3 text-center text-xs text-white/40">Interactive model of our CRM with sample data. No real calls are shown.</p>
     </div>

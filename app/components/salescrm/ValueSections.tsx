@@ -5,49 +5,59 @@ import { motion } from 'framer-motion'
 import { Check, Clock } from 'lucide-react'
 
 const fade = { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: '-60px' }, transition: { duration: 0.55 } }
-const num = (n: number) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n)
-const FIELD = 'w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]'
+const H2 = 'border-0 pb-0 text-3xl font-bold tracking-tight text-white sm:text-4xl'
+const CARD = 'rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-7'
+const PANEL = 'rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.8)] sm:p-7'
 
-/** What a missed deal costs: the visitor types their own numbers. An illustration, not a promise. */
-export function RoiCalculator() {
-  const [cur, setCur] = useState('₪')
-  const [closings, setClosings] = useState(2)
-  const [extra, setExtra] = useState(1)
-  const [value, setValue] = useState(40000)
-  const [days, setDays] = useState(22)
-  const month = Math.max(0, extra) * Math.max(0, value) * Math.max(0, days)
-  const now = closings * value * days
-  const field = (label: string, v: number, set: (n: number) => void, step = 1) => (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-white/75">{label}</span>
-      <input type="number" min={0} step={step} value={Number.isFinite(v) ? v : 0} onChange={(e) => set(Number(e.target.value))} className={FIELD} />
-    </label>
-  )
+/** Three winners: the manager, the salesman, the company. */
+export function Everyone() {
+  const cols = [
+    ['The manager', 'Finally in control', ['Hear what is really said, on every call, not just the ones you sit in on', 'See whether the product is being sold correctly', 'Know which rep needs help, and with what, without guessing']],
+    ['The salesman', 'Gets better every week', ['Clear feedback after every call, on his own words', 'Learns just by using the system, so he stays motivated', 'Closes more, earns more, and is happier doing it']],
+    ['The company', 'More from the leads it pays for', ['Fewer leads lost to the wrong words', 'Reps who improve instead of leaving', 'More closings from the same lead spend']],
+  ] as const
   return (
-    <section id="roi" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
       <motion.div {...fade} className="mx-auto max-w-3xl text-center">
-        <h2 className="border-0 pb-0 text-3xl font-bold tracking-tight text-white sm:text-4xl">One more closing a day. What is that worth to you?</h2>
-        <p className="mt-4 text-lg text-white/60">Put in your own numbers. When a rep says the wrong thing, you do not see a bad call. You lose a deal you already paid to get.</p>
+        <h2 className={H2}>Everybody wins. That is why it is huge.</h2>
+        <p className="mt-4 text-lg text-white/60">A manager who feels in control. A salesman who learns. A company that makes more money.</p>
       </motion.div>
-      <div className="mx-auto mt-10 grid max-w-4xl gap-6 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-6 sm:p-8 md:grid-cols-2">
-        <div className="grid gap-4">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-medium text-white/75">Currency</span>
-            <select value={cur} onChange={(e) => setCur(e.target.value)} className={FIELD}>
-              <option value="₪">₪ Shekel</option><option value="$">$ Dollar</option><option value="€">€ Euro</option>
-            </select>
-          </label>
-          {field('Closings your team makes per day today', closings, setClosings)}
-          {field(`Value of one closing (${cur})`, value, setValue, 1000)}
-          {field('Extra closings per day you want', extra, setExtra)}
-          {field('Working days per month', days, setDays)}
-        </div>
-        <div className="flex flex-col justify-center rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-6 text-center">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">Extra revenue per month</div>
-          <div className="mt-2 text-4xl font-bold tabular-nums text-white sm:text-5xl" aria-live="polite">{cur}{num(month)}</div>
-          <p className="mt-3 text-sm text-white/60">From {closings} to {closings + extra} closings a day. Today that is {cur}{num(now)} a month.</p>
-          <p className="mt-4 text-xs text-white/40">This is arithmetic on your own numbers, not a promise of results. We will look at your real calls together on the demo.</p>
-        </div>
+      <div className="mt-12 grid gap-5 md:grid-cols-3">
+        {cols.map(([who, line, items]) => (
+          <motion.div key={who} {...fade} className={CARD}>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#80a0e0]">{who}</div>
+            <h3 className="mt-2 border-0 text-xl font-semibold text-white">{line}</h3>
+            <ul className="mt-4 grid gap-3">
+              {items.map((i) => (
+                <li key={i} className="flex gap-2.5 text-base leading-6 text-white/70"><Check className="mt-1 h-4 w-4 shrink-0 text-emerald-300" aria-hidden />{i}</li>
+              ))}
+            </ul>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+/** The money argument, made with a worked example. */
+export function MissedClosing() {
+  return (
+    <section className="border-y border-white/5 bg-white/[0.02]">
+      <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <motion.div {...fade} className="mx-auto max-w-3xl text-center">
+          <h2 className={H2}>One more closing a day pays for everything.</h2>
+          <p className="mt-4 text-lg leading-8 text-white/65">You already pay for the lead. The call is where it is won or lost. And a lost call usually does not look lost: it just looks like “not interested”.</p>
+        </motion.div>
+        <motion.div {...fade} className={`mx-auto mt-10 max-w-3xl ${PANEL}`}>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#80a0e0]">Example: real estate</div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {[['One closing is worth', '₪40,000'], ['Your team closes', '2 a day'], ['A third closing a day', '+₪880,000 a month']].map(([l, v]) => (
+              <div key={l} className="rounded-2xl bg-white/[0.04] p-4 text-center"><div className="text-sm text-white/55">{l}</div><div className="mt-1 text-2xl font-bold text-white">{v}</div></div>
+            ))}
+          </div>
+          <p className="mt-5 text-center text-base leading-7 text-white/70">That third closing was already on the phone, talking to one of your salesmen. If the wrong thing was said, you never knew. Now you know, and so does he.</p>
+          <p className="mt-2 text-center text-xs text-white/40">₪40,000 × 1 extra closing × 22 working days. Your own numbers will differ.</p>
+        </motion.div>
       </div>
     </section>
   )
@@ -56,26 +66,45 @@ export function RoiCalculator() {
 /** The origin of the method, told without a name. */
 export function Origin() {
   const points = [
-    ['Not a generic AI opinion', 'The AI is not left to improvise. It reads each call against a fixed, proven method.'],
-    ['Built from real recordings', 'A multi-million-dollar sales leader spent many hours recording himself selling. We turned that into a clear system.'],
-    ['Proven on a huge team', 'He led thousands of salespeople. The method is what they were taught.'],
+    ['Not a chatbot guessing', 'Plugging an AI into call recordings gives you opinions. This reads every call against one fixed, proven method.'],
+    ['Built from real recordings', 'A very successful salesman sat for hours and hours recording himself selling. We turned that into a clear, simple system.'],
+    ['Real track data', 'It comes from what actually closed, not from theory or a generic prompt.'],
+  ]
+  return (
+    <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+      <motion.div {...fade} className="mx-auto max-w-3xl text-center">
+        <h2 className={H2}>It is a real salesman’s method, not an AI blabbering.</h2>
+        <p className="mt-4 text-lg text-white/60">The value is in what every call is measured against.</p>
+      </motion.div>
+      <div className="mt-10 grid gap-5 md:grid-cols-3">
+        {points.map(([t, d]) => (
+          <motion.div key={t} {...fade} className={CARD}><h3 className="border-0 text-xl font-semibold text-white">{t}</h3><p className="mt-2 text-base leading-7 text-white/65">{d}</p></motion.div>
+        ))}
+      </div>
+      <p className="mt-8 text-center text-sm text-white/50">We cannot name him. We are glad to tell you more on a call. <a href="#demo" className="text-[#8fb4f5] underline underline-offset-4">Book a demo</a></p>
+    </section>
+  )
+}
+
+/** Depth: why this is hard to copy. */
+export function HardToCopy() {
+  const rows = [
+    ['A fixed method', 'Every call is read stage by stage: opening, questions, pitch, objection, close.'],
+    ['A checklist of 14 questions', 'Did they do what the best do? Yes or no, with the line from the call as proof.'],
+    ['Objection handling', 'The objection, what the rep answered, whether it worked, and what to say instead.'],
+    ['Live hints', 'A short prompt on the rep’s screen while the call is still going.'],
+    ['Weekly coaching', 'Each rep gets the one habit to work on. Managers get the trend.'],
+    ['Your own domain and server', 'Your system, separate from every other company, with your own branding.'],
   ]
   return (
     <section className="border-y border-white/5 bg-white/[0.02]">
-      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-        <motion.div {...fade} className="mx-auto max-w-3xl text-center">
-          <h2 className="border-0 pb-0 text-3xl font-bold tracking-tight text-white sm:text-4xl">This is not an AI guessing. It is a real salesman’s method.</h2>
-          <p className="mt-4 text-lg text-white/60">Anyone can plug a chatbot into a call recording. The value is in what it is measuring against.</p>
-        </motion.div>
-        <div className="mt-10 grid gap-5 md:grid-cols-3">
-          {points.map(([t, d]) => (
-            <motion.div key={t} {...fade} className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-7">
-              <h3 className="border-0 text-xl font-semibold text-white">{t}</h3>
-              <p className="mt-2 text-base leading-7 text-white/65">{d}</p>
-            </motion.div>
+      <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+        <motion.div {...fade} className="mx-auto max-w-3xl text-center"><h2 className={H2}>It is not simple underneath. It looks simple on purpose.</h2></motion.div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          {rows.map(([t, d]) => (
+            <motion.div key={t} {...fade} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"><div className="font-semibold text-white">{t}</div><p className="mt-1 text-white/60">{d}</p></motion.div>
           ))}
         </div>
-        <p className="mt-8 text-center text-sm text-white/45">We keep his name private. We are glad to tell you more on a call.</p>
       </div>
     </section>
   )
@@ -83,30 +112,34 @@ export function Origin() {
 
 type Out = { id: string; title: string; status: 'live' | 'build'; pitch: string }
 const OUTPUTS: Out[] = [
-  { id: 'score', title: 'Score and coaching', status: 'live', pitch: 'Every call scored, with the exact moment it slipped and better words to use.' },
-  { id: 'script', title: 'Did they say it?', status: 'live', pitch: 'Check the rep covered what must be said: the offer, the price, the next step.' },
-  { id: 'obj', title: 'Objections', status: 'live', pitch: 'See which objections come up most, and how each rep handles them.' },
-  { id: 'prep', title: 'Lead prep brief', status: 'build', pitch: 'Before the call, scan the lead’s website and hand the rep what to talk about.' },
-  { id: 'board', title: 'Live team board', status: 'build', pitch: 'See who is on a call right now and for how long.' },
+  { id: 'score', title: 'Score and stages', status: 'live', pitch: 'Every call scored, stage by stage, with the moment it slipped.' },
+  { id: 'checks', title: 'Did they do it?', status: 'live', pitch: 'A checklist of what the best salesmen do, answered yes or no with the proof from the call.' },
+  { id: 'obj', title: 'Objections', status: 'live', pitch: 'The objection, the rep’s answer, whether it worked, and a better answer.' },
+  { id: 'talk', title: 'Talk time', status: 'live', pitch: 'Who did the talking. Good salesmen listen more than they speak.' },
+  { id: 'import', title: 'Import a recording', status: 'build', pitch: 'Upload a call recorded anywhere, and get it reviewed.' },
+  { id: 'board', title: 'Live team board', status: 'build', pitch: 'See who is on a call right now, and for how long.' },
+  { id: 'alert', title: 'Bad-call alerts', status: 'build', pitch: 'A message to the manager when a call goes badly, while there is still time to call back.' },
+  { id: 'follow', title: 'Follow-up written for you', status: 'build', pitch: 'After the call, the message to send is already written from what was said.' },
+  { id: 'script', title: 'Your own script checks', status: 'build', pitch: 'Check that your price, your offer and your next step were said, in your words.' },
+  { id: 'pack', title: 'Industry packs', status: 'build', pitch: 'The same system tuned for real estate, agencies, insurance and more.' },
 ]
 
-const PREP: Record<string, { title: string; found: string[]; open: string }> = {
-  agency: { title: 'Web agency · lead’s website', found: ['Takes 6.4 seconds to load on a phone', 'No clear button to contact them above the fold', 'Nothing shows up when you search their business name'], open: '“I looked at your site before calling. On a phone it takes about six seconds to load, and I think that is costing you enquiries. Can I show you?”' },
-  realestate: { title: 'Real estate · lead’s listing', found: ['Listing has 3 photos and no floor plan', 'Same flat listed 40 days ago at a higher price', 'Description does not mention the neighbourhood'], open: '“Your listing has been up for six weeks. I noticed it only has three photos. Would you like to hear what usually helps flats like this move?”' },
-  insurance: { title: 'Insurance · lead’s company', found: ['Company hired 12 people this year', 'No employee benefits page on their site', 'Opened a second branch in March'], open: '“I saw you opened a second branch. When a team grows that fast, cover usually has gaps. Who looks after yours today?”' },
-}
+const Bar = ({ l, v, c }: { l: string; v: number; c: string }) => (
+  <div className="rounded-xl bg-white/[0.04] p-4"><div className="flex justify-between text-sm text-white/80"><span>{l}</span><span>{v}</span></div><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-2 rounded-full" style={{ width: `${v}%`, background: c }} /></div></div>
+)
+const Row = ({ a, b, tone }: { a: string; b?: string; tone?: string }) => (
+  <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-4 py-3 text-white/85"><span>{a}</span>{b ? <span className={tone ?? 'text-white/50'}>{b}</span> : null}</div>
+)
 
-/** Beyond the review: everything the same call data can produce. Built and not-yet-built items are labelled honestly. */
+/** Everything the system can produce. What is working today and what we would build are labelled. */
 export function Outputs() {
-  const [sel, setSel] = useState('prep')
-  const [ind, setInd] = useState('agency')
+  const [sel, setSel] = useState('checks')
   const o = OUTPUTS.find((x) => x.id === sel)!
-  const p = PREP[ind]
   return (
     <section id="outputs" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
       <motion.div {...fade} className="mx-auto max-w-3xl text-center">
-        <h2 className="border-0 pb-0 text-3xl font-bold tracking-tight text-white sm:text-4xl">More than a score</h2>
-        <p className="mt-4 text-lg text-white/60">Once every call is recorded and read, a lot becomes possible. Pick one to see it. It is the same system whatever you sell.</p>
+        <h2 className={H2}>More than a score. See what you get.</h2>
+        <p className="mt-4 text-lg text-white/60">Once every call is recorded and read, a lot becomes possible. Pick one.</p>
       </motion.div>
       <div className="mx-auto mt-10 max-w-4xl">
         <div className="flex flex-wrap justify-center gap-2" role="tablist">
@@ -114,7 +147,7 @@ export function Outputs() {
             <button key={x.id} role="tab" aria-selected={sel === x.id} onClick={() => setSel(x.id)} className={`rounded-full px-4 py-2 text-sm font-semibold transition ${sel === x.id ? 'bg-[#4080E0] text-white' : 'bg-white/5 text-white/65 hover:bg-white/10'}`}>{x.title}</button>
           ))}
         </div>
-        <div className="mt-6 rounded-3xl border border-white/10 bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-5 sm:p-7">
+        <div className={`mt-6 ${PANEL}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-white/70">{o.pitch}</p>
             {o.status === 'live' ? (
@@ -123,53 +156,58 @@ export function Outputs() {
               <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-300"><Clock className="h-3.5 w-3.5" aria-hidden />We build it for you</span>
             )}
           </div>
-          <div className="mt-5">
-            {sel === 'score' && (
-              <div className="grid gap-3 sm:grid-cols-3">
-                {[['Opening', 82, '#34d399'], ['Questions', 74, '#34d399'], ['Pitch', 55, '#fbbf24'], ['Objection', 31, '#f87171'], ['Close', 20, '#64748b']].map(([l, v, c]) => (
-                  <div key={l as string} className="rounded-xl bg-white/[0.04] p-4"><div className="flex justify-between text-sm text-white/80"><span>{l}</span><span>{v}</span></div><div className="mt-2 h-2 rounded-full bg-white/10"><div className="h-2 rounded-full" style={{ width: `${v}%`, background: c as string }} /></div></div>
-                ))}
-              </div>
-            )}
-            {sel === 'script' && (
-              <ul className="grid gap-2">
-                {[['Introduced the company', true], ['Asked what the prospect needs', true], ['Said the price clearly', false], ['Offered a next step', false], ['Confirmed contact details', true]].map(([l, ok]) => (
-                  <li key={l as string} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-4 py-3 text-white/85"><span>{l}</span><span className={ok ? 'text-emerald-300' : 'text-red-300'}>{ok ? 'Said' : 'Missed'}</span></li>
-                ))}
-              </ul>
-            )}
-            {sel === 'obj' && (
-              <div className="grid gap-2">
-                {[['“It’s too expensive”', 14, 'Reps asked a question first in 3 of 14'], ['“We already have someone”', 9, 'Reps offered a discount in 6 of 9'], ['“Send me an email”', 7, 'Next step booked in 1 of 7']].map(([l, n, d]) => (
-                  <div key={l as string} className="rounded-xl bg-white/[0.04] px-4 py-3"><div className="flex justify-between text-white/90"><span>{l}</span><span className="text-white/50">{n} times</span></div><div className="mt-1 text-sm text-white/55">{d}</div></div>
-                ))}
-              </div>
-            )}
-            {sel === 'prep' && (
-              <div>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-white/60">Industry:
-                  {Object.entries({ agency: 'Websites', realestate: 'Real estate', insurance: 'Insurance' }).map(([k, v]) => (
-                    <button key={k} onClick={() => setInd(k)} className={`rounded-full px-3 py-1 text-xs font-semibold ${ind === k ? 'bg-white text-[#06142e]' : 'bg-white/10 text-white/70'}`}>{v}</button>
-                  ))}
-                </div>
-                <div className="mt-4 rounded-2xl border border-white/10 bg-[#0b1b33] p-5">
-                  <div className="text-xs uppercase tracking-[0.16em] text-white/40">{p.title}</div>
-                  <ul className="mt-3 grid gap-2">{p.found.map((f) => <li key={f} className="flex gap-2 text-white/85"><span className="text-amber-300">•</span>{f}</li>)}</ul>
-                  <div className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3"><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">Open with</div><p className="mt-1 !mt-1 text-[15px] text-white/90">{p.open}</p></div>
-                </div>
-              </div>
-            )}
-            {sel === 'board' && (
-              <div className="grid gap-2">
-                {[['Rep A', 'On a call', '04:12'], ['Rep B', 'Between calls', '—'], ['Rep C', 'On a call', '11:40'], ['Rep D', 'Offline', '—']].map(([n, s, t]) => (
-                  <div key={n} className="flex items-center justify-between rounded-xl bg-white/[0.04] px-4 py-3 text-white/85"><span>{n}</span><span className={s === 'On a call' ? 'text-emerald-300' : 'text-white/45'}>{s}{t !== '—' ? ` · ${t}` : ''}</span></div>
-                ))}
-              </div>
-            )}
+          <div className="mt-5 grid gap-2">
+            {sel === 'score' && <div className="grid gap-3 sm:grid-cols-3">{[['Opening', 82, '#34d399'], ['Questions', 74, '#34d399'], ['Pitch', 55, '#fbbf24'], ['Objection', 31, '#f87171'], ['Close', 20, '#64748b']].map(([l, v, c]) => <Bar key={l as string} l={l as string} v={v as number} c={c as string} />)}</div>}
+            {sel === 'checks' && [['Opened with a clear reason for the call', 'Yes', '“Hi Dana, I’m calling about the form you filled in…”'], ['Asked what the customer wants before pitching', 'Yes', '“What are you hoping to change?”'], ['Repeated the problem back in their words', 'No', 'Went straight to the offer'], ['Asked a question before answering an objection', 'No', 'Offered a discount at 3:12'], ['Asked for the next step', 'No', 'Call ended without a time']].map(([a, b, c]) => (
+              <div key={a} className="rounded-xl bg-white/[0.04] px-4 py-3"><div className="flex justify-between gap-3 text-white/90"><span>{a}</span><span className={b === 'Yes' ? 'text-emerald-300' : 'text-red-300'}>{b}</span></div><div className="mt-1 text-sm text-white/50">{c}</div></div>
+            ))}
+            {sel === 'obj' && [['“It’s too expensive”', 'Rep: “I can do 10% off.”', 'Did not work', 'Try: “Compared to what?”'], ['“We already have someone”', 'Rep: “We’re cheaper.”', 'Did not work', 'Try: “How are they doing for you?”']].map(([a, b, c, d]) => (
+              <div key={a} className="rounded-xl bg-white/[0.04] px-4 py-3"><div className="text-white/90">{a}</div><div className="mt-1 text-sm text-white/55">{b} · <span className="text-red-300">{c}</span></div><div className="mt-1 text-sm text-emerald-300">{d}</div></div>
+            ))}
+            {sel === 'talk' && <><Bar l="Rep talked" v={64} c="#f87171" /><Bar l="Customer talked" v={36} c="#34d399" /><p className="text-sm text-white/50">Longest rep monologue: 1 minute 48 seconds.</p></>}
+            {sel === 'import' && <div className="rounded-xl border border-dashed border-white/20 p-8 text-center text-white/60">Drop a recording here · MP3, M4A, WAV</div>}
+            {sel === 'board' && [['Rep A', 'On a call · 04:12', 'text-emerald-300'], ['Rep B', 'Between calls', 'text-white/45'], ['Rep C', 'On a call · 11:40', 'text-emerald-300'], ['Rep D', 'Offline', 'text-white/45']].map(([n, s, t]) => <Row key={n} a={n} b={s} tone={t} />)}
+            {sel === 'alert' && <div className="rounded-xl border border-red-400/30 bg-red-400/10 p-4 text-white/90"><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-red-300">Alert to manager · 2 minutes ago</div><p className="mt-1 !mt-1">Rep C’s call with a ₪40,000 lead ended at 3:10 with no next step. Score 31.</p></div>}
+            {sel === 'follow' && <div className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4 text-white/90"><div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-300">Ready to send</div><p className="mt-1 !mt-1">“Hi Dana, thanks for the chat. You said follow-up is slow and you get most work from referrals. I’ve booked Thursday 10:00 to show you how we fix that.”</p></div>}
+            {sel === 'script' && [['Said the price', 'Said', 'text-emerald-300'], ['Said the guarantee', 'Missed', 'text-red-300'], ['Offered the free first month', 'Missed', 'text-red-300'], ['Booked the next step', 'Said', 'text-emerald-300']].map(([a, b, t]) => <Row key={a} a={a} b={b} tone={t} />)}
+            {sel === 'pack' && <div className="grid gap-2 sm:grid-cols-3">{['Real estate', 'Agencies', 'Insurance'].map((n) => <div key={n} className="rounded-xl bg-white/[0.04] p-4 text-center text-white/85">{n}<div className="mt-1 text-xs text-white/45">its own objections, its own checks</div></div>)}</div>}
           </div>
         </div>
-        <p className="mt-3 text-center text-xs text-white/40">All figures, names and quotes on this page are sample data. Items marked “We build it for you” are not in the system yet and would be built to your needs.</p>
+        <p className="mt-3 text-center text-xs text-white/40">Names, figures and quotes on this page are sample content. “We build it for you” means it is not in the system today and would be built for your team.</p>
       </div>
+    </section>
+  )
+}
+
+/** Short, by industry. Real estate is labelled as an example. */
+export function Industries() {
+  const items = [
+    ['Real estate', 'Example', 'One lead can be worth ₪40,000. See which agent loses them, and at which sentence.'],
+    ['Agencies and web services', '', 'Hear whether the offer, the price and the next step were really said.'],
+    ['Insurance and finance', '', 'Check that the required wording was used on every call.'],
+    ['Any team that calls', '', 'If people talk to customers on the phone, the system fits.'],
+  ]
+  return (
+    <section className="border-y border-white/5 bg-white/[0.02]">
+      <div className="mx-auto max-w-6xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+        <motion.div {...fade} className="mx-auto max-w-3xl text-center"><h2 className={H2}>The same system, whatever you sell</h2></motion.div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {items.map(([t, tag, d]) => (
+            <motion.div key={t} {...fade} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"><div className="flex items-center gap-2 font-semibold text-white">{t}{tag ? <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/60">{tag}</span> : null}</div><p className="mt-2 text-sm leading-6 text-white/60">{d}</p></motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+/** Only integrations that exist in the CRM today. */
+export function Integrations() {
+  const list = ['Phone calls and SMS', 'Browser dialer', 'Recording and transcription', 'AI call review', 'Email inbox sync', 'Calendar and booking pages', 'Offers and e-signed contracts', 'Leads from your website forms', 'Call lists']
+  return (
+    <section className="mx-auto max-w-5xl px-4 py-16 text-center sm:px-6 lg:px-8">
+      <motion.h2 {...fade} className="border-0 pb-0 text-2xl font-bold text-white sm:text-3xl">Already connected</motion.h2>
+      <div className="mt-6 flex flex-wrap justify-center gap-2.5">{list.map((l) => <span key={l} className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white/75">{l}</span>)}</div>
     </section>
   )
 }

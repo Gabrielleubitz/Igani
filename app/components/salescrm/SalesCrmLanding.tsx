@@ -7,7 +7,7 @@ import { ArrowRight, BarChart3, Check, Headphones, LineChart, ListChecks, Mic, P
 import { IganiLogo } from '@/components/IganiLogo'
 import { ReviewMock } from './ReviewMock'
 import { ProductTour } from './ProductTour'
-import { Origin, Outputs, RoiCalculator } from './ValueSections'
+import { Everyone, HardToCopy, Industries, Integrations, MissedClosing, Origin, Outputs } from './ValueSections'
 
 const INPUT =
   'w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white placeholder-white/30 transition-colors focus:border-[#4080E0] focus:outline-none focus:ring-1 focus:ring-[#4080E0]'
@@ -123,9 +123,9 @@ export function SalesCrmLanding() {
         <section className="border-y border-white/5 bg-white/[0.02]">
           <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:px-6 lg:py-20">
             <motion.div {...fade}>
-              <h2 className="border-0 pb-0 text-3xl font-bold tracking-tight text-white sm:text-4xl">You pay for the leads. Then the call happens in the dark.</h2>
+              <h2 className="border-0 pb-0 text-3xl font-bold tracking-tight text-white sm:text-4xl">You pay for every lead. Then nobody knows what is said.</h2>
               <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-white/65">
-                A lead fills in your form after you paid to get them. A rep calls. And then? Only the rep and the buyer know what was said. In most CRMs, a terrible call looks exactly like a great one.
+                Your salesmen are on the phone all day, and nobody is listening. You do not know what they tell people. You do not know if they are selling the product correctly. All you know is that you paid for the person on the other end.
               </p>
               <ul className="mx-auto mt-8 grid max-w-3xl gap-3 text-left sm:grid-cols-3">
                 {['How many calls does your team make a day?', 'How many turn into a real next step?', 'Which rep loses the lead, and where in the call?'].map((q) => (
@@ -134,13 +134,15 @@ export function SalesCrmLanding() {
                   </li>
                 ))}
               </ul>
-              <p className="mt-6 text-white/60">With call review, you can answer all three.</p>
+              <p className="mt-6 text-white/60">Now you can answer all three, and fix what you find.</p>
             </motion.div>
           </div>
         </section>
 
-        <RoiCalculator />
+        <Everyone />
+        <MissedClosing />
         <Origin />
+        <HardToCopy />
 
         {/* How it works */}
         <section id="how" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
@@ -174,33 +176,8 @@ export function SalesCrmLanding() {
         </section>
 
         <Outputs />
-
-        {/* Reps and managers */}
-        <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 lg:px-8 lg:pb-24">
-          <div className="grid gap-5 md:grid-cols-2">
-            {[
-              { icon: Users, title: 'For every rep', items: ['A review after every call: score, key moments, and better words to use', 'Optional live hints on screen while you talk', 'Your week: strengths, where you slip, what to practice next', 'The result you pick after the call becomes the lead’s status'] },
-              { icon: BarChart3, title: 'For every manager', items: ['See every call and its review, without listening to hours of audio', 'Each rep’s weekly view and trend, side by side', 'Every call creates or finds the lead, so two reps never chase the same one', 'Leads, board and tasks in one place'] },
-            ].map((col, i) => (
-              <motion.div key={col.title} {...fade} transition={{ duration: 0.55, delay: i * 0.08 }} className="rounded-3xl border border-white/10 bg-white/[0.03] p-7 sm:p-8">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-400/10 text-emerald-300">
-                    <col.icon className="h-5 w-5" aria-hidden />
-                  </span>
-                  <h3 className="border-0 text-xl font-semibold text-white">{col.title}</h3>
-                </div>
-                <ul className="mt-5 space-y-3">
-                  {col.items.map((t) => (
-                    <li key={t} className="flex gap-3 text-base leading-7 text-white/75">
-                      <Check className="mt-1 h-4 w-4 shrink-0 text-emerald-300" aria-hidden />
-                      {t}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+        <Industries />
+        <Integrations />
 
         {/* Features */}
         <section className="border-y border-white/5 bg-white/[0.02]">
