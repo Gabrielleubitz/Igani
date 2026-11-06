@@ -165,3 +165,11 @@
 .ed3 .w-book button { border-radius: 2px; }
 .ed3 .w-book button.on, .ed3 .w-ask .q { background: var(--navy); border-color: var(--navy); }
 .ed3 .fs__cap b { font-family: var(--serif); font-weight: 400; font-size: 18px; }
+
+/* back / forward buttons around the slide counter */
+.fs__ctr { display: inline-flex; align-items: center; gap: 10px; }
+.fs__arr { width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 1px solid #d5dbe6; background: #fff; color: #030814; font: 400 22px/1 var(--sans, Inter, sans-serif); letter-spacing: 0; text-transform: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: background 200ms, border-color 200ms, opacity 200ms; }
+.fs__arr:hover:not(:disabled) { background: #f0f4fb; border-color: #9fb3d6; }
+.fs__arr:focus-visible { outline: 2px solid var(--focus, #1d4fa3); outline-offset: 2px; }
+.fs__arr:disabled { opacity: .35; cursor: default; }
+@media (max-width: 899px) { .fs__arr { width: 42px; height: 42px; } }
