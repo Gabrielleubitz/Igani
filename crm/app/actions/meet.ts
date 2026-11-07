@@ -6,7 +6,9 @@ import { currentUserOrNull, requireUser } from '@/lib/auth'
 import { avatarPath } from '@/lib/avatar'
 import { sendMeetInviteEmail } from '@/lib/email'
 import { appUrl } from '@/lib/env'
-import { meetAvailable, meetConfigFor, meetSetupProblem, newInviteToken, newRoomCode, parseInviteEmails, type MeetConfig } from '@/lib/meet'
+import { deleteMeetRecording as deleteStoredRecording } from '@/lib/cloudinary'
+import { meetAvailable, meetConfigFor, meetRecordingReady, meetSetupProblem, newInviteToken, newRoomCode, parseInviteEmails, type MeetConfig } from '@/lib/meet'
+import { saveMeetRecording } from '@/lib/meet-recording'
 import { prisma } from '@/lib/prisma'
 import { zonedInputToDate } from '@/lib/time'
 import { toActionError, type ActionResult } from './result'
@@ -132,8 +134,36 @@ export async function endMeetRoom(roomId: string, opts: { remove?: boolean } = {
   try {
     await requireUser(['ADMIN'])
     const id = z.string().parse(roomId)
-    if (opts.remove) await prisma.meetRoom.delete({ where: { id } })
+    if (opts.remove) {
+      const recs = await prisma.meetRecording.findMany({ where: { roomId: id, publicId: { not: null } }, select: { publicId: true } })
+      await Promise.all(recs.map((r) => deleteStoredRecording(r.publicId!).catch((err: unknown) => console.error('[meet] recording delete failed', err))))
+      await prisma.meetRoom.delete({ where: { id } })
+    }
     else await prisma.meetRoom.update({ where: { id }, data: { endedAt: new Date() } })
+    revalidatePath(PAGE)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Tries again to copy a recording into Igani's storage (while 8x8 still has it). */
+export async function retryMeetRecording(recordingId: string): Promise<ActionResult> {
+  try {
+    await requireUser(['ADMIN'])
+    await saveMeetRecording(z.string().max(40).parse(recordingId))
+    revalidatePath(PAGE)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+export async function removeMeetRecording(recordingId: string): Promise<ActionResult> {
+  try {
+    await requireUser(['ADMIN'])
+    const rec = await prisma.meetRecording.delete({ where: { id: z.string().max(40).parse(recordingId) }, select: { publicId: true } })
+    if (rec.publicId) await deleteStoredRecording(rec.publicId).catch((err: unknown) => console.error('[meet] recording delete failed', err))
     revalidatePath(PAGE)
     return { ok: true, data: undefined }
   } catch (err) {
@@ -145,7 +175,7 @@ export async function endMeetRoom(roomId: string, opts: { remove?: boolean } = {
  * Joining a room: with an invite token (guests and invited teammates), or signed in as an admin (hosts). Returns the
  * signed pass for this person only. Ended rooms and wrong tokens get a plain answer, never a hint about other rooms.
  */
-export async function joinMeet(input: { code: string; token: string | null; name: string }): Promise<ActionResult<{ config: MeetConfig; name: string }>> {
+export async function joinMeet(input: { code: string; token: string | null; name: string }): Promise<ActionResult<{ config: MeetConfig; name: string; avatar: string | null; moderator: boolean; canRecord: boolean }>> {
   try {
     const code = z.string().min(6).max(60).parse(input.code)
     const name = z.string().trim().min(1, 'Type your name').max(60).parse(input.name)
@@ -161,16 +191,17 @@ export async function joinMeet(input: { code: string; token: string | null; name
     const teammate = me && (!invite || invite.userId === me.id || invite.email === me.email?.toLowerCase()) ? me : null
     const display = teammate?.name ?? name
     const moderator = Boolean(teammate && (teammate.role === 'ADMIN' || teammate.id === room.hostId))
+    const avatar = teammate && avatarPath(teammate) ? appUrl(avatarPath(teammate)!) : null
     const config = meetConfigFor(room.code, {
       id: teammate?.id ?? invite?.id ?? 'guest',
       name: display,
       email: teammate?.email ?? invite?.email ?? null,
-      avatar: teammate ? (avatarPath(teammate) ? appUrl(avatarPath(teammate)!) : null) : null,
+      avatar,
       moderator,
     })
     if (!config) return { ok: false, error: moderator && meetSetupProblem() ? `Igani Meet isn’t set up right: ${meetSetupProblem()}` : 'Igani Meet isn’t available right now. Please try again later.' }
     if (invite) await prisma.meetInvite.update({ where: { id: invite.id }, data: { joinedAt: invite.joinedAt ?? new Date(), ...(teammate ? {} : { name }) } })
-    return { ok: true, data: { config, name: display } }
+    return { ok: true, data: { config, name: display, avatar, moderator, canRecord: moderator && !config.testServer && meetRecordingReady() } }
   } catch (err) {
     return toActionError(err)
   }

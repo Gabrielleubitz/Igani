@@ -1,5 +1,5 @@
 import 'server-only'
-import { createSign, randomBytes } from 'node:crypto'
+import { createHmac, createSign, randomBytes, timingSafeEqual } from 'node:crypto'
 
 /**
  * Igani Meet: video rooms on Jitsi, run by 8x8 ("Jitsi as a Service", 8x8.vc). The CRM draws its own Igani UI around the
@@ -64,6 +64,52 @@ export const meetConfigured = (): boolean => jaas() != null
 /** The public server is only for trying it out locally; production needs the 8x8 keys. */
 export const meetAvailable = (): boolean => meetConfigured() || process.env.NODE_ENV !== 'production'
 
+/**
+ * Recording needs 8x8's webhook (it tells us where the finished file is) with its signing secret in JAAS_WEBHOOK_SECRET.
+ * Without it the record button stays hidden: a recording we never hear about would be lost after 24 hours.
+ */
+export const meetRecordingReady = (): boolean => meetConfigured() && Boolean(process.env.JAAS_WEBHOOK_SECRET?.trim())
+
+/** The Jitsi script for this setup, so the call page can load it while people are still on the "ready to join" screen. */
+export function meetScriptUrl(): string | null {
+  const c = jaas()
+  if (c) return `https://8x8.vc/${c.appId}/external_api.js`
+  return process.env.NODE_ENV === 'production' ? null : 'https://meet.jit.si/external_api.js'
+}
+
+/**
+ * Checks 8x8's X-Jaas-Signature ("t=<unix>,v1=<base64 HMAC-SHA256 of `${t}.${body}`>") against the endpoint's secret.
+ * Only v1 counts (no downgrades) and the timestamp must be recent, so an old message can't be replayed.
+ */
+export function verifyJaasSignature(rawBody: string, header: string | null, secret: string, now = Date.now(), toleranceSec = 600): boolean {
+  if (!header || !secret) return false
+  let t: string | null = null
+  const sigs: string[] = []
+  for (const part of header.split(',')) {
+    const i = part.indexOf('=')
+    if (i < 0) continue
+    const k = part.slice(0, i).trim()
+    const v = part.slice(i + 1).trim()
+    if (k === 't') t = v
+    else if (k === 'v1') sigs.push(v)
+  }
+  if (!t || !/^\d+$/.test(t) || !sigs.length) return false
+  if (Math.abs(now / 1000 - Number(t)) > toleranceSec) return false
+  const expected = Buffer.from(createHmac('sha256', secret).update(`${t}.${rawBody}`, 'utf8').digest('base64'))
+  return sigs.some((s) => {
+    const got = Buffer.from(s)
+    return got.length === expected.length && timingSafeEqual(got, expected)
+  })
+}
+
+/** The room code from 8x8's "<appId>/<room>" name, only for our own app. */
+export function roomCodeFromFqn(fqn: unknown, appId = process.env.JAAS_APP_ID?.trim()): string | null {
+  if (typeof fqn !== 'string' || !appId) return null
+  const [app, room, ...rest] = fqn.split('/')
+  if (rest.length || app?.toLowerCase() !== appId.toLowerCase() || !room || !/^[a-z0-9-]{6,60}$/.test(room)) return null
+  return room
+}
+
 /** Room codes and invite tokens: random and URL-safe. */
 export const newRoomCode = (): string => `igani-${randomBytes(9).toString('base64url').toLowerCase().replace(/[^a-z0-9]/g, '')}`
 export const newInviteToken = (): string => randomBytes(24).toString('base64url')
@@ -86,7 +132,8 @@ export function signMeetJwt(room: string, person: MeetPerson, now = new Date(), 
     exp: iat + hours * 3600,
     context: {
       user: { id: person.id, name: person.name, email: person.email ?? undefined, avatar: person.avatar ?? undefined, moderator: person.moderator ? 'true' : 'false' },
-      features: { livestreaming: 'false', recording: 'false', transcription: 'false', 'outbound-call': 'false', 'sip-outbound-call': 'false' },
+      // only the host side (admins) may record; everyone sees and hears that a call is being recorded
+      features: { livestreaming: 'false', recording: person.moderator && meetRecordingReady() ? 'true' : 'false', transcription: 'false', 'outbound-call': 'false', 'sip-outbound-call': 'false' },
     },
   }
   const body = `${b64(header)}.${b64(payload)}`

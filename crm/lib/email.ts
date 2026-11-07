@@ -10,7 +10,7 @@ import { BookingInvite } from '@/emails/BookingInvite'
 import { BookingRequested } from '@/emails/BookingRequested'
 import { ContactEmail } from '@/emails/ContactEmail'
 import { MeetingReminder } from '@/emails/MeetingReminder'
-import { MeetInvite } from '@/emails/MeetInvite'
+import { MeetInvite, meetInviteText } from '@/emails/MeetInvite'
 import { NewLeadAlert, type NewLeadAlertProps } from '@/emails/NewLeadAlert'
 import { OfferSigned, type OfferSignedProps } from '@/emails/OfferSigned'
 import { LeadAssigned, type LeadAssignedProps } from '@/emails/LeadAssigned'
@@ -44,6 +44,8 @@ async function send(args: {
   replyTo?: string
   attachments?: { filename: string; content: Buffer; contentType?: string }[]
   headers?: Record<string, string>
+  /** sender's display name, on our own address (e.g. "Gabriel Leubitz (Igani)") */
+  fromName?: string
 }): Promise<string> {
   if (dryRun()) {
     const id = `dry_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
@@ -55,7 +57,7 @@ async function send(args: {
     return id
   }
   const { data, error } = await resend().emails.send({
-    from: env().EMAIL_FROM,
+    from: args.fromName ? withFromName(env().EMAIL_FROM, args.fromName) : env().EMAIL_FROM,
     to: args.to,
     subject: args.subject,
     html: args.html,
@@ -66,6 +68,13 @@ async function send(args: {
   })
   if (error || !data) throw new Error(`Resend failed: ${error?.message ?? 'no response'}`)
   return data.id
+}
+
+/** "Igani <bookings@igani.co>" + "Dana (Igani)" → "Dana (Igani) <bookings@igani.co>"; the address never changes. */
+export function withFromName(from: string, name: string): string {
+  const addr = /<([^<>]+)>/.exec(from)?.[1] ?? from.trim()
+  const clean = name.replace(/["<>\r\n]/g, '').trim().slice(0, 70)
+  return clean ? `"${clean}" <${addr}>` : from
 }
 
 export interface BookingEmailData {
@@ -281,17 +290,20 @@ export async function sendSalesContractSignedEmail(
 
 /** Igani Meet invite: the personal join link, with a calendar entry when the call has a time. */
 export async function sendMeetInviteEmail(a: { to: string; guestName: string | null; title: string; hostName: string; hostEmail: string; joinUrl: string; start: Date | null; durationMin: number; timeZone: string; uid: string }): Promise<string> {
-  const when = a.start ? new Intl.DateTimeFormat('en-US', { timeZone: a.timeZone, dateStyle: 'full', timeStyle: 'short', timeZoneName: 'short' }).format(a.start) : null
-  const element = MeetInvite({ title: a.title, hostName: a.hostName, guestName: a.guestName, joinUrl: a.joinUrl, when, hostPhotoUrl: await avatarEmailUrlFor(a.hostEmail), logoUrl: logoUrl(), ...(await brand()) })
+  const when = a.start ? new Intl.DateTimeFormat('en-US', { timeZone: a.timeZone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }).format(a.start) : null
+  const { brandName } = await brand()
+  const props = { title: a.title, hostName: a.hostName, guestName: a.guestName, joinUrl: a.joinUrl, when, hostPhotoUrl: await avatarEmailUrlFor(a.hostEmail), logoUrl: logoUrl(), brandName }
+  // a scheduled call is a real calendar invitation (Gmail shows it with Yes/No and files it in the main inbox)
   const ics = a.start
-    ? buildIcs({ uid: `${a.uid}@app.igani.co`, start: a.start, end: new Date(a.start.getTime() + a.durationMin * 60_000), title: a.title, description: `Join on Igani Meet: ${a.joinUrl}`, location: a.joinUrl, url: a.joinUrl, organizerName: a.hostName, organizerEmail: a.hostEmail, attendeeName: a.guestName ?? a.to, attendeeEmail: a.to })
+    ? buildIcs({ uid: `${a.uid}@app.igani.co`, start: a.start, end: new Date(a.start.getTime() + a.durationMin * 60_000), title: a.title, description: `Join on ${brandName} Meet: ${a.joinUrl}`, location: a.joinUrl, url: a.joinUrl, organizerName: a.hostName, organizerEmail: a.hostEmail, attendeeName: a.guestName ?? a.to, attendeeEmail: a.to })
     : null
   return send({
     to: a.to,
+    fromName: `${a.hostName} (${brandName})`,
     replyTo: a.hostEmail,
-    subject: `${a.hostName} invited you to a video call: ${a.title}`,
-    html: await render(element),
-    text: await render(element, { plainText: true }),
-    ...(ics ? { attachments: [{ filename: 'igani-meet.ics', content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; method=REQUEST' }] } : {}),
+    subject: when ? `Invitation: ${a.title} @ ${when}` : `Video call with ${a.hostName}: ${a.title}`,
+    html: await render(MeetInvite(props)),
+    text: meetInviteText(props),
+    ...(ics ? { attachments: [{ filename: 'invite.ics', content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; charset=utf-8; method=REQUEST' }] } : {}),
   })
 }

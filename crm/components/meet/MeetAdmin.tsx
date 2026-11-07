@@ -1,9 +1,9 @@
 'use client'
 
-import { Check, Clock, Copy, Loader2, Mail, Plus, Send, Trash2, UserPlus, Video, X } from 'lucide-react'
+import { Check, CircleDot, Clock, CloudUpload, Copy, Download, Loader2, Mail, Play, Plus, Send, Trash2, UserPlus, Video, X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { addMeetInvites, createMeetRoom, endMeetRoom, removeMeetInvite, resendMeetInvite } from '@/app/actions/meet'
+import { addMeetInvites, createMeetRoom, endMeetRoom, removeMeetInvite, removeMeetRecording, resendMeetInvite, retryMeetRecording } from '@/app/actions/meet'
 import { Button } from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tag } from '@/components/ui/tone'
@@ -120,7 +120,71 @@ export interface RoomView {
   durationMin: number
   ended: boolean
   hostName: string
+  recordings: RecordingView[]
   invites: { id: string; email: string; name: string | null; teammate: boolean; link: string; sent: boolean; error: string | null; joined: boolean }[]
+}
+
+export interface RecordingView {
+  id: string
+  when: string
+  duration: string | null
+  state: 'processing' | 'saved' | 'temporary' | 'expired'
+  note: string | null
+  /** when 8x8's own copy goes away */
+  until: string | null
+}
+
+const STATE_TAG: Record<RecordingView['state'], { tone: 'emerald' | 'sky' | 'amber' | 'slate'; label: string }> = {
+  saved: { tone: 'emerald', label: 'Saved' },
+  processing: { tone: 'sky', label: 'Saving…' },
+  temporary: { tone: 'amber', label: 'Not saved yet' },
+  expired: { tone: 'slate', label: 'Expired' },
+}
+
+/** One recording: play it right here, download it, and (while 8x8 still has it) save a copy again. */
+function RecordingRow({ rec, pending, run }: { rec: RecordingView; pending: boolean; run: (fn: () => Promise<{ ok: boolean; error?: string }>) => void }): React.ReactElement {
+  const [playing, setPlaying] = useState(false)
+  const src = `/api/admin/meet/recordings/${rec.id}`
+  const playable = rec.state !== 'expired'
+  const tag = STATE_TAG[rec.state]
+  const btn = 'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50'
+  return (
+    <li className="px-3 py-2.5 text-sm">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-rose-500/15 text-rose-400">
+          <CircleDot className="h-3.5 w-3.5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate">{rec.when}</span>
+          <span className="block truncate text-xs text-muted-foreground">
+            {rec.duration ?? 'Recording'}
+            {rec.state === 'temporary' && rec.until ? ` · 8x8 keeps it until ${rec.until}` : ''}
+          </span>
+        </span>
+        <Tag tone={tag.tone}>{tag.label}</Tag>
+        {playable ? (
+          <>
+            <button type="button" className={btn} onClick={() => setPlaying((v) => !v)}>
+              <Play className="h-3.5 w-3.5" /> {playing ? 'Hide' : 'Play'}
+            </button>
+            <a className={btn} href={`${src}?download=1`}>
+              <Download className="h-3.5 w-3.5" /> Download
+            </a>
+          </>
+        ) : null}
+        {rec.state === 'temporary' ? (
+          <button type="button" className={btn} disabled={pending} onClick={() => run(() => retryMeetRecording(rec.id))}>
+            <CloudUpload className="h-3.5 w-3.5" /> Save copy
+          </button>
+        ) : null}
+        <button type="button" title="Delete this recording" aria-label="Delete this recording" className={cn(btn, 'hover:text-rose-300')} disabled={pending} onClick={() => run(() => removeMeetRecording(rec.id))}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {rec.note && rec.state !== 'saved' ? <p className="mt-1.5 pl-9 text-xs text-amber-300/90">{rec.note}</p> : null}
+      {playing && playable ? <video src={src} controls autoPlay playsInline className="mt-2.5 aspect-video w-full rounded-lg bg-black" /> : null}
+    </li>
+  )
 }
 
 function CopyIcon({ text }: { text: string }): React.ReactElement {
@@ -221,6 +285,17 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
         </ul>
       ) : !room.ended ? (
         <p className="mt-3 text-xs text-muted-foreground">No one invited yet. Use Invite to add teammates or any email.</p>
+      ) : null}
+
+      {room.recordings.length ? (
+        <div className="mt-3">
+          <div className="mb-1.5 text-xs text-muted-foreground">Recordings</div>
+          <ul className="divide-y divide-border/60 rounded-xl border">
+            {room.recordings.map((r) => (
+              <RecordingRow key={r.id} rec={r} pending={pending} run={(fn) => run(fn)} />
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {adding && !room.ended ? (

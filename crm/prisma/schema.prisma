@@ -117,7 +117,7 @@ model User {
   leadNotes       LeadNote[]
   phoneLine       PhoneLine?
   calls           Call[]
-  callShares      CallShare[] @relation("CallSharedWith")
+  callShares      CallShare[]     @relation("CallSharedWith")
   smsMessages     SmsMessage[]
   meetRooms       MeetRoom[]
   callLists       CallList[]
@@ -786,9 +786,9 @@ model Call {
   /// A call to a business on a call list (before it is a lead)
   prospectId       String?
 
-  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lead     Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  prospect Prospect?   @relation(fields: [prospectId], references: [id], onDelete: SetNull)
   shares   CallShare[]
 
   @@index([userId, startedAt])
@@ -880,17 +880,19 @@ model Prospect {
 
 /// Igani Meet (admin Tests tab): a video room on Jitsi (8x8 JaaS), with invites for teammates and outside emails.
 model MeetRoom {
-  id          String       @id @default(cuid())
+  id          String          @id @default(cuid())
   /// the room name on Jitsi and in links (/meet/<code>): random, unguessable
-  code        String       @unique
+  code        String          @unique
   title       String
   hostId      String?
   scheduledAt DateTime?
-  durationMin Int          @default(30)
+  durationMin Int             @default(30)
   endedAt     DateTime?
-  createdAt   DateTime     @default(now())
-  host        User?        @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  createdAt   DateTime        @default(now())
+  host        User?           @relation(fields: [hostId], references: [id], onDelete: SetNull)
   invites     MeetInvite[]
+  recordings  MeetRecording[]
+  presence    MeetPresence[]
 
   @@index([hostId, createdAt])
 }
@@ -910,4 +912,43 @@ model MeetInvite {
   room      MeetRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, email])
+}
+
+/// A cloud recording of an Igani Meet call. 8x8 records, then tells us (webhook) where to download it for 24 hours;
+/// we copy it to our own storage (Cloudinary, private) so it stays.
+model MeetRecording {
+  id           String    @id @default(cuid())
+  roomId       String
+  /// 8x8's recordingSessionId (one per start/stop): makes the webhook idempotent
+  sessionId    String    @unique
+  status       String    @default("processing") /// processing | ready | failed
+  startedAt    DateTime?
+  durationSec  Int?
+  /// 8x8's pre-authenticated download link and when it stops working (24h)
+  sourceUrl    String?
+  sourceUntil  DateTime?
+  publicId     String?
+  bytes        Int?
+  error        String?
+  participants Json?
+  createdAt    DateTime  @default(now())
+  room         MeetRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+/// Who is in a call right now (each open call tab checks in every ~20s), so the lobby can say "Dana is in the call".
+model MeetPresence {
+  id     String   @id @default(cuid())
+  roomId String
+  /// random per browser tab
+  key    String
+  name   String
+  /// teammates' photo (set by the server from their account, never from the browser)
+  avatar String?
+  seenAt DateTime @default(now())
+  room   MeetRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, key])
+  @@index([roomId, seenAt])
 }

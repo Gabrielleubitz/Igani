@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { IganiMeet } from '@/components/meet/IganiMeet'
 import { currentUserOrNull } from '@/lib/auth'
+import { avatarPath } from '@/lib/avatar'
+import { meetScriptUrl } from '@/lib/meet'
 import { prisma } from '@/lib/prisma'
 
 export const metadata: Metadata = { title: { absolute: 'Igani Meet' }, robots: { index: false, follow: false } }
@@ -15,7 +17,7 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
   const { t } = await props.searchParams
   const token = typeof t === 'string' && t.length <= 100 ? t : null
   const [room, user] = await Promise.all([
-    prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, title: true, endedAt: true, hostId: true, host: { select: { name: true } } } }),
+    prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, title: true, endedAt: true, hostId: true, scheduledAt: true, durationMin: true, host: { select: { id: true, name: true, image: true } } } }),
     currentUserOrNull(),
   ])
   const invite = room && token ? await prisma.meetInvite.findFirst({ where: { token, roomId: room.id }, select: { name: true, email: true, userId: true } }) : null
@@ -29,7 +31,7 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
       />
     )
   }
-  const me = user ? await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, email: true } }) : null
+  const me = user ? await prisma.user.findUnique({ where: { id: user.id }, select: { id: true, name: true, email: true, image: true } }) : null
   const asTeammate = Boolean(me && (!invite || invite.userId === user!.id || invite.email === me.email?.toLowerCase()))
   return (
     <IganiMeet
@@ -41,6 +43,11 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
       email={asTeammate ? (me?.email ?? null) : (invite?.email ?? null)}
       nameEditable={!asTeammate}
       isHost={room.hostId === user?.id}
+      scriptUrl={meetScriptUrl()}
+      avatar={asTeammate && me ? avatarPath(me) : null}
+      hostAvatar={room.host ? avatarPath(room.host) : null}
+      startsAt={room.scheduledAt?.toISOString() ?? null}
+      durationMin={room.durationMin}
     />
   )
 }

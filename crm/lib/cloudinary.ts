@@ -54,3 +54,30 @@ export async function downloadContract(publicId: string): Promise<Uint8Array> {
   if (buf.byteLength > 20 * 1024 * 1024) throw new Error('The contract is too large.')
   return buf
 }
+
+/**
+ * Igani Meet recordings: Cloudinary fetches the file straight from 8x8's short-lived link (nothing passes through our
+ * server) and keeps it private ("authenticated"), so it can only be opened through a signed link the CRM hands to admins.
+ */
+export async function copyMeetRecording(sourceUrl: string, name: string): Promise<{ publicId: string; bytes: number }> {
+  if (!cloudinaryConfigured()) throw new Error('Cloudinary is not set up for the CRM.')
+  const res = await client().uploader.upload(sourceUrl, { resource_type: 'video', type: 'authenticated', folder: 'igani/meet', public_id: name, overwrite: true, timeout: 280_000 })
+  return { publicId: res.public_id, bytes: res.bytes }
+}
+
+/** A signed link to play (or, with download, save) a stored recording. */
+export function meetRecordingUrl(publicId: string, opts: { download?: string } = {}): string {
+  return client().url(publicId, {
+    resource_type: 'video',
+    type: 'authenticated',
+    sign_url: true,
+    secure: true,
+    format: 'mp4',
+    ...(opts.download ? { flags: `attachment:${opts.download.replace(/[^a-zA-Z0-9_-]+/g, '_').slice(0, 80) || 'igani-meet'}` } : {}),
+  })
+}
+
+export async function deleteMeetRecording(publicId: string): Promise<void> {
+  if (!cloudinaryConfigured()) return
+  await client().uploader.destroy(publicId, { resource_type: 'video', type: 'authenticated', invalidate: true })
+}
