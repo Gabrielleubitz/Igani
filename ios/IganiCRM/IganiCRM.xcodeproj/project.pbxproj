@@ -25,7 +25,10 @@
 		9F69DDD51CE891C30BCD013F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A0808D1539A54F0177473CB /* Assets.xcassets */; };
 		A15F5500AD6242CBEA201805 /* IganiMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AED7D151F6D1F06D1DD9E7 /* IganiMark.swift */; };
 		A865E362433AA2F8B8266648 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A53300417C06F0752FB2239 /* MessagesView.swift */; };
+		A9968F402EB4541879754B24 /* AdminScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3227A979AB1764CF5308A252 /* AdminScreens.swift */; };
 		AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A46A2AFA5181FA13B53711E /* CallScreen.swift */; };
+		ADE73497A600D23D81005708 /* MeetingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD255EAADE2743D3FD479B /* MeetingScreens.swift */; };
+		AFC8C55A2B1B5F44E1323E54 /* SalesScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE3EC42F06AD6C3B4DD96AB /* SalesScreens.swift */; };
 		B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508FFF27437A22EE664F4639 /* MoreView.swift */; };
 		B468571772913AD07DB6C968 /* Pieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7545C8F3138B87B3CC295E7E /* Pieces.swift */; };
 		B6EBB0C4CE28385959DF338E /* WrapUpSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF403E81F5FE24ABA583855A /* WrapUpSheet.swift */; };
@@ -41,9 +44,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		02DD255EAADE2743D3FD479B /* MeetingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingScreens.swift; sourceTree = "<group>"; };
 		177B9EF4A4BE958799D9DCA7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1BC87E63111A9D67CA81BF09 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		253AAC50CF65AE0D44D0DC8B /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		3227A979AB1764CF5308A252 /* AdminScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminScreens.swift; sourceTree = "<group>"; };
 		35005F07570C45CD38FD96E7 /* CallsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsView.swift; sourceTree = "<group>"; };
 		3C5E508DD140AA183506097D /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		508FFF27437A22EE664F4639 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
@@ -71,6 +76,7 @@
 		B67AA1A6DF8D2B5DF06A32D0 /* LeadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadDetailView.swift; sourceTree = "<group>"; };
 		C3ED34ECD1E29AC583984C9F /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		C886FB0077AACB35D5F5B797 /* API.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = API.swift; sourceTree = "<group>"; };
+		CAE3EC42F06AD6C3B4DD96AB /* SalesScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SalesScreens.swift; sourceTree = "<group>"; };
 		E61B2A7D8C4BFA63DDA05974 /* MeetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetView.swift; sourceTree = "<group>"; };
 		ED0EEE2B860342C9F0D81F00 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		F3B66F7004A02B060CBF3375 /* IganiCRM.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IganiCRM.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -103,11 +109,13 @@
 		1646BA30EFB5B3B1B7EFBCE1 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				FE82359C7A193500C54D4F40 /* Admin */,
 				AF8D5597BC1645732E3BA316 /* Calls */,
 				FE0868ED4C96511EF64B97E0 /* Leads */,
 				CF1F5F9F05ACBE529FAF8B8E /* Meet */,
 				BB66E1C04CAA6284E0A71082 /* More */,
 				B02C672F1EFFD55CD290A5C8 /* Phone */,
+				9E1F55D77AF75AFB5A3EBA50 /* Sales */,
 				D55A07299733631337F188B6 /* SignIn */,
 				DF22AA6313B099E4700D7B47 /* Tasks */,
 				EF1A87B6D5211E0A0ADB3A41 /* Today */,
@@ -157,6 +165,15 @@
 				06806D8E2309A3D49B9CC6EE /* UI */,
 			);
 			path = IganiCRM;
+			sourceTree = "<group>";
+		};
+		9E1F55D77AF75AFB5A3EBA50 /* Sales */ = {
+			isa = PBXGroup;
+			children = (
+				02DD255EAADE2743D3FD479B /* MeetingScreens.swift */,
+				CAE3EC42F06AD6C3B4DD96AB /* SalesScreens.swift */,
+			);
+			path = Sales;
 			sourceTree = "<group>";
 		};
 		AF8D5597BC1645732E3BA316 /* Calls */ = {
@@ -255,6 +272,14 @@
 			path = Leads;
 			sourceTree = "<group>";
 		};
+		FE82359C7A193500C54D4F40 /* Admin */ = {
+			isa = PBXGroup;
+			children = (
+				3227A979AB1764CF5308A252 /* AdminScreens.swift */,
+			);
+			path = Admin;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -333,6 +358,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				903553F55CDF9F2CA048171E /* API.swift in Sources */,
+				A9968F402EB4541879754B24 /* AdminScreens.swift in Sources */,
 				AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */,
 				612FD05791A039F05FF9FA4B /* CallsView.swift in Sources */,
 				0F5E97C818697F4EC33A30C5 /* Components.swift in Sources */,
@@ -343,6 +369,7 @@
 				E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */,
 				5B8E8FF6F84D160EB966BEE2 /* LeadsView.swift in Sources */,
 				3A605B987D820B3760D355DA /* MeetView.swift in Sources */,
+				ADE73497A600D23D81005708 /* MeetingScreens.swift in Sources */,
 				A865E362433AA2F8B8266648 /* MessagesView.swift in Sources */,
 				E046274C63F15212E6E7B5B3 /* Models.swift in Sources */,
 				B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */,
@@ -352,6 +379,7 @@
 				148CD474A078BDA83690A6B5 /* PhoneView.swift in Sources */,
 				B468571772913AD07DB6C968 /* Pieces.swift in Sources */,
 				D69AD20D3A30005B9D249046 /* Routes.swift in Sources */,
+				AFC8C55A2B1B5F44E1323E54 /* SalesScreens.swift in Sources */,
 				3DC1B48D9081FB9CAFAC7608 /* Session.swift in Sources */,
 				CA1C86D23CC5675E81222C62 /* SignInView.swift in Sources */,
 				C7765FEE97A3F182CA106FC3 /* TasksView.swift in Sources */,

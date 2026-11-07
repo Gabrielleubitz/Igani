@@ -328,7 +328,7 @@ struct RecentsPane: View {
             case .failed(let m): LoadFailed(message: m) { await load() }
             case .ready(let calls):
                 if calls.isEmpty {
-                    EmptyHint(icon: "phone", title: "No calls yet", message: "Calls you make or get on your Igani number show up here.")
+                    EmptyHint(icon: "phone", title: "No calls yet", message: "Calls you make or get on your Igani number show up here.").frame(maxHeight: .infinity, alignment: .top).padding(.top, 50)
                 } else {
                     List {
                         ForEach(calls) { c in

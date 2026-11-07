@@ -13,7 +13,7 @@ struct ThreadsPane: View {
             case .failed(let m): LoadFailed(message: m) { await load() }
             case .ready(let threads):
                 if threads.isEmpty {
-                    EmptyHint(icon: "message", title: "No texts yet", message: "Texts you send and get on your Igani number show up here.")
+                    EmptyHint(icon: "message", title: "No texts yet", message: "Texts you send and get on your Igani number show up here.").frame(maxHeight: .infinity, alignment: .top).padding(.top, 50)
                 } else {
                     List(threads) { t in
                         NavigationLink(value: CallRoute.thread(t.number, t.name)) { ThreadRow(thread: t) }
@@ -277,7 +277,7 @@ struct CallListsPane: View {
             case .failed(let m): LoadFailed(message: m) { await load() }
             case .ready(let lists):
                 if lists.isEmpty {
-                    EmptyHint(icon: "list.bullet.rectangle", title: "No call lists yet", message: "On the website, use Find businesses on the Leads page to put businesses on a call list.")
+                    EmptyHint(icon: "list.bullet.rectangle", title: "No call lists yet", message: "On the website, use Find businesses on the Leads page to put businesses on a call list.").frame(maxHeight: .infinity, alignment: .top).padding(.top, 50)
                 } else {
                     List(lists) { l in
                         NavigationLink(value: CallRoute.list(l.id, l.name)) {

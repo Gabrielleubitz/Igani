@@ -9,9 +9,14 @@ struct MeetView: View {
     @State private var starting = false
     @State private var code = ""
     @State private var path = NavigationPath()
+    /// shown inside another navigation stack (the More tab)
+    var embedded = false
 
     var body: some View {
-        NavigationStack(path: $path) {
+        if embedded { content } else { NavigationStack(path: $path) { content.routes() } }
+    }
+
+    private var content: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     hero
@@ -30,12 +35,10 @@ struct MeetView: View {
             .navigationTitle("Meet")
             .refreshable { await load() }
             .task { await load() }
-            .routes()
             .fullScreenCover(item: $call, onDismiss: { Task { await load() } }) { u in MeetCallScreen(url: u) }
             #if DEBUG
             .onAppear { if let c = UserDefaults.standard.string(forKey: "openCall"), call == nil { call = URL(string: c) } }
             #endif
-        }
     }
 
     private var hero: some View {
