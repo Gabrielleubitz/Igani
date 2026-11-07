@@ -8,10 +8,16 @@ vi.mock('@/lib/prisma', () => ({
     siteSetting: {
       create: async ({ data }: { data: { key: string; value: unknown } }) => (rows.has(data.key) ? Promise.reject(new Error('dup')) : void rows.set(data.key, { value: data.value, updatedAt: new Date() })),
       findUnique: async ({ where }: { where: { key: string } }) => (rows.has(where.key) ? { key: where.key, ...rows.get(where.key)! } : null),
-      deleteMany: async ({ where }: { where: { key: string | { startsWith: string }; updatedAt?: { lt: Date } } }) => {
+      findMany: async ({ where }: { where: { key: { startsWith: string } } }) => [...rows].filter(([k]) => k.startsWith(where.key.startsWith)).map(([key, v]) => ({ key, value: v.value })),
+      deleteMany: async ({ where }: { where: { key: string | { startsWith?: string; in?: string[] }; updatedAt?: { lt: Date } } }) => {
         let n = 0
         for (const [k, v] of [...rows]) {
-          const hit = typeof where.key === 'string' ? k === where.key : k.startsWith(where.key.startsWith) && (!where.updatedAt || v.updatedAt < where.updatedAt.lt)
+          const hit =
+            typeof where.key === 'string'
+              ? k === where.key
+              : where.key.in
+                ? where.key.in.includes(k)
+                : k.startsWith(where.key.startsWith ?? '') && (!where.updatedAt || v.updatedAt < where.updatedAt.lt)
           if (hit) (rows.delete(k), n++)
         }
         return { count: n }
@@ -20,7 +26,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-import { claimLink, createContractLink, readContractLink, restoreLink } from '@/lib/sales-contract'
+import { claimLink, createContractLink, listPendingLinks, pendingLinkFor, readContractLink, restoreLink } from '@/lib/sales-contract'
 import { DEFAULT_FIGURES, type LegalTerms } from '@/lib/sales-contract-core'
 
 const TERMS: LegalTerms = { companyLegalName: 'Test Person', companyTradingAs: 'Test Brand', companyIdNumber: '123456789', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street, Rep City', payoutDays: 10, clawbackDays: 60, noticeDays: 30, jurisdiction: 'Test Jurisdiction' }
@@ -54,5 +60,26 @@ describe('stored signing link', () => {
   })
   it('rejects malformed codes without touching the database', async () => {
     expect(await readContractLink('../../x')).toMatchObject({ ok: false, reason: 'invalid' })
+  })
+})
+
+describe('one open contract per person', () => {
+  beforeEach(() => rows.clear())
+  it('keeps every other person’s link when a new contract is sent', async () => {
+    const a = await createContractLink({ ...data, name: 'Ariel', email: 'ariel@x.co' }, admin)
+    const b = await createContractLink({ ...data, name: 'Bella', email: 'bella@x.co' }, admin)
+    expect((await listPendingLinks()).map((l) => l.email).sort()).toEqual(['ariel@x.co', 'bella@x.co'])
+    // a second contract to Ariel replaces only Ariel's earlier one
+    const a2 = await createContractLink({ ...data, name: 'Ariel', email: 'Ariel@X.co' }, admin)
+    const links = await listPendingLinks()
+    expect(links).toHaveLength(2)
+    expect(await readContractLink(a.url.split('/').pop()!)).toMatchObject({ ok: false })
+    expect(await readContractLink(b.url.split('/').pop()!)).toMatchObject({ ok: true })
+    expect(await readContractLink(a2.url.split('/').pop()!)).toMatchObject({ ok: true })
+  })
+  it('finds a person’s open link by email, ignoring case', async () => {
+    expect(await pendingLinkFor('nobody@x.co')).toBeNull()
+    const { url } = await createContractLink({ ...data, email: 'ariel@x.co' }, admin)
+    expect((await pendingLinkFor('ARIEL@x.co'))?.url).toBe(url)
   })
 })

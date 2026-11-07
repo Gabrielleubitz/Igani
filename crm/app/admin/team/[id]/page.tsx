@@ -16,7 +16,10 @@ import { tasksForUser } from '@/lib/tasks'
 import { STATUS_LABEL } from '@/lib/format'
 import { StraightLineChart } from '@/components/calls/StraightLineChart'
 import { TerminationForm } from '@/components/admin/TerminationForm'
+import { PersonContractForm } from '@/components/admin/PersonContractForm'
 import { CONTRACT_VERSION } from '@/lib/sales-contract-core'
+import { pendingLinkFor } from '@/lib/sales-contract'
+import { getSetting } from '@/lib/settings'
 import { WeekLineCard } from '@/components/calls/WeekLineCard'
 import { lessonLinksFor, loadRepWeek } from '@/lib/straight-line-week-data'
 
@@ -33,6 +36,16 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
   const agreements = await prisma.agreement.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true } })
   const signed = user.email ? await prisma.agreementAcceptance.findMany({ where: { email: user.email.toLowerCase() }, orderBy: { signedAt: 'desc' }, select: { id: true, version: true, signedAt: true } }) : []
   const endedOn = user.email ? (await prisma.allowedUser.findUnique({ where: { email: user.email }, select: { terminatedAt: true } }))?.terminatedAt ?? null : null
+  // The agreement maker lives here, per person: their pending link, the admins who can sign, and the saved company details
+  const agreementData =
+    user.role === 'SALES' && user.email
+      ? await Promise.all([
+          pendingLinkFor(user.email),
+          prisma.user.findMany({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, email: true, contractSigner: { select: { name: true, title: true, signature: true } } } }),
+          getSetting('contract.company'),
+          termsForAssignee(user.id),
+        ])
+      : null
   const [lineWeek, lessons] = await Promise.all([loadRepWeek(user.id).catch(() => null), lessonLinksFor(me)])
   const [stats, tasks, leads, meetings] = await Promise.all([
     loadRepStats(me).then((all) => all.find((r) => r.id === user.id) ?? null),
@@ -174,7 +187,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
         </Card>
       ) : null}
       {user.role === 'SALES' ? (
-        <Card>
+        <Card id="agreement" className="scroll-mt-6">
           <CardHeader>
             <CardTitle>Commission agreement</CardTitle>
           </CardHeader>
@@ -186,10 +199,25 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
               </p>
             ) : (
               <p className="text-amber-300">
-                {signed.length ? 'They signed an older version.' : 'No signed agreement on file.'} Send them the new one from <a className="underline" href="/admin/sales-contracts">Sales contracts</a>.
+                {signed.length ? 'They signed an older version.' : 'No signed agreement on file.'} Send them the new one below.
               </p>
             )}
             {signed.length > 1 ? <p className="text-xs text-muted-foreground">{signed.length} signed copies on file.</p> : null}
+            {agreementData ? (
+              <div className="border-t pt-3">
+                <p className="mb-3 font-medium">Send the agreement</p>
+                <PersonContractForm
+                  key={agreementData[0]?.code ?? 'none'}
+                  person={{ name: user.name ?? user.email ?? 'Salesperson', email: user.email ?? '' }}
+                  initialFigures={{ threshold: agreementData[3].threshold, basePercent: agreementData[3].baseRatePct, bonus: agreementData[3].bonusPerIncrement, increment: agreementData[3].incrementSize }}
+                  signers={agreementData[1].map((a) => ({ userId: a.id, name: a.contractSigner?.name || a.name || a.email || 'Admin', title: a.contractSigner?.title ?? '', signature: a.contractSigner?.signature ?? '' }))}
+                  meId={me.id}
+                  adminEmail={me.email}
+                  company={agreementData[2]}
+                  pending={agreementData[0] ? { url: agreementData[0].url, expiresAt: agreementData[0].expiresAt.toISOString() } : null}
+                />
+              </div>
+            ) : null}
             <div className="border-t pt-3">
               <p className="mb-2 font-medium">Agreement end date</p>
               <TerminationForm userId={user.id} endedOn={endedOn ? endedOn.toISOString().slice(0, 10) : null} />

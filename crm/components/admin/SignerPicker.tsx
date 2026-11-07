@@ -18,7 +18,7 @@ export interface SignerView {
 }
 
 /** Every admin who can sign for the company: pick who signs this contract, or edit anyone's signature. */
-export function SignerPicker({ signers, selected, onSelect, meId }: { signers: SignerView[]; selected: string; onSelect: (id: string) => void; meId: string }): React.ReactElement {
+export function SignerPicker({ signers, selected = '', onSelect, meId, selectable = true }: { signers: SignerView[]; selected?: string; onSelect?: (id: string) => void; meId: string; selectable?: boolean }): React.ReactElement {
   const router = useRouter()
   const [editing, setEditing] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -48,13 +48,13 @@ export function SignerPicker({ signers, selected, onSelect, meId }: { signers: S
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">Who signs for the company</p>
+      <p className="text-sm font-medium">{selectable ? 'Who signs for the company' : 'Signatures of the admins who sign for the company'}</p>
       <div className="divide-y rounded-lg border">
         {signers.map((s) => (
           <div key={s.userId} className="space-y-3 p-3">
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                <input type="radio" name="signer" checked={selected === s.userId} onChange={() => onSelect(s.userId)} disabled={!s.signature} />
+                {selectable ? <input type="radio" name="signer" checked={selected === s.userId} onChange={() => onSelect?.(s.userId)} disabled={!s.signature} /> : null}
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium">
                     {s.name}

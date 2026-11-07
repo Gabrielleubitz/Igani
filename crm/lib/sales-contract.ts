@@ -15,6 +15,8 @@ const asJson = (v: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(
  * Expired rows are purged here, whenever a new link is made.
  */
 export async function createContractLink(data: ContractData, admin: { name: string; email: string; signature: string }, now = new Date()): Promise<{ url: string; expiresAt: Date }> {
+  // One open contract per person: sending a new one to this person replaces only THEIR earlier unsigned link, never anyone else's
+  await deletePendingFor(data.email, now)
   await prisma.siteSetting.deleteMany({ where: { key: { startsWith: LINK_PREFIX }, updatedAt: { lt: new Date(now.getTime() - (LINK_HOURS + 1) * 3_600_000) } } })
   const code = newLinkCode()
   const exp = Math.floor(now.getTime() / 1000) + LINK_HOURS * 3600
@@ -22,6 +24,34 @@ export async function createContractLink(data: ContractData, admin: { name: stri
   await prisma.siteSetting.create({ data: { key: linkKey(code), value: asJson(record) } })
   const base = env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
   return { url: `${base}/sign/${code}`, expiresAt: new Date(exp * 1000) }
+}
+
+export const linkUrl = (code: string): string => `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/sign/${code}`
+
+export interface PendingLink { code: string; url: string; expiresAt: Date; email: string; name: string }
+
+/** Every unsigned, unexpired contract link, with who it is for. */
+export async function listPendingLinks(now = new Date()): Promise<PendingLink[]> {
+  const rows = await prisma.siteSetting.findMany({ where: { key: { startsWith: LINK_PREFIX } }, select: { key: true, value: true } })
+  const out: PendingLink[] = []
+  for (const row of rows) {
+    const code = row.key.slice(LINK_PREFIX.length)
+    if (!isLinkCode(code)) continue
+    const r = parseLink(code, row.value, now)
+    if (r.ok) out.push({ code, url: linkUrl(code), expiresAt: new Date(r.payload.exp * 1000), email: r.payload.data.email.trim().toLowerCase(), name: r.payload.data.name })
+  }
+  return out
+}
+
+export async function pendingLinkFor(email: string, now = new Date()): Promise<PendingLink | null> {
+  const mine = (await listPendingLinks(now)).filter((l) => l.email === email.trim().toLowerCase())
+  return mine.sort((a, b) => b.expiresAt.getTime() - a.expiresAt.getTime())[0] ?? null
+}
+
+/** Removes this person's unsigned links (so a new one replaces them). */
+export async function deletePendingFor(email: string, now = new Date()): Promise<void> {
+  const mine = (await listPendingLinks(now)).filter((l) => l.email === email.trim().toLowerCase())
+  if (mine.length) await prisma.siteSetting.deleteMany({ where: { key: { in: mine.map((l) => linkKey(l.code)) } } })
 }
 
 export type ReadResult = { ok: true; payload: LinkPayload } | { ok: false; reason: 'invalid' | 'expired' }
