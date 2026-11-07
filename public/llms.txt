@@ -10,6 +10,7 @@ IGANI starts with a website and adds the back end a business needs: a sales back
 - [Marketing back end](https://www.igani.co/marketing): answer every lead and know what works
 - [AI back end](https://www.igani.co/ai): AI notes, tasks and signed contracts
 - [All capabilities](https://www.igani.co/build): everything that can be added to a website
+- [Get off WordPress](https://www.igani.co/get-off-wordpress): the PHP2Shell news with linked articles, how long a move off WordPress takes, and what else Igani builds
 - [Don't be a dumb ass](https://www.igani.co/dumb-ass): the campaign page, on calling leads with context and never dropping a follow-up
 - [About IGANI](https://www.igani.co/about): the studio and its founders
 - [Frequently asked questions](https://www.igani.co/faq)

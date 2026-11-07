@@ -21,6 +21,7 @@ const nextConfig = {
         { source: '/ai', destination: '/site/ai.html' },
         { source: '/build', destination: '/site/build.html' },
         { source: '/dumb-ass', destination: '/site/dumb-ass.html' },
+        { source: '/get-off-wordpress', destination: '/site/get-off-wordpress.html' },
       ],
     }
   },
@@ -36,6 +37,7 @@ const nextConfig = {
       { source: '/ai.html', destination: '/ai', permanent: true },
       { source: '/build.html', destination: '/build', permanent: true },
       { source: '/dumb-ass.html', destination: '/dumb-ass', permanent: true },
+      { source: '/get-off-wordpress.html', destination: '/get-off-wordpress', permanent: true },
       // The real estate page now lives on its own site; old ad, search and funnels links follow it (query string kept)
       { source: '/realestate', destination: 'https://realestate.igani.co', permanent: true },
       // The generic funnel pages are retired (the real estate page stays); old ad and search links land on the home page.

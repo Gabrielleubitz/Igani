@@ -29,6 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/ai`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${SITE_URL}/build`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${SITE_URL}/dumb-ass`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${SITE_URL}/get-off-wordpress`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${SITE_URL}/faq`, lastModified: CHANGED.faq, changeFrequency: 'monthly', priority: 0.8 },
     ...founderPages,
     { url: `${SITE_URL}/privacy`, lastModified: CHANGED.legal, changeFrequency: 'yearly', priority: 0.3 },
