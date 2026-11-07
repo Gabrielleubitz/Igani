@@ -154,6 +154,7 @@
   const track = hero.parentElement && hero.parentElement.classList.contains('dh-track') ? hero.parentElement : null;
   const bar = hero.querySelector('[data-dh-bar]');
   const SCROLL_SCREENS = 1.6;   // how far you scroll while he turns, in screens
+  const HOLD_SCREENS = 0.25;    // a short pause at the end, so the buttons show before the hero scrolls away
   let scrubbing = false;
   let done = false;
 
@@ -163,13 +164,13 @@
     const stick = header ? Math.round(header.getBoundingClientRect().height) : 0;
     hero.style.setProperty('--dh-stick', stick + 'px');
     const heroH = window.innerHeight - stick;
-    track.style.height = Math.round(heroH + window.innerHeight * SCROLL_SCREENS) + 'px';
+    track.style.height = Math.round(heroH + window.innerHeight * (SCROLL_SCREENS + HOLD_SCREENS)) + 'px';
   }
 
   function progress() {
     const stick = parseFloat(hero.style.getPropertyValue('--dh-stick')) || 0;
     const r = track.getBoundingClientRect();
-    const span = r.height - hero.offsetHeight;
+    const span = r.height - hero.offsetHeight - window.innerHeight * HOLD_SCREENS;
     return span > 0 ? Math.min(1, Math.max(0, (stick - r.top) / span)) : 0;
   }
 

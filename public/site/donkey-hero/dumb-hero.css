@@ -186,3 +186,21 @@
   .dh--scrub .dh-copy__lede { margin-top: 0.9em; }
 }
 @media (prefers-reduced-motion: reduce) { .dh-cue__arrow { animation: none; } }
+
+/* Scroll mode: "Dumb" and "Ass" on two lines, both big. Sizes follow the screen height so everything, buttons included, fits. */
+.dh--scrub .dh-copy__w { display: block; }
+.dh--scrub .dh-copy__mark { font-size: min(34cqi, 10.5svh); line-height: 0.92; margin-top: 0.08em; }
+@media (max-width: 820px), (max-width: 1024px) and (orientation: portrait) {
+  .dh--scrub .dh-donkey { height: clamp(180px, 32svh, 560px); }
+  .dh--scrub .dh-copy__lede { font-size: 15px; line-height: 1.45; }
+}
+@media (min-height: 800px) {
+  .dh--scrub .dh-copy__mark { font-size: min(34cqi, 13svh); }
+}
+@media (min-height: 800px) and (max-width: 820px), (min-height: 800px) and (max-width: 1024px) and (orientation: portrait) {
+  .dh--scrub .dh-donkey { height: clamp(220px, 38svh, 560px); }
+}
+/* Very short screens: drop the paragraph so the headline and buttons still fit */
+@media (max-height: 640px) {
+  .dh--scrub .dh-copy__lede { display: none; }
+}
