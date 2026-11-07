@@ -3,21 +3,25 @@
 import { Check, Copy } from 'lucide-react'
 import { useMemo, useState, useTransition } from 'react'
 import { generateContractLink } from '@/app/actions/sales-contracts'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { SignerPicker, type SignerView } from '@/components/admin/SignerPicker'
 import { AGREEMENT_CSS, CHOSEN_TERMS, DEFAULT_FIGURES, agreementHtml, basePayout, validate, type Figures, type LegalTerms } from '@/lib/sales-contract-core'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
-export function SalesContractForm({ adminName, adminEmail, signature }: { adminName: string; adminEmail: string; signature: string }): React.ReactElement {
+export function SalesContractForm({ signers, meId, adminEmail }: { signers: SignerView[]; meId: string; adminEmail: string }): React.ReactElement {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [date, setDate] = useState(today())
   const [f, setF] = useState<Figures>(DEFAULT_FIGURES)
   const [t, setT] = useState<LegalTerms>(CHOSEN_TERMS)
-  const sig = signature
+  const firstReady = signers.find((x) => x.userId === meId && x.signature) ?? signers.find((x) => x.signature)
+  const [signerId, setSignerId] = useState(firstReady?.userId ?? '')
+  const signer = signers.find((x) => x.userId === signerId)
+  const sig = signer?.signature ?? ''
+  const adminName = signer ? (signer.title ? `${signer.name}, ${signer.title}` : signer.name) : ''
   const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -67,10 +71,10 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
 
   function generate(): void {
     setError(null)
-    const err = validate(data) ?? (sig ? null : 'Save the Igani signature in Settings first.')
+    const err = validate(data) ?? (sig ? null : 'Pick who signs for the company. They need a saved signature: click Edit signature.')
     if (err) return setError(err)
     start(async () => {
-      const res = await generateContractLink(data)
+      const res = await generateContractLink(data, signerId)
       if (res.ok) setLink({ url: res.url, expiresAt: res.expiresAt })
       else setError(res.error)
     })
@@ -119,7 +123,7 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
             {days('clawbackDays', 'Clawback window', 'days')}
             {days('noticeDays', 'Termination notice', 'days')}
           </div>
-          {sig ? <p className="text-sm text-muted-foreground">Igani signs as <b>{adminName}</b> using the signature saved in Settings.</p> : <p className="text-sm text-amber-500">No Igani signature saved yet. <Link className="underline" href="/admin/settings">Save it in Settings → Contract signer</Link> first.</p>}
+          <SignerPicker signers={signers} selected={signerId} onSelect={(id) => (setLink(null), setSignerId(id))} meId={meId} />
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
           <Button onClick={generate} disabled={pending}>
             {pending ? 'Generating…' : 'Sign and generate link'}

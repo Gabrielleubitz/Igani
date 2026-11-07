@@ -92,18 +92,19 @@ model AllowedUser {
 // ─── NextAuth (Prisma adapter) ───────────────────────────────────────────────
 
 model User {
-  id                 String    @id @default(cuid())
+  contractSigner     ContractSigner?
+  id                 String          @id @default(cuid())
   name               String?
-  email              String?   @unique
+  email              String?         @unique
   emailVerified      DateTime?
   image              String?
   role               Role?
   /// IANA zone for working hours, e.g. "Asia/Jerusalem"
-  timeZone           String    @default("UTC")
+  timeZone           String          @default("UTC")
   /// Round-robin cursor: rep with the oldest value gets the next lead
   lastLeadAssignedAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
   accounts        Account[]
   sessions        Session[]
@@ -940,4 +941,15 @@ model AgreementAcceptance {
   createdAt  DateTime @default(now())
 
   @@index([email, signedAt])
+}
+
+/// An admin's signature for commission agreements (one per admin). Any admin can pick which of them signs a contract.
+model ContractSigner {
+  userId    String   @id
+  name      String
+  title     String   @default("")
+  /// PNG data URL of the drawn signature
+  signature String
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
