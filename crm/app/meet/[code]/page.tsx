@@ -5,7 +5,7 @@ import { avatarPath } from '@/lib/avatar'
 import { meetScriptUrl } from '@/lib/meet'
 import { prisma } from '@/lib/prisma'
 
-export const metadata: Metadata = { title: { absolute: 'Igani Meet' }, robots: { index: false, follow: false } }
+export const metadata: Metadata = { robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
 
 /**
@@ -48,6 +48,8 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
       hostAvatar={room.host ? avatarPath(room.host) : null}
       startsAt={room.scheduledAt?.toISOString() ?? null}
       durationMin={room.durationMin}
+      roomId={user?.role === 'ADMIN' ? room.id : null}
+      isAdmin={user?.role === 'ADMIN'}
     />
   )
 }

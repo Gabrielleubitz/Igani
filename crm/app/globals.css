@@ -136,3 +136,25 @@ html.theme-switching *, html.theme-switching *::before, html.theme-switching *::
 .meet-pop {
   animation: meet-pop 0.18s ease-out;
 }
+
+/* Igani Meet: reactions float up from the bottom of the call */
+@keyframes meet-fly {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-62vh) translateX(16px);
+  }
+}
+.meet-fly {
+  animation: meet-fly 4s ease-out forwards;
+}

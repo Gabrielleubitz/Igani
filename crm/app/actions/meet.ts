@@ -13,7 +13,7 @@ import { prisma } from '@/lib/prisma'
 import { zonedInputToDate } from '@/lib/time'
 import { toActionError, type ActionResult } from './result'
 
-const PAGE = '/admin/tests'
+const PAGE = '/meet'
 
 const RoomInput = z.object({
   title: z.string().trim().min(1, 'Give the call a name').max(120),

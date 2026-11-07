@@ -1,10 +1,9 @@
 'use client'
 
-import { Bell, BellOff, CalendarClock, Check, ChevronDown, CircleDot, Hand, LayoutGrid, Loader2, LogOut, MessageSquare, Mic, MicOff, MonitorUp, PhoneOff, RotateCcw, Settings2, Sparkles, Video, VideoOff, Volume2, X } from 'lucide-react'
-import Image from 'next/image'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Bell, BellOff, CalendarClock, Check, ChevronDown, CircleDot, Copy, EllipsisVertical, Hand, Info, LayoutGrid, Loader2, LogOut, Maximize, MessageSquare, Mic, MicOff, Minimize, MonitorUp, PhoneOff, Pin, RotateCcw, Send, Settings2, ShieldCheck, Smile, Sparkles, UserX, Users, Video, VideoOff, Volume2, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
-import { joinMeet } from '@/app/actions/meet'
+import { addMeetInvites, joinMeet } from '@/app/actions/meet'
 import type { MeetConfig } from '@/lib/meet'
 import { isStaleDeployError, markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
@@ -23,6 +22,7 @@ interface DeviceLists {
 interface JitsiApi {
   executeCommand(name: string, ...args: unknown[]): void
   addListener(event: string, fn: (e: never) => void): void
+  removeListener?(event: string, fn: (e: never) => void): void
   getParticipantsInfo?(): { participantId: string; displayName?: string; formattedDisplayName?: string; avatarURL?: string }[]
   getAvailableDevices(): Promise<DeviceLists>
   getCurrentDevices(): Promise<{ audioInput?: DeviceInfo; audioOutput?: DeviceInfo; videoInput?: DeviceInfo }>
@@ -71,8 +71,7 @@ function report(code: string, token: string | null, kind: string, data: Record<s
   }
 }
 
-const BG = '#060a14'
-const GRAD = 'bg-gradient-to-br from-[#6aa6ff] to-[#2f5fd0]'
+const BG = '#0e1626'
 
 /* Remembered between calls on this device: name (guests), mic/camera on or off, and chosen devices. */
 interface Prefs {
@@ -209,6 +208,9 @@ export interface IganiMeetProps {
   hostAvatar: string | null
   startsAt: string | null
   durationMin: number
+  /** admins: the room (to add people from inside the call) and a way back to Igani Meet's home */
+  roomId: string | null
+  isAdmin: boolean
 }
 
 type Phase = 'prejoin' | 'joining' | 'reconnecting' | 'live' | 'left' | 'ended' | 'error'
@@ -221,6 +223,7 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
   const [picked, setPicked] = useState<Picked>({ mic: true, cam: true, micId: '', camId: '', spkId: '', blur: 'none', devices: NO_DEVICES })
   const [session, setSession] = useState<{ api: JitsiApi; testServer: boolean; moderator: boolean; canRecord: boolean; name: string; avatar: string | null } | null>(null)
   const [slot, setSlot] = useState<HTMLDivElement | null>(null)
+  const [sideSlot, setSideSlot] = useState<HTMLDivElement | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const api = useRef<JitsiApi | null>(null)
   /** automatic rejoins in a row (reset once a call connects) and when the current join started */
@@ -296,20 +299,30 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
 
   useEffect(() => () => api.current?.dispose(), [])
 
+  const home = p.isAdmin ? { label: 'Return to home screen', href: '/meet' } : undefined
   return (
     <div className="dark fixed inset-0 flex flex-col overflow-hidden text-white" style={{ background: BG }}>
-      <Glow />
       {phase === 'prejoin' || phase === 'joining' ? <PreJoin {...p} name={name} setName={setName} picked={picked} setPicked={setPicked} joining={phase === 'joining'} onJoin={() => void join()} /> : null}
-      {phase === 'error' ? <Notice title="We couldn’t connect you" body={error ?? 'Something went wrong.'} action={{ label: 'Try again', onClick: () => setPhase('prejoin') }} /> : null}
-      {phase === 'left' ? <Notice title="You left the call" body={`Thanks for joining ${p.title}.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} /> : null}
+      {phase === 'error' ? <Notice title="We couldn’t connect you" body={error ?? 'Something went wrong.'} action={{ label: 'Try again', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
+      {phase === 'left' ? <Notice title="You left the meeting" body={p.title} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
       {phase === 'reconnecting' ? <Notice title="Reconnecting…" body="The connection dropped for a moment. Getting you back into the call." spinner /> : null}
-      {phase === 'ended' ? <Notice title="The call has ended" body={`${p.title} is over. Thanks for joining.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} /> : null}
-      {/* the call itself stays mounted while live */}
+      {phase === 'ended' ? <Notice title="The meeting has ended" body={`${p.title} is over. Thanks for joining.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
+      {/* the call itself stays mounted while live: stage (+ side panel) above Igani's bottom bar */}
       <div className={cn('relative flex min-h-0 flex-1 flex-col', phase !== 'live' && 'hidden')}>
+        <div className="flex min-h-0 flex-1 gap-3 px-3 pt-3 sm:px-4 sm:pt-4">
+          <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl bg-[#0b1220]">
+            <div ref={stage} className="absolute inset-0" />
+            <div ref={setSlot} className="pointer-events-none absolute inset-0" />
+          </div>
+          <div ref={setSideSlot} className="empty:hidden max-md:fixed max-md:inset-0 max-md:z-40 md:w-[360px] md:shrink-0" />
+        </div>
         {phase === 'live' && session ? (
           <Live
             api={session.api}
             slot={slot}
+            sideSlot={sideSlot}
+            code={p.code}
+            roomId={p.roomId}
             title={p.title}
             testServer={session.testServer}
             moderator={session.moderator}
@@ -345,33 +358,29 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
             log={log}
           />
         ) : null}
-        <div className="relative mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-2xl bg-[#0a1020] ring-1 ring-white/10 sm:mx-4">
-          <div ref={stage} className="absolute inset-0" />
-          <div ref={setSlot} className="pointer-events-none absolute inset-0" />
-        </div>
       </div>
     </div>
   )
 }
 
-function Glow(): React.ReactElement {
-  return <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(59,120,219,0.18),transparent_70%)]" />
-}
 
 function Brand({ small = false }: { small?: boolean }): React.ReactElement {
   return (
-    <span className="flex items-center gap-2">
-      <Image src="/igani-logo.png" alt="Igani" width={small ? 57 : 71} height={small ? 24 : 30} priority style={{ height: small ? 24 : 30, width: 'auto' }} />
-      <span className={cn('rounded-md px-1.5 py-0.5 font-semibold uppercase tracking-wider text-white shadow-lg shadow-[#3b78db]/30', GRAD, small ? 'text-[10px]' : 'text-[11px]')}>Meet</span>
+    <span className="flex items-center gap-2.5">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static brand icon */}
+      <img src="/meet/igani-meet-icon.png" alt="" className={cn('rounded-[24%] shadow-lg shadow-black/30', small ? 'h-7 w-7' : 'h-9 w-9')} />
+      <span className={cn('tracking-tight', small ? 'text-lg' : 'text-[22px]')}>
+        <span className="text-[#e3e8f0]">Igani</span> <span className="text-[#8cc4f5]">Meet</span>
+      </span>
     </span>
   )
 }
 
-function DeviceSelect({ icon, label, list, value, onChange }: { icon: React.ReactElement; label: string; list: DeviceInfo[]; value: string; onChange: (id: string) => void }): React.ReactElement | null {
+function DeviceSelect({ icon, label, list, value, onChange, className }: { icon: React.ReactElement; label: string; list: DeviceInfo[]; value: string; onChange: (id: string) => void; className?: string }): React.ReactElement | null {
   if (!list.length) return null
   const current = list.some((d) => d.deviceId === value) ? value : (list[0]?.deviceId ?? '')
   return (
-    <label className="relative flex h-10 min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 pl-3 pr-8 text-sm text-white/80 transition focus-within:border-[#6aa6ff]/60 hover:bg-white/[0.07] [&>svg:first-child]:h-4 [&>svg:first-child]:w-4 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-white/50">
+    <label className={cn('relative flex h-10 min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 pl-3 pr-8 text-sm text-white/80 transition focus-within:border-[#6aa6ff]/60 hover:bg-white/[0.07] [&>svg:first-child]:h-4 [&>svg:first-child]:w-4 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-white/50', className)}>
       {icon}
       <span className="sr-only">{label}</span>
       <select value={current} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 cursor-pointer appearance-none truncate bg-transparent outline-none [&>option]:bg-[#0c1322]">
@@ -503,37 +512,6 @@ function useSchedule(startsAt: string | null, durationMin: number): { when: stri
   return { when, rel, soon: mins <= 10 && -mins <= durationMin }
 }
 
-/** A Meet-style control: the round on/off button with its device picker attached. */
-function DevicePill({ on, onToggle, icon, offIcon, label, list, value, onPick, buttonRef, toggleLabel }: { on: boolean; onToggle: () => void; icon: React.ReactElement; offIcon: React.ReactElement; label: string; list: DeviceInfo[]; value: string; onPick: (id: string) => void; buttonRef?: React.Ref<HTMLButtonElement>; toggleLabel: string }): React.ReactElement {
-  const current = list.find((d) => d.deviceId === value) ?? list[0]
-  return (
-    <div className={cn('flex h-12 items-center rounded-full ring-1 backdrop-blur-md transition', on ? 'bg-white/10 ring-white/15' : 'bg-rose-500/20 ring-rose-300/30')}>
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={onToggle}
-        aria-label={toggleLabel}
-        title={toggleLabel}
-        className={cn('flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-[background-color,box-shadow] duration-100 active:scale-95 [&_svg]:h-5 [&_svg]:w-5', on ? 'hover:bg-white/10' : 'bg-rose-500 hover:bg-rose-400')}
-      >
-        {on ? icon : offIcon}
-      </button>
-      {list.length ? (
-        <label className="relative flex h-12 cursor-pointer items-center gap-1 pl-1 pr-3 text-xs text-white/75 hover:text-white" title={`${label}: ${current?.label || 'default'}`}>
-          <span className="hidden max-w-[120px] truncate sm:inline">{current?.label?.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)$/i, '') || label}</span>
-          <ChevronDown className="h-4 w-4" />
-          <select value={current?.deviceId ?? ''} onChange={(e) => onPick(e.target.value)} aria-label={`Choose ${label.toLowerCase()}`} className="absolute inset-0 cursor-pointer opacity-0">
-            {list.map((d, i) => (
-              <option key={d.deviceId || i} value={d.deviceId}>
-                {d.label || `${label} ${i + 1}`}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : null}
-    </div>
-  )
-}
 
 function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => void; picked: Picked; setPicked: React.Dispatch<React.SetStateAction<Picked>>; joining: boolean; onJoin: () => void }): React.ReactElement {
   const video = useRef<HTMLVideoElement>(null)
@@ -620,129 +598,128 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
   const showVideo = cam && perm === 'ok'
   const here = (inCall ?? []).map((x, i) => ({ id: `${i}-${x.name}`, name: x.name, avatar: x.avatar }))
   const first = inCall != null && here.length === 0
+  const devicePill = 'h-9 rounded-full border-white/15 bg-transparent text-[13px] hover:bg-white/[0.06] [&_select]:cursor-pointer'
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="flex items-center justify-between gap-4 px-5 py-4 sm:px-8">
+      <header className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
         <Brand />
-        {here.length ? (
-          <div className="flex items-center gap-3">
-            <span className="hidden text-xs text-white/60 sm:inline">In the call</span>
-            <PeopleRings people={here} />
+        {!p.nameEditable && p.name ? (
+          <div className="flex items-center gap-3 text-right text-sm">
+            <span className="hidden sm:block">
+              <span className="block text-[#e3e8f0]">{p.name}</span>
+              {p.email ? <span className="block text-xs text-[#9aa4b2]">{p.email}</span> : null}
+            </span>
+            <Avatar name={p.name} src={p.avatar} className="h-9 w-9 text-xs" />
           </div>
         ) : null}
       </header>
-      <main className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-6 px-4 pb-8 sm:px-8 lg:grid-cols-[1.5fr_1fr] lg:gap-10">
-        <div className="min-w-0">
-          <div className="relative aspect-video w-full overflow-hidden rounded-[28px] bg-[#0c1322] shadow-2xl shadow-black/50 ring-1 ring-white/10">
+      <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col items-center justify-center gap-8 px-4 pb-10 lg:flex-row lg:gap-14">
+        <div className="w-full min-w-0 max-w-[740px] flex-[1.6]">
+          <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-[#202124] shadow-2xl shadow-black/40">
             <video ref={video} autoPlay playsInline muted className={cn('h-full w-full -scale-x-100 object-cover transition-opacity duration-500', showVideo ? 'opacity-100' : 'opacity-0')} />
             {!showVideo ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[radial-gradient(circle_at_50%_40%,rgba(59,120,219,0.16),transparent_60%)] text-center">
-                <span className="rounded-full bg-gradient-to-br from-[#6aa6ff] to-[#2f5fd0] p-[3px] shadow-2xl shadow-[#3b78db]/30">
-                  <span className="block rounded-full ring-4 ring-[#0c1322]">
-                    <Avatar name={p.name || '?'} src={p.avatar} className="h-24 w-24 text-3xl" />
-                  </span>
-                </span>
-                <p className="max-w-xs px-4 text-sm text-white/60">{!cam ? 'Your camera is off' : perm === 'asking' ? 'Starting your camera…' : perm === 'denied' ? 'Camera and microphone are blocked. Click the camera icon in your browser’s address bar to allow them, or join with them off.' : 'No camera found. You can still join with sound.'}</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
+                <Avatar name={p.name || '?'} src={p.avatar} className="h-28 w-28 text-4xl" />
+                <p className="max-w-sm px-6 text-[15px] text-[#e3e8f0]">{!cam ? 'Camera is off' : perm === 'asking' ? 'Camera is starting' : perm === 'denied' ? 'Allow camera and microphone in your browser’s address bar to be seen and heard, or join with them off.' : 'No camera found. You can still join with sound.'}</p>
               </div>
             ) : null}
-            <span className="absolute left-4 top-4 rounded-full bg-black/45 px-3 py-1 text-xs font-medium text-white/90 ring-1 ring-white/10 backdrop-blur-md">{p.name.trim() || 'You'}</span>
+            <span className="absolute left-4 top-3 text-[15px] font-medium text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">{p.name.trim() || 'You'}</span>
             {picked.blur !== 'none' ? (
-              <span className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-black/45 px-2.5 py-1 text-[11px] text-white/80 ring-1 ring-white/10 backdrop-blur-md">
-                <Sparkles className="h-3 w-3" /> Blur on when you join
+              <span className="absolute right-4 top-3 flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] text-white/90">
+                <Sparkles className="h-3 w-3" /> Background blur on
               </span>
             ) : null}
-            <div className="absolute inset-x-0 bottom-0 flex flex-wrap items-center justify-center gap-2 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-4 pt-10 sm:gap-3">
-              <DevicePill on={mic} onToggle={() => set({ mic: !mic })} icon={<Mic />} offIcon={<MicOff />} toggleLabel={mic ? 'Mute microphone' : 'Unmute microphone'} label="Microphone" list={picked.devices.audioInput} value={micId} onPick={(id) => set({ micId: id })} buttonRef={micButton} />
-              <DevicePill on={cam} onToggle={() => set({ cam: !cam })} icon={<Video />} offIcon={<VideoOff />} toggleLabel={cam ? 'Turn camera off' : 'Turn camera on'} label="Camera" list={picked.devices.videoInput} value={camId} onPick={(id) => set({ camId: id })} />
+            <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-4 bg-gradient-to-t from-black/55 to-transparent pb-4 pt-12">
               <button
+                ref={micButton}
                 type="button"
-                onClick={() => set({ blur: picked.blur === 'none' ? 'blur' : 'none' })}
-                aria-pressed={picked.blur !== 'none'}
-                title={picked.blur === 'none' ? 'Blur my background' : 'Don’t blur my background'}
-                aria-label="Blur my background"
-                className={cn('flex h-12 w-12 items-center justify-center rounded-full ring-1 backdrop-blur-md transition active:scale-95 [&_svg]:h-5 [&_svg]:w-5', picked.blur !== 'none' ? 'bg-[#3b78db] ring-[#6aa6ff]/50' : 'bg-white/10 ring-white/15 hover:bg-white/15')}
+                onClick={() => set({ mic: !mic })}
+                aria-label={mic ? 'Turn off microphone' : 'Turn on microphone'}
+                title={mic ? 'Turn off microphone' : 'Turn on microphone'}
+                className={cn('flex h-14 w-14 items-center justify-center rounded-full transition-[background-color,box-shadow] duration-100 active:scale-95 [&_svg]:h-6 [&_svg]:w-6', mic ? 'border border-white/80 text-white hover:bg-white/15' : 'bg-[#ea4335] text-white hover:bg-[#d93a2d]')}
               >
-                <Sparkles />
+                {mic ? <Mic /> : <MicOff />}
+              </button>
+              <button type="button" onClick={() => set({ cam: !cam })} aria-label={cam ? 'Turn off camera' : 'Turn on camera'} title={cam ? 'Turn off camera' : 'Turn on camera'} className={cn('flex h-14 w-14 items-center justify-center rounded-full transition active:scale-95 [&_svg]:h-6 [&_svg]:w-6', cam ? 'border border-white/80 text-white hover:bg-white/15' : 'bg-[#ea4335] text-white hover:bg-[#d93a2d]')}>
+                {cam ? <Video /> : <VideoOff />}
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => set({ blur: picked.blur === 'none' ? 'blur' : 'none' })}
+              aria-pressed={picked.blur !== 'none'}
+              title={picked.blur === 'none' ? 'Blur my background' : 'Don’t blur my background'}
+              aria-label="Blur my background"
+              className={cn('absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full transition active:scale-95 [&_svg]:h-5 [&_svg]:w-5', picked.blur !== 'none' ? 'bg-[#a8c7fa] text-[#062e6f]' : 'bg-black/40 text-white hover:bg-black/60')}
+            >
+              <Sparkles />
+            </button>
           </div>
-          <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-white/50">
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <DeviceSelect icon={<Mic />} label="Microphone" list={picked.devices.audioInput} value={micId} onChange={(id) => set({ micId: id })} className={devicePill} />
+            {canPickSpeaker ? <DeviceSelect icon={<Volume2 />} label="Speakers" list={picked.devices.audioOutput} value={picked.spkId} onChange={(id) => set({ spkId: id })} className={devicePill} /> : null}
+            <DeviceSelect icon={<Video />} label="Camera" list={picked.devices.videoInput} value={camId} onChange={(id) => set({ camId: id })} className={devicePill} />
+          </div>
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[#9aa4b2]">
             <Check2 ok={perm === 'ok' && mic} label={mic ? (perm === 'ok' ? 'Microphone works' : 'Microphone') : 'Microphone off'} />
             <Check2 ok={perm === 'ok' && cam} label={cam ? (perm === 'ok' ? 'Camera works' : 'Camera') : 'Camera off'} />
-            <span className="flex items-center gap-1.5">
-              <button type="button" onClick={testSpeaker} className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-white/70 ring-1 ring-white/10 transition hover:bg-white/10 hover:text-white">
-                <Volume2 className={cn('h-3.5 w-3.5', testing && 'animate-pulse text-emerald-300')} /> {testing ? 'Playing…' : 'Test speaker'}
-              </button>
-              {canPickSpeaker && picked.devices.audioOutput.length > 1 ? (
-                <select value={picked.spkId || picked.devices.audioOutput[0]?.deviceId} onChange={(e) => set({ spkId: e.target.value })} aria-label="Choose speaker" className="max-w-[160px] cursor-pointer truncate rounded-full bg-transparent px-2 py-1 text-white/70 outline-none ring-1 ring-white/10 hover:bg-white/10 [&>option]:bg-[#0c1322]">
-                  {picked.devices.audioOutput.map((d, i) => (
-                    <option key={d.deviceId || i} value={d.deviceId}>
-                      {d.label || `Speaker ${i + 1}`}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-            </span>
+            <button type="button" onClick={testSpeaker} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[#a8c7fa] transition hover:bg-[#a8c7fa]/10">
+              <Volume2 className={cn('h-3.5 w-3.5', testing && 'animate-pulse')} /> {testing ? 'Playing…' : 'Test speakers'}
+            </button>
           </div>
         </div>
 
-        <div className="rounded-[28px] bg-white/[0.035] p-6 shadow-2xl shadow-black/30 ring-1 ring-white/10 backdrop-blur-xl sm:p-8">
-          <div className="flex items-center gap-2.5">
-            {p.hostName ? <Avatar name={p.hostName} src={p.hostAvatar} className="h-7 w-7 text-[10px] ring-2 ring-[#6aa6ff]/40" /> : null}
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7fb0ff]">{p.hostName ? `${p.hostName} invited you` : p.isHost ? 'You’re the host' : 'Ready to join?'}</p>
-          </div>
-          <h1 className="mt-3 text-[28px] font-semibold leading-tight tracking-tight sm:text-3xl">{p.title}</h1>
+        <div className="flex w-full max-w-[380px] flex-1 flex-col items-center text-center">
+          <h1 className="text-[34px] font-normal leading-tight tracking-tight text-[#e3e8f0]">{p.nameEditable && !p.name.trim() ? 'What’s your name?' : 'Ready to join?'}</h1>
+          <p className="mt-2 text-[15px] text-[#9aa4b2]">{p.title}</p>
           {schedule ? (
-            <p className="mt-3 flex flex-wrap items-center gap-2 text-sm text-white/70">
-              <CalendarClock className="h-4 w-4 text-white/50" /> {schedule.when}
-              {schedule.rel ? <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium ring-1', schedule.soon ? 'bg-emerald-500/15 text-emerald-200 ring-emerald-400/30' : 'bg-white/5 text-white/70 ring-white/10')}>{schedule.rel}</span> : null}
+            <p className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm text-[#c4cbd6]">
+              <CalendarClock className="h-4 w-4 text-[#9aa4b2]" /> {schedule.when}
+              {schedule.rel ? <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-medium', schedule.soon ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/5 text-[#c4cbd6]')}>{schedule.rel}</span> : null}
             </p>
           ) : null}
-
-          <div className="mt-5 flex min-h-[52px] items-center gap-3 rounded-2xl bg-white/[0.04] px-4 py-3 ring-1 ring-white/[0.07]">
+          <div className="mt-5 flex min-h-[44px] flex-col items-center justify-center gap-2">
             {inCall == null ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin text-white/40" />
-                <span className="text-sm text-white/50">Checking who’s here…</span>
-              </>
+              <span className="flex items-center gap-2 text-sm text-[#9aa4b2]">
+                <Loader2 className="h-4 w-4 animate-spin" /> Checking who’s here…
+              </span>
             ) : here.length ? (
               <>
-                <PeopleRings people={here} max={3} size="sm" />
-                <span className="text-sm text-white/80">
-                  <span className="font-medium text-white">{listNames(here.map((x) => x.name.split(' ')[0]!))}</span> {here.length === 1 ? 'is' : 'are'} in the call
-                </span>
-                <span className="relative ml-auto flex h-2.5 w-2.5">
-                  <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400/60" />
-                  <span className="relative h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                <PeopleRings people={here} max={4} size="sm" />
+                <span className="text-sm text-[#c4cbd6]">
+                  {listNames(here.map((x) => x.name.split(' ')[0]!))} {here.length === 1 ? 'is' : 'are'} in this call
                 </span>
               </>
             ) : (
-              <span className="text-sm text-white/60">No one’s here yet. You’ll be the first.</span>
+              <span className="text-sm text-[#c4cbd6]">{p.hostName && !p.isHost ? `${p.hostName.split(' ')[0]} hasn’t joined yet` : 'No one else is here'}</span>
             )}
           </div>
-
-          <label className="mt-5 block">
-            <span className="text-xs text-white/60">Your name</span>
+          {p.nameEditable ? (
             <input
               value={p.name}
               onChange={(e) => p.setName(e.target.value)}
-              readOnly={!p.nameEditable}
               maxLength={60}
-              placeholder="Type your name"
-              className={cn('mt-1.5 h-12 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-[15px] outline-none transition placeholder:text-white/30 focus:border-[#6aa6ff]/60 focus:ring-2 focus:ring-[#6aa6ff]/30', !p.nameEditable && 'text-white/70')}
+              placeholder="Your name"
+              aria-label="Your name"
+              className="mt-5 h-14 w-full max-w-[320px] rounded-md border border-[#8e918f] bg-transparent px-4 text-base text-[#e3e8f0] outline-none transition placeholder:text-[#9aa4b2] focus:border-2 focus:border-[#a8c7fa] focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-          </label>
+          ) : null}
           <button
             type="button"
             disabled={joining || !p.name.trim()}
             onClick={onJoin}
-            className={cn('group mt-4 flex h-[52px] w-full items-center justify-center gap-2 rounded-xl text-[15px] font-semibold shadow-lg shadow-[#3b78db]/35 transition hover:shadow-[#3b78db]/55 hover:brightness-110 active:scale-[0.99] disabled:opacity-60', GRAD)}
+            className="mt-6 flex h-14 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#a8c7fa] px-10 text-[15px] font-medium text-[#062e6f] shadow-lg shadow-black/20 transition hover:bg-[#b9d2fb] hover:shadow-[#a8c7fa]/20 active:scale-[0.98] disabled:opacity-50"
           >
-            {joining ? <Loader2 className="h-5 w-5 animate-spin" /> : <Video className="h-5 w-5 transition group-hover:scale-110" />}
-            {joining ? 'Joining…' : first && (p.isHost || !p.hostName) ? 'Start the call' : 'Join now'}
+            {joining ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+            {joining ? 'Joining…' : first && (p.isHost || !p.hostName) ? 'Start the meeting' : 'Join now'}
           </button>
-          <p className="mt-4 text-center text-xs leading-relaxed text-white/40">
-            Press <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">Enter</kbd> to join. In the call, <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">M</kbd> mutes and <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">V</kbd> turns video on or off.
+          {p.hostName ? (
+            <p className="mt-6 flex items-center justify-center gap-2 text-xs text-[#9aa4b2]">
+              <Avatar name={p.hostName} src={p.hostAvatar} className="h-5 w-5 text-[8px]" /> Hosted by {p.hostName}
+            </p>
+          ) : null}
+          <p className="mt-3 text-xs text-[#6b7686]">
+            Press <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">Enter</kbd> to join · <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">Ctrl</kbd>+<kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">D</kbd> mic · <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">Ctrl</kbd>+<kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">E</kbd> camera
           </p>
         </div>
       </main>
@@ -759,7 +736,9 @@ function Check2({ ok, label }: { ok: boolean; label: string }): React.ReactEleme
   )
 }
 
-function RoundButton({ on, onClick, label, icon, danger = false, active = false, badge, className, disabled }: { on: boolean; onClick: () => void; label: string; icon: React.ReactElement; danger?: boolean; active?: boolean; badge?: number; className?: string; disabled?: boolean }): React.ReactElement {
+/* ── In the call: Google Meet's layout (stage, floating rings, bottom bar, side panels) in Igani's colours ── */
+
+function CtrlButton({ onClick, label, icon, off = false, active = false, badge, dot = false, className, disabled, wide = false }: { onClick: () => void; label: string; icon: React.ReactElement; off?: boolean; active?: boolean; badge?: number; dot?: boolean; className?: string; disabled?: boolean; wide?: boolean }): React.ReactElement {
   return (
     <button
       type="button"
@@ -769,13 +748,25 @@ function RoundButton({ on, onClick, label, icon, danger = false, active = false,
       disabled={disabled}
       aria-pressed={active || undefined}
       className={cn(
-        'relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full ring-1 transition active:scale-95 disabled:opacity-60 [&_svg]:h-5 [&_svg]:w-5',
-        danger ? 'w-16 bg-rose-600 ring-rose-400/40 hover:bg-rose-500' : !on ? 'bg-rose-500/90 ring-rose-300/30 hover:bg-rose-500' : active ? 'bg-[#3b78db] ring-[#6aa6ff]/50' : 'bg-white/10 ring-white/15 hover:bg-white/15',
+        'relative flex h-11 shrink-0 items-center justify-center rounded-full transition-colors duration-150 active:scale-95 disabled:opacity-50 [&_svg]:h-5 [&_svg]:w-5',
+        wide ? 'w-14' : 'w-11',
+        off ? 'bg-[#ea4335] text-white hover:bg-[#d93a2d]' : active ? 'bg-[#a8c7fa] text-[#062e6f] hover:bg-[#b9d2fb]' : 'bg-[#2b3546] text-[#e3e8f0] hover:bg-[#364256]',
         className,
       )}
     >
       {icon}
-      {badge ? <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#6aa6ff] px-1 text-[10px] font-bold text-[#060a14]">{badge}</span> : null}
+      {badge ? <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#a8c7fa] px-1 text-[10px] font-bold text-[#062e6f]">{badge}</span> : null}
+      {dot ? <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#a8c7fa] ring-2 ring-[#0e1626]" /> : null}
+    </button>
+  )
+}
+
+function SideIcon({ onClick, label, icon, active, badge, dot }: { onClick: () => void; label: string; icon: React.ReactElement; active: boolean; badge?: number; dot?: boolean }): React.ReactElement {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} title={label} aria-pressed={active} className={cn('relative flex h-11 w-11 items-center justify-center rounded-full transition-colors [&_svg]:h-5 [&_svg]:w-5', active ? 'bg-[#a8c7fa]/20 text-[#a8c7fa]' : 'text-[#c4cbd6] hover:bg-white/10')}>
+      {icon}
+      {badge ? <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#2b3546] px-1 text-[10px] font-semibold text-white ring-2 ring-[#0e1626]">{badge}</span> : null}
+      {dot ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#a8c7fa]" /> : null}
     </button>
   )
 }
@@ -785,14 +776,55 @@ interface Toast {
   text: string
   tone: 'info' | 'rec' | 'warn'
 }
+interface ChatMsg {
+  id: number
+  from: string
+  mine: boolean
+  text: string
+  at: number
+}
+interface Flying {
+  id: number
+  emoji: string
+  name: string
+  left: number
+}
+type Side = 'details' | 'people' | 'chat' | 'host'
+type Menu = 'more' | 'reactions' | 'leave' | 'layout' | null
+type Layout = 'auto' | 'tiled' | 'spotlight' | 'sidebar'
 
-function Live({ api, slot, title, testServer, moderator, canRecord, startMic, startCam, blur, me, presence, onJoined, onLeft, onFail, log }: { api: JitsiApi; slot: HTMLDivElement | null; title: string; testServer: boolean; moderator: boolean; canRecord: boolean; startMic: boolean; startCam: boolean; blur: Blur; me: { name: string; avatar: string | null }; presence: { code: string; token: string | null }; onJoined: () => void; onLeft: (why: 'me' | 'ended') => void; onFail: (why: string, retry: boolean) => void; log: (kind: string, data?: Record<string, unknown>) => void }): React.ReactElement {
+const REACTIONS = ['💖', '👍', '🎉', '👏', '😂', '😮', '😢', '🤔']
+const REACTION_TAG = 'igani-reaction:'
+const hhmm = (t: number): string => new Date(t).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+
+interface LiveProps {
+  api: JitsiApi
+  slot: HTMLDivElement | null
+  sideSlot: HTMLDivElement | null
+  code: string
+  roomId: string | null
+  title: string
+  testServer: boolean
+  moderator: boolean
+  canRecord: boolean
+  startMic: boolean
+  startCam: boolean
+  blur: Blur
+  me: { name: string; avatar: string | null }
+  presence: { code: string; token: string | null }
+  onJoined: () => void
+  onLeft: (why: 'me' | 'ended') => void
+  onFail: (why: string, retry: boolean) => void
+  log: (kind: string, data?: Record<string, unknown>) => void
+}
+
+function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, moderator, canRecord, startMic, startCam, blur, me, presence, onJoined, onLeft, onFail, log }: LiveProps): React.ReactElement {
+  const api = apiRaw
   const [mic, setMic] = useState(startMic)
   const [cam, setCam] = useState(startCam)
   const [sharing, setSharing] = useState(false)
-  const [tile, setTile] = useState(false)
-  const [hand, setHand] = useState(false)
-  const [chat, setChat] = useState({ open: false, unread: 0 })
+  const [layout, setLayout] = useState<Layout>('auto')
+  const [hands, setHands] = useState<string[]>([])
   const [people, setPeople] = useState<Record<string, { name: string; avatar: string | null }>>({})
   const [myId, setMyId] = useState<string | null>(null)
   const [speaker, setSpeaker] = useState<string | null>(null)
@@ -800,37 +832,62 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
   const [now, setNow] = useState(() => Date.now())
   const [rec, setRec] = useState<{ on: boolean; since: number | null; pending: boolean }>({ on: false, since: null, pending: false })
   const [toasts, setToasts] = useState<Toast[]>([])
-  const [panel, setPanel] = useState<'settings' | 'leave' | null>(null)
+  const [side, setSide] = useState<Side | null>(null)
+  const [menu, setMenu] = useState<Menu>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [messages, setMessages] = useState<ChatMsg[]>([])
+  const [unread, setUnread] = useState(0)
+  const [flying, setFlying] = useState<Flying[]>([])
+  const [full, setFull] = useState(false)
+  const [filmstrip, setFilmstrip] = useState(true)
   const leftRef = useRef(onLeft)
   const failRef = useRef(onFail)
   const joinedCb = useRef(onJoined)
   const logRef = useRef(log)
+  const sideRef = useRef<Side | null>(null)
   const joinedRef = useRef(false)
+  const selfRef = useRef<string | null>(null)
   const recOn = useRef(false)
   const iLeft = useRef(false)
   const recPending = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const toastId = useRef(0)
+  const seq = useRef(0)
   useEffect(() => {
     leftRef.current = onLeft
     failRef.current = onFail
     joinedCb.current = onJoined
     logRef.current = log
-  }, [onLeft, onFail, onJoined, log])
+    sideRef.current = side
+  }, [onLeft, onFail, onJoined, log, side])
 
   const toast = useCallback((text: string, tone: Toast['tone'] = 'info') => {
-    const id = ++toastId.current
+    const id = ++seq.current
     setToasts((t) => [...t.slice(-2), { id, text, tone }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500)
   }, [])
+  const fly = useCallback((emoji: string, name: string) => {
+    const id = ++seq.current
+    setFlying((f) => [...f.slice(-14), { id, emoji, name, left: 4 + Math.random() * 22 }])
+    setTimeout(() => setFlying((f) => f.filter((x) => x.id !== id)), 4200)
+  }, [])
 
   useEffect(() => {
+    // every listener is removed again when this effect ends (otherwise a re-run doubles every message and sound)
+    const added: [string, (e: never) => void][] = []
+    const api = {
+      ...apiRaw,
+      addListener: (event: string, fn: (e: never) => void): void => {
+        added.push([event, fn])
+        apiRaw.addListener(event, fn)
+      },
+      executeCommand: (name: string, ...args: unknown[]): void => apiRaw.executeCommand(name, ...args),
+      getParticipantsInfo: () => apiRaw.getParticipantsInfo?.() ?? [],
+    }
     const names = new Map<string, { name: string; avatar: string | null }>()
-    let selfId: string | null = null
     const sync = (): void => setPeople(Object.fromEntries(names))
     // Jitsi knows everyone's photo (from their pass); read it again shortly after someone arrives
     const refresh = (): void => {
       for (const x of api.getParticipantsInfo?.() ?? []) {
-        if (!x.participantId || x.participantId === selfId || !names.has(x.participantId)) continue
+        if (!x.participantId || x.participantId === selfRef.current || !names.has(x.participantId)) continue
         const was = names.get(x.participantId)!
         names.set(x.participantId, { name: x.displayName || x.formattedDisplayName || was.name, avatar: x.avatarURL || was.avatar })
       }
@@ -838,18 +895,18 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
     }
     api.addListener('videoConferenceJoined', (e: { id?: string }) => {
       joinedRef.current = true
-      selfId = e.id ?? null
-      setMyId(selfId)
+      selfRef.current = e.id ?? null
+      setMyId(selfRef.current)
       setJoinedAt(Date.now())
       joinedCb.current()
       playCue('ready')
       if (me.avatar) api.executeCommand('avatarUrl', me.avatar)
       if (blur !== 'none') api.executeCommand('setBlurredBackground', blur)
-      for (const x of api.getParticipantsInfo?.() ?? []) if (x.participantId && x.participantId !== selfId) names.set(x.participantId, { name: x.displayName || x.formattedDisplayName || 'Guest', avatar: x.avatarURL || null })
+      for (const x of api.getParticipantsInfo?.() ?? []) if (x.participantId && x.participantId !== selfRef.current) names.set(x.participantId, { name: x.displayName || x.formattedDisplayName || 'Guest', avatar: x.avatarURL || null })
       sync()
     })
     api.addListener('participantJoined', (e: { id: string; displayName?: string }) => {
-      if (e.id === selfId) return
+      if (e.id === selfRef.current) return
       names.set(e.id, { name: e.displayName || 'Guest', avatar: null })
       sync()
       setTimeout(refresh, 800)
@@ -863,6 +920,7 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
       const was = names.get(e.id)
       names.delete(e.id)
       sync()
+      setHands((h) => h.filter((x) => x !== e.id))
       if (was) {
         playCue('leave')
         toast(`${was.name} left`)
@@ -890,7 +948,7 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
       const name = e.error?.name ?? ''
       const fatal = Boolean(e.error?.isFatal)
       logRef.current('jitsi-error', { name, message: e.error?.message ?? '', fatal, type: e.error?.type ?? '', joined: joinedRef.current })
-      if (/auth|notAllowed|password/i.test(name)) return failRef.current('The call service didn’t accept the pass for this call. If you’re the host, check the 8x8 settings on the Tests page.', false)
+      if (/auth|notAllowed|password/i.test(name)) return failRef.current('The call service didn’t accept the pass for this call. If you’re the host, check the 8x8 settings in Igani Meet’s settings.', false)
       if (/membersOnly/i.test(name)) return failRef.current('The call hasn’t been opened by the host yet. Try again in a moment.', false)
       if (/conferenceDestroyed/i.test(name)) return leftRef.current('ended')
       if (fatal) return failRef.current('The connection to the call was lost. Check your internet and try again.', true)
@@ -906,12 +964,38 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
     api.addListener('audioMuteStatusChanged', (e: { muted: boolean }) => setMic(!e.muted))
     api.addListener('videoMuteStatusChanged', (e: { muted: boolean }) => setCam(!e.muted))
     api.addListener('screenSharingStatusChanged', (e: { on: boolean }) => setSharing(e.on))
-    api.addListener('tileViewChanged', (e: { enabled: boolean }) => setTile(e.enabled))
-    api.addListener('raiseHandUpdated', (e: { handRaised: number }) => setHand(Boolean(e.handRaised)))
-    api.addListener('chatUpdated', (e: { isOpen: boolean; unreadCount: number }) => setChat({ open: e.isOpen, unread: e.unreadCount }))
-    api.addListener('incomingMessage', (e: { nick?: string; message?: string }) => {
-      playCue('message')
-      toast(`${e.nick || 'Someone'}: ${(e.message ?? '').slice(0, 80)}`)
+    api.addListener('filmstripDisplayChanged', (e: { visible: boolean }) => setFilmstrip(e.visible))
+    api.addListener('raiseHandUpdated', (e: { id: string; handRaised: number }) => {
+      const up = Boolean(e.handRaised)
+      setHands((h) => (up ? (h.includes(e.id) ? h : [...h, e.id]) : h.filter((x) => x !== e.id)))
+      if (up && e.id !== selfRef.current) {
+        const who = names.get(e.id)?.name ?? 'Someone'
+        playCue('message')
+        toast(`✋ ${who} raised a hand`)
+      }
+    })
+    // chat is drawn by Igani (Jitsi's panel stays closed)
+    api.addListener('incomingMessage', (e: { nick?: string; message?: string; privateMessage?: boolean }) => {
+      const text = (e.message ?? '').trim()
+      if (!text) return
+      setMessages((m) => [...m.slice(-199), { id: ++seq.current, from: e.nick || 'Guest', mine: false, text: text.slice(0, 2000), at: Date.now() }])
+      if (sideRef.current !== 'chat') {
+        setUnread((n) => n + 1)
+        playCue('message')
+        toast(`${e.nick || 'Someone'}: ${text.slice(0, 80)}`)
+      }
+    })
+    api.addListener('outgoingMessage', (e: { message?: string }) => {
+      const text = (e.message ?? '').trim()
+      if (text) setMessages((m) => [...m.slice(-199), { id: ++seq.current, from: 'You', mine: true, text: text.slice(0, 2000), at: Date.now() }])
+    })
+    // reactions travel to everyone as small data messages
+    api.addListener('endpointTextMessageReceived', (e: { senderInfo?: { id?: string }; eventData?: { text?: string } }) => {
+      const text = e.eventData?.text ?? ''
+      if (!text.startsWith(REACTION_TAG)) return
+      const emoji = text.slice(REACTION_TAG.length)
+      if (!REACTIONS.includes(emoji)) return
+      fly(emoji, names.get(e.senderInfo?.id ?? '')?.name ?? 'Someone')
     })
     api.addListener('noisyMic', () => toast('Your microphone is picking up a lot of noise.', 'warn'))
     api.addListener('recordingStatusChanged', (e: { on: boolean; mode?: string; error?: string }) => {
@@ -919,7 +1003,7 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
       if (recPending.current) clearTimeout(recPending.current)
       recPending.current = null
       if (e.on && !recOn.current) toast('Recording started. Everyone in the call can see it’s being recorded.', 'rec')
-      if (!e.on && recOn.current) toast(moderator ? 'Recording stopped. It will be on the Tests page in a few minutes.' : 'Recording stopped.', 'rec')
+      if (!e.on && recOn.current) toast(moderator ? 'Recording stopped. It will be in Igani Meet under this call in a few minutes.' : 'Recording stopped.', 'rec')
       if (e.error) toast(`Recording didn’t start (${e.error.replace(/^recording\./, '')}). Check recording is on in your 8x8 plan.`, 'warn')
       recOn.current = e.on
       setRec((r) => ({ on: e.on, since: e.on ? (r.since ?? Date.now()) : null, pending: false }))
@@ -930,9 +1014,10 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
     return () => {
       clearTimeout(timeout)
       if (recPending.current) clearTimeout(recPending.current)
+      for (const [event, fn] of added) apiRaw.removeListener?.(event, fn)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listeners are added once per call; me/blur are the values at join
-  }, [api, toast, moderator])
+  }, [apiRaw, toast, fly, moderator])
 
   // tell the lobby who's here: check in every 20s, check out on leaving
   useEffect(() => {
@@ -957,7 +1042,12 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(t)
+    const onFull = (): void => setFull(Boolean(document.fullscreenElement))
+    document.addEventListener('fullscreenchange', onFull)
+    return () => {
+      clearInterval(t)
+      document.removeEventListener('fullscreenchange', onFull)
+    }
   }, [])
 
   // the tab shows the call (and a red dot while recording)
@@ -969,13 +1059,22 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
     }
   }, [rec.on, title])
 
-  // M mutes, V turns the camera on and off, Esc closes menus; closing the tab asks first
+  // Google Meet's shortcuts (Ctrl/⌘+D mic, Ctrl/⌘+E camera) plus M and V; Esc closes menus; closing the tab asks first
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      const k = e.key.toLowerCase()
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && (k === 'd' || k === 'e')) {
+        e.preventDefault()
+        api.executeCommand(k === 'd' ? 'toggleAudio' : 'toggleVideo')
+        return
+      }
       if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return
-      if (e.key === 'm' || e.key === 'M') api.executeCommand('toggleAudio')
-      else if (e.key === 'v' || e.key === 'V') api.executeCommand('toggleVideo')
-      else if (e.key === 'Escape') setPanel(null)
+      if (k === 'm') api.executeCommand('toggleAudio')
+      else if (k === 'v') api.executeCommand('toggleVideo')
+      else if (e.key === 'Escape') {
+        setMenu(null)
+        setSettingsOpen(false)
+      }
     }
     const onUnload = (e: BeforeUnloadEvent): void => e.preventDefault()
     window.addEventListener('keydown', onKey)
@@ -986,14 +1085,20 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
     }
   }, [api])
 
-  const cmd = (name: string) => () => api.executeCommand(name)
-  const closePanel = useCallback(() => setPanel(null), [])
+  const cmd = (name: string, ...args: unknown[]) => () => api.executeCommand(name, ...args)
+  const closeMenu = useCallback(() => setMenu(null), [])
+  const openSide = (s: Side): void => {
+    setMenu(null)
+    setSide((cur) => (cur === s ? null : s))
+    if (s === 'chat') setUnread(0)
+  }
   const hangup = (everyone = false): void => {
     iLeft.current = true
-    setPanel(null)
+    setMenu(null)
     api.executeCommand(everyone ? 'endConference' : 'hangup')
   }
   const toggleRecording = (): void => {
+    setMenu(null)
     if (rec.pending) return
     if (rec.on) {
       api.executeCommand('stopRecording', 'file')
@@ -1006,37 +1111,63 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
       toast('Recording didn’t start. Check that recording is on in your 8x8 plan, then try again.', 'warn')
     }, 25_000)
   }
+  const react = (emoji: string): void => {
+    fly(emoji, 'You')
+    for (const id of Object.keys(people)) api.executeCommand('sendEndpointTextMessage', id, `${REACTION_TAG}${emoji}`)
+  }
+  const chooseLayout = (l: Layout): void => {
+    setLayout(l)
+    setMenu(null)
+    api.executeCommand('setTileView', l === 'tiled')
+    // spotlight hides the strip of small tiles, sidebar keeps it
+    if ((l === 'spotlight') === filmstrip) api.executeCommand('toggleFilmStrip')
+  }
+  const toggleFull = (): void => {
+    setMenu(null)
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
+    else void document.documentElement.requestFullscreen?.().catch(() => undefined)
+  }
+
   const count = Object.keys(people).length + 1
-  const ring: Person[] = [{ id: myId ?? 'me', name: me.name, avatar: me.avatar, you: true, speaking: count > 1 && speaker != null && speaker === myId }, ...Object.entries(people).map(([id, x]) => ({ id, name: x.name, avatar: x.avatar, speaking: speaker === id }))]
   const alone = Boolean(joinedAt) && count === 1
+  const myHand = Boolean(myId && hands.includes(myId))
+  const ring: Person[] = [{ id: myId ?? 'me', name: me.name, avatar: me.avatar, you: true, speaking: count > 1 && speaker != null && speaker === myId }, ...Object.entries(people).map(([id, x]) => ({ id, name: x.name, avatar: x.avatar, speaking: speaker === id }))]
 
   const overlay = (
     <>
-      <div className={cn('absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0a1020] transition-opacity duration-500', joinedAt ? 'opacity-0' : 'opacity-100')}>
-        <span className="relative flex h-16 w-16 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-full bg-[#3b78db]/30" />
-          <span className={cn('relative flex h-16 w-16 items-center justify-center rounded-full shadow-xl shadow-[#3b78db]/40', GRAD)}>
-            <Video className="h-7 w-7" />
-          </span>
+      <div className={cn('absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0e1626] transition-opacity duration-500', joinedAt ? 'pointer-events-none opacity-0' : 'opacity-100')}>
+        <span className="relative flex h-20 w-20 items-center justify-center">
+          <span className="absolute inset-0 animate-ping rounded-[26%] bg-[#6aa6ff]/20" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- static brand icon */}
+          <img src="/meet/igani-meet-icon.png" alt="" className="relative h-20 w-20 rounded-[24%] shadow-2xl shadow-black/50" />
         </span>
-        <p className="px-6 text-center text-sm text-white/70">Connecting you to {title}…</p>
+        <p className="px-6 text-center text-sm text-[#c4cbd6]">Joining {title}…</p>
       </div>
-      {alone ? (
-        <div className="absolute inset-x-0 top-4 flex justify-center px-4">
-          <span className="meet-pop rounded-full bg-black/55 px-3.5 py-1.5 text-center text-xs text-white/80 ring-1 ring-white/10 backdrop-blur">You’re the only one here. Others will appear as they join.</span>
+      {rec.on ? (
+        <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-[#0e1626]/80 px-3 py-1.5 text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur" title="This call is being recorded">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#ea4335]" /> Recording{rec.since ? ` · ${clock(Math.max(0, Math.floor((now - rec.since) / 1000)))}` : ''}
+        </span>
+      ) : null}
+      {joinedAt ? (
+        <div className="pointer-events-auto absolute right-3 top-3">
+          <PeopleRings people={ring} max={5} size="sm" onClick={() => openSide('people')} />
         </div>
       ) : null}
-      <div className="absolute bottom-4 left-1/2 flex w-[min(92%,440px)] -translate-x-1/2 flex-col items-center gap-2">
+      {alone ? (
+        <div className="absolute inset-x-0 top-16 flex justify-center px-4">
+          <span className="meet-pop rounded-full bg-[#0e1626]/85 px-4 py-2 text-center text-sm text-[#e3e8f0] ring-1 ring-white/10 backdrop-blur">You’re the only one here</span>
+        </div>
+      ) : null}
+      {flying.map((f) => (
+        <span key={f.id} className="meet-fly absolute bottom-6 flex flex-col items-center" style={{ left: `${f.left}%` }}>
+          <span className="text-4xl drop-shadow-lg">{f.emoji}</span>
+          <span className="mt-1 rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white">{f.name}</span>
+        </span>
+      ))}
+      <div className="absolute bottom-4 left-4 flex max-w-[min(90%,380px)] flex-col items-start gap-2">
         {toasts.map((t) => (
-          <div
-            key={t.id}
-            role="status"
-            className={cn(
-              'meet-pop flex max-w-full items-center gap-2 rounded-xl px-3.5 py-2 text-sm shadow-xl ring-1 backdrop-blur-md',
-              t.tone === 'rec' ? 'bg-rose-950/85 ring-rose-400/30' : t.tone === 'warn' ? 'bg-amber-950/85 text-amber-100 ring-amber-400/30' : 'bg-[#0c1322]/85 ring-white/10',
-            )}
-          >
-            {t.tone === 'rec' ? <span className="h-2 w-2 shrink-0 rounded-full bg-rose-500" /> : null}
+          <div key={t.id} role="status" className={cn('meet-pop flex max-w-full items-center gap-2 rounded-lg px-4 py-3 text-sm shadow-xl', t.tone === 'rec' ? 'bg-[#3c1d1b] text-white' : t.tone === 'warn' ? 'bg-[#3d3216] text-amber-100' : 'bg-[#e3e8f0] text-[#1f2937]')}>
+            {t.tone === 'rec' ? <span className="h-2 w-2 shrink-0 rounded-full bg-[#ea4335]" /> : null}
             <span className="truncate">{t.text}</span>
           </div>
         ))}
@@ -1044,67 +1175,142 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
     </>
   )
 
+  const panel = side ? (
+    <aside className="meet-pop flex h-full min-h-0 flex-col overflow-hidden bg-[#1a2333] text-[#e3e8f0] md:rounded-2xl">
+      <div className="flex items-center justify-between px-5 pb-2 pt-4">
+        <h2 className="text-lg">{side === 'details' ? 'Meeting details' : side === 'people' ? 'People' : side === 'chat' ? 'In-call messages' : 'Host controls'}</h2>
+        <button type="button" onClick={() => setSide(null)} aria-label="Close" className="rounded-full p-2 text-[#c4cbd6] hover:bg-white/10">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      {side === 'details' ? <DetailsPanel code={code} roomId={roomId} title={title} joinedAt={joinedAt} now={now} testServer={testServer} /> : null}
+      {side === 'people' ? <PeoplePanel api={api} ring={ring} hands={hands} moderator={moderator} myId={myId} /> : null}
+      {side === 'chat' ? <ChatPanel api={api} messages={messages} /> : null}
+      {side === 'host' ? <HostPanel api={api} onEndAll={() => hangup(true)} /> : null}
+    </aside>
+  ) : null
+
   return (
     <>
       {slot ? createPortal(overlay, slot) : null}
-      <header className="relative flex items-center gap-2 px-4 py-3 sm:gap-3 sm:px-6">
-        <Brand small />
-        <span className="hidden h-5 w-px bg-white/15 sm:block" />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{title}</span>
-        {testServer ? <span className="hidden rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-medium text-amber-200 ring-1 ring-amber-400/30 sm:inline">Test server</span> : null}
-        {rec.on ? (
-          <span className="flex items-center gap-1.5 rounded-full bg-rose-600/90 px-2.5 py-1 text-xs font-semibold tabular-nums ring-1 ring-rose-300/40" title="This call is being recorded">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-white" /> REC{rec.since ? ` ${clock(Math.max(0, Math.floor((now - rec.since) / 1000)))}` : ''}
+      {sideSlot && panel ? createPortal(panel, sideSlot) : null}
+      {settingsOpen ? <SettingsDialog api={api} onClose={() => setSettingsOpen(false)} /> : null}
+      <footer className="relative grid h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 sm:px-5">
+        <div className="hidden min-w-0 items-center gap-3 text-[15px] text-[#e3e8f0] md:flex">
+          <span className="tabular-nums">{hhmm(now)}</span>
+          <span className="h-4 w-px bg-white/25" />
+          <span className="truncate" title={title}>
+            {title}
           </span>
-        ) : null}
-        <span className="flex items-center gap-1.5 rounded-full bg-white/5 px-2.5 py-1 text-xs tabular-nums text-white/80 ring-1 ring-white/10">
-          <span className={cn('h-1.5 w-1.5 rounded-full', joinedAt ? 'bg-emerald-400' : 'animate-pulse bg-amber-300')} />
-          {joinedAt ? clock(Math.max(0, Math.floor((now - joinedAt) / 1000))) : 'Connecting…'}
-        </span>
-        <span className="hidden sm:block">
-          <PeopleRings people={ring} max={5} size="sm" onClick={() => api.executeCommand('toggleParticipantsPane', { enabled: true })} />
-        </span>
-        <span className="sm:hidden">
-          <PeopleRings people={ring} max={3} size="sm" onClick={() => api.executeCommand('toggleParticipantsPane', { enabled: true })} />
-        </span>
-      </header>
-      <footer className="relative order-last flex items-center justify-center gap-2 px-3 pb-4 pt-1 sm:gap-3">
-        <RoundButton on={mic} onClick={cmd('toggleAudio')} label={mic ? 'Mute (M)' : 'Unmute (M)'} icon={mic ? <Mic /> : <MicOff />} />
-        <RoundButton on={cam} onClick={cmd('toggleVideo')} label={cam ? 'Stop video (V)' : 'Start video (V)'} icon={cam ? <Video /> : <VideoOff />} />
-        <RoundButton on active={sharing} onClick={cmd('toggleShareScreen')} label={sharing ? 'Stop sharing' : 'Share screen'} icon={<MonitorUp />} className="hidden sm:flex" />
-        {canRecord ? (
-          <RoundButton
-            on
-            disabled={rec.pending}
-            onClick={toggleRecording}
-            label={rec.on ? 'Stop recording' : rec.pending ? 'Starting recording…' : 'Record the call'}
-            icon={rec.pending ? <Loader2 className="animate-spin" /> : <CircleDot className={rec.on ? 'text-white' : 'text-rose-400'} />}
-            className={rec.on ? 'bg-rose-600 ring-rose-300/50 hover:bg-rose-500' : undefined}
-          />
-        ) : null}
-        <RoundButton on active={tile} onClick={cmd('toggleTileView')} label={tile ? 'Speaker view' : 'Grid view'} icon={<LayoutGrid />} className="hidden sm:flex" />
-        <RoundButton on active={hand} onClick={cmd('toggleRaiseHand')} label={hand ? 'Lower hand' : 'Raise hand'} icon={<Hand />} />
-        <RoundButton on active={chat.open} onClick={cmd('toggleChat')} label="Chat" icon={<MessageSquare />} badge={chat.open ? 0 : chat.unread} />
-        <div className="relative">
-          <RoundButton on active={panel === 'settings'} onClick={() => setPanel(panel === 'settings' ? null : 'settings')} label="Settings" icon={<Settings2 />} />
-          {panel === 'settings' ? <SettingsPanel api={api} onClose={closePanel} /> : null}
         </div>
-        <span className="mx-0.5 h-8 w-px bg-white/10 sm:mx-1" />
-        <div className="relative">
-          <RoundButton on danger onClick={() => (moderator && count > 1 ? setPanel(panel === 'leave' ? null : 'leave') : hangup())} label="Leave the call" icon={<PhoneOff />} />
-          {panel === 'leave' ? (
-            <Popover onClose={closePanel} className="right-0 w-60">
-              <button type="button" onClick={() => hangup()} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-white/10">
-                <LogOut className="h-4 w-4 text-white/60" /> Leave the call
-              </button>
-              <button type="button" onClick={() => hangup(true)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-rose-200 transition hover:bg-rose-500/15">
-                <PhoneOff className="h-4 w-4" /> End the call for everyone
-              </button>
-            </Popover>
-          ) : null}
+        <div className="col-start-2 flex items-center gap-2 sm:gap-2.5">
+          <CtrlButton onClick={cmd('toggleAudio')} off={!mic} label={mic ? 'Turn off microphone (ctrl + d)' : 'Turn on microphone (ctrl + d)'} icon={mic ? <Mic /> : <MicOff />} />
+          <CtrlButton onClick={cmd('toggleVideo')} off={!cam} label={cam ? 'Turn off camera (ctrl + e)' : 'Turn on camera (ctrl + e)'} icon={cam ? <Video /> : <VideoOff />} />
+          <div className="relative hidden sm:block">
+            <CtrlButton onClick={() => setMenu(menu === 'reactions' ? null : 'reactions')} active={menu === 'reactions'} label="Send a reaction" icon={<Smile />} />
+            {menu === 'reactions' ? (
+              <Popover onClose={closeMenu} className="left-1/2 -translate-x-1/2 rounded-full p-1.5">
+                <div className="flex gap-0.5">
+                  {REACTIONS.map((r) => (
+                    <button key={r} type="button" onClick={() => react(r)} className="flex h-10 w-10 items-center justify-center rounded-full text-2xl transition hover:scale-125 hover:bg-white/10" aria-label={`React ${r}`}>
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </Popover>
+            ) : null}
+          </div>
+          <CtrlButton onClick={cmd('toggleShareScreen')} active={sharing} label={sharing ? 'Stop presenting' : 'Present now'} icon={<MonitorUp />} className="hidden sm:flex" />
+          <CtrlButton onClick={cmd('toggleRaiseHand')} active={myHand} label={myHand ? 'Lower hand' : 'Raise hand'} icon={<Hand />} />
+          {canRecord ? <CtrlButton onClick={toggleRecording} disabled={rec.pending} active={rec.on} label={rec.on ? 'Stop recording' : rec.pending ? 'Starting recording…' : 'Record the call'} icon={rec.pending ? <Loader2 className="animate-spin" /> : <CircleDot className={rec.on ? '' : 'text-[#f28b82]'} />} className="hidden sm:flex" /> : null}
+          <div className="relative">
+            <CtrlButton onClick={() => setMenu(menu === 'more' || menu === 'layout' ? null : 'more')} active={menu === 'more' || menu === 'layout'} label="More options" icon={<EllipsisVertical />} />
+            {menu === 'more' ? (
+              <Popover onClose={closeMenu} className="left-1/2 w-64 -translate-x-1/2 py-2">
+                <MenuItem icon={<LayoutGrid />} onClick={() => setMenu('layout')}>
+                  Change layout
+                </MenuItem>
+                <MenuItem icon={full ? <Minimize /> : <Maximize />} onClick={toggleFull}>
+                  {full ? 'Exit full screen' : 'Full screen'}
+                </MenuItem>
+                <MenuItem icon={<MonitorUp />} onClick={() => (setMenu(null), api.executeCommand('toggleShareScreen'))} className="sm:hidden">
+                  {sharing ? 'Stop presenting' : 'Present now'}
+                </MenuItem>
+                {canRecord ? (
+                  <MenuItem icon={<CircleDot />} onClick={toggleRecording} className="sm:hidden">
+                    {rec.on ? 'Stop recording' : 'Record the call'}
+                  </MenuItem>
+                ) : null}
+                <MenuItem icon={<Info />} onClick={() => openSide('details')} className="md:hidden">
+                  Meeting details
+                </MenuItem>
+                <MenuItem icon={<Users />} onClick={() => openSide('people')} className="md:hidden">
+                  People ({count})
+                </MenuItem>
+                <MenuItem icon={<MessageSquare />} onClick={() => openSide('chat')} className="md:hidden">
+                  Chat{unread ? ` (${unread})` : ''}
+                </MenuItem>
+                <div className="my-1 h-px bg-white/10" />
+                <MenuItem
+                  icon={<Settings2 />}
+                  onClick={() => {
+                    setMenu(null)
+                    setSettingsOpen(true)
+                  }}
+                >
+                  Settings
+                </MenuItem>
+              </Popover>
+            ) : null}
+            {menu === 'layout' ? (
+              <Popover onClose={closeMenu} className="left-1/2 w-64 -translate-x-1/2 py-2">
+                <p className="px-4 pb-2 pt-1 text-sm font-medium">Change layout</p>
+                {(
+                  [
+                    ['auto', 'Auto'],
+                    ['tiled', 'Tiled'],
+                    ['spotlight', 'Spotlight'],
+                    ['sidebar', 'Sidebar'],
+                  ] as const
+                ).map(([k, label]) => (
+                  <MenuItem key={k} icon={layout === k ? <Check /> : <span />} onClick={() => chooseLayout(k)}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </Popover>
+            ) : null}
+          </div>
+          <div className="relative">
+            <CtrlButton wide off onClick={() => (moderator && count > 1 ? setMenu(menu === 'leave' ? null : 'leave') : hangup())} label="Leave call" icon={<PhoneOff />} />
+            {menu === 'leave' ? (
+              <Popover onClose={closeMenu} className="right-0 w-64 py-2">
+                <MenuItem icon={<LogOut />} onClick={() => hangup()}>
+                  Just leave the call
+                </MenuItem>
+                <MenuItem icon={<PhoneOff />} onClick={() => hangup(true)} className="text-[#f28b82]">
+                  End the call for everyone
+                </MenuItem>
+              </Popover>
+            ) : null}
+          </div>
+        </div>
+        <div className="col-start-3 hidden items-center justify-end gap-1 md:flex">
+          <SideIcon onClick={() => openSide('details')} active={side === 'details'} label="Meeting details" icon={<Info />} />
+          <SideIcon onClick={() => openSide('people')} active={side === 'people'} label="People" icon={<Users />} badge={count} />
+          <SideIcon onClick={() => openSide('chat')} active={side === 'chat'} label="Chat with everyone" icon={<MessageSquare />} dot={unread > 0} />
+          {moderator ? <SideIcon onClick={() => openSide('host')} active={side === 'host'} label="Host controls" icon={<ShieldCheck />} /> : null}
         </div>
       </footer>
     </>
+  )
+}
+
+function MenuItem({ icon, children, onClick, className }: { icon: React.ReactElement; children: React.ReactNode; onClick: () => void; className?: string }): React.ReactElement {
+  return (
+    <button type="button" onClick={onClick} className={cn('flex w-full items-center gap-4 px-4 py-2.5 text-left text-sm text-[#e3e8f0] transition hover:bg-white/[0.08] [&>svg]:h-5 [&>svg]:w-5 [&>svg]:shrink-0 [&>svg]:text-[#c4cbd6] [&>span:first-child]:w-5', className)}>
+      {icon}
+      <span className="min-w-0 flex-1">{children}</span>
+    </button>
   )
 }
 
@@ -1118,8 +1324,199 @@ function Popover({ children, onClose, className }: { children: React.ReactNode; 
     return () => window.removeEventListener('pointerdown', onDown)
   }, [onClose])
   return (
-    <div ref={ref} className={cn('meet-pop absolute bottom-[calc(100%+10px)] z-20 rounded-2xl bg-[#0c1322]/95 p-1.5 shadow-2xl shadow-black/60 ring-1 ring-white/10 backdrop-blur-xl', className)}>
+    <div ref={ref} className={cn('meet-pop absolute bottom-[calc(100%+12px)] z-30 rounded-xl bg-[#232d3f] shadow-2xl shadow-black/60 ring-1 ring-white/10', className)}>
       {children}
+    </div>
+  )
+}
+
+function DetailsPanel({ code, roomId, title, joinedAt, now, testServer }: { code: string; roomId: string | null; title: string; joinedAt: number | null; now: number; testServer: boolean }): React.ReactElement {
+  const [copied, setCopied] = useState(false)
+  const [emails, setEmails] = useState('')
+  const [msg, setMsg] = useState<string | null>(null)
+  const [pending, start] = useTransition()
+  const link = typeof window !== 'undefined' ? `${window.location.origin}/meet/${code}` : `/meet/${code}`
+  return (
+    <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-5 text-sm">
+      <div>
+        <p className="font-medium">{title}</p>
+        <p className="mt-0.5 text-[#9aa4b2]">{joinedAt ? `You’ve been in the call for ${clock(Math.max(0, Math.floor((now - joinedAt) / 1000)))}` : 'Connecting…'}</p>
+        {testServer ? <p className="mt-1 text-xs text-amber-300">Test server: calls are time-limited.</p> : null}
+      </div>
+      <div>
+        <p className="font-medium">Joining info</p>
+        <p className="mt-1 break-all text-[#9aa4b2]">{link.replace(/^https?:\/\//, '')}</p>
+        <button
+          type="button"
+          onClick={() =>
+            void navigator.clipboard?.writeText(link).then(() => {
+              setCopied(true)
+              setTimeout(() => setCopied(false), 1600)
+            })
+          }
+          className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[#a8c7fa] transition hover:bg-[#a8c7fa]/10"
+        >
+          {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copied ? 'Copied' : 'Copy joining info'}
+        </button>
+        <p className="mt-1 text-xs text-[#9aa4b2]">This link works for Igani admins and invited teammates. Guests need their personal invite, so add them below.</p>
+      </div>
+      {roomId ? (
+        <div>
+          <p className="font-medium">Add people</p>
+          <textarea value={emails} onChange={(e) => setEmails(e.target.value)} rows={2} placeholder="dana@client.com, mike@company.com" className="mt-2 w-full resize-none rounded-lg border border-white/15 bg-transparent px-3 py-2 outline-none placeholder:text-[#6b7686] focus:border-[#a8c7fa] focus-visible:ring-0 focus-visible:ring-offset-0" />
+          <button
+            type="button"
+            disabled={pending || !emails.trim()}
+            onClick={() =>
+              start(async () => {
+                const r = await addMeetInvites({ roomId, emails })
+                setMsg(r.ok ? `Invite sent to ${r.data.sent} ${r.data.sent === 1 ? 'person' : 'people'}${r.data.failed ? ` (${r.data.failed} couldn’t be emailed)` : ''}.` : r.error)
+                if (r.ok) setEmails('')
+              })
+            }
+            className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#a8c7fa] px-4 py-2 font-medium text-[#062e6f] transition hover:bg-[#b9d2fb] disabled:opacity-50"
+          >
+            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send invite
+          </button>
+          {msg ? <p className="mt-2 text-xs text-[#c4cbd6]">{msg}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function PeoplePanel({ api, ring, hands, moderator, myId }: { api: JitsiApi; ring: Person[]; hands: string[]; moderator: boolean; myId: string | null }): React.ReactElement {
+  const [open, setOpen] = useState<string | null>(null)
+  const raised = ring.filter((x) => hands.includes(x.you ? (myId ?? '') : x.id))
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 text-sm">
+      {raised.length ? (
+        <div className="mb-3 rounded-xl bg-white/[0.04] p-2">
+          <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-[#9aa4b2]">Raised hands</p>
+          {raised.map((x) => (
+            <p key={x.id} className="px-2 py-1">
+              ✋ {x.you ? 'You' : x.name}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      <p className="px-2 pb-2 text-xs font-medium uppercase tracking-wide text-[#9aa4b2]">In the call · {ring.length}</p>
+      <ul>
+        {ring.map((x) => (
+          <li key={x.id} className="group relative flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.05]">
+            <span className={cn('rounded-full p-[2px]', x.speaking ? 'bg-emerald-400' : 'bg-transparent')}>
+              <Avatar name={x.name} src={x.avatar} className="h-9 w-9 text-xs" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate">
+                {x.name}
+                {x.you ? ' (You)' : ''}
+              </span>
+              {x.you && moderator ? <span className="block text-xs text-[#9aa4b2]">Meeting host</span> : null}
+            </span>
+            {hands.includes(x.you ? (myId ?? '') : x.id) ? <span title="Hand raised">✋</span> : null}
+            {!x.you ? (
+              <div className="relative">
+                <button type="button" onClick={() => setOpen(open === x.id ? null : x.id)} aria-label={`Options for ${x.name}`} className="rounded-full p-1.5 text-[#c4cbd6] opacity-70 hover:bg-white/10 hover:opacity-100">
+                  <EllipsisVertical className="h-4 w-4" />
+                </button>
+                {open === x.id ? (
+                  <div className="meet-pop absolute right-0 top-full z-20 mt-1 w-48 rounded-xl bg-[#232d3f] py-1.5 shadow-2xl ring-1 ring-white/10">
+                    <MenuItem icon={<Pin />} onClick={() => (setOpen(null), api.executeCommand('pinParticipant', x.id))}>
+                      Pin for me
+                    </MenuItem>
+                    {moderator ? (
+                      <>
+                        <MenuItem icon={<ShieldCheck />} onClick={() => (setOpen(null), api.executeCommand('grantModerator', x.id))}>
+                          Make co-host
+                        </MenuItem>
+                        <MenuItem icon={<UserX />} onClick={() => (setOpen(null), api.executeCommand('kickParticipant', x.id))} className="text-[#f28b82]">
+                          Remove from call
+                        </MenuItem>
+                      </>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function ChatPanel({ api, messages }: { api: JitsiApi; messages: ChatMsg[] }): React.ReactElement {
+  const [text, setText] = useState('')
+  const end = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [messages.length])
+  const send = (): void => {
+    const t = text.trim()
+    if (!t) return
+    api.executeCommand('sendChatMessage', t.slice(0, 2000), '', false)
+    setText('')
+  }
+  return (
+    <>
+      <p className="mx-4 rounded-lg bg-white/[0.05] px-3 py-2.5 text-center text-xs text-[#9aa4b2]">Messages can only be seen by people in the call and are deleted when the call ends.</p>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm">
+        {messages.map((m) => (
+          <div key={m.id}>
+            <p className="text-xs">
+              <span className="font-medium">{m.from}</span> <span className="ml-1 text-[#9aa4b2]">{hhmm(m.at)}</span>
+            </p>
+            <p className="mt-0.5 whitespace-pre-wrap break-words text-[#e3e8f0]">{m.text}</p>
+          </div>
+        ))}
+        <div ref={end} />
+      </div>
+      <div className="p-3">
+        <div className="flex items-center gap-2 rounded-full bg-white/[0.07] py-1 pl-4 pr-1 ring-[#a8c7fa]/60 focus-within:ring-1">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                send()
+              }
+            }}
+            placeholder="Send a message"
+            maxLength={2000}
+            className="h-10 min-w-0 flex-1 border-0 bg-transparent text-sm shadow-none outline-none ring-0 placeholder:text-[#9aa4b2] focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+          />
+          <button type="button" onClick={send} disabled={!text.trim()} aria-label="Send message" className="rounded-full p-2.5 text-[#a8c7fa] transition hover:bg-white/10 disabled:text-[#5b6575]">
+            <Send className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function HostPanel({ api, onEndAll }: { api: JitsiApi; onEndAll: () => void }): React.ReactElement {
+  const [done, setDone] = useState<string | null>(null)
+  const act = (label: string, fn: () => void) => () => {
+    fn()
+    setDone(label)
+    setTimeout(() => setDone(null), 2000)
+  }
+  const row = 'flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition hover:bg-white/[0.06] [&>svg]:h-5 [&>svg]:w-5 [&>svg]:text-[#c4cbd6]'
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 text-sm">
+      <p className="px-3 pb-3 text-xs text-[#9aa4b2]">Use these to keep the call running smoothly.</p>
+      <button type="button" className={row} onClick={act('Everyone is muted', () => api.executeCommand('muteEveryone', 'audio'))}>
+        <MicOff /> <span className="flex-1">Mute everyone</span>
+      </button>
+      <button type="button" className={row} onClick={act('Everyone’s camera is off', () => api.executeCommand('muteEveryone', 'video'))}>
+        <VideoOff /> <span className="flex-1">Turn off everyone’s camera</span>
+      </button>
+      <button type="button" className={cn(row, 'text-[#f28b82] [&>svg]:text-[#f28b82]')} onClick={onEndAll}>
+        <PhoneOff /> <span className="flex-1">End the call for everyone</span>
+      </button>
+      {done ? <p className="meet-pop mt-3 px-3 text-xs text-emerald-300">{done}.</p> : null}
     </div>
   )
 }
@@ -1131,8 +1528,8 @@ const BLURS = [
 ] as const
 type Blur = (typeof BLURS)[number]['key']
 
-/** Switch microphone, camera and speaker mid-call, and blur what's behind you. */
-function SettingsPanel({ api, onClose }: { api: JitsiApi; onClose: () => void }): React.ReactElement {
+/** Google Meet-style settings: switch microphone, camera and speaker, blur the background, and Igani's sounds. */
+function SettingsDialog({ api, onClose }: { api: JitsiApi; onClose: () => void }): React.ReactElement {
   const [lists, setLists] = useState<DeviceLists>(NO_DEVICES)
   const [cur, setCur] = useState({ mic: '', cam: '', spk: '' })
   const [blur, setBlur] = useState<Blur>(() => readPrefs().blur ?? 'none')
@@ -1163,22 +1560,21 @@ function SettingsPanel({ api, onClose }: { api: JitsiApi; onClose: () => void })
     writePrefs(kind === 'mic' ? { micId: id } : kind === 'cam' ? { camId: id } : { spkId: id })
   }
   return (
-    <Popover onClose={onClose} className="left-1/2 w-[min(88vw,320px)] -translate-x-1/2 p-3">
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-sm font-semibold">Settings</span>
-        <button type="button" onClick={onClose} aria-label="Close" className="rounded-md p-1 text-white/50 hover:bg-white/10 hover:text-white">
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-      <div className="space-y-2">
-        <DeviceSelect icon={<Mic />} label="Microphone" list={lists.audioInput} value={cur.mic} onChange={(id) => choose('mic', id)} />
-        <DeviceSelect icon={<Video />} label="Camera" list={lists.videoInput} value={cur.cam} onChange={(id) => choose('cam', id)} />
-        <DeviceSelect icon={<Volume2 />} label="Speaker" list={lists.audioOutput} value={cur.spk} onChange={(id) => choose('spk', id)} />
-      </div>
-      <div className="mt-3 border-t border-white/10 pt-3">
-        <div className="mb-2 flex items-center gap-1.5 text-xs text-white/60">
-          <Sparkles className="h-3.5 w-3.5" /> Blur my background
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-label="Settings" className="meet-pop w-full max-w-md rounded-2xl bg-[#1a2333] p-6 text-[#e3e8f0] shadow-2xl ring-1 ring-white/10">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xl">Settings</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-2 text-[#c4cbd6] hover:bg-white/10">
+            <X className="h-5 w-5" />
+          </button>
         </div>
+        <p className="mb-2 text-sm font-medium text-[#a8c7fa]">Audio and video</p>
+        <div className="space-y-2">
+          <DeviceSelect icon={<Mic />} label="Microphone" list={lists.audioInput} value={cur.mic} onChange={(id) => choose('mic', id)} />
+          <DeviceSelect icon={<Volume2 />} label="Speakers" list={lists.audioOutput} value={cur.spk} onChange={(id) => choose('spk', id)} />
+          <DeviceSelect icon={<Video />} label="Camera" list={lists.videoInput} value={cur.cam} onChange={(id) => choose('cam', id)} />
+        </div>
+        <p className="mb-2 mt-5 text-sm font-medium text-[#a8c7fa]">Background</p>
         <div className="grid grid-cols-3 gap-1 rounded-xl bg-white/5 p-1">
           {BLURS.map((b) => (
             <button
@@ -1189,49 +1585,62 @@ function SettingsPanel({ api, onClose }: { api: JitsiApi; onClose: () => void })
                 setBlur(b.key)
                 writePrefs({ blur: b.key })
               }}
-              className={cn('flex items-center justify-center gap-1 rounded-lg py-1.5 text-xs transition', blur === b.key ? 'bg-[#3b78db] font-medium' : 'text-white/70 hover:bg-white/10')}
+              className={cn('flex items-center justify-center gap-1 rounded-lg py-2 text-sm transition', blur === b.key ? 'bg-[#a8c7fa] font-medium text-[#062e6f]' : 'text-[#c4cbd6] hover:bg-white/10')}
             >
-              {blur === b.key ? <Check className="h-3 w-3" /> : null}
-              {b.label}
+              {blur === b.key ? <Check className="h-3.5 w-3.5" /> : null}
+              {b.key === 'none' ? 'No blur' : `${b.label} blur`}
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            const next = !sounds
+            setSounds(next)
+            setSoundsMuted(!next)
+            writePrefs({ sounds: next })
+            if (next) playCue('join')
+          }}
+          className="mt-5 flex w-full items-center gap-3 text-left text-sm"
+        >
+          {sounds ? <Bell className="h-5 w-5 text-[#c4cbd6]" /> : <BellOff className="h-5 w-5 text-[#c4cbd6]" />}
+          <span className="flex-1">Sounds when people join, leave or message</span>
+          <span className={cn('relative h-6 w-10 rounded-full transition', sounds ? 'bg-[#a8c7fa]' : 'bg-white/20')}>
+            <span className={cn('absolute top-1 h-4 w-4 rounded-full shadow transition-all', sounds ? 'left-5 bg-[#062e6f]' : 'left-1 bg-white')} />
+          </span>
+        </button>
       </div>
-      <button
-        type="button"
-        onClick={() => {
-          const next = !sounds
-          setSounds(next)
-          setSoundsMuted(!next)
-          writePrefs({ sounds: next })
-          if (next) playCue('join')
-        }}
-        className="mt-3 flex w-full items-center gap-2 rounded-xl border-t border-white/10 px-1 pt-3 text-left text-xs text-white/70 transition hover:text-white"
-      >
-        {sounds ? <Bell className="h-3.5 w-3.5" /> : <BellOff className="h-3.5 w-3.5" />}
-        <span className="flex-1">Sounds when people join and leave</span>
-        <span className={cn('relative h-5 w-9 rounded-full transition', sounds ? 'bg-[#3b78db]' : 'bg-white/15')}>
-          <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', sounds ? 'left-[18px]' : 'left-0.5')} />
-        </span>
-      </button>
-    </Popover>
+    </div>
   )
 }
 
-function Notice({ title, body, action, spinner = false }: { title: string; body: string; action?: { label: string; onClick: () => void }; spinner?: boolean }): React.ReactElement {
+function Notice({ title, body, action, secondary, spinner = false }: { title: string; body: string; action?: { label: string; onClick: () => void }; secondary?: { label: string; href: string }; spinner?: boolean }): React.ReactElement {
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
-      <Brand />
-      {spinner ? <Loader2 className="h-7 w-7 animate-spin text-[#7fb0ff]" /> : null}
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mx-auto mt-2 max-w-md text-sm text-white/60">{body}</p>
+    <div className="relative flex flex-1 flex-col">
+      <header className="flex items-center px-5 py-4 sm:px-8">
+        <Brand />
+      </header>
+      <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-16 text-center">
+        {spinner ? <Loader2 className="h-8 w-8 animate-spin text-[#a8c7fa]" /> : null}
+        <div>
+          <h1 className="text-[28px] font-normal tracking-tight text-[#e3e8f0] sm:text-4xl">{title}</h1>
+          <p className="mx-auto mt-3 max-w-md text-[15px] text-[#9aa4b2]">{body}</p>
+        </div>
+        {action || secondary ? (
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {action ? (
+              <button type="button" onClick={action.onClick} className="inline-flex h-10 items-center gap-2 rounded-full border border-[#8e918f] px-6 text-sm font-medium text-[#a8c7fa] transition hover:bg-[#a8c7fa]/10">
+                <RotateCcw className="h-4 w-4" /> {action.label}
+              </button>
+            ) : null}
+            {secondary ? (
+              <a href={secondary.href} className="inline-flex h-10 items-center rounded-full bg-[#a8c7fa] px-6 text-sm font-medium text-[#062e6f] transition hover:bg-[#b9d2fb]">
+                {secondary.label}
+              </a>
+            ) : null}
+          </div>
+        ) : null}
       </div>
-      {action ? (
-        <button type="button" onClick={action.onClick} className="inline-flex h-11 items-center gap-2 rounded-xl bg-white/10 px-5 text-sm font-semibold ring-1 ring-white/15 transition hover:bg-white/15">
-          <RotateCcw className="h-4 w-4" /> {action.label}
-        </button>
-      ) : null}
     </div>
   )
 }
@@ -1240,7 +1649,6 @@ function Notice({ title, body, action, spinner = false }: { title: string; body:
 IganiMeet.Closed = function Closed({ title, body }: { title: string; body: string }): React.ReactElement {
   return (
     <div className="dark fixed inset-0 flex flex-col text-white" style={{ background: BG }}>
-      <Glow />
       <Notice title={title} body={body} />
     </div>
   )

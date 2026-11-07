@@ -57,6 +57,7 @@ const ICONS: Record<string, LucideIcon> = {
   calls: PhoneCall,
   callLists: ListChecks,
   tests: FlaskConical,
+  meet: Video,
   settings: Settings,
 }
 
@@ -76,6 +77,7 @@ const ICON_COLOR: Record<string, string> = {
   documents: 'text-cyan-400',
   marketing: 'text-pink-400',
   tests: 'text-orange-400',
+  meet: 'text-sky-300',
   overview: 'text-[#6aa6ff]',
   bookings: 'text-violet-400',
   pages: 'text-cyan-400',

@@ -16,7 +16,7 @@ export interface Teammate {
 }
 
 /** Pick teammates (chips) and type any other emails. */
-function Invitees({ teammates, picked, setPicked, emails, setEmails, exclude = [] }: { teammates: Teammate[]; picked: string[]; setPicked: (v: string[]) => void; emails: string; setEmails: (v: string) => void; exclude?: string[] }): React.ReactElement {
+export function Invitees({ teammates, picked, setPicked, emails, setEmails, exclude = [] }: { teammates: Teammate[]; picked: string[]; setPicked: (v: string[]) => void; emails: string; setEmails: (v: string) => void; exclude?: string[] }): React.ReactElement {
   const list = teammates.filter((t) => !exclude.includes(t.email.toLowerCase()))
   return (
     <div className="space-y-3">
@@ -50,7 +50,7 @@ function Invitees({ teammates, picked, setPicked, emails, setEmails, exclude = [
   )
 }
 
-export function NewMeetForm({ teammates, ready }: { teammates: Teammate[]; ready: boolean }): React.ReactElement {
+export function NewMeetForm({ teammates, ready, onDone }: { teammates: Teammate[]; ready: boolean; onDone?: () => void }): React.ReactElement {
   const router = useRouter()
   const [title, setTitle] = useState('')
   const [when, setWhen] = useState('')
@@ -72,7 +72,8 @@ export function NewMeetForm({ teammates, ready }: { teammates: Teammate[]; ready
       setPicked([])
       setEmails('')
       router.refresh()
-      if (startNow) window.open(`/meet/${code}`, '_blank', 'noopener')
+      if (startNow) router.push(`/meet/${code}`)
+      else if (onDone) setTimeout(onDone, 900)
     })
 
   return (
@@ -226,7 +227,7 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
   return (
     <li className={cn('rounded-2xl border bg-card/60 p-4', room.ended && 'opacity-70')}>
       <div className="flex flex-wrap items-start gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 basis-[220px]">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate font-medium">{room.title}</h3>
             {room.ended ? <Tag tone="slate">Ended</Tag> : room.when ? <Tag tone="violet">Scheduled</Tag> : <Tag tone="emerald">Open</Tag>}
@@ -238,7 +239,7 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
         {!room.ended ? (
           <div className="flex shrink-0 items-center gap-1.5">
             <Button asChild size="sm">
-              <a href={`/meet/${room.code}`} target="_blank" rel="noopener">
+              <a href={`/meet/${room.code}`}>
                 <Video className="mr-1.5 h-4 w-4" /> Join
               </a>
             </Button>
