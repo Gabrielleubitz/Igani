@@ -23,7 +23,7 @@ vi.mock('@/lib/prisma', () => ({
 import { claimLink, createContractLink, readContractLink, restoreLink } from '@/lib/sales-contract'
 import { DEFAULT_FIGURES, type LegalTerms } from '@/lib/sales-contract-core'
 
-const TERMS: LegalTerms = { companyLegalName: 'Test Co Ltd.', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street, Rep City', payoutDays: 10, clawbackDays: 60, noticeDays: 30, jurisdiction: 'Test Jurisdiction' }
+const TERMS: LegalTerms = { companyLegalName: 'Test Person', companyTradingAs: 'Test Brand', companyIdNumber: '123456789', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street, Rep City', payoutDays: 10, clawbackDays: 60, noticeDays: 30, jurisdiction: 'Test Jurisdiction' }
 const data = { name: 'Ariel Tzadok', email: 'a@b.co', effectiveDate: '2026-11-05', figures: DEFAULT_FIGURES, terms: TERMS }
 const admin = { name: 'Ilan', email: 'i@igani.co', signature: 'data:image/png;base64,iVBORw0KGgo=' }
 

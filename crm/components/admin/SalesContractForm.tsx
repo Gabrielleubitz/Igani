@@ -27,7 +27,7 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
   const preview = useMemo(
     () =>
       agreementHtml(
-        { name: name.trim() || '[Representative name]', email: email || 'representative@email', effectiveDate: date || today(), figures: f, terms: { ...t, companyLegalName: t.companyLegalName || '[Company legal name]', companyAddress: t.companyAddress || '[Company address]', agentAddress: t.agentAddress || '[Representative address]', jurisdiction: t.jurisdiction || '[Jurisdiction]' } },
+        { name: name.trim() || '[Representative name]', email: email || 'representative@email', effectiveDate: date || today(), figures: f, terms: { ...t, companyLegalName: t.companyLegalName || '[Legal name]', companyIdNumber: t.companyIdNumber || '[number]', companyAddress: t.companyAddress || '[Company address]', agentAddress: t.agentAddress || '[Representative address]', jurisdiction: t.jurisdiction || '[Jurisdiction]' } },
         {
           logo: '/igani-logo%202.png',
           status: 'preview',
@@ -49,7 +49,7 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
     </label>
   )
 
-  const txt = (key: 'companyLegalName' | 'companyAddress' | 'agentAddress' | 'jurisdiction', label: string, placeholder: string): React.ReactElement => (
+  const txt = (key: 'companyLegalName' | 'companyTradingAs' | 'companyIdNumber' | 'companyAddress' | 'agentAddress' | 'jurisdiction', label: string, placeholder: string): React.ReactElement => (
     <label className="block space-y-1 text-sm">
       <span className="font-medium">{label}</span>
       <Input value={t[key]} onChange={(e) => (setLink(null), setT({ ...t, [key]: e.target.value }))} placeholder={placeholder} />
@@ -107,9 +107,11 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
               <p className="mt-2 text-lg font-semibold">{Number.isFinite(basePayout(f)) ? basePayout(f).toLocaleString('en-US') : '—'} ILS</p>
             </div>
           </div>
-          <p className="pt-1 text-sm font-medium">Legal terms (prefilled with the agreed values; confirm the company name and address against the registration)</p>
+          <p className="pt-1 text-sm font-medium">Legal terms (prefilled with the agreed values; enter the name, number and address exactly as on the tax certificate)</p>
           <div className="grid gap-3 sm:grid-cols-2">
-            {txt('companyLegalName', 'Company legal name', 'Igani Ltd.')}
+            {txt('companyLegalName', 'Contracting party’s full legal name', 'As on the tax certificate')}
+            {txt('companyTradingAs', 'Trading as', 'Caleno')}
+            {txt('companyIdNumber', 'Exempt dealer / company number', 'From the tax certificate')}
             {txt('companyAddress', 'Company address', 'Street, city')}
             {txt('agentAddress', 'Representative address', 'Street, city')}
             {txt('jurisdiction', 'Governing jurisdiction', 'the State of Israel')}

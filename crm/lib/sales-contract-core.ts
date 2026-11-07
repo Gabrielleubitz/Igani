@@ -17,8 +17,12 @@ export interface Figures {
 
 /** Terms the lawyer's agreement leaves open. Every one is required: no blank may reach a signed copy. */
 export interface LegalTerms {
-  /** The company as named in the agreement (Igani's legal entity) */
+  /** The contracting party's full legal name. For an exempt dealer (no company) this is the individual. */
   companyLegalName: string
+  /** The trading name, for example "Caleno" */
+  companyTradingAs: string
+  /** Exempt dealer or company registration number from the tax certificate. Entered in the form only, never kept in code. */
+  companyIdNumber: string
   companyAddress: string
   /** The representative's address */
   agentAddress: string
@@ -42,9 +46,9 @@ export interface ContractData {
 }
 
 /** Not defaults: the form starts empty for the legal terms so each one is chosen on purpose. */
-export const EMPTY_TERMS: LegalTerms = { companyLegalName: '', companyAddress: '', agentAddress: '', payoutDays: NaN, clawbackDays: NaN, noticeDays: NaN, jurisdiction: '' }
-/** The values the owner chose (Nov 2026). The company name and address still need confirming against the registration. */
-export const CHOSEN_TERMS: LegalTerms = { companyLegalName: 'Caleno', companyAddress: '', agentAddress: '', payoutDays: 5, clawbackDays: 60, noticeDays: 7, jurisdiction: 'the State of Israel' }
+export const EMPTY_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: '', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: NaN, clawbackDays: NaN, noticeDays: NaN, jurisdiction: '' }
+/** The values the owner chose (Nov 2026). Caleno is an exempt dealer (one individual), so the name, number and address come from the tax certificate and are typed in the form, never committed. */
+export const CHOSEN_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: 'Caleno', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: 5, clawbackDays: 60, noticeDays: 7, jurisdiction: 'the State of Israel' }
 export const CONTRACT_VERSION = '2026-11-lawyer-v1'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
@@ -64,7 +68,9 @@ export function validate(d: ContractData): string | null {
   const t = d.terms
   if (!t) return 'Fill in the legal terms.'
   const text = (v: string, min: number, max: number): boolean => typeof v === 'string' && v.trim().length >= min && v.length <= max
-  if (!text(t.companyLegalName, 2, 160)) return 'Enter the company’s legal name.'
+  if (!text(t.companyLegalName, 2, 160)) return 'Enter the contracting party’s full legal name (the individual, for an exempt dealer).'
+  if (!text(t.companyTradingAs, 0, 120)) return 'The trading name is too long.'
+  if (!/^[0-9A-Za-z-]{5,20}$/.test((t.companyIdNumber ?? '').trim())) return 'Enter the exempt dealer or company registration number from the tax certificate.'
   if (!text(t.companyAddress, 5, 300)) return 'Enter the company’s address.'
   if (!text(t.agentAddress, 5, 300)) return 'Enter the representative’s address.'
   const days = (n: number, max: number): boolean => Number.isInteger(n) && n > 0 && n <= max
@@ -93,10 +99,11 @@ export function agreementSectionsHtml(d: ContractData): string {
   const f = d.figures
   const t = d.terms
   const name = esc(d.name.trim())
-  const company = esc(t.companyLegalName.trim())
+  const trading = t.companyTradingAs.trim()
+  const company = `${esc(t.companyLegalName.trim())}${trading ? `, trading as ${esc(trading)}` : ''}, registered no. ${esc(t.companyIdNumber.trim())}`
   return `
 <h2><span class="n">1.</span>APPOINTMENT AND SCOPE</h2>
-<p class="clause">${company} (the “Company”) engages ${name} (the “Sales Representative”) to solicit, introduce and secure clients for the Company’s web development, design and digital architecture services. The Sales Representative acts as an independent contractor and not as an employee, partner or legal representative of the Company.</p>
+<p class="clause">${company} (the “Company”), engages ${name} (the “Sales Representative”) to solicit, introduce and secure clients for the Company’s web development, design and digital architecture services. The Sales Representative acts as an independent contractor and not as an employee, partner or legal representative of the Company.</p>
 <h2><span class="n">2.</span>COMMISSION TRIGGER EVENT</h2>
 <p class="clause">The Sales Representative earns a commission only when both of the following have happened (the “Trigger Event”):</p>
 <p class="item">The Company has received a fully executed, signed client agreement or statement of work, <b>and</b></p>
@@ -165,7 +172,7 @@ export function agreementHtml(d: ContractData, v: AgreementView): string {
   <h1>Commission Agreement</h1>
   <p class="sub">Representative: ${esc(d.name.trim())} | Effective Date: ${esc(formatDate(d.effectiveDate))}</p>
   <div class="meta"><span>Reference: <b dir="ltr">${esc(v.reference)}</b></span><span>Effective: <b>${esc(formatDate(d.effectiveDate))}</b></span></div>
-  <div class="parties">${party(d.terms.companyLegalName.trim() || 'Igani', v.admin.name, v.admin.email, d.terms.companyAddress.trim())}${party('Sales representative', d.name.trim(), d.email, d.terms.agentAddress.trim())}</div>
+  <div class="parties">${party(d.terms.companyTradingAs.trim() ? `${d.terms.companyLegalName.trim()} (${d.terms.companyTradingAs.trim()})` : d.terms.companyLegalName.trim() || 'Company', v.admin.name, v.admin.email, d.terms.companyAddress.trim())}${party('Sales representative', d.name.trim(), d.email, d.terms.agentAddress.trim())}</div>
   ${agreementSectionsHtml(d)}
   <h2 class="sighead">Signatures</h2>
   <div class="sigs">${card('For the Company', v.admin)}${card('For the Sales Representative', v.rep, v.record ? `<tr><td>IP address</td><td dir="ltr">${esc(v.record.ip)}</td></tr>` : '')}</div>

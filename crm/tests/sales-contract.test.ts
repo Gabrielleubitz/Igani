@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { DEFAULT_FIGURES, type LegalTerms, namesMatch, agreementHtml as html, basePayout, validate, type ContractData } from '@/lib/sales-contract-core'
 import { isLinkCode, linkKey, newLinkCode, parseLink } from '@/lib/sales-contract-token'
 
-const TERMS: LegalTerms = { companyLegalName: 'Test Co Ltd.', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street, Rep City', payoutDays: 10, clawbackDays: 60, noticeDays: 30, jurisdiction: 'Test Jurisdiction' }
+const TERMS: LegalTerms = { companyLegalName: 'Test Person', companyTradingAs: 'Test Brand', companyIdNumber: '123456789', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street, Rep City', payoutDays: 10, clawbackDays: 60, noticeDays: 30, jurisdiction: 'Test Jurisdiction' }
 const data: ContractData = { name: 'Ariel Tzadok', email: 'ariel@example.com', effectiveDate: '2026-10-31', figures: DEFAULT_FIGURES, terms: TERMS }
 const NOW = new Date('2026-11-01T00:00:00Z')
 
@@ -18,6 +18,7 @@ describe('commission wording', () => {
     expect(text).toContain('Awaiting signature')
     expect(text).toContain('Deals up to 15,000 ILS: the Sales Representative receives 30% of the calculation base.')
     expect(text).toContain('a base payout of 4,500 ILS (30% of 15,000 ILS) plus an additional 1,000 ILS bonus for every completed 5,000 ILS increment above 15,000 ILS.')
+    expect(text).toContain('Test Person, trading as Test Brand, registered no. 123456789 (the “Company”)')
     expect(text).toContain('the full amount owed by the referred client')
     expect(text).toContain('No commission is paid in part, or advanced')
     expect(text).toContain('excluding third-party hosting fees, taxes and direct out-of-pocket expenses')
@@ -41,6 +42,8 @@ describe('commission wording', () => {
     expect(validate({ ...data, terms: { ...TERMS, noticeDays: 1.5 } })).toMatch(/notice/)
     expect(validate({ ...data, terms: { ...TERMS, jurisdiction: ' ' } })).toMatch(/jurisdiction/)
     expect(validate({ ...data, terms: { ...TERMS, companyLegalName: '' } })).toMatch(/legal name/)
+    expect(validate({ ...data, terms: { ...TERMS, companyIdNumber: '' } })).toMatch(/number/)
+    expect(validate({ ...data, terms: { ...TERMS, companyTradingAs: '' } })).toBeNull()
     expect(validate({ ...data, email: 'nope' })).toMatch(/email/)
     expect(validate({ ...data, figures: { ...data.figures, basePercent: 0 } })).toMatch(/base commission/)
     expect(validate({ ...data, effectiveDate: '' })).toMatch(/date/)
