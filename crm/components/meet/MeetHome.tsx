@@ -1,12 +1,13 @@
 'use client'
 
-import { CalendarPlus, Check, ChevronLeft, ChevronRight, CircleDot, Copy, Keyboard, LayoutGrid, Link2, Loader2, Plus, Send, Settings, ShieldCheck, Video, X } from 'lucide-react'
+import { CalendarPlus, Check, CircleDot, Copy, Keyboard, LayoutGrid, Link2, Loader2, Plus, Send, Settings, ShieldCheck, Video, X } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { addMeetInvites, createMeetRoom } from '@/app/actions/meet'
 import { cn } from '@/lib/utils'
 import { Invitees, NewMeetForm, RoomCard, type RoomView, type Teammate } from './MeetAdmin'
+import { MeetCarousel } from './MeetCarousel'
 
 export interface MeetStatus {
   configured: boolean
@@ -158,7 +159,7 @@ export function MeetHome({ me, status, teammates, rooms }: { me: { name: string;
             · {open.length} open{rooms.some((r) => r.recordings.length) ? ` · ${rooms.reduce((n, r) => n + r.recordings.length, 0)} recordings` : ''}
           </div>
         </section>
-        <Carousel recording={status.recording} />
+        <MeetCarousel recording={status.recording} />
       </main>
 
       <section id="meetings" className="mx-auto max-w-[1000px] px-6 pb-20 lg:px-10">
@@ -356,74 +357,3 @@ function SetupDialog({ status, onClose }: { status: MeetStatus; onClose: () => v
   )
 }
 
-const SLIDES = [
-  { title: 'Get a link you can share', body: 'Click New meeting to get a link you can send to the people you want to meet with.' },
-  { title: 'Your meeting is safe', body: 'No one can join unless the host invites them: every guest gets their own personal link.' },
-  { title: 'Looks and sounds like Igani', body: 'Your logo, your colours and Igani’s own sounds, with photos of everyone in the call.' },
-  { title: 'Record and replay', body: 'Hosts can record a call and watch or download it afterwards right here.' },
-]
-
-/** Google Meet's illustrated carousel, drawn with Igani's mark. */
-function Carousel({ recording }: { recording: boolean }): React.ReactElement {
-  const slides = recording ? SLIDES : SLIDES.slice(0, 3)
-  const [i, setI] = useState(0)
-  useEffect(() => {
-    const t = setInterval(() => setI((v) => (v + 1) % slides.length), 6000)
-    return () => clearInterval(t)
-  }, [slides.length])
-  const s = slides[i % slides.length]!
-  const go = (d: number): void => setI((v) => (v + d + slides.length) % slides.length)
-  return (
-    <section className="hidden flex-col items-center text-center md:flex">
-      <div className="flex items-center gap-6">
-        <button type="button" onClick={() => go(-1)} aria-label="Previous" className="rounded-full p-2 text-[#c4cbd6] transition hover:bg-white/10">
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <div key={i} className="meet-pop relative flex h-[330px] w-[330px] items-center justify-center rounded-full bg-[radial-gradient(circle_at_50%_40%,#1d3357,#121c2e_70%)] ring-1 ring-white/5">
-          <Illustration n={i % slides.length} />
-        </div>
-        <button type="button" onClick={() => go(1)} aria-label="Next" className="rounded-full p-2 text-[#c4cbd6] transition hover:bg-white/10">
-          <ChevronRight className="h-6 w-6" />
-        </button>
-      </div>
-      <h2 className="mt-8 text-2xl">{s.title}</h2>
-      <p className="mt-2 max-w-[330px] text-sm text-[#9aa4b2]">{s.body}</p>
-      <div className="mt-5 flex gap-2">
-        {slides.map((_, k) => (
-          <button key={k} type="button" onClick={() => setI(k)} aria-label={`Slide ${k + 1}`} className={cn('h-1.5 rounded-full transition-all', k === i % slides.length ? 'w-5 bg-[#a8c7fa]' : 'w-1.5 bg-white/25')} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function Illustration({ n }: { n: number }): React.ReactElement {
-  const chip = 'absolute flex items-center gap-2 rounded-full bg-[#232d3f] px-3 py-2 text-xs shadow-xl ring-1 ring-white/10'
-  return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-img-element -- static brand mark */}
-      <img src="/meet/igani-meet-mark.png" alt="" className="h-28 w-auto drop-shadow-2xl" />
-      {n === 0 ? (
-        <span className={cn(chip, 'bottom-16 left-6')}>
-          <Link2 className="h-4 w-4 text-[#a8c7fa]" /> app.igani.co/meet/igani-…
-        </span>
-      ) : n === 1 ? (
-        <span className={cn(chip, 'bottom-14 right-4')}>
-          <ShieldCheck className="h-4 w-4 text-emerald-300" /> Invited guests only
-        </span>
-      ) : n === 2 ? (
-        <span className="absolute bottom-14 flex -space-x-2.5">
-          {['from-[#6aa6ff] to-[#2f5fd0]', 'from-[#3fd2c7] to-[#1f8a9c]', 'from-[#8b7bff] to-[#4b3fc4]'].map((g, k) => (
-            <span key={g} className="rounded-full bg-gradient-to-br from-[#6aa6ff] to-[#2f5fd0] p-[2px]">
-              <span className={cn('flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br text-xs font-semibold ring-2 ring-[#121c2e]', g)}>{['GL', 'DA', 'MR'][k]}</span>
-            </span>
-          ))}
-        </span>
-      ) : (
-        <span className={cn(chip, 'left-8 top-16')}>
-          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#ea4335]" /> Recording · 12:04
-        </span>
-      )}
-    </>
-  )
-}
