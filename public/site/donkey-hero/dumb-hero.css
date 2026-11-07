@@ -214,3 +214,22 @@
 @media (min-height: 800px) and (max-width: 820px), (min-height: 800px) and (max-width: 1024px) and (orientation: portrait) {
   .dh--scrub .dh-donkey { height: clamp(240px, 42svh, 620px); }
 }
+
+/* Phones only, scroll mode: the headline on top, then the donkey, then the description and the buttons under him.
+   The bottom of his body fades into the page instead of ending in a hard edge.
+   (display: contents lets the headline, paragraph and buttons be placed around the donkey; sizes use --cw, 1% of the text width,
+   because the copy block is no longer a box for container units.) */
+@media (max-width: 599px) {
+  .dh--scrub { --cw: calc((100vw - 2 * var(--dh-edge)) / 100); }
+  .dh--scrub .dh-copy { display: contents; }
+  .dh--scrub .dh-copy h1 { order: 1; margin: 8px var(--dh-edge) 0; }
+  .dh--scrub .dh-copy__pre { font-size: calc(var(--cw) * 6.2); }
+  .dh--scrub .dh-copy__mark { font-size: min(calc(var(--cw) * 46), 15svh); line-height: 0.9; margin-top: 0.06em; }
+  .dh--scrub .dh-donkey {
+    order: 2; flex: 1 1 0; min-height: 150px; height: auto; max-width: 100%; margin: 4px 0 0; align-self: center;
+    -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+    mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  }
+  .dh--scrub .dh-copy__lede { order: 3; margin: 2px var(--dh-edge) 0; }
+  .dh--scrub .dh-copy__btns { order: 4; margin: 14px var(--dh-edge) 0; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+}
