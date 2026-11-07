@@ -159,3 +159,16 @@ describe('Igani Meet connection health', () => {
     expect(netLevel(readNet({ packetLoss: { upload: 20 } }))).toBe('poor')
   })
 })
+
+describe('iOS app menu', () => {
+  it('lists only the pages a role may open, in their folders', async () => {
+    const { navPagesFor } = await import('@/lib/nav')
+    const sales = navPagesFor('SALES').map((p) => p.href)
+    const admin = navPagesFor('ADMIN').map((p) => p.href)
+    expect(sales).toContain('/sales/leads')
+    expect(sales).not.toContain('/admin/users')
+    expect(admin).toContain('/admin/users')
+    expect(navPagesFor('ADMIN').find((p) => p.href === '/sales/board')?.group).toBe('Sales')
+    expect(navPagesFor('MARKETING').map((p) => p.href)).not.toContain('/sales/calls')
+  })
+})

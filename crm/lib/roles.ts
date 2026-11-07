@@ -9,7 +9,7 @@ export function isRole(value: unknown): value is Role {
 
 /** Paths that never require a session. Exact matches vs. "/dir/" prefixes. */
 const PUBLIC_EXACT = new Set(['/login', '/unauthorized', '/api/v1/leads' /* secured by x-api-key */])
-const PUBLIC_PREFIXES = ['/book/', '/invites/', '/api/auth/', '/api/public/', '/api/studio/' /* secured by OFFER_STUDIO_TOKEN */] as const
+const PUBLIC_PREFIXES = ['/book/', '/invites/', '/api/auth/', '/api/public/', '/api/studio/' /* secured by OFFER_STUDIO_TOKEN */, '/api/mobile/auth/' /* the app's sign-in handoff checks the session itself */] as const
 
 export function isPublicPath(pathname: string): boolean {
   return PUBLIC_EXACT.has(pathname) || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))

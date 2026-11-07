@@ -317,6 +317,11 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
 
   useEffect(() => () => api.current?.dispose(), [])
 
+  // Inside the Igani CRM iOS app: tell the app which screen we're on (it hides its close button during a call)
+  useEffect(() => {
+    ;(window as unknown as { webkit?: { messageHandlers?: { iganiApp?: { postMessage: (m: unknown) => void } } } }).webkit?.messageHandlers?.iganiApp?.postMessage({ type: 'meet-phase', phase })
+  }, [phase])
+
   const { path } = useMeetPaths()
   const home = p.isMember ? { label: 'Return to home screen', href: path('/') } : undefined
   return (
