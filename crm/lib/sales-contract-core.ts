@@ -49,6 +49,17 @@ export interface ContractData {
 export const EMPTY_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: '', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: NaN, clawbackDays: NaN, noticeDays: NaN, jurisdiction: '' }
 /** The values the owner chose (Nov 2026). Caleno is an exempt dealer (one individual), so the name, number and address come from the tax certificate and are typed in the form, never committed. */
 export const CHOSEN_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: 'Caleno', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: 5, clawbackDays: 60, noticeDays: 7, jurisdiction: 'Israel' }
+/** The company details saved once in Settings (see 'contract.company'). */
+export interface CompanySettings { legalName: string; tradingAs: string; idNumber: string; address: string; jurisdiction: string; payoutDays: number; clawbackDays: number; noticeDays: number }
+
+/** Builds the agreement's legal terms from the saved company details plus this representative's address. */
+export function termsFromCompany(c: CompanySettings, agentAddress: string): LegalTerms {
+  return { companyLegalName: c.legalName, companyTradingAs: c.tradingAs, companyIdNumber: c.idNumber, companyAddress: c.address, agentAddress, payoutDays: c.payoutDays, clawbackDays: c.clawbackDays, noticeDays: c.noticeDays, jurisdiction: c.jurisdiction }
+}
+
+/** True when the one-time company details needed on every agreement are filled in. */
+export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.trim().length >= 2 && c.idNumber.trim().length >= 5 && c.address.trim().length >= 5
+
 export const CONTRACT_VERSION = '2026-11-lawyer-v3'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }

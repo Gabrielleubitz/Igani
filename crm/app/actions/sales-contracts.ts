@@ -2,7 +2,8 @@
 
 import { requireUser } from '@/lib/auth'
 import { createContractLink } from '@/lib/sales-contract'
-import { validate, type ContractData } from '@/lib/sales-contract-core'
+import { companyIsComplete, termsFromCompany, validate, type ContractData } from '@/lib/sales-contract-core'
+import { getSetting } from '@/lib/settings'
 import { PNG_DATA_URL } from '@/lib/sales-contract-token'
 import { prisma } from '@/lib/prisma'
 
@@ -11,6 +12,10 @@ export type LinkResultAction = { ok: true; url: string; expiresAt: string } | { 
 /** Admin only. Signs with the chosen admin's saved signature and makes a short link; the agreement is kept for 12 hours or until signed. The signed PDF is emailed to the admin who made the link. */
 export async function generateContractLink(data: ContractData, signerUserId: string): Promise<LinkResultAction> {
   const user = await requireUser(['ADMIN'])
+  // The company details and the fixed legal terms come from Settings, not from the browser; only the representative's address is per agreement
+  const company = await getSetting('contract.company')
+  if (!companyIsComplete(company)) return { ok: false, error: 'Set the company details first (the Company details card on this page).' }
+  data = { ...data, terms: termsFromCompany(company, data.terms.agentAddress) }
   const err = validate(data)
   if (err) return { ok: false, error: err }
   const signer = await prisma.contractSigner.findUnique({ where: { userId: signerUserId } })

@@ -84,3 +84,20 @@ describe('name confirmation', () => {
     expect(namesMatch('Ariel', 'Ariel Tzadok')).toBe(false)
   })
 })
+
+import { companyIsComplete, termsFromCompany, type CompanySettings } from '@/lib/sales-contract-core'
+
+describe('company details saved once', () => {
+  const company: CompanySettings = { legalName: 'Test Person', tradingAs: 'Test Brand', idNumber: '123456789', address: '1 Test Street, Test City', jurisdiction: 'Israel', payoutDays: 5, clawbackDays: 60, noticeDays: 7 }
+  it('fills the agreement terms from the saved company and only takes the representative address per agreement', () => {
+    const t = termsFromCompany(company, '2 Rep Street')
+    expect(t).toMatchObject({ companyLegalName: 'Test Person', companyTradingAs: 'Test Brand', companyIdNumber: '123456789', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street', jurisdiction: 'Israel', payoutDays: 5, clawbackDays: 60, noticeDays: 7 })
+    expect(validate({ ...data, terms: t })).toBeNull()
+  })
+  it('knows when the one-time details are missing', () => {
+    expect(companyIsComplete(company)).toBe(true)
+    expect(companyIsComplete({ ...company, legalName: '' })).toBe(false)
+    expect(companyIsComplete({ ...company, idNumber: '12' })).toBe(false)
+    expect(companyIsComplete({ ...company, address: '' })).toBe(false)
+  })
+})

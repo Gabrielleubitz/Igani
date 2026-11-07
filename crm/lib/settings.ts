@@ -30,6 +30,17 @@ export const SETTING_SCHEMAS = {
   'contract.signer': z.object({ name: z.string().trim().max(120), title: z.string().trim().max(120), email: z.union([z.literal(''), z.string().trim().email().max(254)]), phone: z.string().trim().max(40) }),
   /** Igani's drawn signature (PNG data URL), put on every contract when an admin approves it */
   'contract.signature': z.union([z.literal(''), z.string().max(400_000).regex(/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/)]),
+  /** The company named in every sales agreement (set once): legal name, trading name, number, address and the fixed legal terms. */
+  'contract.company': z.object({
+    legalName: z.string().trim().max(160),
+    tradingAs: z.string().trim().max(120),
+    idNumber: z.string().trim().max(20),
+    address: z.string().trim().max(300),
+    jurisdiction: z.string().trim().max(160),
+    payoutDays: z.number().int().min(1).max(90),
+    clawbackDays: z.number().int().min(1).max(730),
+    noticeDays: z.number().int().min(1).max(365),
+  }),
 } as const
 
 export type SettingKey = keyof typeof SETTING_SCHEMAS
@@ -52,6 +63,7 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'voice.countries': ['IL', 'US'],
   'contract.signer': { name: '', title: '', email: '', phone: '' },
   'contract.signature': '',
+  'contract.company': { legalName: '', tradingAs: 'Caleno', idNumber: '', address: '', jurisdiction: 'Israel', payoutDays: 5, clawbackDays: 60, noticeDays: 7 },
 }
 
 export function isSettingKey(key: string): key is SettingKey {

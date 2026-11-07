@@ -7,16 +7,16 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { SignerPicker, type SignerView } from '@/components/admin/SignerPicker'
-import { AGREEMENT_CSS, CHOSEN_TERMS, DEFAULT_FIGURES, agreementHtml, basePayout, validate, type Figures, type LegalTerms } from '@/lib/sales-contract-core'
+import { AGREEMENT_CSS, DEFAULT_FIGURES, agreementHtml, basePayout, termsFromCompany, validate, type CompanySettings, type Figures } from '@/lib/sales-contract-core'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
-export function SalesContractForm({ signers, meId, adminEmail }: { signers: SignerView[]; meId: string; adminEmail: string }): React.ReactElement {
+export function SalesContractForm({ signers, meId, adminEmail, company }: { signers: SignerView[]; meId: string; adminEmail: string; company: CompanySettings }): React.ReactElement {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [date, setDate] = useState(today())
   const [f, setF] = useState<Figures>(DEFAULT_FIGURES)
-  const [t, setT] = useState<LegalTerms>(CHOSEN_TERMS)
+  const [agentAddress, setAgentAddress] = useState('')
   const firstReady = signers.find((x) => x.userId === meId && x.signature) ?? signers.find((x) => x.signature)
   const [signerId, setSignerId] = useState(firstReady?.userId ?? '')
   const signer = signers.find((x) => x.userId === signerId)
@@ -27,11 +27,13 @@ export function SalesContractForm({ signers, meId, adminEmail }: { signers: Sign
   const [copied, setCopied] = useState(false)
   const [pending, start] = useTransition()
 
+  // The company and the fixed legal terms come from the saved company details; only the representative's address is typed here
+  const t = useMemo(() => termsFromCompany(company, agentAddress), [company, agentAddress])
   const data = { name, email, effectiveDate: date, figures: f, terms: t }
   const preview = useMemo(
     () =>
       agreementHtml(
-        { name: name.trim() || '[Representative name]', email: email || 'representative@email', effectiveDate: date || today(), figures: f, terms: { ...t, companyLegalName: t.companyLegalName || '[Legal name]', companyIdNumber: t.companyIdNumber || '[number]', companyAddress: t.companyAddress || '[Company address]', agentAddress: t.agentAddress || '[Representative address]', jurisdiction: t.jurisdiction || '[Jurisdiction]' } },
+        { name: name.trim() || '[Representative name]', email: email || 'representative@email', effectiveDate: date || today(), figures: f, terms: { ...t, companyLegalName: t.companyLegalName || '[Legal name]', companyIdNumber: t.companyIdNumber || '[number]', companyAddress: t.companyAddress || '[Company address]', agentAddress: t.agentAddress || '[Representative address]' } },
         {
           logo: '/igani-logo%202.png',
           status: 'preview',
@@ -48,22 +50,6 @@ export function SalesContractForm({ signers, meId, adminEmail }: { signers: Sign
       <span className="font-medium">{label}</span>
       <div className="flex items-center gap-2">
         <Input type="number" min={0} step="any" value={Number.isFinite(f[key]) ? f[key] : ''} onChange={(e) => (setLink(null), setF({ ...f, [key]: e.target.value === '' ? NaN : Number(e.target.value) }))} />
-        <span className="text-muted-foreground">{suffix}</span>
-      </div>
-    </label>
-  )
-
-  const txt = (key: 'companyLegalName' | 'companyTradingAs' | 'companyIdNumber' | 'companyAddress' | 'agentAddress' | 'jurisdiction', label: string, placeholder: string): React.ReactElement => (
-    <label className="block space-y-1 text-sm">
-      <span className="font-medium">{label}</span>
-      <Input value={t[key]} onChange={(e) => (setLink(null), setT({ ...t, [key]: e.target.value }))} placeholder={placeholder} />
-    </label>
-  )
-  const days = (key: 'payoutDays' | 'clawbackDays' | 'noticeDays', label: string, suffix: string): React.ReactElement => (
-    <label className="block space-y-1 text-sm">
-      <span className="font-medium">{label}</span>
-      <div className="flex items-center gap-2">
-        <Input type="number" min={1} step={1} value={Number.isFinite(t[key]) ? t[key] : ''} onChange={(e) => (setLink(null), setT({ ...t, [key]: e.target.value === '' ? NaN : Number(e.target.value) }))} />
         <span className="text-muted-foreground">{suffix}</span>
       </div>
     </label>
@@ -111,18 +97,10 @@ export function SalesContractForm({ signers, meId, adminEmail }: { signers: Sign
               <p className="mt-2 text-lg font-semibold">{Number.isFinite(basePayout(f)) ? basePayout(f).toLocaleString('en-US') : '—'} ILS</p>
             </div>
           </div>
-          <p className="pt-1 text-sm font-medium">Legal terms (prefilled with the agreed values; enter the name, number and address exactly as on the tax certificate)</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {txt('companyLegalName', 'Contracting party’s full legal name', 'As on the tax certificate')}
-            {txt('companyTradingAs', 'Trading as', 'Caleno')}
-            {txt('companyIdNumber', 'Exempt dealer / company number', 'From the tax certificate')}
-            {txt('companyAddress', 'Company address', 'Street, city')}
-            {txt('agentAddress', 'Representative address', 'Street, city')}
-            {txt('jurisdiction', 'Governing jurisdiction', 'Israel')}
-            {days('payoutDays', 'Payout after month end', 'business days')}
-            {days('clawbackDays', 'Clawback window', 'days')}
-            {days('noticeDays', 'Termination notice', 'days')}
-          </div>
+          <label className="block space-y-1 text-sm">
+            <span className="font-medium">Representative address</span>
+            <Input value={agentAddress} onChange={(e) => (setLink(null), setAgentAddress(e.target.value))} placeholder="Street, city" />
+          </label>
           <SignerPicker signers={signers} selected={signerId} onSelect={(id) => (setLink(null), setSignerId(id))} meId={meId} />
           {error ? <p className="text-sm text-red-500">{error}</p> : null}
           <Button onClick={generate} disabled={pending}>
