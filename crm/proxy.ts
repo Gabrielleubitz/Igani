@@ -1,5 +1,6 @@
 import { getToken } from 'next-auth/jwt'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isFilePath, isMeetHost, stripMeetPrefix } from '@/lib/meet-host'
 import { offerSlugFromHost } from '@/lib/offer-host'
 import { canAccess, isPublicPath, isRole } from '@/lib/roles'
 
@@ -43,6 +44,30 @@ const GUARDED = /^\/(admin|sales|marketing|api)(\/|$)/
 
 export async function proxy(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl
+  const host = req.headers.get('host')
+
+  // Igani Meet on its own host: meet.igani.co/ → /meet, /login → /meet/login, /<code> → /meet/<code>. The pages check
+  // the session themselves. APIs and files fall through to the normal checks below.
+  if (isMeetHost(host)) {
+    if (!pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && !isFilePath(pathname)) {
+      if (pathname === '/meet' || pathname.startsWith('/meet/')) {
+        const url = req.nextUrl.clone()
+        url.pathname = stripMeetPrefix(pathname)
+        return secure(NextResponse.redirect(url, 308))
+      }
+      if (pathname === '/unauthorized') return secure(NextResponse.next())
+      const url = req.nextUrl.clone()
+      url.pathname = pathname === '/' ? '/meet' : `/meet${pathname}`
+      return secure(NextResponse.rewrite(url))
+    }
+  } else if ((pathname === '/meet' || pathname.startsWith('/meet/')) && !isFilePath(pathname)) {
+    // Once MEET_URL is set, the CRM's /meet links (and invites sent before the move) open on the Meet host
+    const meet = process.env.MEET_URL
+    if (meet) {
+      const url = new URL(stripMeetPrefix(pathname) + req.nextUrl.search, meet)
+      return secure(NextResponse.redirect(url, 308))
+    }
+  }
 
   // Offer microsites: honey.app.igani.co/<path> (or honey.localhost) serves /o/honey/<path>. APIs and files pass through.
   const offerSlug = offerSlugFromHost(req.headers.get('host'))

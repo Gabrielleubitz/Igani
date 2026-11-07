@@ -125,3 +125,36 @@ html.theme-switching *, html.theme-switching *::before, html.theme-switching *::
 
 /* Hebrew and English side by side (call reviews): each paragraph takes the direction of its own text */
 @layer base { .bidi-auto :where(p, li, blockquote, dd, dt, td, th, h2, h3, h4, span, div) { unicode-bidi: plaintext; } }
+
+/* Igani Meet: toasts and menus pop in */
+@keyframes meet-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+.meet-pop {
+  animation: meet-pop 0.18s ease-out;
+}
+
+/* Igani Meet: reactions float up from the bottom of the call */
+@keyframes meet-fly {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.6);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-62vh) translateX(16px);
+  }
+}
+.meet-fly {
+  animation: meet-fly 4s ease-out forwards;
+}

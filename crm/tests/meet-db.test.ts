@@ -87,4 +87,81 @@ d('Igani Meet rooms and invites', async () => {
     await endMeetRoom(room.id)
     expect(await joinMeet({ code: room.code, token: null, name: 'Gabriel' })).toMatchObject({ ok: false, error: expect.stringMatching(/ended/) })
   })
+
+  it('keeps 8x8 recordings of our rooms (once each), and says how long 8x8 still has them', async () => {
+    const { recordJaasEvent, saveMeetRecording, recordingState } = await import('@/lib/meet-recording')
+    const r = await createMeetRoom({ title: 'Recorded call' })
+    if (!r.ok) throw new Error(r.error)
+    process.env.JAAS_APP_ID = 'vpaas-magic-cookie-abc'
+    for (const k of ['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET']) delete process.env[k]
+    try {
+      const now = new Date('2026-11-07T12:00:00Z')
+      const event = (fqn: string, link = 'https://recordings.8x8.vc/file.mp4?sig=1') => ({ eventType: 'RECORDING_UPLOADED', fqn, data: { preAuthenticatedLink: link, recordingSessionId: 'rs-1', durationSec: 312.4, startTimestamp: now.getTime() - 400_000, participants: [{ name: 'Dana', id: 'x' }] } })
+      expect(await recordJaasEvent(event('vpaas-magic-cookie-other/' + r.data.code), now)).toBeNull()
+      expect(await recordJaasEvent(event(`vpaas-magic-cookie-abc/${r.data.code}`, 'http://plain.example/file.mp4'), now)).toBeNull()
+      expect(await recordJaasEvent({ eventType: 'PARTICIPANT_JOINED', fqn: `vpaas-magic-cookie-abc/${r.data.code}` }, now)).toBeNull()
+      const id = await recordJaasEvent(event(`vpaas-magic-cookie-abc/${r.data.code}`), now)
+      expect(id).toBeTruthy()
+      // 8x8 retries the same event: still one recording
+      expect(await recordJaasEvent(event(`vpaas-magic-cookie-abc/${r.data.code}`), now)).toBe(id)
+      expect(await prisma.meetRecording.count()).toBe(1)
+      await saveMeetRecording(id!)
+      const rec = await prisma.meetRecording.findUniqueOrThrow({ where: { id: id! } })
+      expect(rec).toMatchObject({ status: 'temporary', durationSec: 312, publicId: null })
+      expect(rec.error).toMatch(/24 hours/)
+      expect(recordingState(rec, now)).toBe('temporary')
+      expect(recordingState(rec, new Date(now.getTime() + 25 * 3600_000))).toBe('expired')
+      expect(recordingState({ ...rec, publicId: 'igani/meet/x' }, new Date(now.getTime() + 99 * 3600_000))).toBe('saved')
+    } finally {
+      delete process.env.JAAS_APP_ID
+    }
+  })
+
+  it('tells the lobby who is in the call, only to people who may join', async () => {
+    const { checkIn, checkOut, peopleInRoom, roomForPresence } = await import('@/lib/meet-presence')
+    const r = await createMeetRoom({ title: 'Lobby', emails: 'guest@client.com' })
+    if (!r.ok) throw new Error(r.error)
+    const room = await prisma.meetRoom.findUniqueOrThrow({ where: { code: r.data.code }, include: { invites: true } })
+    session.user = null
+    expect(await roomForPresence(room.code, null)).toBeNull()
+    expect(await roomForPresence(room.code, 'nope')).toBeNull()
+    const asGuest = await roomForPresence(room.code, room.invites[0]!.token)
+    expect(asGuest).toMatchObject({ id: room.id, avatar: null })
+    const now = new Date()
+    await checkIn(room.id, 'tabaaaaaaaa1', 'Dana', null, now)
+    await checkIn(room.id, 'tabbbbbbbbb2', 'Gabriel', '/api/public/avatar/u?v=1', new Date(now.getTime() - 120_000))
+    expect(await peopleInRoom(room.id, now)).toEqual([{ name: 'Dana', avatar: null }])
+    await checkOut(room.id, 'tabaaaaaaaa1')
+    expect(await peopleInRoom(room.id, now)).toEqual([])
+    asAdmin()
+    await endMeetRoom(room.id)
+    expect(await roomForPresence(room.code, null)).toBeNull()
+  })
+
+  it('closes calls on their own: 30 min after everyone left, never during a scheduled slot, unused links after a while', async () => {
+    const { meetClosesAt } = await import('@/lib/meet-lifecycle')
+    const t = (iso: string) => new Date(iso)
+    const base = { createdAt: t('2026-11-07T08:00:00Z'), scheduledAt: null, durationMin: 30, lastActiveAt: null }
+    // used, unscheduled: half an hour after the last person was there
+    expect(meetClosesAt({ ...base, lastActiveAt: t('2026-11-07T10:00:00Z') })).toEqual(t('2026-11-07T10:30:00Z'))
+    // tried early, scheduled later: stays open through the slot
+    expect(meetClosesAt({ ...base, scheduledAt: t('2026-11-07T15:00:00Z'), lastActiveAt: t('2026-11-07T09:00:00Z') })).toEqual(t('2026-11-07T16:00:00Z'))
+    // scheduled, nobody came: two hours after the slot
+    expect(meetClosesAt({ ...base, scheduledAt: t('2026-11-07T15:00:00Z') })).toEqual(t('2026-11-07T17:30:00Z'))
+    // a link for later nobody used: a week
+    expect(meetClosesAt(base)).toEqual(t('2026-11-14T08:00:00Z'))
+  })
+
+  it('stops letting people in once a call has been empty for half an hour', async () => {
+    const { roomForPresence, checkIn } = await import('@/lib/meet-presence')
+    const room = await prisma.meetRoom.create({ data: { code: 'igani-old-call', title: 'Old', hostId: adminId, lastActiveAt: new Date(Date.now() - 31 * 60_000) } })
+    const live = await prisma.meetRoom.create({ data: { code: 'igani-live-call', title: 'Live', hostId: adminId } })
+    await checkIn(live.id, 'tab1', 'Gabriel', null)
+    expect((await prisma.meetRoom.findUniqueOrThrow({ where: { id: live.id } })).lastActiveAt).not.toBeNull()
+    expect(await roomForPresence(live.code, null)).not.toBeNull()
+    const r = await joinMeet({ code: room.code, token: null, name: 'Gabriel' })
+    expect(r).toEqual({ ok: false, error: expect.stringContaining('ended') })
+    expect((await prisma.meetRoom.findUniqueOrThrow({ where: { id: room.id } })).endedAt).not.toBeNull()
+    expect(await roomForPresence(room.code, null)).toBeNull()
+  })
 })

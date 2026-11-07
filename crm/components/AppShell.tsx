@@ -48,6 +48,7 @@ const NAV: Entry[] = [
     icon: 'meetings',
     roles: SELLERS,
     children: [
+      { id: 'igani-meet', label: 'Igani Meet', icon: 'meet', href: '/meet', roles: ALL },
       { id: 'team-meeting', label: 'Book meeting with team', icon: 'teamMeetings', href: '/sales/team-meeting', roles: SELLERS },
       { id: 'invite', label: 'Book meeting with client', icon: 'invite', href: '/sales/invite', roles: SELLERS },
     ],
@@ -106,7 +107,6 @@ const NAV: Entry[] = [
           { id: 'audit', label: 'Audit log', icon: 'audit', href: '/admin/audit', roles: ['ADMIN'] },
         ],
       },
-      { id: 'tests', label: 'Tests', icon: 'tests', href: '/admin/tests', roles: ['ADMIN'] },
       { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings', roles: ['ADMIN'] },
     ],
   },

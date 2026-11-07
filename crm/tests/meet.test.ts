@@ -1,6 +1,7 @@
-import { createVerify, generateKeyPairSync } from 'node:crypto'
+import { createHmac, createVerify, generateKeyPairSync } from 'node:crypto'
 import { afterEach, describe, expect, it } from 'vitest'
-import { meetConfigFor, meetConfigured, meetSetupProblem, newInviteToken, newRoomCode, parseInviteEmails, signMeetJwt } from '@/lib/meet'
+import { meetConfigFor, meetConfigured, meetRecordingReady, meetSetupProblem, newInviteToken, newRoomCode, parseInviteEmails, roomCodeFromFqn, signMeetJwt, verifyJaasSignature } from '@/lib/meet'
+import { withFromName } from '@/lib/email'
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
 const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
@@ -10,7 +11,7 @@ const saved = { ...process.env }
 
 describe('Igani Meet', () => {
   afterEach(() => {
-    for (const k of ['JAAS_APP_ID', 'JAAS_KEY_ID', 'JAAS_PRIVATE_KEY']) delete process.env[k]
+    for (const k of ['JAAS_APP_ID', 'JAAS_KEY_ID', 'JAAS_PRIVATE_KEY', 'JAAS_WEBHOOK_SECRET']) delete process.env[k]
     Object.assign(process.env, saved)
   })
 
@@ -66,5 +67,82 @@ describe('Igani Meet', () => {
     expect(newRoomCode()).toMatch(/^igani-[a-z0-9]{8,}$/)
     expect(newRoomCode()).not.toBe(newRoomCode())
     expect(newInviteToken().length).toBeGreaterThanOrEqual(30)
+  })
+
+  it('lets only hosts record, and only once the recording webhook is set up', () => {
+    Object.assign(process.env, { JAAS_APP_ID: 'vpaas-magic-cookie-abc', JAAS_KEY_ID: 'key1', JAAS_PRIVATE_KEY: pem })
+    const features = (moderator: boolean) => (decode(signMeetJwt('r', { id: 'u', name: 'x', email: null, avatar: null, moderator })!.split('.')[1]!).context as { features: { recording: string } }).features.recording
+    expect(meetRecordingReady()).toBe(false)
+    expect(features(true)).toBe('false')
+    process.env.JAAS_WEBHOOK_SECRET = 'whsec_test'
+    expect(meetRecordingReady()).toBe(true)
+    expect(features(true)).toBe('true')
+    expect(features(false)).toBe('false')
+  })
+
+  it('accepts only recent 8x8 webhooks signed with our secret (v1 only)', () => {
+    const secret = 'whsec_9635df66714a4cf088ee9d0979dd3bf6'
+    const body = '{"eventType":"RECORDING_UPLOADED"}'
+    const t = 1_800_000_000
+    const sig = createHmac('sha256', secret).update(`${t}.${body}`).digest('base64')
+    const now = t * 1000
+    expect(verifyJaasSignature(body, `t=${t},v1=${sig}`, secret, now)).toBe(true)
+    expect(verifyJaasSignature(body, `t=${t},v0=bad,v1=${sig}`, secret, now)).toBe(true)
+    expect(verifyJaasSignature(body + ' ', `t=${t},v1=${sig}`, secret, now)).toBe(false)
+    expect(verifyJaasSignature(body, `t=${t},v1=${sig}`, 'whsec_other', now)).toBe(false)
+    expect(verifyJaasSignature(body, `t=${t},v0=${sig}`, secret, now)).toBe(false)
+    expect(verifyJaasSignature(body, `t=${t},v1=${sig}`, secret, now + 3600_000)).toBe(false)
+    expect(verifyJaasSignature(body, null, secret, now)).toBe(false)
+  })
+
+  it('reads our room from 8x8’s room name, and nobody else’s', () => {
+    expect(roomCodeFromFqn('vpaas-magic-cookie-abc/igani-x1y2z3', 'vpaas-magic-cookie-abc')).toBe('igani-x1y2z3')
+    expect(roomCodeFromFqn('vpaas-magic-cookie-other/igani-x1y2z3', 'vpaas-magic-cookie-abc')).toBeNull()
+    expect(roomCodeFromFqn('vpaas-magic-cookie-abc/../x', 'vpaas-magic-cookie-abc')).toBeNull()
+    expect(roomCodeFromFqn(42, 'vpaas-magic-cookie-abc')).toBeNull()
+  })
+
+  it('sends invites as the host, from our own address', () => {
+    expect(withFromName('Igani <bookings@igani.co>', 'Gabriel Leubitz (Igani)')).toBe('"Gabriel Leubitz (Igani)" <bookings@igani.co>')
+    expect(withFromName('bookings@igani.co', 'Dana "D" <x>')).toBe('"Dana D x" <bookings@igani.co>')
+    expect(withFromName('Igani <bookings@igani.co>', '  ')).toBe('Igani <bookings@igani.co>')
+  })
+})
+
+describe('Igani Meet on its own host', () => {
+  it('recognises meet.igani.co, meet.localhost and MEET_URL’s host, nothing else', async () => {
+    const { isMeetHost } = await import('@/lib/meet-host')
+    expect(isMeetHost('meet.igani.co')).toBe(true)
+    expect(isMeetHost('MEET.igani.co')).toBe(true)
+    expect(isMeetHost('meet.localhost:3100')).toBe(true)
+    expect(isMeetHost('app.igani.co')).toBe(false)
+    expect(isMeetHost('meet.app.igani.co')).toBe(false)
+    expect(isMeetHost('evilmeet.igani.co')).toBe(false)
+    expect(isMeetHost(null)).toBe(false)
+    const before = process.env.MEET_URL
+    process.env.MEET_URL = 'https://calls.example.com'
+    try {
+      expect(isMeetHost('calls.example.com')).toBe(true)
+    } finally {
+      if (before === undefined) delete process.env.MEET_URL
+      else process.env.MEET_URL = before
+    }
+  })
+
+  it('maps the CRM’s /meet paths to the Meet host’s root', async () => {
+    const { stripMeetPrefix, isFilePath } = await import('@/lib/meet-host')
+    expect(stripMeetPrefix('/meet')).toBe('/')
+    expect(stripMeetPrefix('/meet/igani-abc')).toBe('/igani-abc')
+    expect(stripMeetPrefix('/meeting')).toBe('/meeting')
+    expect(isFilePath('/meet/icon-32.png')).toBe(true)
+    expect(isFilePath('/meet/igani-abc')).toBe(false)
+  })
+
+  it('lets the host or an admin run a meeting, and no other teammate', async () => {
+    const { canManageMeet } = await import('@/lib/meet-access')
+    expect(canManageMeet({ id: 'u1', role: 'SALES' }, { hostId: 'u1' })).toBe(true)
+    expect(canManageMeet({ id: 'u2', role: 'SALES' }, { hostId: 'u1' })).toBe(false)
+    expect(canManageMeet({ id: 'u2', role: 'MARKETING' }, { hostId: null })).toBe(false)
+    expect(canManageMeet({ id: 'u3', role: 'ADMIN' }, { hostId: 'u1' })).toBe(true)
   })
 })

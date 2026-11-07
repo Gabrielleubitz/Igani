@@ -1,4 +1,5 @@
 import 'server-only'
+import { openAiReason } from './live-hints'
 import { CALL_LANG_LABEL, TRANSCRIBE_PROMPT, callLanguage, coachingLanguage, reviewLanguageRule } from './call-language'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
@@ -267,8 +268,18 @@ async function transcribe(audio: Blob, key: string): Promise<{ text: string; seg
   form.append('timestamp_granularities[]', 'segment')
   // Hebrew, English or both: a bilingual sample keeps each language as spoken
   if (!/gpt-4o/.test(process.env.OPENAI_TRANSCRIBE_MODEL ?? '')) form.append('prompt', TRANSCRIBE_PROMPT)
-  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(240_000) })
-  if (!res.ok) throw new Error(res.status === 429 ? 'OpenAI is busy or out of credit.' : `Transcription failed (${res.status}).`)
+  const post = (): Promise<Response> => fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(240_000) })
+  let res = await post()
+  // a busy or briefly failing OpenAI gets one more try before the call is marked as failed
+  if (!res.ok && (res.status === 429 || res.status >= 500)) {
+    await new Promise((r) => setTimeout(r, process.env.VITEST ? 0 : 3000))
+    res = await post()
+  }
+  if (!res.ok) {
+    const reason = await openAiReason(res)
+    console.error('[call-analysis] transcription refused', res.status, reason)
+    throw new Error(res.status === 429 ? 'OpenAI is busy or out of credit.' : `Transcription failed (${res.status}).`)
+  }
   const body = (await res.json()) as { text?: string; segments?: { start: number; end: number; text: string }[] }
   const segments = (body.segments ?? []).map((s) => ({ start: Math.max(0, s.start), end: Math.max(0, s.end), text: s.text.trim() })).filter((s) => s.text)
   return { text: body.text ?? segments.map((s) => s.text).join(' '), segments }

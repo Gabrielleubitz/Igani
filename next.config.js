@@ -9,16 +9,19 @@ const nextConfig = {
   },
   transpilePackages: ['three'],
   // The public Packages page was removed: old links and search results land on the home page instead of a 404.
-  // The new marketing site is plain HTML in public/new-site. These serve it at the real addresses.
-  // To go back to the old home page, delete this block (the old app/page.tsx is untouched).
+  // The marketing site is plain HTML in public/site. These serve it at the real addresses.
+  // public/new-site holds the previous version; About, FAQ, Privacy and Terms still use its styles (NewSiteShell),
+  // so keep it. To go back to the previous pages, point these at /new-site/*.html again.
   async rewrites() {
     return {
       beforeFiles: [
-        { source: '/', destination: '/new-site/index.html' },
-        { source: '/sales', destination: '/new-site/sales.html' },
-        { source: '/marketing', destination: '/new-site/marketing.html' },
-        { source: '/ai', destination: '/new-site/ai.html' },
-        { source: '/build', destination: '/new-site/build.html' },
+        { source: '/', destination: '/site/index.html' },
+        { source: '/sales', destination: '/site/sales.html' },
+        { source: '/marketing', destination: '/site/marketing.html' },
+        { source: '/ai', destination: '/site/ai.html' },
+        { source: '/build', destination: '/site/build.html' },
+        { source: '/dumb-ass', destination: '/site/dumb-ass.html' },
+        { source: '/get-off-wordpress', destination: '/site/get-off-wordpress.html' },
       ],
     }
   },
@@ -33,6 +36,8 @@ const nextConfig = {
       { source: '/marketing.html', destination: '/marketing', permanent: true },
       { source: '/ai.html', destination: '/ai', permanent: true },
       { source: '/build.html', destination: '/build', permanent: true },
+      { source: '/dumb-ass.html', destination: '/dumb-ass', permanent: true },
+      { source: '/get-off-wordpress.html', destination: '/get-off-wordpress', permanent: true },
       // The real estate page now lives on its own site; old ad, search and funnels links follow it (query string kept)
       { source: '/realestate', destination: 'https://realestate.igani.co', permanent: true },
       // The generic funnel pages are retired (the real estate page stays); old ad and search links land on the home page.

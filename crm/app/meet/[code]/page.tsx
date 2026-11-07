@@ -1,9 +1,13 @@
 import type { Metadata } from 'next'
 import { IganiMeet } from '@/components/meet/IganiMeet'
 import { currentUserOrNull } from '@/lib/auth'
+import { avatarPath } from '@/lib/avatar'
+import { meetScriptUrl } from '@/lib/meet'
+import { canManageMeet } from '@/lib/meet-access'
+import { closeExpiredRooms } from '@/lib/meet-lifecycle'
 import { prisma } from '@/lib/prisma'
 
-export const metadata: Metadata = { title: { absolute: 'Igani Meet' }, robots: { index: false, follow: false } }
+export const metadata: Metadata = { robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
 
 /**
@@ -15,12 +19,15 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
   const { t } = await props.searchParams
   const token = typeof t === 'string' && t.length <= 100 ? t : null
   const [room, user] = await Promise.all([
-    prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, title: true, endedAt: true, hostId: true, host: { select: { name: true } } } }),
+    prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, title: true, endedAt: true, hostId: true, scheduledAt: true, durationMin: true, createdAt: true, lastActiveAt: true, host: { select: { id: true, name: true, image: true } } } }),
     currentUserOrNull(),
   ])
+  // a room whose time is up closes now, so its links stop working (see lib/meet-lifecycle.ts)
+  if (room && !room.endedAt && (await closeExpiredRooms([room])).size) room.endedAt = new Date()
   const invite = room && token ? await prisma.meetInvite.findFirst({ where: { token, roomId: room.id }, select: { name: true, email: true, userId: true } }) : null
   const invitedUser = room && user && !invite ? await prisma.meetInvite.findFirst({ where: { roomId: room.id, userId: user.id }, select: { id: true } }) : null
-  const allowed = Boolean(room && !room.endedAt && (invite || user?.role === 'ADMIN' || invitedUser))
+  const manages = Boolean(room && user && canManageMeet(user, room))
+  const allowed = Boolean(room && !room.endedAt && (invite || manages || invitedUser))
   if (!room || !allowed) {
     return (
       <IganiMeet.Closed
@@ -29,7 +36,7 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
       />
     )
   }
-  const me = user ? await prisma.user.findUnique({ where: { id: user.id }, select: { name: true, email: true } }) : null
+  const me = user ? await prisma.user.findUnique({ where: { id: user.id }, select: { id: true, name: true, email: true, image: true } }) : null
   const asTeammate = Boolean(me && (!invite || invite.userId === user!.id || invite.email === me.email?.toLowerCase()))
   return (
     <IganiMeet
@@ -41,6 +48,13 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
       email={asTeammate ? (me?.email ?? null) : (invite?.email ?? null)}
       nameEditable={!asTeammate}
       isHost={room.hostId === user?.id}
+      scriptUrl={meetScriptUrl()}
+      avatar={asTeammate && me ? avatarPath(me) : null}
+      hostAvatar={room.host ? avatarPath(room.host) : null}
+      startsAt={room.scheduledAt?.toISOString() ?? null}
+      durationMin={room.durationMin}
+      roomId={manages ? room.id : null}
+      isMember={Boolean(user)}
     />
   )
 }
