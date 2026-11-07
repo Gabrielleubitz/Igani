@@ -123,6 +123,8 @@ export interface RoomView {
   durationMin: number
   ended: boolean
   hostName: string
+  /** when it closes on its own if nobody is in it (null once ended) */
+  closes: string | null
   /** the viewer hosts it (or is an admin): may invite, end, and play or delete recordings */
   manage: boolean
   recordings: RecordingView[]
@@ -239,6 +241,7 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
           </div>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="h-3.5 w-3.5" /> {room.when ? `${room.when} · ${room.durationMin} min` : 'Any time'} · host {room.hostName}
+            {room.closes ? <span title="Calls close on their own 30 minutes after everyone leaves"> · closes {room.closes} if no one’s in it</span> : null}
           </p>
         </div>
         {!room.ended ? (

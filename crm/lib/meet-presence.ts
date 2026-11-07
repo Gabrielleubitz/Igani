@@ -1,6 +1,7 @@
 import 'server-only'
 import { currentUserOrNull } from './auth'
 import { avatarPath } from './avatar'
+import { closeExpiredRooms, markRoomActive } from './meet-lifecycle'
 import { prisma } from './prisma'
 
 /** A tab that hasn't checked in for this long has left (tabs check in every 20 seconds). */
@@ -8,8 +9,8 @@ export const PRESENCE_TTL_MS = 50_000
 
 /** The room, if this request may see it: a valid invite token, an admin, or an invited teammate. Ended rooms: no. */
 export async function roomForPresence(code: string, token: string | null): Promise<{ id: string; avatar: string | null } | null> {
-  const found = await prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, endedAt: true } })
-  if (!found || found.endedAt) return null
+  const found = await prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, endedAt: true, createdAt: true, scheduledAt: true, durationMin: true, lastActiveAt: true } })
+  if (!found || found.endedAt || (await closeExpiredRooms([found])).size) return null
   const user = await currentUserOrNull()
   const me = user ? await prisma.user.findUnique({ where: { id: user.id }, select: { id: true, image: true, email: true } }) : null
   const room = { id: found.id, avatar: me ? avatarPath(me) : null }
@@ -32,6 +33,7 @@ export async function peopleInRoom(roomId: string, now = new Date()): Promise<{ 
 
 export async function checkIn(roomId: string, key: string, name: string, avatar: string | null, now = new Date()): Promise<void> {
   await prisma.meetPresence.upsert({ where: { roomId_key: { roomId, key } }, create: { roomId, key, name, avatar, seenAt: now }, update: { name, avatar, seenAt: now } })
+  await markRoomActive(roomId, now)
   // tidy up: old check-ins in this room
   if (Math.random() < 0.1) await prisma.meetPresence.deleteMany({ where: { roomId, seenAt: { lt: new Date(now.getTime() - 10 * 60_000) } } })
 }

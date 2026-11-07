@@ -880,19 +880,21 @@ model Prospect {
 
 /// Igani Meet (admin Tests tab): a video room on Jitsi (8x8 JaaS), with invites for teammates and outside emails.
 model MeetRoom {
-  id          String          @id @default(cuid())
+  id           String          @id @default(cuid())
   /// the room name on Jitsi and in links (/meet/<code>): random, unguessable
-  code        String          @unique
-  title       String
-  hostId      String?
-  scheduledAt DateTime?
-  durationMin Int             @default(30)
-  endedAt     DateTime?
-  createdAt   DateTime        @default(now())
-  host        User?           @relation(fields: [hostId], references: [id], onDelete: SetNull)
-  invites     MeetInvite[]
-  recordings  MeetRecording[]
-  presence    MeetPresence[]
+  code         String          @unique
+  title        String
+  hostId       String?
+  scheduledAt  DateTime?
+  durationMin  Int             @default(30)
+  endedAt      DateTime?
+  /// last time anyone was in the call (open call tabs check in every 20 s); the room closes on its own after it's empty
+  lastActiveAt DateTime?
+  createdAt    DateTime        @default(now())
+  host         User?           @relation(fields: [hostId], references: [id], onDelete: SetNull)
+  invites      MeetInvite[]
+  recordings   MeetRecording[]
+  presence     MeetPresence[]
 
   @@index([hostId, createdAt])
 }

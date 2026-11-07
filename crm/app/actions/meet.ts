@@ -9,6 +9,7 @@ import { appUrl } from '@/lib/env'
 import { deleteMeetRecording as deleteStoredRecording } from '@/lib/cloudinary'
 import { meetAvailable, meetConfigFor, meetRecordingReady, meetSetupProblem, newInviteToken, newRoomCode, parseInviteEmails, type MeetConfig } from '@/lib/meet'
 import { canManageMeet } from '@/lib/meet-access'
+import { closeExpiredRooms, markRoomActive } from '@/lib/meet-lifecycle'
 import { meetUrl } from '@/lib/meet-links'
 import { saveMeetRecording } from '@/lib/meet-recording'
 import { prisma } from '@/lib/prisma'
@@ -201,9 +202,9 @@ export async function joinMeet(input: { code: string; token: string | null; name
   try {
     const code = z.string().min(6).max(60).parse(input.code)
     const name = z.string().trim().min(1, 'Type your name').max(60).parse(input.name)
-    const room = await prisma.meetRoom.findUnique({ where: { code }, select: { id: true, code: true, endedAt: true, hostId: true } })
+    const room = await prisma.meetRoom.findUnique({ where: { code }, select: { id: true, code: true, endedAt: true, hostId: true, createdAt: true, scheduledAt: true, durationMin: true, lastActiveAt: true } })
     if (!room) return { ok: false, error: 'This call link isn’t valid.' }
-    if (room.endedAt) return { ok: false, error: 'This call has ended. Ask the host for a new link.' }
+    if (room.endedAt || (await closeExpiredRooms([room])).size) return { ok: false, error: 'This call has ended. Ask the host for a new link.' }
     const user = await currentUserOrNull()
     const invite = input.token ? await prisma.meetInvite.findUnique({ where: { token: z.string().max(100).parse(input.token) } }) : null
     if (invite && invite.roomId !== room.id) return { ok: false, error: 'This call link isn’t valid.' }
@@ -222,6 +223,7 @@ export async function joinMeet(input: { code: string; token: string | null; name
       moderator,
     })
     if (!config) return { ok: false, error: moderator && meetSetupProblem() ? `Igani Meet isn’t set up right: ${meetSetupProblem()}` : 'Igani Meet isn’t available right now. Please try again later.' }
+    await markRoomActive(room.id)
     if (invite) await prisma.meetInvite.update({ where: { id: invite.id }, data: { joinedAt: invite.joinedAt ?? new Date(), ...(teammate ? {} : { name }) } })
     return { ok: true, data: { config, name: display, avatar, moderator, canRecord: moderator && !config.testServer && meetRecordingReady() } }
   } catch (err) {

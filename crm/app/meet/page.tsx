@@ -7,6 +7,7 @@ import { cloudinaryConfigured } from '@/lib/cloudinary'
 import { appUrl } from '@/lib/env'
 import { meetAvailable, meetConfigured, meetRecordingReady, meetSetupProblem } from '@/lib/meet'
 import { canManageMeet } from '@/lib/meet-access'
+import { closeExpiredRooms, meetClosesAt } from '@/lib/meet-lifecycle'
 import { meetBase, meetUrl } from '@/lib/meet-links'
 import { recordingState } from '@/lib/meet-recording'
 import { prisma } from '@/lib/prisma'
@@ -28,6 +29,7 @@ export default async function MeetHomePage(): Promise<React.ReactElement> {
     prisma.meetRoom.findMany({ where: admin ? {} : { OR: [{ hostId: user.id }, { invites: { some: { userId: user.id } } }] }, orderBy: [{ endedAt: { sort: 'asc', nulls: 'first' } }, { createdAt: 'desc' }], take: 60, include: { host: { select: { id: true, name: true, email: true } }, invites: { orderBy: { createdAt: 'asc' } }, recordings: { orderBy: { createdAt: 'desc' } } } }),
   ])
   const now = new Date()
+  const closed = await closeExpiredRooms(rooms, now)
   const fmt = new Intl.DateTimeFormat('en-US', { timeZone: me.timeZone, weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
   const mins = (sec: number | null): string | null => (sec == null ? null : sec < 60 ? `${sec}s` : `${Math.floor(sec / 3600) ? `${Math.floor(sec / 3600)}h ` : ''}${Math.round((sec % 3600) / 60)} min`)
   const views: RoomView[] = rooms.map((r) => ({
@@ -36,7 +38,8 @@ export default async function MeetHomePage(): Promise<React.ReactElement> {
     title: r.title,
     when: r.scheduledAt ? fmt.format(r.scheduledAt) : null,
     durationMin: r.durationMin,
-    ended: Boolean(r.endedAt),
+    ended: Boolean(r.endedAt) || closed.has(r.id),
+    closes: r.endedAt || closed.has(r.id) ? null : fmt.format(meetClosesAt(r)),
     hostName: r.hostId === user.id ? 'you' : (r.host?.name ?? r.host?.email ?? 'Former teammate'),
     manage: canManageMeet(user, r),
     recordings: r.recordings.map((c) => ({ id: c.id, when: fmt.format(c.startedAt ?? c.createdAt), duration: mins(c.durationSec), state: recordingState(c, now), note: c.error, until: c.sourceUntil ? fmt.format(c.sourceUntil) : null })),

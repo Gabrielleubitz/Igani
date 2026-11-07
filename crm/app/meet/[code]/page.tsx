@@ -4,6 +4,7 @@ import { currentUserOrNull } from '@/lib/auth'
 import { avatarPath } from '@/lib/avatar'
 import { meetScriptUrl } from '@/lib/meet'
 import { canManageMeet } from '@/lib/meet-access'
+import { closeExpiredRooms } from '@/lib/meet-lifecycle'
 import { prisma } from '@/lib/prisma'
 
 export const metadata: Metadata = { robots: { index: false, follow: false } }
@@ -18,9 +19,11 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
   const { t } = await props.searchParams
   const token = typeof t === 'string' && t.length <= 100 ? t : null
   const [room, user] = await Promise.all([
-    prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, title: true, endedAt: true, hostId: true, scheduledAt: true, durationMin: true, host: { select: { id: true, name: true, image: true } } } }),
+    prisma.meetRoom.findUnique({ where: { code: code.slice(0, 60) }, select: { id: true, title: true, endedAt: true, hostId: true, scheduledAt: true, durationMin: true, createdAt: true, lastActiveAt: true, host: { select: { id: true, name: true, image: true } } } }),
     currentUserOrNull(),
   ])
+  // a room whose time is up closes now, so its links stop working (see lib/meet-lifecycle.ts)
+  if (room && !room.endedAt && (await closeExpiredRooms([room])).size) room.endedAt = new Date()
   const invite = room && token ? await prisma.meetInvite.findFirst({ where: { token, roomId: room.id }, select: { name: true, email: true, userId: true } }) : null
   const invitedUser = room && user && !invite ? await prisma.meetInvite.findFirst({ where: { roomId: room.id, userId: user.id }, select: { id: true } }) : null
   const manages = Boolean(room && user && canManageMeet(user, room))

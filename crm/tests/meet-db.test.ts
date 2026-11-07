@@ -137,4 +137,31 @@ d('Igani Meet rooms and invites', async () => {
     await endMeetRoom(room.id)
     expect(await roomForPresence(room.code, null)).toBeNull()
   })
+
+  it('closes calls on their own: 30 min after everyone left, never during a scheduled slot, unused links after a while', async () => {
+    const { meetClosesAt } = await import('@/lib/meet-lifecycle')
+    const t = (iso: string) => new Date(iso)
+    const base = { createdAt: t('2026-11-07T08:00:00Z'), scheduledAt: null, durationMin: 30, lastActiveAt: null }
+    // used, unscheduled: half an hour after the last person was there
+    expect(meetClosesAt({ ...base, lastActiveAt: t('2026-11-07T10:00:00Z') })).toEqual(t('2026-11-07T10:30:00Z'))
+    // tried early, scheduled later: stays open through the slot
+    expect(meetClosesAt({ ...base, scheduledAt: t('2026-11-07T15:00:00Z'), lastActiveAt: t('2026-11-07T09:00:00Z') })).toEqual(t('2026-11-07T16:00:00Z'))
+    // scheduled, nobody came: two hours after the slot
+    expect(meetClosesAt({ ...base, scheduledAt: t('2026-11-07T15:00:00Z') })).toEqual(t('2026-11-07T17:30:00Z'))
+    // a link for later nobody used: a week
+    expect(meetClosesAt(base)).toEqual(t('2026-11-14T08:00:00Z'))
+  })
+
+  it('stops letting people in once a call has been empty for half an hour', async () => {
+    const { roomForPresence, checkIn } = await import('@/lib/meet-presence')
+    const room = await prisma.meetRoom.create({ data: { code: 'igani-old-call', title: 'Old', hostId: adminId, lastActiveAt: new Date(Date.now() - 31 * 60_000) } })
+    const live = await prisma.meetRoom.create({ data: { code: 'igani-live-call', title: 'Live', hostId: adminId } })
+    await checkIn(live.id, 'tab1', 'Gabriel', null)
+    expect((await prisma.meetRoom.findUniqueOrThrow({ where: { id: live.id } })).lastActiveAt).not.toBeNull()
+    expect(await roomForPresence(live.code, null)).not.toBeNull()
+    const r = await joinMeet({ code: room.code, token: null, name: 'Gabriel' })
+    expect(r).toEqual({ ok: false, error: expect.stringContaining('ended') })
+    expect((await prisma.meetRoom.findUniqueOrThrow({ where: { id: room.id } })).endedAt).not.toBeNull()
+    expect(await roomForPresence(room.code, null)).toBeNull()
+  })
 })
