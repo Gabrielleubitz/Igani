@@ -1,12 +1,13 @@
 'use client'
 
-import { Bell, BellOff, CalendarClock, Check, ChevronDown, CircleDot, Copy, EllipsisVertical, Hand, Info, LayoutGrid, Link2, Loader2, LogOut, Mail, Maximize, MessageSquare, Mic, MicOff, Minimize, MonitorUp, PhoneOff, Pin, RotateCcw, Send, Settings2, ShieldCheck, Signal, SignalLow, SignalMedium, Smile, Sparkles, UserPlus, UserX, Users, Video, VideoOff, Volume2, X } from 'lucide-react'
+import { Bell, BellOff, CalendarClock, Check, ChevronDown, CircleDot, Copy, EllipsisVertical, Hand, Info, LayoutGrid, Link2, Loader2, LogOut, Mail, Maximize, MessageSquare, Mic, MicOff, Minimize, MonitorUp, PhoneOff, PictureInPicture2, Pin, RotateCcw, Send, Settings2, ShieldCheck, Signal, SignalLow, SignalMedium, Smile, Sparkles, UserPlus, UserX, Users, Video, VideoOff, Volume1, Volume2, X, Wand2, AudioLines, FlipHorizontal2 } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { addMeetInvites, joinMeet, meetRoomInvites, removeMeetInvite, resendMeetInvite, type InCallInvite } from '@/app/actions/meet'
 import type { MeetConfig } from '@/lib/meet'
 import { isStaleDeployError, markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
+import { MeetLoader } from './MeetLoader'
 import { netLevel, readNet, type NetLevel } from './net'
 import { useMeetPaths } from './paths'
 import { playCue, setSoundOutput, setSoundsMuted, unlockSounds } from './sounds'
@@ -80,6 +81,9 @@ const BG = '#0e1626'
 
 /* Remembered between calls on this device: name (guests), mic/camera on or off, and chosen devices. */
 interface Prefs {
+  /** noise cancellation (Jitsi's RNNoise) and mirroring my own preview */
+  noise?: boolean
+  mirror?: boolean
   name?: string
   mic?: boolean
   cam?: boolean
@@ -226,7 +230,7 @@ export interface IganiMeetProps {
   isMember: boolean
 }
 
-type Phase = 'prejoin' | 'joining' | 'reconnecting' | 'live' | 'left' | 'ended' | 'error'
+type Phase = 'prejoin' | 'joining' | 'reconnecting' | 'live' | 'left' | 'ended' | 'removed' | 'error'
 const NO_DEVICES: DeviceLists = { audioInput: [], audioOutput: [], videoInput: [] }
 
 export function IganiMeet(p: IganiMeetProps): React.ReactElement {
@@ -317,10 +321,16 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
   const home = p.isMember ? { label: 'Return to home screen', href: path('/') } : undefined
   return (
     <div className="dark fixed inset-0 flex flex-col overflow-hidden text-white" style={{ background: BG }}>
-      {phase === 'prejoin' || phase === 'joining' ? <PreJoin {...p} name={name} setName={setName} picked={picked} setPicked={setPicked} joining={phase === 'joining'} onJoin={() => void join()} /> : null}
+      {phase === 'prejoin' ? <PreJoin {...p} name={name} setName={setName} picked={picked} setPicked={setPicked} joining={false} onJoin={() => void join()} /> : null}
+      {phase === 'joining' ? (
+        <div className="flex flex-1 items-center justify-center">
+          <MeetLoader steps={['Connecting securely', 'Setting up your camera and mic', `Joining ${p.title}`]} />
+        </div>
+      ) : null}
       {phase === 'error' ? <Notice title="We couldn’t connect you" body={error ?? 'Something went wrong.'} action={{ label: 'Try again', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
       {phase === 'left' ? <Notice title="You left the meeting" body={p.title} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
       {phase === 'reconnecting' ? <Notice title="Reconnecting…" body="The connection dropped for a moment. Getting you back into the call." spinner /> : null}
+      {phase === 'removed' ? <Notice title="You were removed from the meeting" body="The host removed you from this call." secondary={home} /> : null}
       {phase === 'ended' ? <Notice title="The meeting has ended" body={`${p.title} is over. Thanks for joining.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
       {/* the call itself stays mounted while live: stage (+ side panel) above Igani's bottom bar */}
       <div className={cn('relative flex min-h-0 flex-1 flex-col', phase !== 'live' && 'hidden')}>
@@ -357,7 +367,7 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
             onLeft={(why) => {
               log('left', { why })
               stop()
-              setPhase(why === 'me' ? 'left' : 'ended')
+              setPhase(why === 'me' ? 'left' : why === 'removed' ? 'removed' : 'ended')
             }}
             onFail={(why, retry) => {
               stop()
@@ -646,7 +656,7 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
             <span className="absolute left-4 top-3 text-[15px] font-medium text-white [text-shadow:0_1px_3px_rgba(0,0,0,.6)]">{p.name.trim() || 'You'}</span>
             {picked.blur !== 'none' ? (
               <span className="absolute right-4 top-3 flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] text-white/90">
-                <Sparkles className="h-3 w-3" /> Background blur on
+                <Sparkles className="h-3 w-3" /> {isImageBg(picked.blur) ? 'Igani background on' : 'Background blur on'}
               </span>
             ) : null}
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-4 bg-gradient-to-t from-black/55 to-transparent pb-4 pt-12">
@@ -807,6 +817,8 @@ interface ChatMsg {
   mine: boolean
   text: string
   at: number
+  /** a private message: "to Dana" (mine) or "privately" (to me) */
+  priv?: string
 }
 interface Flying {
   id: number
@@ -839,7 +851,7 @@ interface LiveProps {
   me: { name: string; avatar: string | null }
   presence: { code: string; token: string | null }
   onJoined: () => void
-  onLeft: (why: 'me' | 'ended') => void
+  onLeft: (why: 'me' | 'ended' | 'removed') => void
   onFail: (why: string, retry: boolean) => void
   log: (kind: string, data?: Record<string, unknown>) => void
 }
@@ -847,6 +859,9 @@ interface LiveProps {
 function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testServer, moderator, canRecord, startMic, startCam, blur, me, presence, onJoined, onLeft, onFail, log }: LiveProps): React.ReactElement {
   const api = apiRaw
   const [mic, setMic] = useState(startMic)
+  useEffect(() => {
+    micRef.current = mic
+  }, [mic])
   const [cam, setCam] = useState(startCam)
   const [sharing, setSharing] = useState(false)
   const [layout, setLayout] = useState<Layout>('auto')
@@ -859,6 +874,17 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
   const [rec, setRec] = useState<{ on: boolean; since: number | null; pending: boolean }>({ on: false, since: null, pending: false })
   const [toasts, setToasts] = useState<Toast[]>([])
   const [side, setSide] = useState<Side | null>(null)
+  /** host rights can arrive mid-call (made co-host) */
+  const [mod, setMod] = useState(moderator)
+  /** whose microphone is off (from the participantMuted event) */
+  const [muted, setMuted] = useState<Record<string, boolean>>({})
+  const [pip, setPip] = useState(false)
+  const [ptt, setPtt] = useState(false)
+  const [canPip] = useState(() => typeof window !== 'undefined' && 'documentPictureInPicture' in window)
+  const micRef = useRef(startMic)
+  const pttOn = useRef(false)
+  const localToggle = useRef(0)
+  const chatTo = useRef<string | null>(null)
   /** connection health and the data saver (pauses incoming video): off, switched on for you, or by you */
   const [net, setNet] = useState<NetLevel | null>(null)
   const [saver, setSaver] = useState<'off' | 'auto' | 'on'>('off')
@@ -936,7 +962,10 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
       joinedCb.current()
       playCue('ready')
       if (me.avatar) api.executeCommand('avatarUrl', me.avatar)
-      if (blur !== 'none') api.executeCommand('setBlurredBackground', blur)
+      if (blur !== 'none') void applyBackground(api, blur)
+      const prefs = readPrefs()
+      if (prefs.noise) api.executeCommand('setNoiseSuppressionEnabled', true)
+      if (prefs.mirror === false) api.executeCommand('toggleCameraMirror')
       for (const x of api.getParticipantsInfo?.() ?? []) if (x.participantId && x.participantId !== selfRef.current) names.set(x.participantId, { name: x.displayName || x.formattedDisplayName || 'Guest', avatar: x.avatarURL || null })
       sync()
     })
@@ -1013,16 +1042,19 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
     api.addListener('incomingMessage', (e: { nick?: string; message?: string; privateMessage?: boolean }) => {
       const text = (e.message ?? '').trim()
       if (!text) return
-      setMessages((m) => [...m.slice(-199), { id: ++seq.current, from: e.nick || 'Guest', mine: false, text: text.slice(0, 2000), at: Date.now() }])
+      setMessages((m) => [...m.slice(-199), { id: ++seq.current, from: e.nick || 'Guest', mine: false, text: text.slice(0, 2000), at: Date.now(), ...(e.privateMessage ? { priv: 'privately' } : {}) }])
       if (sideRef.current !== 'chat') {
         setUnread((n) => n + 1)
         playCue('message')
         toast(`${e.nick || 'Someone'}: ${text.slice(0, 80)}`)
       }
     })
-    api.addListener('outgoingMessage', (e: { message?: string }) => {
+    api.addListener('outgoingMessage', (e: { message?: string; privateMessage?: boolean }) => {
       const text = (e.message ?? '').trim()
-      if (text) setMessages((m) => [...m.slice(-199), { id: ++seq.current, from: 'You', mine: true, text: text.slice(0, 2000), at: Date.now() }])
+      // who I just sent it to (set when sending); 8x8 also flags private messages, but don't depend on it
+      const to = chatTo.current ?? (e.privateMessage ? 'them' : null)
+      chatTo.current = null
+      if (text) setMessages((m) => [...m.slice(-199), { id: ++seq.current, from: 'You', mine: true, text: text.slice(0, 2000), at: Date.now(), ...(to ? { priv: `to ${to}` } : {}) }])
     })
     // reactions travel to everyone as small data messages
     api.addListener('endpointTextMessageReceived', (e: { senderInfo?: { id?: string }; eventData?: { text?: string } }) => {
@@ -1032,7 +1064,44 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
       if (!REACTIONS.includes(emoji)) return
       fly(emoji, names.get(e.senderInfo?.id ?? '')?.name ?? 'Someone')
     })
-    api.addListener('noisyMic', () => toast('Your microphone is picking up a lot of noise.', 'warn'))
+    // someone's microphone went on or off; if it's mine and I didn't do it, the host muted me
+    api.addListener('participantMuted', (e: { participantId?: string; isMuted?: boolean; mediaType?: string }) => {
+      if (!e.participantId || (e.mediaType && e.mediaType !== 'audio')) return
+      setMuted((m) => ({ ...m, [e.participantId!]: Boolean(e.isMuted) }))
+      if (e.participantId === selfRef.current && e.isMuted && Date.now() - localToggle.current > 1500) toast('The host muted your microphone.')
+    })
+    api.addListener('participantKickedOut', (e: { kicked?: { id?: string; local?: boolean } }) => {
+      if (e.kicked?.local || (e.kicked?.id && e.kicked.id === selfRef.current)) {
+        iLeft.current = true
+        leftRef.current('removed')
+      }
+    })
+    api.addListener('participantRoleChanged', (e: { id?: string; role?: string }) => {
+      if (e.id && e.id === selfRef.current && e.role === 'moderator') {
+        setMod((was) => {
+          if (!was) toast('You’re now a co-host: you can mute people and use the host controls.')
+          return true
+        })
+      }
+    })
+    const deviceTrouble = (what: string) => (e: { type?: string; message?: string }) => {
+      logRef.current(`${what}-error`, { type: e.type ?? '', message: (e.message ?? '').slice(0, 120) })
+      toast(/permission|denied|notallowed/i.test(`${e.type} ${e.message}`) ? `Your browser is blocking the ${what}. Allow it in the address bar, then try again.` : `Igani can’t use your ${what}. Check no other app is using it, or pick another one in Settings.`, 'warn')
+    }
+    api.addListener('micError', deviceTrouble('microphone'))
+    api.addListener('cameraError', deviceTrouble('camera'))
+    // the computer is struggling (CPU pressure): background effects are the heaviest thing we run, so say so once
+    let pressureWarned = false
+    api.addListener('computePressureChanged', (e: unknown) => {
+      const level = JSON.stringify(e ?? '').match(/nominal|fair|serious|critical/)?.[0]
+      if (level && level !== 'nominal') logRef.current('cpu', { level })
+      if ((level === 'serious' || level === 'critical') && !pressureWarned) {
+        pressureWarned = true
+        toast(readPrefs().blur && readPrefs().blur !== 'none' ? 'Your computer is working hard. Turning off the background effect in Settings will make the call smoother.' : 'Your computer is working hard. Closing other apps or tabs will make the call smoother.', 'warn')
+      }
+    })
+    api.addListener('pipEntered', () => setPip(true))
+    api.addListener('pipLeft', () => setPip(false))
     api.addListener('recordingStatusChanged', (e: { on: boolean; mode?: string; error?: string }) => {
       if (e.mode && e.mode !== 'file') return
       if (recPending.current) clearTimeout(recPending.current)
@@ -1124,27 +1193,57 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
       const k = e.key.toLowerCase()
       if ((e.metaKey || e.ctrlKey) && !e.altKey && (k === 'd' || k === 'e')) {
         e.preventDefault()
+        if (k === 'd') localToggle.current = Date.now()
         api.executeCommand(k === 'd' ? 'toggleAudio' : 'toggleVideo')
         return
       }
-      if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return
-      if (k === 'm') api.executeCommand('toggleAudio')
+      if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey) return
+      // push to talk: hold Space while muted
+      if (e.code === 'Space') {
+        e.preventDefault()
+        if (!e.repeat && !micRef.current && !pttOn.current) {
+          pttOn.current = true
+          setPtt(true)
+          localToggle.current = Date.now()
+          api.executeCommand('toggleAudio')
+        }
+        return
+      }
+      if (e.repeat) return
+      if (k === 'm') {
+        localToggle.current = Date.now()
+        api.executeCommand('toggleAudio')
+      }
       else if (k === 'v') api.executeCommand('toggleVideo')
       else if (e.key === 'Escape') {
         setMenu(null)
         setSettingsOpen(false)
       }
     }
+    const onUp = (e: KeyboardEvent): void => {
+      if (e.code !== 'Space' || !pttOn.current) return
+      pttOn.current = false
+      setPtt(false)
+      localToggle.current = Date.now()
+      api.executeCommand('toggleAudio')
+    }
     const onUnload = (e: BeforeUnloadEvent): void => e.preventDefault()
     window.addEventListener('keydown', onKey)
+    window.addEventListener('keyup', onUp)
     window.addEventListener('beforeunload', onUnload)
     return () => {
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keyup', onUp)
       window.removeEventListener('beforeunload', onUnload)
     }
   }, [api])
 
-  const cmd = (name: string, ...args: unknown[]) => () => api.executeCommand(name, ...args)
+  const cmd =
+    (name: string, ...args: unknown[]) =>
+    (): void => {
+      if (name === 'toggleAudio') localToggle.current = Date.now()
+      api.executeCommand(name, ...args)
+    }
   const closeMenu = useCallback(() => setMenu(null), [])
   const setDataSaver = useCallback(
     (v: 'off' | 'auto' | 'on') => {
@@ -1261,12 +1360,7 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
   const overlay = (
     <>
       <div className={cn('absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0e1626] transition-opacity duration-500', joinedAt ? 'pointer-events-none opacity-0' : 'opacity-100')}>
-        <span className="relative flex h-20 w-20 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-[26%] bg-[#6aa6ff]/20" />
-          {/* eslint-disable-next-line @next/next/no-img-element -- static brand icon */}
-          <img src="/meet/igani-meet-icon.png" alt="" className="relative h-20 w-20 rounded-[24%] shadow-2xl shadow-black/50" />
-        </span>
-        <p className="px-6 text-center text-sm text-[#c4cbd6]">Joining {title}…</p>
+        {joinedAt ? null : <MeetLoader steps={['Connecting securely', 'Setting up your camera and mic', `Joining ${title}`]} />}
       </div>
       {alone ? (
         <div className="absolute inset-x-0 top-16 flex justify-center px-4">
@@ -1304,6 +1398,11 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
           </span>
         ) : null}
         <span className="truncate text-[15px] font-medium text-[#e3e8f0] lg:hidden">{title}</span>
+        {ptt ? (
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-medium text-emerald-300">
+            <Mic className="h-3.5 w-3.5" /> Talking (hold Space)
+          </span>
+        ) : null}
         {net ? (
           <button
             type="button"
@@ -1338,8 +1437,17 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
         </button>
       </div>
       {side === 'details' ? <DetailsPanel code={code} title={title} joinedAt={joinedAt} now={now} testServer={testServer} onAddPeople={roomId ? addPeople : null} /> : null}
-      {side === 'people' ? <PeoplePanel api={api} ring={ring} hands={hands} moderator={moderator} myId={myId} roomId={roomId} inviteFocus={inviteFocus} /> : null}
-      {side === 'chat' ? <ChatPanel api={api} messages={messages} /> : null}
+      {side === 'people' ? <PeoplePanel api={api} ring={ring} hands={hands} moderator={mod} muted={muted} myId={myId} roomId={roomId} inviteFocus={inviteFocus} /> : null}
+      {side === 'chat' ? (
+        <ChatPanel
+          people={ring.filter((x) => !x.you)}
+          messages={messages}
+          onSend={(text, to) => {
+            chatTo.current = to ? (ring.find((x) => x.id === to)?.name ?? 'them') : null
+            api.executeCommand('sendChatMessage', text, to ?? '', false)
+          }}
+        />
+      ) : null}
       {side === 'host' ? <HostPanel api={api} onEndAll={() => hangup(true)} /> : null}
     </aside>
   ) : null
@@ -1390,6 +1498,11 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
                     {full ? 'Exit full screen' : 'Full screen'}
                   </MenuItem>
                 ) : null}
+                {canPip ? (
+                  <MenuItem icon={<PictureInPicture2 />} onClick={() => (setMenu(null), api.executeCommand(pip ? 'hidePiP' : 'showPiP'))}>
+                    {pip ? 'Close picture-in-picture' : 'Picture-in-picture'}
+                  </MenuItem>
+                ) : null}
                 <MenuItem icon={<Smile />} onClick={() => setMenu('reactions')} className="sm:hidden">
                   Send a reaction
                 </MenuItem>
@@ -1412,7 +1525,7 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
                 <MenuItem icon={<MessageSquare />} onClick={() => openSide('chat')} className="md:hidden">
                   Chat{unread ? ` (${unread})` : ''}
                 </MenuItem>
-                {moderator ? (
+                {mod ? (
                   <MenuItem icon={<ShieldCheck />} onClick={() => openSide('host')} className="md:hidden">
                     Host controls
                   </MenuItem>
@@ -1448,7 +1561,7 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
             ) : null}
           </div>
           <div className="relative">
-            <CtrlButton wide off onClick={() => (moderator && count > 1 ? setMenu(menu === 'leave' ? null : 'leave') : hangup())} label="Leave call" icon={<PhoneOff />} />
+            <CtrlButton wide off onClick={() => (mod && count > 1 ? setMenu(menu === 'leave' ? null : 'leave') : hangup())} label="Leave call" icon={<PhoneOff />} />
             {menu === 'leave' ? (
               <Popover onClose={closeMenu} className="right-0 w-64 py-2">
                 <MenuItem icon={<LogOut />} onClick={() => hangup()}>
@@ -1465,7 +1578,7 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
           <SideIcon onClick={() => openSide('details')} active={side === 'details'} label="Meeting details" icon={<Info />} />
           <SideIcon onClick={() => openSide('people')} active={side === 'people'} label="People" icon={<Users />} badge={count} />
           <SideIcon onClick={() => openSide('chat')} active={side === 'chat'} label="Chat with everyone" icon={<MessageSquare />} dot={unread > 0} />
-          {moderator ? <SideIcon onClick={() => openSide('host')} active={side === 'host'} label="Host controls" icon={<ShieldCheck />} /> : null}
+          {mod ? <SideIcon onClick={() => openSide('host')} active={side === 'host'} label="Host controls" icon={<ShieldCheck />} /> : null}
         </div>
       </footer>
     </>
@@ -1534,8 +1647,13 @@ function DetailsPanel({ code, title, joinedAt, now, testServer, onAddPeople }: {
   )
 }
 
-function PeoplePanel({ api, ring, hands, moderator, myId, roomId, inviteFocus }: { api: JitsiApi; ring: Person[]; hands: string[]; moderator: boolean; myId: string | null; roomId: string | null; inviteFocus: number }): React.ReactElement {
+/** How loud each person is for me (0–100), kept while the page is open. */
+const volumes = new Map<string, number>()
+
+function PeoplePanel({ api, ring, hands, moderator, muted, myId, roomId, inviteFocus }: { api: JitsiApi; ring: Person[]; hands: string[]; moderator: boolean; muted: Record<string, boolean>; myId: string | null; roomId: string | null; inviteFocus: number }): React.ReactElement {
   const [open, setOpen] = useState<string | null>(null)
+  const [, bump] = useState(0)
+  const [asked, setAsked] = useState<string | null>(null)
   const raised = ring.filter((x) => hands.includes(x.you ? (myId ?? '') : x.id))
   const inv = useInvites(roomId)
   return (
@@ -1566,18 +1684,55 @@ function PeoplePanel({ api, ring, hands, moderator, myId, roomId, inviteFocus }:
               {x.you && moderator ? <span className="block text-xs text-[#9aa4b2]">Meeting host</span> : null}
             </span>
             {hands.includes(x.you ? (myId ?? '') : x.id) ? <span title="Hand raised">✋</span> : null}
+            {!x.you && muted[x.id] ? <MicOff className="h-4 w-4 text-[#9aa4b2]" aria-label="Microphone off" /> : null}
+            {!x.you && asked === x.id ? <span className="text-[11px] text-[#a8c7fa]">Asked</span> : null}
             {!x.you ? (
               <div className="relative">
                 <button type="button" onClick={() => setOpen(open === x.id ? null : x.id)} aria-label={`Options for ${x.name}`} className="rounded-full p-1.5 text-[#c4cbd6] opacity-70 hover:bg-white/10 hover:opacity-100">
                   <EllipsisVertical className="h-4 w-4" />
                 </button>
                 {open === x.id ? (
-                  <div className="meet-pop absolute right-0 top-full z-20 mt-1 w-48 rounded-xl bg-[#232d3f] py-1.5 shadow-2xl ring-1 ring-white/10">
+                  <div className="meet-pop absolute right-0 top-full z-20 mt-1 w-60 rounded-xl bg-[#232d3f] py-1.5 shadow-2xl ring-1 ring-white/10">
                     <MenuItem icon={<Pin />} onClick={() => (setOpen(null), api.executeCommand('pinParticipant', x.id))}>
                       Pin for me
                     </MenuItem>
+                    <label className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#e3e8f0]">
+                      <Volume1 className="h-5 w-5 shrink-0 text-[#c4cbd6]" />
+                      <span className="sr-only">Volume for {x.name}</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={100}
+                        value={volumes.get(x.id) ?? 100}
+                        onChange={(e) => {
+                          const v = Number(e.target.value)
+                          volumes.set(x.id, v)
+                          bump((n) => n + 1)
+                          api.executeCommand('setParticipantVolume', x.id, v / 100)
+                        }}
+                        className="h-1 min-w-0 flex-1 accent-[#a8c7fa]"
+                      />
+                      <span className="w-8 text-right text-xs tabular-nums text-[#9aa4b2]">{volumes.get(x.id) ?? 100}%</span>
+                    </label>
                     {moderator ? (
                       <>
+                        {muted[x.id] ? (
+                          <MenuItem
+                            icon={<Mic />}
+                            onClick={() => {
+                              setOpen(null)
+                              api.executeCommand('askToUnmute', x.id)
+                              setAsked(x.id)
+                              setTimeout(() => setAsked((a) => (a === x.id ? null : a)), 4000)
+                            }}
+                          >
+                            Ask to unmute
+                          </MenuItem>
+                        ) : (
+                          <MenuItem icon={<MicOff />} onClick={() => (setOpen(null), api.executeCommand('muteRemoteParticipant', x.id, 'audio'))}>
+                            Mute
+                          </MenuItem>
+                        )}
                         <MenuItem icon={<ShieldCheck />} onClick={() => (setOpen(null), api.executeCommand('grantModerator', x.id))}>
                           Make co-host
                         </MenuItem>
@@ -1598,16 +1753,19 @@ function PeoplePanel({ api, ring, hands, moderator, myId, roomId, inviteFocus }:
   )
 }
 
-function ChatPanel({ api, messages }: { api: JitsiApi; messages: ChatMsg[] }): React.ReactElement {
+function ChatPanel({ people, messages, onSend }: { people: Person[]; messages: ChatMsg[]; onSend: (text: string, to: string | null) => void }): React.ReactElement {
   const [text, setText] = useState('')
+  const [to, setTo] = useState<string>('')
   const end = useRef<HTMLDivElement>(null)
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
   }, [messages.length])
+  // someone left: back to everyone
+  const target = to && people.some((x) => x.id === to) ? to : ''
   const send = (): void => {
     const t = text.trim()
     if (!t) return
-    api.executeCommand('sendChatMessage', t.slice(0, 2000), '', false)
+    onSend(t.slice(0, 2000), target || null)
     setText('')
   }
   return (
@@ -1615,9 +1773,9 @@ function ChatPanel({ api, messages }: { api: JitsiApi; messages: ChatMsg[] }): R
       <p className="mx-4 rounded-lg bg-white/[0.05] px-3 py-2.5 text-center text-xs text-[#9aa4b2]">Messages can only be seen by people in the call and are deleted when the call ends.</p>
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4 text-sm">
         {messages.map((m) => (
-          <div key={m.id}>
+          <div key={m.id} className={cn(m.priv && 'rounded-xl bg-[#a8c7fa]/[0.07] px-3 py-2 ring-1 ring-[#a8c7fa]/15')}>
             <p className="text-xs">
-              <span className="font-medium">{m.from}</span> <span className="ml-1 text-[#9aa4b2]">{hhmm(m.at)}</span>
+              <span className="font-medium">{m.from}</span> {m.priv ? <span className="ml-1 rounded-full bg-[#a8c7fa]/15 px-1.5 py-px text-[10px] font-medium text-[#a8c7fa]">Private {m.priv}</span> : null} <span className="ml-1 text-[#9aa4b2]">{hhmm(m.at)}</span>
             </p>
             <p className="mt-0.5 whitespace-pre-wrap break-words text-[#e3e8f0]">{m.text}</p>
           </div>
@@ -1625,7 +1783,20 @@ function ChatPanel({ api, messages }: { api: JitsiApi; messages: ChatMsg[] }): R
         <div ref={end} />
       </div>
       <div className="p-3">
-        <div className="flex items-center gap-2 rounded-full bg-white/[0.07] py-1 pl-4 pr-1 ring-[#a8c7fa]/60 focus-within:ring-1">
+        {people.length ? (
+          <label className="mb-2 flex items-center gap-2 px-2 text-xs text-[#9aa4b2]">
+            Send to
+            <select value={target} onChange={(e) => setTo(e.target.value)} className="min-w-0 flex-1 rounded-full border border-white/15 bg-[#1a2333] px-3 py-1.5 text-base text-[#e3e8f0] outline-none focus:border-[#a8c7fa] sm:text-xs">
+              <option value="">Everyone</option>
+              {people.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.name} (privately)
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <div className={cn('flex items-center gap-2 rounded-full py-1 pl-4 pr-1 ring-[#a8c7fa]/60 focus-within:ring-1', target ? 'bg-[#a8c7fa]/10' : 'bg-white/[0.07]')}>
           <input
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -1635,7 +1806,7 @@ function ChatPanel({ api, messages }: { api: JitsiApi; messages: ChatMsg[] }): R
                 send()
               }
             }}
-            placeholder="Send a message"
+            placeholder={target ? `Message ${people.find((x) => x.id === target)?.name ?? ''} privately` : 'Send a message'}
             maxLength={2000}
             className="h-10 min-w-0 flex-1 border-0 bg-transparent text-base sm:text-sm shadow-none outline-none ring-0 placeholder:text-[#9aa4b2] focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
           />
@@ -1678,7 +1849,50 @@ const BLURS = [
   { key: 'slight-blur', label: 'Light' },
   { key: 'blur', label: 'Strong' },
 ] as const
-type Blur = (typeof BLURS)[number]['key']
+/** Igani's own virtual backgrounds (public/meet/backgrounds) */
+const IGANI_BGS = [
+  { key: 'igani-navy', label: 'Igani Navy' },
+  { key: 'igani-aurora', label: 'Igani Aurora' },
+  { key: 'igani-daylight', label: 'Igani Daylight' },
+] as const
+type Blur = (typeof BLURS)[number]['key'] | (typeof IGANI_BGS)[number]['key']
+const isImageBg = (b: Blur): boolean => b.startsWith('igani-')
+
+/** Blur, an Igani background image, or nothing. Images are sent to Jitsi as data URLs. */
+async function applyBackground(api: { executeCommand: (name: string, ...args: unknown[]) => void }, key: Blur): Promise<void> {
+  if (!isImageBg(key)) {
+    api.executeCommand('setBlurredBackground', key)
+    return
+  }
+  try {
+    const blob = await (await fetch(`/meet/backgrounds/${key}.jpg`)).blob()
+    const url = await new Promise<string>((ok, fail) => {
+      const fr = new FileReader()
+      fr.onload = () => ok(String(fr.result))
+      fr.onerror = () => fail(fr.error)
+      fr.readAsDataURL(blob)
+    })
+    api.executeCommand('setVirtualBackground', true, url)
+  } catch {
+    api.executeCommand('setBlurredBackground', 'blur')
+  }
+}
+
+/** A Settings row with an on/off switch. */
+function ToggleRow({ icon, label, hint, on, onChange }: { icon: React.ReactElement; label: string; hint?: string; on: boolean; onChange: (v: boolean) => void }): React.ReactElement {
+  return (
+    <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className="flex w-full items-center gap-3 py-1.5 text-left text-sm [&>svg]:h-5 [&>svg]:w-5 [&>svg]:shrink-0 [&>svg]:text-[#c4cbd6]">
+      {icon}
+      <span className="flex-1">
+        {label}
+        {hint ? <span className="block text-xs text-[#9aa4b2]">{hint}</span> : null}
+      </span>
+      <span className={cn('relative h-6 w-10 shrink-0 rounded-full transition', on ? 'bg-[#a8c7fa]' : 'bg-white/20')}>
+        <span className={cn('absolute top-1 h-4 w-4 rounded-full shadow transition-all', on ? 'left-5 bg-[#062e6f]' : 'left-1 bg-white')} />
+      </span>
+    </button>
+  )
+}
 
 /** Google Meet-style settings: switch microphone, camera and speaker, blur the background, and Igani's sounds. */
 function SettingsDialog({ api, onClose }: { api: JitsiApi; onClose: () => void }): React.ReactElement {
@@ -1686,6 +1900,8 @@ function SettingsDialog({ api, onClose }: { api: JitsiApi; onClose: () => void }
   const [cur, setCur] = useState({ mic: '', cam: '', spk: '' })
   const [blur, setBlur] = useState<Blur>(() => readPrefs().blur ?? 'none')
   const [sounds, setSounds] = useState(() => readPrefs().sounds !== false)
+  const [noise, setNoise] = useState(() => readPrefs().noise === true)
+  const [mirror, setMirror] = useState(() => readPrefs().mirror !== false)
   useEffect(() => {
     let live = true
     void Promise.all([api.getAvailableDevices(), api.getCurrentDevices()])
@@ -1726,41 +1942,73 @@ function SettingsDialog({ api, onClose }: { api: JitsiApi; onClose: () => void }
           <DeviceSelect icon={<Volume2 />} label="Speakers" list={lists.audioOutput} value={cur.spk} onChange={(id) => choose('spk', id)} />
           <DeviceSelect icon={<Video />} label="Camera" list={lists.videoInput} value={cur.cam} onChange={(id) => choose('cam', id)} />
         </div>
-        <p className="mb-2 mt-5 text-sm font-medium text-[#a8c7fa]">Background</p>
-        <div className="grid grid-cols-3 gap-1 rounded-xl bg-white/5 p-1">
-          {BLURS.map((b) => (
-            <button
-              key={b.key}
-              type="button"
-              onClick={() => {
-                api.executeCommand('setBlurredBackground', b.key)
-                setBlur(b.key)
-                writePrefs({ blur: b.key })
-              }}
-              className={cn('flex items-center justify-center gap-1 rounded-lg py-2 text-sm transition', blur === b.key ? 'bg-[#a8c7fa] font-medium text-[#062e6f]' : 'text-[#c4cbd6] hover:bg-white/10')}
-            >
-              {blur === b.key ? <Check className="h-3.5 w-3.5" /> : null}
-              {b.key === 'none' ? 'No blur' : `${b.label} blur`}
-            </button>
-          ))}
+        <div className="mt-3 space-y-1">
+          <ToggleRow
+            icon={<AudioLines />}
+            label="Noise cancellation"
+            hint="Filters out keyboards, fans and background chatter"
+            on={noise}
+            onChange={(v) => {
+              setNoise(v)
+              writePrefs({ noise: v })
+              api.executeCommand('setNoiseSuppressionEnabled', v)
+            }}
+          />
+          <ToggleRow
+            icon={<FlipHorizontal2 />}
+            label="Mirror my video"
+            hint="Only changes how you see yourself"
+            on={mirror}
+            onChange={(v) => {
+              setMirror(v)
+              writePrefs({ mirror: v })
+              api.executeCommand('toggleCameraMirror')
+            }}
+          />
+          <ToggleRow
+            icon={sounds ? <Bell /> : <BellOff />}
+            label="Igani sounds"
+            hint="When people join, leave or send a message"
+            on={sounds}
+            onChange={(v) => {
+              setSounds(v)
+              setSoundsMuted(!v)
+              writePrefs({ sounds: v })
+              if (v) playCue('join')
+            }}
+          />
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            const next = !sounds
-            setSounds(next)
-            setSoundsMuted(!next)
-            writePrefs({ sounds: next })
-            if (next) playCue('join')
-          }}
-          className="mt-5 flex w-full items-center gap-3 text-left text-sm"
-        >
-          {sounds ? <Bell className="h-5 w-5 text-[#c4cbd6]" /> : <BellOff className="h-5 w-5 text-[#c4cbd6]" />}
-          <span className="flex-1">Sounds when people join, leave or message</span>
-          <span className={cn('relative h-6 w-10 rounded-full transition', sounds ? 'bg-[#a8c7fa]' : 'bg-white/20')}>
-            <span className={cn('absolute top-1 h-4 w-4 rounded-full shadow transition-all', sounds ? 'left-5 bg-[#062e6f]' : 'left-1 bg-white')} />
-          </span>
-        </button>
+        <p className="mb-2 mt-5 flex items-center gap-2 text-sm font-medium text-[#a8c7fa]">
+          <Wand2 className="h-4 w-4" /> Background
+        </p>
+        <div className="grid grid-cols-3 gap-2">
+          {[...BLURS, ...IGANI_BGS].map((b) => {
+            const on = blur === b.key
+            return (
+              <button
+                key={b.key}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
+                  void applyBackground(api, b.key)
+                  setBlur(b.key)
+                  writePrefs({ blur: b.key })
+                }}
+                className={cn('group relative flex aspect-video items-center justify-center overflow-hidden rounded-xl text-xs ring-2 transition', on ? 'ring-[#a8c7fa]' : 'ring-white/10 hover:ring-white/30')}
+              >
+                {isImageBg(b.key) ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- tiny static thumbnail
+                  <img src={`/meet/backgrounds/${b.key}-thumb.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                ) : (
+                  <span className={cn('absolute inset-0 bg-gradient-to-br from-[#2b3a55] to-[#1a2333]', b.key === 'slight-blur' && 'backdrop-blur-sm', b.key === 'blur' && 'backdrop-blur')} />
+                )}
+                <span className={cn('relative rounded-full px-2 py-0.5 font-medium', isImageBg(b.key) ? 'bg-black/45 text-white' : 'text-[#e3e8f0]')}>{b.key === 'none' ? 'No effect' : b.label.replace('Igani ', '') + (isImageBg(b.key) ? '' : ' blur')}</span>
+                {on ? <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5 rounded-full bg-[#a8c7fa] p-0.5 text-[#062e6f]" /> : null}
+              </button>
+            )
+          })}
+        </div>
+        <p className="mt-5 text-xs text-[#9aa4b2]">Tip: when you’re muted, hold Space to talk.</p>
       </div>
     </div>
   )
@@ -1773,7 +2021,7 @@ function Notice({ title, body, action, secondary, spinner = false }: { title: st
         <Brand />
       </header>
       <div className="flex flex-1 flex-col items-center justify-center gap-6 px-6 pb-16 text-center">
-        {spinner ? <Loader2 className="h-8 w-8 animate-spin text-[#a8c7fa]" /> : null}
+        {spinner ? <MeetLoader size="sm" steps={['Getting you back in']} /> : null}
         <div>
           <h1 className="text-[28px] font-normal tracking-tight text-[#e3e8f0] sm:text-4xl">{title}</h1>
           <p className="mx-auto mt-3 max-w-md text-[15px] text-[#9aa4b2]">{body}</p>
