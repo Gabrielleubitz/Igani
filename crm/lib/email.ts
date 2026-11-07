@@ -297,13 +297,20 @@ export async function sendMeetInviteEmail(a: { to: string; guestName: string | n
   const ics = a.start
     ? buildIcs({ uid: `${a.uid}@app.igani.co`, start: a.start, end: new Date(a.start.getTime() + a.durationMin * 60_000), title: a.title, description: `Join on ${brandName} Meet: ${a.joinUrl}`, location: a.joinUrl, url: a.joinUrl, organizerName: a.hostName, organizerEmail: a.hostEmail, attendeeName: a.guestName ?? a.to, attendeeEmail: a.to })
     : null
-  return send({
+  const mail = {
     to: a.to,
     fromName: `${a.hostName} (${brandName})`,
     replyTo: a.hostEmail,
     subject: when ? `Invitation: ${a.title} @ ${when}` : `Video call with ${a.hostName}: ${a.title}`,
     html: await render(MeetInvite(props)),
     text: meetInviteText(props),
-    ...(ics ? { attachments: [{ filename: 'invite.ics', content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; charset=utf-8; method=REQUEST' }] } : {}),
-  })
+  }
+  if (!ics) return send(mail)
+  try {
+    return await send({ ...mail, attachments: [{ filename: 'invite.ics', content: Buffer.from(ics, 'utf8'), contentType: 'text/calendar; charset=utf-8; method=REQUEST' }] })
+  } catch (err) {
+    // Resend once refused an invite ("Invalid option"): the link matters more than the calendar file, so send it without
+    console.warn('[meet] invite with calendar file refused, sending without it', a.to, err instanceof Error ? err.message : err)
+    return send(mail)
+  }
 }

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { joinMeet } from '@/app/actions/meet'
 import type { MeetConfig } from '@/lib/meet'
+import { isStaleDeployError, markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
 import { playCue, setSoundOutput, setSoundsMuted, unlockSounds } from './sounds'
 
@@ -56,6 +57,18 @@ function loadScript(src: string): Promise<JitsiCtor> {
   })
   scripts.set(src, p)
   return p
+}
+
+/** Sends what happened on this screen to the server logs (Vercel), so a bad call can be diagnosed afterwards. */
+function report(code: string, token: string | null, kind: string, data: Record<string, unknown> = {}): void {
+  try {
+    const body = JSON.stringify({ t: token, kind, data: { ...data, ua: navigator.userAgent.slice(0, 120), online: navigator.onLine } })
+    const url = `/api/public/meet/${encodeURIComponent(code)}/log`
+    if (navigator.sendBeacon?.(url, new Blob([body], { type: 'application/json' }))) return
+    void fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body, keepalive: true }).catch(() => undefined)
+  } catch {
+    /* best effort */
+  }
 }
 
 const BG = '#060a14'
@@ -198,7 +211,7 @@ export interface IganiMeetProps {
   durationMin: number
 }
 
-type Phase = 'prejoin' | 'joining' | 'live' | 'left' | 'ended' | 'error'
+type Phase = 'prejoin' | 'joining' | 'reconnecting' | 'live' | 'left' | 'ended' | 'error'
 const NO_DEVICES: DeviceLists = { audioInput: [], audioOutput: [], videoInput: [] }
 
 export function IganiMeet(p: IganiMeetProps): React.ReactElement {
@@ -210,6 +223,17 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
   const [slot, setSlot] = useState<HTMLDivElement | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const api = useRef<JitsiApi | null>(null)
+  /** automatic rejoins in a row (reset once a call connects) and when the current join started */
+  const attempts = useRef(0)
+  const joinStarted = useRef(0)
+  const log = useCallback((kind: string, data?: Record<string, unknown>) => report(p.code, p.token, kind, data), [p.code, p.token])
+
+  // a live call is never reloaded for a new version
+  useEffect(() => {
+    if (phase !== 'live' && phase !== 'reconnecting') return
+    markBusy(true)
+    return () => markBusy(false)
+  }, [phase])
 
   // what this device used last time; the video service starts loading while people get ready
   useEffect(() => {
@@ -228,15 +252,30 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
     setSession(null)
   }, [])
 
-  const join = useCallback(async () => {
-    setPhase('joining')
+  const join = useCallback(async (silent = false) => {
+    if (!silent) setPhase('joining')
     setError(null)
+    joinStarted.current = Date.now()
     unlockSounds()
     if (picked.spkId) setSoundOutput(picked.spkId)
     const display = name.trim() || p.defaultName
     writePrefs({ mic: picked.mic, cam: picked.cam, micId: picked.micId, camId: picked.camId, spkId: picked.spkId, blur: picked.blur, ...(p.nameEditable ? { name: display } : {}) })
-    const res = await joinMeet({ code: p.code, token: p.token, name: display })
+    let res: Awaited<ReturnType<typeof joinMeet>>
+    try {
+      res = await joinMeet({ code: p.code, token: p.token, name: display })
+    } catch (err) {
+      // this page is from before an update: reload it (the lobby has nothing to lose) and the next click works
+      if (isStaleDeployError(err)) {
+        window.location.reload()
+        return
+      }
+      log('join-error', { message: err instanceof Error ? err.message : String(err) })
+      setError('Couldn’t reach Igani. Check your connection and try again.')
+      setPhase('error')
+      return
+    }
     if (!res.ok) {
+      log('join-refused', { error: res.error })
       setError(res.error)
       setPhase('error')
       return
@@ -249,19 +288,21 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
       setSession({ api: api.current, testServer: res.data.config.testServer, moderator: res.data.moderator, canRecord: res.data.canRecord, name: res.data.name, avatar: res.data.avatar })
       setPhase('live')
     } catch (err) {
+      log('load-error', { message: err instanceof Error ? err.message : String(err) })
       setError(err instanceof Error ? err.message : 'Could not start the call.')
       setPhase('error')
     }
-  }, [p.code, p.token, p.defaultName, p.email, p.title, p.nameEditable, name, picked])
+  }, [p.code, p.token, p.defaultName, p.email, p.title, p.nameEditable, name, picked, log])
 
   useEffect(() => () => api.current?.dispose(), [])
 
   return (
     <div className="dark fixed inset-0 flex flex-col overflow-hidden text-white" style={{ background: BG }}>
       <Glow />
-      {phase === 'prejoin' || phase === 'joining' ? <PreJoin {...p} name={name} setName={setName} picked={picked} setPicked={setPicked} joining={phase === 'joining'} onJoin={join} /> : null}
+      {phase === 'prejoin' || phase === 'joining' ? <PreJoin {...p} name={name} setName={setName} picked={picked} setPicked={setPicked} joining={phase === 'joining'} onJoin={() => void join()} /> : null}
       {phase === 'error' ? <Notice title="We couldn’t connect you" body={error ?? 'Something went wrong.'} action={{ label: 'Try again', onClick: () => setPhase('prejoin') }} /> : null}
       {phase === 'left' ? <Notice title="You left the call" body={`Thanks for joining ${p.title}.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} /> : null}
+      {phase === 'reconnecting' ? <Notice title="Reconnecting…" body="The connection dropped for a moment. Getting you back into the call." spinner /> : null}
       {phase === 'ended' ? <Notice title="The call has ended" body={`${p.title} is over. Thanks for joining.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} /> : null}
       {/* the call itself stays mounted while live */}
       <div className={cn('relative flex min-h-0 flex-1 flex-col', phase !== 'live' && 'hidden')}>
@@ -278,15 +319,30 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
             blur={picked.blur}
             me={{ name: session.name, avatar: session.avatar }}
             presence={{ code: p.code, token: p.token }}
+            onJoined={() => {
+              log('joined', { ms: Date.now() - joinStarted.current, attempt: attempts.current })
+              attempts.current = 0
+            }}
             onLeft={(why) => {
+              log('left', { why })
               stop()
               setPhase(why === 'me' ? 'left' : 'ended')
             }}
-            onFail={(why) => {
+            onFail={(why, retry) => {
               stop()
+              // a dropped connection rejoins by itself (a few times) instead of throwing everyone out
+              if (retry && attempts.current < 3) {
+                attempts.current += 1
+                log('rejoin', { why, attempt: attempts.current })
+                setPhase('reconnecting')
+                setTimeout(() => void join(true), 1200 * attempts.current)
+                return
+              }
+              log('failed', { why })
               setError(why)
               setPhase('error')
             }}
+            log={log}
           />
         ) : null}
         <div className="relative mx-2 mb-2 min-h-0 flex-1 overflow-hidden rounded-2xl bg-[#0a1020] ring-1 ring-white/10 sm:mx-4">
@@ -730,7 +786,7 @@ interface Toast {
   tone: 'info' | 'rec' | 'warn'
 }
 
-function Live({ api, slot, title, testServer, moderator, canRecord, startMic, startCam, blur, me, presence, onLeft, onFail }: { api: JitsiApi; slot: HTMLDivElement | null; title: string; testServer: boolean; moderator: boolean; canRecord: boolean; startMic: boolean; startCam: boolean; blur: Blur; me: { name: string; avatar: string | null }; presence: { code: string; token: string | null }; onLeft: (why: 'me' | 'ended') => void; onFail: (why: string) => void }): React.ReactElement {
+function Live({ api, slot, title, testServer, moderator, canRecord, startMic, startCam, blur, me, presence, onJoined, onLeft, onFail, log }: { api: JitsiApi; slot: HTMLDivElement | null; title: string; testServer: boolean; moderator: boolean; canRecord: boolean; startMic: boolean; startCam: boolean; blur: Blur; me: { name: string; avatar: string | null }; presence: { code: string; token: string | null }; onJoined: () => void; onLeft: (why: 'me' | 'ended') => void; onFail: (why: string, retry: boolean) => void; log: (kind: string, data?: Record<string, unknown>) => void }): React.ReactElement {
   const [mic, setMic] = useState(startMic)
   const [cam, setCam] = useState(startCam)
   const [sharing, setSharing] = useState(false)
@@ -747,6 +803,8 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
   const [panel, setPanel] = useState<'settings' | 'leave' | null>(null)
   const leftRef = useRef(onLeft)
   const failRef = useRef(onFail)
+  const joinedCb = useRef(onJoined)
+  const logRef = useRef(log)
   const joinedRef = useRef(false)
   const recOn = useRef(false)
   const iLeft = useRef(false)
@@ -755,7 +813,9 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
   useEffect(() => {
     leftRef.current = onLeft
     failRef.current = onFail
-  }, [onLeft, onFail])
+    joinedCb.current = onJoined
+    logRef.current = log
+  }, [onLeft, onFail, onJoined, log])
 
   const toast = useCallback((text: string, tone: Toast['tone'] = 'info') => {
     const id = ++toastId.current
@@ -781,6 +841,7 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
       selfId = e.id ?? null
       setMyId(selfId)
       setJoinedAt(Date.now())
+      joinedCb.current()
       playCue('ready')
       if (me.avatar) api.executeCommand('avatarUrl', me.avatar)
       if (blur !== 'none') api.executeCommand('setBlurredBackground', blur)
@@ -822,16 +883,25 @@ function Live({ api, slot, title, testServer, moderator, canRecord, startMic, st
       }
     })
     api.addListener('dominantSpeakerChanged', (e: { id: string }) => setSpeaker(e.id))
-    // Jitsi's own messages are hidden (Igani draws the UI), so its errors are turned into ours
-    api.addListener('errorOccurred', (e: { error?: { name?: string; message?: string; isFatal?: boolean } }) => {
+    // Jitsi's own messages are hidden (Igani draws the UI), so its errors are turned into ours. Only real dead ends end the
+    // call: a short network hiccup is something Jitsi recovers from by itself, so it's just a toast.
+    let lastWarn = 0
+    api.addListener('errorOccurred', (e: { error?: { name?: string; message?: string; isFatal?: boolean; type?: string } }) => {
       const name = e.error?.name ?? ''
-      console.error('[igani-meet] error', name, e.error?.message ?? '')
-      if (e.error?.isFatal || /auth|password|notAllowed|membersOnly|conferenceDestroyed|connection\.(droppedError|otherError)/i.test(name))
-        failRef.current(/auth|notAllowed/i.test(name) ? 'The call service didn’t accept the pass for this call. If you’re the host, check the 8x8 settings on the Tests page.' : /membersOnly/i.test(name) ? 'The call hasn’t been opened by the host yet. Try again in a moment.' : 'The connection to the call was lost. Check your internet and try again.')
+      const fatal = Boolean(e.error?.isFatal)
+      logRef.current('jitsi-error', { name, message: e.error?.message ?? '', fatal, type: e.error?.type ?? '', joined: joinedRef.current })
+      if (/auth|notAllowed|password/i.test(name)) return failRef.current('The call service didn’t accept the pass for this call. If you’re the host, check the 8x8 settings on the Tests page.', false)
+      if (/membersOnly/i.test(name)) return failRef.current('The call hasn’t been opened by the host yet. Try again in a moment.', false)
+      if (/conferenceDestroyed/i.test(name)) return leftRef.current('ended')
+      if (fatal) return failRef.current('The connection to the call was lost. Check your internet and try again.', true)
+      if (/connection|ice|conference/i.test(name) && Date.now() - lastWarn > 15_000) {
+        lastWarn = Date.now()
+        toast('Your connection is unstable. Trying to keep the call going…', 'warn')
+      }
     })
-    // never spin forever: if the call hasn't connected after a while, say so
+    // never spin forever: if the call hasn't connected after a while, try again (then say so)
     const timeout = setTimeout(() => {
-      if (!joinedRef.current) failRef.current('Couldn’t connect to the call. Check your internet connection (or a firewall or VPN blocking video calls) and try again.')
+      if (!joinedRef.current) failRef.current('Couldn’t connect to the call. Check your internet connection (or a firewall or VPN blocking video calls) and try again.', true)
     }, 30_000)
     api.addListener('audioMuteStatusChanged', (e: { muted: boolean }) => setMic(!e.muted))
     api.addListener('videoMuteStatusChanged', (e: { muted: boolean }) => setCam(!e.muted))
@@ -1148,10 +1218,11 @@ function SettingsPanel({ api, onClose }: { api: JitsiApi; onClose: () => void })
   )
 }
 
-function Notice({ title, body, action }: { title: string; body: string; action?: { label: string; onClick: () => void } }): React.ReactElement {
+function Notice({ title, body, action, spinner = false }: { title: string; body: string; action?: { label: string; onClick: () => void }; spinner?: boolean }): React.ReactElement {
   return (
     <div className="relative flex flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
       <Brand />
+      {spinner ? <Loader2 className="h-7 w-7 animate-spin text-[#7fb0ff]" /> : null}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-white/60">{body}</p>

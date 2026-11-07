@@ -2,6 +2,16 @@ import 'server-only'
 import { TRANSCRIBE_PROMPT, hintLanguageRule } from './call-language'
 import { LIVE_HINT_RULES, HINT_SCHEMA, acceptHint, cleanSpeech, trimContext, type HintStep, type HintTone, type LiveHint } from './live-hints-core'
 
+/** OpenAI's own explanation of a failed request (short), for the logs. */
+export async function openAiReason(res: Response): Promise<string> {
+  const text = await res.text().catch(() => '')
+  try {
+    return ((JSON.parse(text) as { error?: { message?: string } }).error?.message ?? text).slice(0, 200)
+  } catch {
+    return text.slice(0, 200)
+  }
+}
+
 /** One window of one speaker's audio (webm/opus from the browser) to text. Returns '' for silence. */
 export async function transcribeWindow(audio: Blob, name: string, key: string): Promise<string> {
   // live windows are short and often switch language mid-sentence: the newer model handles that best (Whisper if it isn't available)
@@ -17,7 +27,12 @@ export async function transcribeWindow(audio: Blob, name: string, key: string): 
   }
   let res = await send(preferred)
   if (!res.ok && [400, 403, 404].includes(res.status) && preferred !== 'whisper-1') res = await send('whisper-1')
-  if (!res.ok) throw new Error(`Transcription failed (${res.status})`)
+  // OpenAI hiccups (busy / 5xx): one quick retry before giving up on this window
+  if (!res.ok && (res.status === 429 || res.status >= 500)) {
+    await new Promise((r) => setTimeout(r, process.env.VITEST ? 0 : 600))
+    res = await send(preferred)
+  }
+  if (!res.ok) throw new Error(`Transcription failed (${res.status}): ${await openAiReason(res)}`)
   const body = (await res.json()) as { text?: string }
   return cleanSpeech(body.text ?? '')
 }

@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect } from '@/app/actions/call-lists'
 import { abandonCall, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
+import { markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
 import { dialProblem, formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
 import type { CallerId } from '@/lib/caller-id'
@@ -219,7 +220,12 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   useEffect(() => {
     if (!live) return
     const t = window.setInterval(() => setNow(Date.now()), 500)
-    return () => window.clearInterval(t)
+    // never reload this tab for a new version while on a call
+    markBusy(true)
+    return () => {
+      window.clearInterval(t)
+      markBusy(false)
+    }
   }, [live])
   useEffect(() => () => engine.current?.destroy(), [])
   useEffect(() => {

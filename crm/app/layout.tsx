@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import type { ReactNode } from 'react'
 import { DialerRoot } from '@/components/dialer/Dialer'
+import { StaleDeployGuard } from '@/components/StaleDeployGuard'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: ReactNode }): React
           {THEME_SCRIPT}
         </Script>
         <DialerRoot>{children}</DialerRoot>
+        <StaleDeployGuard />
       </body>
     </html>
   )
