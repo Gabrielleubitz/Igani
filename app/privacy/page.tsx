@@ -1,6 +1,6 @@
 import { T } from '@/components/T'
 import { NewSiteShell } from '@/components/newsite/NewSiteShell'
-import { GABRIEL_PHONE, formatPhone } from '@/lib/siteSocial'
+import { OFFICE_PHONES } from '@/lib/siteSocial'
 
 export default function PrivacyPage() {
   return (
@@ -98,7 +98,9 @@ export default function PrivacyPage() {
                   <T>If you have any questions about this Privacy Policy or our data practices, please contact us at:</T>
                 </p>
                 <div className="lg__box"><p><T>Email:</T> info@igani.co</p>
-                  <p><T>Phone:</T> {formatPhone(GABRIEL_PHONE)}</p>
+                  {OFFICE_PHONES.map((p) => (
+                    <p key={p.tel}><T>{p.label}</T>: <a href={`tel:${p.tel}`}>{p.display}</a></p>
+                  ))}
                   <p><T>Location:</T> Netanya, Israel</p>
                 </div>
               </section>
