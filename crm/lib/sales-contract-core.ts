@@ -60,7 +60,7 @@ export function termsFromCompany(c: CompanySettings, agentAddress: string): Lega
 /** True when the one-time company details needed on every agreement are filled in. */
 export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.trim().length >= 2 && c.idNumber.trim().length >= 5 && c.address.trim().length >= 5
 
-export const CONTRACT_VERSION = '2026-11-lawyer-v4'
+export const CONTRACT_VERSION = '2026-11-lawyer-v5'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -126,6 +126,7 @@ export function agreementSectionsHtml(d: ContractData): string {
 <h2><span class="n">1.</span>APPOINTMENT AND SCOPE</h2>
 <p class="clause">${company} (the “Company”), engages ${name} (the “Sales Representative”) to solicit, introduce and secure clients for the Company’s web development, design and digital architecture services. The Sales Representative acts as an independent contractor and not as an employee, partner or legal representative of the Company.</p>
 <p class="clause">This agreement applies to every client the Sales Representative secures, wherever in the world that client is located or based.</p>
+<p class="clause">The Sales Representative signs this agreement in the name of their registered business, whose name and registration number are written in the signature block below, and confirms that the business is duly registered under the law that applies to it.</p>
 <h2><span class="n">2.</span>COMMISSION TRIGGER EVENT</h2>
 <p class="clause">The Sales Representative earns commission on every payment the referred client makes, as each payment clears (each a “Trigger Event”). A payment earns commission once both of the following have happened:</p>
 <p class="item">The Company has received a fully executed, signed client agreement or statement of work, <b>and</b></p>
@@ -162,6 +163,8 @@ export interface SignerView {
   signature: string | null
   /** Already formatted (Israel time) or null */
   signedAt: string | null
+  /** The representative's registered business, given when they sign */
+  business?: { name: string; number: string }
 }
 
 export interface AgreementView {
@@ -188,6 +191,7 @@ export function agreementHtml(d: ContractData, v: AgreementView): string {
       <table class="sigtable">
         <tr><td>Name</td><td dir="auto">${esc(s.name) || '&nbsp;'}</td></tr>
         <tr><td>Email</td><td dir="ltr">${esc(s.email) || '&nbsp;'}</td></tr>
+        ${s.business ? `<tr><td>Business name</td><td dir="auto">${esc(s.business.name)}</td></tr><tr><td>Registration no.</td><td dir="ltr">${esc(s.business.number)}</td></tr>` : ''}
         <tr><td>Date</td><td>${s.signedAt ? esc(s.signedAt) : '<span class="muted">Completed at signing</span>'}</td></tr>${extra}
       </table></div>`
   const party = (role: string, name: string, email: string, address = ''): string => `
@@ -200,6 +204,7 @@ export function agreementHtml(d: ContractData, v: AgreementView): string {
   <div class="parties">${party(`${d.terms.companyLegalName.trim() || 'Company'}${d.terms.companyTradingAs.trim() ? ` · ${d.terms.companyTradingAs.trim()}` : ''} (dba Igani)`, v.admin.name, v.admin.email, d.terms.companyAddress.trim())}${party('Sales representative', d.name.trim(), d.email, d.terms.agentAddress.trim())}</div>
   ${agreementSectionsHtml(d)}
   <h2 class="sighead">Signatures</h2>
+  ${v.status === 'signed' ? '' : '<p class="note" style="margin:0 0 10px">The Sales Representative adds their registered business name and registration number when signing.</p>'}
   <div class="sigs">${card('For the Company', v.admin, `<tr><td>Company</td><td dir="auto">${companyLine(d.terms)}</td></tr>`)}${card('For the Sales Representative', v.rep, v.record ? `<tr><td>IP address</td><td dir="ltr">${esc(v.record.ip)}</td></tr>` : '')}</div>
   ${
     v.record

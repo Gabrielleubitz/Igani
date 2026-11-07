@@ -106,3 +106,25 @@ describe('company details saved once', () => {
     expect(companyIsComplete({ ...company, address: '' })).toBe(false)
   })
 })
+
+describe('the representative signs in the name of their registered business', () => {
+  const base = { logo: '/igani-logo%202.png', reference: 'ABC12345', admin: { name: 'Gabriel', email: 'g@igani.co', signature: null, signedAt: null } }
+  const strip = (h: string): string => h.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
+  it('says so in the agreement, and tells the representative the details come at signing', () => {
+    const t = strip(html(data, { ...base, status: 'pending', rep: { name: 'Ariel Tzadok', email: 'a@b.co', signature: null, signedAt: null } }))
+    expect(t).toContain('signs this agreement in the name of their registered business')
+    expect(t).toContain('duly registered under the law that applies to it')
+    expect(t).toContain('adds their registered business name and registration number when signing')
+  })
+  it('puts the business name and registration number on the signed copy', () => {
+    const t = strip(html(data, { ...base, status: 'signed', rep: { name: 'Ariel Tzadok', email: 'a@b.co', signature: null, signedAt: '1 Nov 2026', business: { name: 'Ariel Tzadok Ltd.', number: '515123456' } } }))
+    expect(t).toContain('Business name Ariel Tzadok Ltd.')
+    expect(t).toContain('Registration no. 515123456')
+    expect(t).not.toContain('adds their registered business name')
+  })
+  it('escapes the business details', () => {
+    const h = html(data, { ...base, status: 'signed', rep: { name: 'A', email: 'a@b.co', signature: null, signedAt: 'x', business: { name: '<script>x</script>', number: '1&2' } } })
+    expect(h).not.toContain('<script>x')
+    expect(h).toContain('&lt;script&gt;')
+  })
+})

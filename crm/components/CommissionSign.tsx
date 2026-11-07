@@ -16,6 +16,8 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
   const [pv, setPv] = useState<Preview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
+  const [businessName, setBusinessName] = useState('')
+  const [businessNumber, setBusinessNumber] = useState('')
   const [sig, setSig] = useState('')
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -34,11 +36,13 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
   async function submit(): Promise<void> {
     setError(null)
     if (!namesMatch(name, pv?.repName ?? '')) return setError(`Please type your name exactly as written in the agreement: ${pv?.repName ?? ''}`)
+    if (businessName.trim().length < 2) return setError('Please enter your registered business name.')
+    if (!/^[0-9A-Za-z][0-9A-Za-z\-/ ]{4,29}$/.test(businessNumber.trim())) return setError('Please enter your business registration number (company, dealer or tax number).')
     if (!sig) return setError('Please draw your signature.')
     if (!agree) return setError('Please accept the agreement.')
     setBusy(true)
     try {
-      const r = await fetch('/api/public/sales-contract/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name, signature: sig, agree: true }) })
+      const r = await fetch('/api/public/sales-contract/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name, businessName: businessName.trim(), businessNumber: businessNumber.trim(), signature: sig, agree: true }) })
       const j = (await r.json()) as { error?: string }
       if (!r.ok) setError(j.error ?? 'Something went wrong.')
       else {
@@ -75,7 +79,7 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
       <div className="rounded-2xl bg-white p-10 text-center shadow-[0_20px_60px_-30px_rgba(15,23,42,.35)]">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-2xl text-emerald-600">✓</div>
         <h1 className="mt-4 text-2xl font-bold">Thank you, it&apos;s signed</h1>
-        <p className="mx-auto mt-2 max-w-md text-slate-600">The signed agreement was emailed to you and to Igani. Please keep that email: we do not keep a copy on our website.</p>
+        <p className="mx-auto mt-2 max-w-md text-slate-600">The signed agreement was emailed to you and to Igani. Please keep that email. Igani also keeps a signed copy.</p>
       </div>,
     )
   if (!pv)
@@ -96,16 +100,27 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
             <input className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20" value={name} onChange={(e) => setName(e.target.value)} placeholder={pv.repName} autoComplete="off" />
             {name.trim() && !namesMatch(name, pv.repName) ? <span className="block text-xs text-amber-600">Must match exactly: {pv.repName}</span> : null}
           </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Your registered business name</span>
+              <input className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20" value={businessName} onChange={(e) => setBusinessName(e.target.value)} autoComplete="organization" />
+            </label>
+            <label className="block space-y-1 text-sm">
+              <span className="font-medium">Business registration number</span>
+              <input className="w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20" value={businessNumber} onChange={(e) => setBusinessNumber(e.target.value)} placeholder="Company, dealer or tax number" autoComplete="off" />
+            </label>
+          </div>
+          <p className="-mt-2 text-xs text-slate-500">You sign in the name of your registered business, as the law requires for an independent representative. Both appear on the signed agreement.</p>
           <SignaturePad label="Your signature" onChange={setSig} />
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" className="mt-1" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
             <span>I have read this agreement and agree to its terms. I understand that typing my name and drawing my signature is my legal electronic signature.</span>
           </label>
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          <button type="button" onClick={() => void submit()} disabled={busy || !namesMatch(name, pv.repName) || !sig || !agree} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto">
+          <button type="button" onClick={() => void submit()} disabled={busy || !namesMatch(name, pv.repName) || !businessName.trim() || !businessNumber.trim() || !sig || !agree} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto">
             {busy ? 'Signing…' : 'Sign and submit'}
           </button>
-          <p className="text-xs text-slate-500">After you sign, the final PDF is emailed to you and to Igani. The agreement is deleted from our system once you sign.</p>
+          <p className="text-xs text-slate-500">After you sign, the final PDF is emailed to you and to Igani, and Igani keeps a signed copy.</p>
         </div>
       </section>
     </div>,

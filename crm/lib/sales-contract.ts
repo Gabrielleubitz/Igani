@@ -98,6 +98,8 @@ export function pendingView(p: LinkPayload, logo: string): AgreementView {
 export interface SignInput {
   payload: LinkPayload
   signerName: string
+  /** The representative's registered business, given at signing */
+  business: { name: string; number: string }
   signature: string
   signedAt: Date
   ip: string
@@ -111,7 +113,7 @@ export async function buildSignedContractPdf(i: SignInput): Promise<{ pdf: Uint8
   const view: AgreementView = {
     ...pendingView(i.payload, publicFileDataUrl('/igani-logo 2.png') ?? ''),
     status: 'signed',
-    rep: { name: i.signerName, email: data.email, signature: i.signature, signedAt: stamp(i.signedAt) },
+    rep: { name: i.signerName, email: data.email, signature: i.signature, signedAt: stamp(i.signedAt), business: i.business },
     record: { ip: i.ip, browser: i.userAgent.slice(0, 90), sha256: hash },
   }
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sales commission agreement</title><style>
@@ -130,7 +132,7 @@ export async function saveAcceptance(i: SignInput, built: { pdf: Uint8Array; has
       email: i.payload.data.email.trim().toLowerCase(),
       version: CONTRACT_VERSION,
       sha256: built.hash,
-      terms: asJson({ figures: i.payload.data.figures, terms: i.payload.data.terms, effectiveDate: i.payload.data.effectiveDate }),
+      terms: asJson({ figures: i.payload.data.figures, terms: i.payload.data.terms, effectiveDate: i.payload.data.effectiveDate, representative: { businessName: i.business.name, businessNumber: i.business.number } }),
       signerName: i.signerName,
       adminName: i.payload.admin.name,
       adminEmail: i.payload.admin.email,

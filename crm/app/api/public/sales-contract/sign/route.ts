@@ -13,6 +13,8 @@ const Body = z.object({
   code: z.string().length(12),
   name: z.string().trim().min(2).max(120),
   signature: z.string().max(MAX_SIGNATURE_CHARS).regex(PNG_DATA_URL),
+  businessName: z.string().trim().min(2).max(120),
+  businessNumber: z.string().trim().min(5).max(30).regex(/^[0-9A-Za-z][0-9A-Za-z\-/ ]*$/),
   agree: z.literal(true),
 })
 
@@ -26,7 +28,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   const parsed = Body.safeParse(await req.json().catch(() => null))
   if (!parsed.success) {
     const f = parsed.error.issues[0]?.path[0]
-    return NextResponse.json({ error: f === 'agree' ? 'Please accept the agreement.' : f === 'signature' ? 'Please draw your signature.' : f === 'name' ? 'Please type your full name.' : 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: f === 'agree' ? 'Please accept the agreement.' : f === 'signature' ? 'Please draw your signature.' : f === 'name' ? 'Please type your full name.' : f === 'businessName' ? 'Please enter your registered business name.' : f === 'businessNumber' ? 'Please enter your business registration number (company, dealer or tax number).' : 'Invalid request' }, { status: 400 })
   }
   const body = parsed.data
   const r = await readContractLink(body.code)
@@ -35,7 +37,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (!namesMatch(body.name, payload.data.name)) return NextResponse.json({ error: `Please type your name exactly as written in the agreement: ${payload.data.name}` }, { status: 400 })
 
   const signedAt = new Date()
-  const signInput = { payload, signerName: body.name, signature: body.signature, signedAt, ip, userAgent: req.headers.get('user-agent') ?? 'unknown' }
+  const signInput = { payload, signerName: body.name, business: { name: body.businessName, number: body.businessNumber }, signature: body.signature, signedAt, ip, userAgent: req.headers.get('user-agent') ?? 'unknown' }
   let built
   try {
     built = await buildSignedContractPdf(signInput)
