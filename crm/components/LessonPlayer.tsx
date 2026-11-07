@@ -2,11 +2,12 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ConfidentialityGate } from '@/components/ConfidentialityGate'
 
 /**
  * A course lesson. Reaching the end (watching or scrubbing forward) tells the server, which unlocks the next video.
  */
-export function LessonPlayer({ id, title, completed, nextId, startAt = 0 }: { id: string; title: string; completed: boolean; nextId: string | null; startAt?: number }): React.ReactElement {
+export function LessonPlayer({ id, title, completed, nextId, startAt = 0, confirm = true }: { id: string; title: string; completed: boolean; nextId: string | null; startAt?: number; confirm?: boolean }): React.ReactElement {
   const router = useRouter()
   const ref = useRef<HTMLVideoElement>(null)
   const [msg, setMsg] = useState<string | null>(null)
@@ -28,6 +29,7 @@ export function LessonPlayer({ id, title, completed, nextId, startAt = 0 }: { id
   return (
     <div className="space-y-3">
       <figure className="overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-slate-900/10">
+        <ConfidentialityGate videoId={id} enabled={confirm}>
         <video
           ref={ref}
           src={`/api/public/videos/${id}/stream`}
@@ -45,6 +47,7 @@ export function LessonPlayer({ id, title, completed, nextId, startAt = 0 }: { id
           }}
           onEnded={() => void finished()}
         />
+        </ConfidentialityGate>
         <figcaption className="bg-white px-4 py-2.5 text-sm font-medium text-slate-800">{title}</figcaption>
       </figure>
       {gated ? <p className="text-sm text-muted-foreground">Reach the end of this video to unlock the next one.</p> : null}

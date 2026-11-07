@@ -93,6 +93,7 @@ model AllowedUser {
 
 model User {
   contractSigner     ContractSigner?
+  videoAcks          VideoAck[]
   id                 String          @id @default(cuid())
   name               String?
   email              String?         @unique
@@ -995,4 +996,18 @@ model MeetPresence {
 
   @@unique([roomId, key])
   @@index([roomId, seenAt])
+}
+
+/// A teammate confirmed, before starting an internal training video, that they will not download or share it.
+model VideoAck {
+  id        String   @id @default(cuid())
+  userId    String
+  /// The video's id (videos live in site settings, so this is a plain id, not a relation)
+  videoId   String
+  ip        String
+  userAgent String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, videoId, createdAt])
 }

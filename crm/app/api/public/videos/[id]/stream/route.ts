@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { getVideo, playUrl } from '@/lib/video'
 import { markStarted, unlockedFor } from '@/lib/video-progress'
 import { canWatch, isVideoId } from '@/lib/video-core'
+import { needsAck } from '@/lib/video-ack-core'
+import { hasRecentAck } from '@/lib/video-ack'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,6 +29,8 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
   // Salespeople unlock the course one video at a time
   const gated = viewer?.role === 'SALES' && video.visibility === 'team' ? await unlockedFor(viewer.id) : null
   if (!canWatch(video, viewer ? { role: viewer.role, unlocked: gated?.unlocked } : null, offer)) return deny()
+  // Internal videos need the confidentiality confirmation first (admins are not asked)
+  if (viewer && needsAck(viewer.role, video.visibility) && !(await hasRecentAck(viewer.id, video.id))) return NextResponse.json({ error: 'confirmation_required' }, { status: 403 })
   if (viewer && gated) await markStarted(viewer.id, video.id, gated.progress)
   try {
     return NextResponse.redirect(await playUrl(video.pathname, video.contentType), { status: 302, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } })

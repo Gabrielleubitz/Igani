@@ -32,7 +32,7 @@ export interface LegalTerms {
   clawbackDays: number
   /** Either party may end the agreement with this many days' written notice */
   noticeDays: number
-  /** Governing law and courts, for example "the State of Israel" */
+  /** Governing law and courts, for example "Israel" */
   jurisdiction: string
 }
 
@@ -48,8 +48,8 @@ export interface ContractData {
 /** Not defaults: the form starts empty for the legal terms so each one is chosen on purpose. */
 export const EMPTY_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: '', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: NaN, clawbackDays: NaN, noticeDays: NaN, jurisdiction: '' }
 /** The values the owner chose (Nov 2026). Caleno is an exempt dealer (one individual), so the name, number and address come from the tax certificate and are typed in the form, never committed. */
-export const CHOSEN_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: 'Caleno', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: 5, clawbackDays: 60, noticeDays: 7, jurisdiction: 'the State of Israel' }
-export const CONTRACT_VERSION = '2026-11-lawyer-v1'
+export const CHOSEN_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: 'Caleno', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: 5, clawbackDays: 60, noticeDays: 7, jurisdiction: 'Israel' }
+export const CONTRACT_VERSION = '2026-11-lawyer-v2'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -94,16 +94,27 @@ export function formatDate(iso: string): string {
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(`${iso}T00:00:00Z`))
 }
 
+/**
+ * The Company, named the same way every time: the person, the trading names (dba Igani), the address and the registration number.
+ * Values are HTML-escaped.
+ */
+export function companyLine(t: LegalTerms): string {
+  const trading = t.companyTradingAs.trim()
+  const names = `${esc(t.companyLegalName.trim())}${trading ? `, trading as ${esc(trading)} (dba Igani)` : ' (dba Igani)'}`
+  const addr = t.companyAddress.trim()
+  return `${names}${addr ? `, ${esc(addr)}` : ''}, registered no. ${esc(t.companyIdNumber.trim())}`
+}
+
 /** The eight numbered sections of the lawyer's agreement, with this agreement's values filled in. Values are HTML-escaped. */
 export function agreementSectionsHtml(d: ContractData): string {
   const f = d.figures
   const t = d.terms
   const name = esc(d.name.trim())
-  const trading = t.companyTradingAs.trim()
-  const company = `${esc(t.companyLegalName.trim())}${trading ? `, trading as ${esc(trading)}` : ''}, registered no. ${esc(t.companyIdNumber.trim())}`
+  const company = companyLine(t)
   return `
 <h2><span class="n">1.</span>APPOINTMENT AND SCOPE</h2>
 <p class="clause">${company} (the “Company”), engages ${name} (the “Sales Representative”) to solicit, introduce and secure clients for the Company’s web development, design and digital architecture services. The Sales Representative acts as an independent contractor and not as an employee, partner or legal representative of the Company.</p>
+<p class="clause">This agreement applies to every client the Sales Representative secures, wherever in the world that client is located or based.</p>
 <h2><span class="n">2.</span>COMMISSION TRIGGER EVENT</h2>
 <p class="clause">The Sales Representative earns a commission only when both of the following have happened (the “Trigger Event”):</p>
 <p class="item">The Company has received a fully executed, signed client agreement or statement of work, <b>and</b></p>
@@ -127,7 +138,8 @@ export function agreementSectionsHtml(d: ContractData): string {
 <p class="clause">Either party may end this agreement with <b>${t.noticeDays} days’ written notice</b> to the other party.</p>
 <p class="clause">After termination, the Sales Representative is still entitled to commission on deals where the Trigger Event happened before the termination takes effect. No commission accrues or is payable on deals finalized or paid after the termination date, whatever earlier negotiations or discussions took place.</p>
 <h2><span class="n">8.</span>GOVERNING LAW AND DISPUTE RESOLUTION</h2>
-<p class="clause">This agreement is governed by, and enforced in accordance with, the laws of <b>${esc(t.jurisdiction.trim())}</b>. Any dispute under this agreement is resolved exclusively by binding arbitration or by the local courts of that jurisdiction.</p>`
+<p class="clause">This agreement is governed by, and enforced in accordance with, the laws of <b>${esc(t.jurisdiction.trim())}</b>. Any dispute under this agreement is resolved exclusively by binding arbitration or by the local courts of that jurisdiction.</p>
+<p class="clause">The commission terms, payment terms and dispute terms apply in the same way whatever country the client is in, and whichever law governs the client’s own agreement.</p>`
 }
 
 export interface SignerView {
@@ -172,10 +184,10 @@ export function agreementHtml(d: ContractData, v: AgreementView): string {
   <h1>Commission Agreement</h1>
   <p class="sub">Representative: ${esc(d.name.trim())} | Effective Date: ${esc(formatDate(d.effectiveDate))}</p>
   <div class="meta"><span>Reference: <b dir="ltr">${esc(v.reference)}</b></span><span>Effective: <b>${esc(formatDate(d.effectiveDate))}</b></span></div>
-  <div class="parties">${party(d.terms.companyTradingAs.trim() ? `${d.terms.companyLegalName.trim()} (${d.terms.companyTradingAs.trim()})` : d.terms.companyLegalName.trim() || 'Company', v.admin.name, v.admin.email, d.terms.companyAddress.trim())}${party('Sales representative', d.name.trim(), d.email, d.terms.agentAddress.trim())}</div>
+  <div class="parties">${party(`${d.terms.companyLegalName.trim() || 'Company'}${d.terms.companyTradingAs.trim() ? ` · ${d.terms.companyTradingAs.trim()}` : ''} (dba Igani)`, v.admin.name, v.admin.email, d.terms.companyAddress.trim())}${party('Sales representative', d.name.trim(), d.email, d.terms.agentAddress.trim())}</div>
   ${agreementSectionsHtml(d)}
   <h2 class="sighead">Signatures</h2>
-  <div class="sigs">${card('For the Company', v.admin)}${card('For the Sales Representative', v.rep, v.record ? `<tr><td>IP address</td><td dir="ltr">${esc(v.record.ip)}</td></tr>` : '')}</div>
+  <div class="sigs">${card('For the Company', v.admin, `<tr><td>Company</td><td dir="auto">${companyLine(d.terms)}</td></tr>`)}${card('For the Sales Representative', v.rep, v.record ? `<tr><td>IP address</td><td dir="ltr">${esc(v.record.ip)}</td></tr>` : '')}</div>
   ${
     v.record
       ? `<div class="record"><div class="role" style="margin-bottom:6px">Signature record</div><table>

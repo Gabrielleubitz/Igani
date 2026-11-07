@@ -118,7 +118,7 @@ export function SalesContractForm({ signers, meId, adminEmail }: { signers: Sign
             {txt('companyIdNumber', 'Exempt dealer / company number', 'From the tax certificate')}
             {txt('companyAddress', 'Company address', 'Street, city')}
             {txt('agentAddress', 'Representative address', 'Street, city')}
-            {txt('jurisdiction', 'Governing jurisdiction', 'the State of Israel')}
+            {txt('jurisdiction', 'Governing jurisdiction', 'Israel')}
             {days('payoutDays', 'Payout after month end', 'business days')}
             {days('clawbackDays', 'Clawback window', 'days')}
             {days('noticeDays', 'Termination notice', 'days')}
