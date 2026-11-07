@@ -1,0 +1,153 @@
+/* IGANI donkey hero — drop-in, scoped under .dh so it won't touch the rest of your page.
+   Palette: paper #ffffff · ink (hoodie navy) #14223b · slate #4b5568 · igani blue #1f55b5
+   Type: Anton (the campaign mark) for "Dumb Ass" only; the site sans (DM Sans) for everything else. */
+.dh, .dh *, .dh *::before, .dh *::after { box-sizing: border-box; }
+.dh [hidden] { display: none !important; }
+
+.dh {
+  --dh-ink: #14223b;
+  --dh-slate: #4b5568;
+  --dh-blue: #1f55b5;
+  --dh-blue-deep: #173f88;
+  --dh-edge: clamp(24px, 6vw, 110px);
+
+  position: relative;
+  /* Fills the screen below your site header (--dh-top is set by dumb-hero.js) */
+  height: calc(100vh - var(--dh-top, 0px));
+  height: calc(100svh - var(--dh-top, 0px));
+  min-height: 600px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #ffffff;
+  color: var(--dh-ink);
+  font-family: var(--sans, "DM Sans", "Helvetica Neue", Arial, sans-serif);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Nav */
+.dh-nav {
+  position: absolute; z-index: 5; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(32px + env(safe-area-inset-top, 0px)) var(--dh-edge) 0;
+  animation: dh-fade 0.9s ease-out 0.15s both;
+}
+.dh-nav__brand { display: flex; align-items: baseline; gap: 12px; }
+.dh-logo { font: 700 32px/1 var(--sans, "DM Sans", sans-serif); letter-spacing: -0.035em; color: var(--dh-ink); text-decoration: none; }
+.dh-nav__x { font: 400 15px/1 var(--sans, "DM Sans", sans-serif); color: var(--dh-slate); }
+.dh-nav__links { display: flex; gap: 36px; font: 500 16px/1 var(--sans, "DM Sans", sans-serif); }
+.dh-nav__links a { color: var(--dh-ink); text-decoration: none; }
+.dh-nav__links a:hover { color: var(--dh-blue); }
+
+/* Donkey (back layer) */
+.dh-donkey {
+  position: absolute; z-index: 1;
+  left: 25%; bottom: 0;
+  height: 100%; width: auto; max-width: none;
+  aspect-ratio: 16 / 9;
+  transform: translateX(-50%);
+  pointer-events: none;
+  display: block;
+  object-fit: contain;
+}
+
+/* Copy (front layer). Both headline lines scale with this column;
+   "Dumb Ass" fills its width, the line above is a smaller lead-in. */
+.dh-copy {
+  position: absolute; z-index: 3;
+  left: 54%; top: 52%;
+  width: min(40vw, 660px);
+  transform: translateY(-50%);
+  container-type: inline-size;
+  animation: dh-rise 1s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+}
+.dh-copy h1 { margin: 0; font-weight: 400; }
+.dh-copy__pre {
+  display: block;
+  font: 500 8.4cqi/1.15 var(--sans, "DM Sans", sans-serif);
+  letter-spacing: -0.028em;
+  white-space: nowrap;
+}
+.dh-copy__mark {
+  display: block;
+  margin: 0.06em 0 0 -0.02em;
+  font: 400 25.6cqi/0.86 "Anton", Impact, "Arial Narrow", sans-serif;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  /* slanted, same as the site's "Don't be a dumb ass" button */
+  transform: skewX(-9deg);
+  transform-origin: left bottom;
+}
+.dh-copy__lede {
+  margin: 1.6em 0 0;
+  max-width: 30em;
+  font: 400 clamp(16px, 1.25vw, 20px)/1.55 var(--sans, "DM Sans", sans-serif);
+  color: var(--dh-slate);
+  text-wrap: pretty;
+}
+.dh-copy__btns { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px; margin-top: 2.25rem; }
+
+.dh-btn {
+  display: inline-flex; align-items: center;
+  padding: 17px 28px; border-radius: var(--r-sm, 8px);
+  background: var(--dh-blue); color: #fff;
+  font: 500 clamp(16px, 1.15vw, 18px)/1 var(--sans, "DM Sans", sans-serif);
+  text-decoration: none;
+  box-shadow: var(--sh-1);
+  transition: background-color 180ms, transform 180ms, box-shadow 180ms;
+}
+.dh-btn:hover { background: var(--dh-blue-deep); transform: translateY(-1px); box-shadow: var(--sh-2); }
+.dh-link {
+  font: 500 clamp(16px, 1.15vw, 18px)/1 var(--sans, "DM Sans", sans-serif);
+  color: var(--dh-ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 6px;
+  transition: color 180ms;
+}
+.dh-link:hover { color: var(--dh-blue); }
+.dh a:focus-visible { outline: 2px solid var(--dh-blue); outline-offset: 4px; border-radius: 4px; }
+
+@keyframes dh-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes dh-rise { from { opacity: 0; transform: translateY(calc(-50% + 24px)); } to { opacity: 1; transform: translateY(-50%); } }
+
+/* Landscape tablets: same layout, nudged so nothing collides */
+@media (max-width: 1024px) and (min-width: 821px) and (orientation: landscape) {
+  .dh-nav__x { display: none; }
+  .dh-donkey { left: 22%; height: 90%; }
+  .dh-copy { left: 53%; width: 41vw; }
+  .dh-nav__links { gap: 26px; }
+}
+
+/* Phones and portrait tablets: donkey on top, copy underneath, no overlap */
+@media (max-width: 820px), (max-width: 1024px) and (orientation: portrait) {
+  .dh { display: flex; flex-direction: column; height: auto; min-height: 100svh; }
+  .dh-nav { position: relative; padding-top: calc(22px + env(safe-area-inset-top, 0px)); }
+  .dh-nav__x { display: none; }
+  .dh-logo { font-size: 28px; }
+  .dh-nav__links { gap: 20px; font-size: 15px; }
+  .dh-donkey {
+    position: relative; left: auto; bottom: auto; transform: none;
+    align-self: center; flex: none;
+    height: 46svh; min-height: 300px;
+    margin-top: auto;
+  }
+  .dh-copy {
+    position: relative; left: auto; top: auto; transform: none;
+    width: auto; margin: 22px var(--dh-edge) auto;
+    padding-bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+    animation-name: dh-rise-m;
+  }
+  .dh-copy__lede { margin-top: 1.25em; font-size: 16px; }
+  .dh-copy__btns { margin-top: 1.5rem; }
+  .dh-btn { padding: 15px 22px; }
+}
+@media (max-width: 1024px) and (orientation: portrait) and (min-width: 600px) {
+  .dh-copy { margin-left: 10vw; margin-right: 10vw; }
+  .dh-copy__lede { font-size: 18px; }
+}
+@keyframes dh-rise-m { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dh-nav, .dh-copy { animation: none; }
+}

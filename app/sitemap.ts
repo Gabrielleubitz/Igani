@@ -4,7 +4,8 @@ import { SITE_URL } from '@/lib/seo/site'
 
 // Real "last changed" dates (not "now" on every request, which makes crawlers ignore the field). Update when a page's content changes.
 const CHANGED = {
-  home: new Date('2026-11-02'),
+  home: new Date('2026-11-07'),
+  site: new Date('2026-11-07'),
   about: new Date('2026-11-02'),
   legal: new Date('2026-10-30'),
   faq: new Date('2026-11-03'),
@@ -23,10 +24,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: SITE_URL, lastModified: CHANGED.home, changeFrequency: 'weekly', priority: 1 },
     { url: `${SITE_URL}/about`, lastModified: CHANGED.about, changeFrequency: 'monthly', priority: 0.9 },
-    { url: `${SITE_URL}/sales`, lastModified: new Date('2026-11-05'), changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${SITE_URL}/marketing`, lastModified: new Date('2026-11-05'), changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${SITE_URL}/ai`, lastModified: new Date('2026-11-05'), changeFrequency: 'monthly', priority: 0.8 },
-    { url: `${SITE_URL}/build`, lastModified: new Date('2026-11-05'), changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/sales`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/marketing`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/ai`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/build`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${SITE_URL}/dumb-ass`, lastModified: CHANGED.site, changeFrequency: 'monthly', priority: 0.7 },
     { url: `${SITE_URL}/faq`, lastModified: CHANGED.faq, changeFrequency: 'monthly', priority: 0.8 },
     ...founderPages,
     { url: `${SITE_URL}/privacy`, lastModified: CHANGED.legal, changeFrequency: 'yearly', priority: 0.3 },
