@@ -15,6 +15,8 @@ import { loadRepStats } from '@/lib/team-stats'
 import { tasksForUser } from '@/lib/tasks'
 import { STATUS_LABEL } from '@/lib/format'
 import { StraightLineChart } from '@/components/calls/StraightLineChart'
+import { TerminationForm } from '@/components/admin/TerminationForm'
+import { CONTRACT_VERSION } from '@/lib/sales-contract-core'
 import { WeekLineCard } from '@/components/calls/WeekLineCard'
 import { lessonLinksFor, loadRepWeek } from '@/lib/straight-line-week-data'
 
@@ -29,6 +31,8 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
   const now = new Date()
   // Never select the file bytes in a list.
   const agreements = await prisma.agreement.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true } })
+  const signed = user.email ? await prisma.agreementAcceptance.findMany({ where: { email: user.email.toLowerCase() }, orderBy: { signedAt: 'desc' }, select: { id: true, version: true, signedAt: true } }) : []
+  const endedOn = user.email ? (await prisma.allowedUser.findUnique({ where: { email: user.email }, select: { terminatedAt: true } }))?.terminatedAt ?? null : null
   const [lineWeek, lessons] = await Promise.all([loadRepWeek(user.id).catch(() => null), lessonLinksFor(me)])
   const [stats, tasks, leads, meetings] = await Promise.all([
     loadRepStats(me).then((all) => all.find((r) => r.id === user.id) ?? null),
@@ -166,6 +170,30 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
           </CardHeader>
           <CardContent>
             <CommissionTermsForm userId={user.id} terms={await termsForAssignee(user.id)} usingDefaults={!(await prisma.allowedUser.findUnique({ where: { email: user.email ?? '' }, select: { commissionTerms: true } }))?.commissionTerms} />
+          </CardContent>
+        </Card>
+      ) : null}
+      {user.role === 'SALES' ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Commission agreement</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            {signed[0]?.version === CONTRACT_VERSION ? (
+              <p>
+                <span className="text-emerald-400">Signed the current agreement</span> on {signed[0].signedAt.toLocaleDateString('en-GB')} ·{' '}
+                <a className="underline" href={`/api/agreements/signed/${signed[0].id}`}>Download the signed PDF</a>
+              </p>
+            ) : (
+              <p className="text-amber-300">
+                {signed.length ? 'They signed an older version.' : 'No signed agreement on file.'} Send them the new one from <a className="underline" href="/admin/sales-contracts">Sales contracts</a>.
+              </p>
+            )}
+            {signed.length > 1 ? <p className="text-xs text-muted-foreground">{signed.length} signed copies on file.</p> : null}
+            <div className="border-t pt-3">
+              <p className="mb-2 font-medium">Agreement end date</p>
+              <TerminationForm userId={user.id} endedOn={endedOn ? endedOn.toISOString().slice(0, 10) : null} />
+            </div>
           </CardContent>
         </Card>
       ) : null}

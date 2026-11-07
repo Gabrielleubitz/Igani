@@ -51,18 +51,18 @@ export async function setQuotedPrice(leadId: string, price: number | null, actor
 export async function snapshotWonCommission(leadId: string, db: Db = prisma, opts: { force?: boolean } = {}): Promise<void> {
   const lead = await db.lead.findUniqueOrThrow({
     where: { id: leadId },
-    select: { status: true, quotedPrice: true, assignedToId: true, commissionOverrides: true, commissionSnapshot: true, finalPaymentReceivedAt: true },
+    select: { status: true, quotedPrice: true, excludedCosts: true, assignedToId: true, commissionOverrides: true, commissionSnapshot: true, finalPaymentReceivedAt: true },
   })
   if (lead.status !== 'WON' || !lead.quotedPrice || lead.quotedPrice <= 0) return
   if (!opts.force && lead.finalPaymentReceivedAt) return
   const frozen = (lead.commissionSnapshot as { terms?: unknown } | null)?.terms
   const base = !opts.force && frozen ? parseTerms(frozen) : await termsForAssignee(lead.assignedToId, db)
   const terms = dealTerms(base, lead.commissionOverrides)
-  const c = calculateCommission(lead.quotedPrice, terms)
+  const c = calculateCommission(lead.quotedPrice, terms, lead.excludedCosts ?? 0)
   await db.lead.update({
     where: { id: leadId },
     data: {
-      commissionSnapshot: { terms: { ...terms }, breakdown: { ...c }, quotedPrice: lead.quotedPrice, overridden: lead.commissionOverrides !== null, snapshotAt: new Date().toISOString() },
+      commissionSnapshot: { terms: { ...terms }, breakdown: { ...c }, quotedPrice: lead.quotedPrice, excludedCosts: lead.excludedCosts ?? 0, overridden: lead.commissionOverrides !== null, snapshotAt: new Date().toISOString() },
       commissionTotal: c.total,
     },
   })

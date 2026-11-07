@@ -68,3 +68,29 @@ describe('commission status: nothing is payable before the client pays', () => {
     expect(Object.keys(view).sort()).toEqual(['paid', 'pending', 'total'])
   })
 })
+
+describe('agreement rules: excluded costs, refunds, termination', () => {
+  it('takes excluded costs off the price before the tiers apply', () => {
+    // 20,000 price − 5,000 hosting/tax = 15,000 base → 30% = 4,500, no bonus
+    expect(calculateCommission(20_000, DEFAULT_COMMISSION_TERMS, 5_000)).toMatchObject({ amount: 15_000, total: 4_500, excludedCosts: 5_000 })
+    expect(calculateCommission(20_000).total).toBe(4_500 + 1_000)
+    expect(calculateCommission(20_000, DEFAULT_COMMISSION_TERMS, 99_999).total).toBe(0)
+    expect(calculateCommission(10_000, DEFAULT_COMMISSION_TERMS, -50).amount).toBe(10_000)
+  })
+  const d = (s: string): Date => new Date(s)
+  const paid = { commissionTotal: 4_500, finalPaymentReceivedAt: d('2026-11-03'), finalPaidAt: d('2026-12-10') }
+  it('cancels an unpaid commission when the client is refunded', () => {
+    expect(commissionStatus({ ...paid, finalPaidAt: null, refundedAt: d('2026-11-20') })).toEqual({ total: 4_500, paid: 0, payable: 0, pending: 0, voided: 4_500 })
+  })
+  it('turns a paid commission into a clawback when the client is refunded', () => {
+    const s = commissionStatus({ ...paid, refundedAt: d('2026-12-20') })
+    expect(s).toMatchObject({ clawback: 4_500, paid: 4_500 })
+    expect(salespersonCommissionView(s)).toEqual({ total: 4_500, paid: 4_500, pending: 0, clawback: 4_500 })
+  })
+  it('pays nothing for a client payment that arrived after termination, but keeps earlier ones', () => {
+    const base = { commissionTotal: 4_500, finalPaidAt: null, terminatedAt: d('2026-11-30') }
+    expect(commissionStatus({ ...base, finalPaymentReceivedAt: d('2026-12-02') })).toMatchObject({ voided: 4_500, payable: 0 })
+    expect(commissionStatus({ ...base, finalPaymentReceivedAt: d('2026-11-20') })).toMatchObject({ payable: 4_500 })
+    expect(commissionStatus({ ...base, finalPaymentReceivedAt: null })).toMatchObject({ pending: 4_500 })
+  })
+})

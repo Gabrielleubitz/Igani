@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendSalesContractSignedEmail } from '@/lib/email'
-import { buildSignedContractPdf, claimLink, readContractLink, restoreLink } from '@/lib/sales-contract'
+import { buildSignedContractPdf, claimLink, readContractLink, restoreLink, saveAcceptance } from '@/lib/sales-contract'
 import { formatDate, namesMatch } from '@/lib/sales-contract-core'
 import { REASON_TEXT, clientIp, limited } from '@/lib/sales-contract-http'
 import { MAX_SIGNATURE_CHARS, PNG_DATA_URL } from '@/lib/sales-contract-token'
@@ -18,7 +18,7 @@ const Body = z.object({
 
 /**
  * The representative signs. The dual-signed PDF is built in memory and emailed to them and to the admin who made the link;
- * the only thing remembered is a used-mark (link id + date) so the same link cannot be signed twice.
+ * the signed copy is stored as an AgreementAcceptance (who, which wording, when, IP, SHA-256, PDF) and the link is deleted so it cannot be signed twice.
  */
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = clientIp(req)
@@ -35,9 +35,10 @@ export async function POST(req: Request): Promise<NextResponse> {
   if (!namesMatch(body.name, payload.data.name)) return NextResponse.json({ error: `Please type your name exactly as written in the agreement: ${payload.data.name}` }, { status: 400 })
 
   const signedAt = new Date()
+  const signInput = { payload, signerName: body.name, signature: body.signature, signedAt, ip, userAgent: req.headers.get('user-agent') ?? 'unknown' }
   let built
   try {
-    built = await buildSignedContractPdf({ payload, signerName: body.name, signature: body.signature, signedAt, ip, userAgent: req.headers.get('user-agent') ?? 'unknown' })
+    built = await buildSignedContractPdf(signInput)
   } catch (err) {
     console.error('[sales-contract] could not build the PDF', err)
     return NextResponse.json({ error: 'We could not prepare the signed agreement. Please try again.' }, { status: 502 })
@@ -45,6 +46,15 @@ export async function POST(req: Request): Promise<NextResponse> {
 
   // Claim the link before sending, so two tabs cannot both succeed; give it back if the emails fail
   if (!(await claimLink(payload.id))) return NextResponse.json({ error: REASON_TEXT.invalid }, { status: 409 })
+
+  // Keep the signed agreement; if that fails, give the link back so nothing is lost
+  try {
+    await saveAcceptance(signInput, built)
+  } catch (err) {
+    console.error('[sales-contract] could not save the signed agreement', err)
+    await restoreLink(payload)
+    return NextResponse.json({ error: 'We could not save the signed agreement. Please try again.' }, { status: 502 })
+  }
 
   const when = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', dateStyle: 'long', timeStyle: 'short' }).format(signedAt)
   const common = { repName: payload.data.name, adminName: payload.admin.name, effectiveDate: formatDate(payload.data.effectiveDate), signedAt: when }

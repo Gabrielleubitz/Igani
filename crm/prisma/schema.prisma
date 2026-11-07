@@ -81,6 +81,8 @@ model AllowedUser {
   inviteAcceptedAt DateTime?
   /// This salesperson's agreed commission terms (null = the defaults). Admin-only.
   commissionTerms  Json?
+  /// When the sales agreement ended. Only deals whose client payment arrived before this date still pay commission.
+  terminatedAt     DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -117,7 +119,7 @@ model User {
   leadNotes       LeadNote[]
   phoneLine       PhoneLine?
   calls           Call[]
-  callShares      CallShare[] @relation("CallSharedWith")
+  callShares      CallShare[]     @relation("CallSharedWith")
   smsMessages     SmsMessage[]
   meetRooms       MeetRoom[]
   callLists       CallList[]
@@ -207,6 +209,10 @@ model Lead {
   finalPaymentReceivedAt DateTime?
   /// The commission was paid out to the salesperson
   finalPaidAt            DateTime?
+  /// Third-party hosting, taxes and out-of-pocket costs (whole units) taken off the price before commission is calculated. Admin-only.
+  excludedCosts          Int?
+  /// The client's money was returned (refund, default or dispute). A paid commission then becomes an overpayment to claw back.
+  refundedAt             DateTime?
   /// Legacy global flag. Archiving is per person now (LeadArchive); the migration moved existing archives over and this is unused.
   archived               Boolean        @default(false)
   tags                   String[]       @default([])
@@ -786,9 +792,9 @@ model Call {
   /// A call to a business on a call list (before it is a lead)
   prospectId       String?
 
-  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  lead     Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  prospect Prospect? @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lead     Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  prospect Prospect?   @relation(fields: [prospectId], references: [id], onDelete: SetNull)
   shares   CallShare[]
 
   @@index([userId, startedAt])
@@ -910,4 +916,28 @@ model MeetInvite {
   room      MeetRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@unique([roomId, email])
+}
+
+/// One signed commission agreement. Kept as the record of what the representative agreed to, and when.
+model AgreementAcceptance {
+  id         String   @id @default(cuid())
+  /// The representative's email as written in the agreement (matches User / AllowedUser by email)
+  email      String
+  /// Which wording they signed (CONTRACT_VERSION in lib/sales-contract-core.ts)
+  version    String
+  /// SHA-256 of the signed sections
+  sha256     String
+  /// The filled-in terms: figures and legal terms, as signed
+  terms      Json
+  signerName String
+  adminName  String
+  adminEmail String
+  ip         String
+  userAgent  String
+  /// The signed PDF with both signatures. Always select columns explicitly in lists.
+  pdf        Bytes
+  signedAt   DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([email, signedAt])
 }

@@ -219,7 +219,7 @@ export async function loadToday(user: SessionUser) {
   // ── Money ──
   const pipelineValue = isAdmin ? openLeads.reduce((n, l) => n + (l.quotedPrice ?? 0), 0) : 0
   const proposals = openLeads.filter((l) => l.status === 'PROPOSAL_SENT' || l.status === 'SIGNED').length
-  const commissionRows = isAdmin || !seller ? [] : await prisma.lead.findMany({ where: { status: 'WON', assignedToId: user.id, commissionTotal: { not: null } }, select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
+  const commissionRows = isAdmin || !seller ? [] : await prisma.lead.findMany({ where: { status: 'WON', assignedToId: user.id, commissionTotal: { not: null } }, select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true } })
   const commission = salespersonCommissionView(
     commissionRows.reduce(
       (t, r) => {

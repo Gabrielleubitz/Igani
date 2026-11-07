@@ -109,11 +109,16 @@ export async function setCommissionPayment(id: string, input: z.input<typeof pay
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
     const m = paymentSchema.parse(input)
-    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
+    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, assignedTo: { select: { email: true } } } })
     if (!lead || lead.status !== 'WON' || lead.commissionTotal === null) throw new BookingError('Win the deal and enter its price first: that is when the commission is set.', 'INVALID_STATE')
     const date = m.date ? new Date(`${m.date}T12:00:00Z`) : null
     // "2026-02-31" passes a pattern check but is not a day: reject it instead of letting the database throw.
     if (m.date && (!date || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== m.date)) throw new BookingError('That date does not exist. Pick a real date.', 'INVALID_STATE')
+    if (m.kind === 'paid' && date && lead.refundedAt) throw new BookingError('The client’s money was returned, so this commission is cancelled. Undo the refund first if that was a mistake.', 'INVALID_STATE')
+    if (m.kind === 'paid' && date && lead.finalPaymentReceivedAt && lead.assignedTo?.email) {
+      const ended = await prisma.allowedUser.findUnique({ where: { email: lead.assignedTo.email }, select: { terminatedAt: true } })
+      if (ended?.terminatedAt && lead.finalPaymentReceivedAt > ended.terminatedAt) throw new BookingError('The salesperson’s agreement ended before the client paid, so no commission is owed on this deal.', 'INVALID_STATE')
+    }
     if (m.kind === 'paid' && date && lead.finalPaymentReceivedAt && date < lead.finalPaymentReceivedAt) throw new BookingError('The payout date can’t be before the day the client paid.', 'INVALID_STATE')
     if (m.kind === 'paid' && date && !lead.finalPaymentReceivedAt) {
       throw new BookingError('Nothing is payable before the client’s money is collected. Mark the payment as received first.', 'INVALID_STATE')
@@ -162,6 +167,78 @@ export async function saveSalespersonTerms(userId: string, terms: CommissionTerm
       await logActivity({ entityType: 'USER', entityId: uid, action: 'user.commission_terms_changed', actorId: admin.id, metadata: value ? { ...value } : { reset: true } }, tx)
     })
     revalidatePath(`/admin/team/${uid}`)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const realDate = (v: string | null): Date | null => {
+  if (!v) return null
+  const d = new Date(`${v}T12:00:00Z`)
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== v) throw new BookingError('That date does not exist. Pick a real date.', 'INVALID_STATE')
+  return d
+}
+const dateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()
+
+/** Hosting, taxes and out-of-pocket costs taken off the price before commission. Locked once the client's money is recorded, like the price. */
+export async function saveExcludedCosts(id: string, amount: number | null): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const lid = leadId.parse(id)
+    const value = amount === null || amount === 0 ? null : money.parse(amount)
+    const cur = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, finalPaymentReceivedAt: true, excludedCosts: true } })
+    if (!cur) throw new BookingError('Lead not found.', 'NOT_FOUND')
+    if (cur.finalPaymentReceivedAt) throw new BookingError('The client’s payment is already recorded, so the commission base can’t change. Undo the payment first.', 'INVALID_STATE')
+    if (value !== null && cur.quotedPrice !== null && value >= cur.quotedPrice) throw new BookingError('The excluded costs must be less than the price.', 'INVALID_STATE')
+    await prisma.$transaction(async (tx) => {
+      await tx.lead.update({ where: { id: lid }, data: { excludedCosts: value } })
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.excluded_costs_changed', actorId: admin.id, metadata: { from: cur.excludedCosts, to: value } }, tx)
+      await snapshotWonCommission(lid, tx)
+    })
+    refresh(lid)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** The client's money was returned (refund, default or dispute). Cancels an unpaid commission; a paid one becomes an overpayment to claw back. `null` undoes it. */
+export async function setDealRefund(id: string, date: string | null): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const lid = leadId.parse(id)
+    const d = realDate(dateInput.parse(date))
+    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, finalPaymentReceivedAt: true } })
+    if (!lead || lead.status !== 'WON') throw new BookingError('Only a won deal can be refunded.', 'INVALID_STATE')
+    if (d && !lead.finalPaymentReceivedAt) throw new BookingError('The client has not paid yet, so there is nothing to refund. The commission simply stays unpaid.', 'INVALID_STATE')
+    if (d && lead.finalPaymentReceivedAt && d < lead.finalPaymentReceivedAt) throw new BookingError('The refund can’t be before the day the client paid.', 'INVALID_STATE')
+    await prisma.$transaction(async (tx) => {
+      await tx.lead.update({ where: { id: lid }, data: { refundedAt: d } })
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.refund_recorded', actorId: admin.id, metadata: { date } }, tx)
+    })
+    refresh(lid)
+    revalidatePath('/admin/payouts')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** The day a salesperson's agreement ended (null = still active). Only deals the client paid for before this day still pay commission. */
+export async function setSalespersonTermination(userId: string, date: string | null): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const uid = z.string().cuid().parse(userId)
+    const d = realDate(dateInput.parse(date))
+    const user = await prisma.user.findUnique({ where: { id: uid }, select: { email: true } })
+    if (!user?.email) throw new BookingError('Teammate not found.', 'NOT_FOUND')
+    await prisma.$transaction(async (tx) => {
+      await tx.allowedUser.update({ where: { email: user.email! }, data: { terminatedAt: d } })
+      await logActivity({ entityType: 'USER', entityId: uid, action: 'user.agreement_terminated', actorId: admin.id, metadata: { date } }, tx)
+    })
+    revalidatePath(`/admin/team/${uid}`)
+    revalidatePath('/admin/payouts')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)

@@ -11,12 +11,28 @@ export const dynamic = 'force-dynamic'
 export default async function DocumentsPage(): Promise<React.ReactElement> {
   const user = await requireUser()
   const docs = await prisma.agreement.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true } })
+  const signed = user.email ? await prisma.agreementAcceptance.findMany({ where: { email: user.email.toLowerCase() }, orderBy: { signedAt: 'desc' }, select: { id: true, version: true, signedAt: true } }) : []
   return (
     <div className="space-y-5">
       <PageIntro title="Documents" hint="The agreements we have with you. Download any of them whenever you need." />
-      {docs.length === 0 ? (
+      {signed.length ? (
+        <Card>
+          <CardContent className="divide-y p-0">
+            {signed.map((a) => (
+              <div key={a.id} className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm">
+                <div>
+                  <div className="font-medium">Commission agreement (signed)</div>
+                  <div className="text-xs text-muted-foreground">Signed {a.signedAt.toLocaleDateString('en-GB')}</div>
+                </div>
+                <a href={`/api/agreements/signed/${a.id}`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">Download</a>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+      {docs.length === 0 && signed.length === 0 ? (
         <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Nothing here yet. When an admin uploads an agreement for you, it shows up here.</p>
-      ) : (
+      ) : docs.length === 0 ? null : (
         <Card>
           <CardContent className="divide-y p-0">
             {docs.map((d) => (

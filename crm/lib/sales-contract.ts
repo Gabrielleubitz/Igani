@@ -5,7 +5,7 @@ import type { Prisma } from '@prisma/client'
 import { env } from './env'
 import { htmlToPdf } from './pdf-render'
 import { prisma } from './prisma'
-import { AGREEMENT_CSS, agreementHtml, agreementSectionsHtml, type ContractData, type AgreementView } from './sales-contract-core'
+import { AGREEMENT_CSS, CONTRACT_VERSION, agreementHtml, agreementSectionsHtml, type ContractData, type AgreementView } from './sales-contract-core'
 import { LINK_HOURS, LINK_PREFIX, isLinkCode, linkKey, newLinkCode, parseLink, type LinkPayload } from './sales-contract-token'
 
 const asJson = (v: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue
@@ -91,4 +91,25 @@ ${AGREEMENT_CSS}
 </style></head><body>${agreementHtml(data, view)}</body></html>`
   const pdf = await htmlToPdf(html, { footer: `Igani · Signed by ${i.signerName} and ${i.payload.admin.name} · ${stamp(i.signedAt)} · ${shortRef(id)}` })
   return { pdf, hash }
+}
+
+/** Keeps the signed agreement: who signed what wording, when, from where, with the signed PDF. */
+export async function saveAcceptance(i: SignInput, built: { pdf: Uint8Array; hash: string }): Promise<string> {
+  const row = await prisma.agreementAcceptance.create({
+    data: {
+      email: i.payload.data.email.trim().toLowerCase(),
+      version: CONTRACT_VERSION,
+      sha256: built.hash,
+      terms: asJson({ figures: i.payload.data.figures, terms: i.payload.data.terms, effectiveDate: i.payload.data.effectiveDate }),
+      signerName: i.signerName,
+      adminName: i.payload.admin.name,
+      adminEmail: i.payload.admin.email,
+      ip: i.ip,
+      userAgent: i.userAgent.slice(0, 300),
+      pdf: Buffer.from(built.pdf),
+      signedAt: i.signedAt,
+    },
+    select: { id: true },
+  })
+  return row.id
 }

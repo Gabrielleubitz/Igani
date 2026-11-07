@@ -20,6 +20,7 @@ import { formatPrice } from '@/lib/offer-modules'
 import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
 import { AdminDealPanel, MyCommissionCard } from '@/components/crm/AdminDealPanel'
+import { DealAgreementCard } from '@/components/crm/DealAgreementCard'
 import { LeadControls } from '@/components/LeadControls'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -385,6 +386,16 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
                 finalPaymentReceivedAt: lead.finalPaymentReceivedAt?.toISOString() ?? null,
                 finalPaidAt: lead.finalPaidAt?.toISOString() ?? null,
               }}
+            />
+          ) : null}
+          {adminDeal && lead.status === 'WON' ? (
+            <DealAgreementCard
+              key={`agr-${lead.updatedAt.toISOString()}`}
+              leadId={lead.id}
+              quotedPrice={lead.quotedPrice}
+              excludedCosts={lead.excludedCosts}
+              clientPaidAt={lead.finalPaymentReceivedAt?.toISOString() ?? null}
+              refundedAt={lead.refundedAt?.toISOString() ?? null}
             />
           ) : null}
           {myCommission ? <MyCommissionCard {...myCommission} /> : null}

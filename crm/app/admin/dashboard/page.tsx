@@ -41,7 +41,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     prisma.lead.aggregate({ where: open, _sum: { quotedPrice: true } }),
     prisma.lead.findMany({
       where: { status: 'WON', commissionTotal: { not: null } },
-      select: { id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, assignedTo: { select: { name: true, email: true } } },
+      select: { id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, assignedTo: { select: { name: true, email: true } } },
       orderBy: { updatedAt: 'desc' },
     }),
     prisma.lead.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { assignedTo: { select: { name: true, email: true } } } }),
@@ -125,6 +125,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
           {commissionRows.length > 0 ? (
             <div className="mt-4 divide-y rounded-lg border">
               {[...commissionRows]
+                .filter((r) => r.refundedAt === null || r.finalPaidAt !== null)
                 .sort((a, b) => rank(a) - rank(b))
                 .slice(0, 40)
                 .map((r) => (
