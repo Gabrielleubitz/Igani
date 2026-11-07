@@ -75,8 +75,8 @@ export function MeetHome({ me, status, teammates, rooms }: { me: { name: string;
   const laterRoom = later ? rooms.find((r) => r.code === later.code) : null
 
   return (
-    <div className="dark min-h-screen bg-[#0e1626] text-[#e3e8f0]">
-      <header className="flex h-16 items-center gap-3 px-4 sm:px-6">
+    <div className="dark min-h-screen bg-[#0e1626] pb-[env(safe-area-inset-bottom)] text-[#e3e8f0]">
+      <header className="flex h-16 items-center gap-3 px-4 pt-[env(safe-area-inset-top)] sm:px-6">
         <Link href="/meet" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element -- static brand icon */}
           <img src="/meet/igani-meet-icon.png" alt="" className="h-10 w-10 rounded-[24%] shadow-lg shadow-black/30" />
@@ -374,7 +374,7 @@ function Carousel({ recording }: { recording: boolean }): React.ReactElement {
   const s = slides[i % slides.length]!
   const go = (d: number): void => setI((v) => (v + d + slides.length) % slides.length)
   return (
-    <section className="hidden flex-col items-center text-center lg:flex">
+    <section className="hidden flex-col items-center text-center md:flex">
       <div className="flex items-center gap-6">
         <button type="button" onClick={() => go(-1)} aria-label="Previous" className="rounded-full p-2 text-[#c4cbd6] transition hover:bg-white/10">
           <ChevronLeft className="h-6 w-6" />

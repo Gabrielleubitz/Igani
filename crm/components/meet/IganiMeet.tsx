@@ -309,12 +309,12 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
       {phase === 'ended' ? <Notice title="The meeting has ended" body={`${p.title} is over. Thanks for joining.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
       {/* the call itself stays mounted while live: stage (+ side panel) above Igani's bottom bar */}
       <div className={cn('relative flex min-h-0 flex-1 flex-col', phase !== 'live' && 'hidden')}>
-        <div className="flex min-h-0 flex-1 gap-3 px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="flex min-h-0 flex-1 gap-3 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 sm:pt-4">
           <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl bg-[#0b1220]">
             <div ref={stage} className="absolute inset-0" />
             <div ref={setSlot} className="pointer-events-none absolute inset-0" />
           </div>
-          <div ref={setSideSlot} className="empty:hidden max-md:fixed max-md:inset-0 max-md:z-40 md:w-[360px] md:shrink-0" />
+          <div ref={setSideSlot} className="empty:hidden max-md:fixed max-md:inset-0 max-md:z-40 md:w-[340px] md:shrink-0 lg:w-[360px]" />
         </div>
         {phase === 'live' && session ? (
           <Live
@@ -518,6 +518,7 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
   const micButton = useRef<HTMLButtonElement>(null)
   const [perm, setPerm] = useState<'asking' | 'ok' | 'denied' | 'none'>('asking')
   const [testing, setTesting] = useState(false)
+  const [devicesOpen, setDevicesOpen] = useState(false)
   const { picked, setPicked, joining, onJoin, name } = p
   const { mic, cam, micId, camId } = picked
   const [canPickSpeaker] = useState(() => typeof HTMLMediaElement !== 'undefined' && 'setSinkId' in HTMLMediaElement.prototype)
@@ -601,7 +602,7 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
   const devicePill = 'h-9 rounded-full border-white/15 bg-transparent text-[13px] hover:bg-white/[0.06] [&_select]:cursor-pointer'
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <header className="flex items-center justify-between gap-4 px-5 py-4 sm:px-6">
+      <header className="flex items-center justify-between gap-4 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-6 sm:py-4 [@media(orientation:landscape)_and_(max-height:540px)]:py-2">
         <Brand />
         {!p.nameEditable && p.name ? (
           <div className="flex items-center gap-3 text-right text-sm">
@@ -613,9 +614,10 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
           </div>
         ) : null}
       </header>
-      <main className="mx-auto flex w-full max-w-[1180px] flex-1 flex-col items-center justify-center gap-8 px-4 pb-10 lg:flex-row lg:gap-14">
-        <div className="w-full min-w-0 max-w-[740px] flex-[1.6]">
-          <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-[#202124] shadow-2xl shadow-black/40">
+      {/* phones: preview, then join, then (folded) device settings. Desktop, tablet landscape and phones on their side: preview and settings left, join right */}
+      <main className="mx-auto grid w-full max-w-[1180px] flex-1 content-center items-center gap-x-14 gap-y-5 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-6 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] [@media(orientation:landscape)_and_(max-height:540px)]:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] [@media(orientation:landscape)_and_(max-height:540px)]:gap-x-6 [@media(orientation:landscape)_and_(max-height:540px)]:pb-3">
+        <div className="w-full min-w-0 max-w-[740px] justify-self-center lg:col-start-1 lg:row-start-1 lg:self-end [@media(orientation:landscape)_and_(max-height:540px)]:col-start-1 [@media(orientation:landscape)_and_(max-height:540px)]:row-start-1 [@media(orientation:landscape)_and_(max-height:540px)]:self-end">
+          <div className="relative aspect-[4/3] w-full sm:aspect-video [@media(orientation:landscape)_and_(max-height:540px)]:aspect-video overflow-hidden rounded-xl bg-[#202124] shadow-2xl shadow-black/40">
             <video ref={video} autoPlay playsInline muted className={cn('h-full w-full -scale-x-100 object-cover transition-opacity duration-500', showVideo ? 'opacity-100' : 'opacity-0')} />
             {!showVideo ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
@@ -655,22 +657,10 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
               <Sparkles />
             </button>
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
-            <DeviceSelect icon={<Mic />} label="Microphone" list={picked.devices.audioInput} value={micId} onChange={(id) => set({ micId: id })} className={devicePill} />
-            {canPickSpeaker ? <DeviceSelect icon={<Volume2 />} label="Speakers" list={picked.devices.audioOutput} value={picked.spkId} onChange={(id) => set({ spkId: id })} className={devicePill} /> : null}
-            <DeviceSelect icon={<Video />} label="Camera" list={picked.devices.videoInput} value={camId} onChange={(id) => set({ camId: id })} className={devicePill} />
-          </div>
-          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[#9aa4b2]">
-            <Check2 ok={perm === 'ok' && mic} label={mic ? (perm === 'ok' ? 'Microphone works' : 'Microphone') : 'Microphone off'} />
-            <Check2 ok={perm === 'ok' && cam} label={cam ? (perm === 'ok' ? 'Camera works' : 'Camera') : 'Camera off'} />
-            <button type="button" onClick={testSpeaker} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[#a8c7fa] transition hover:bg-[#a8c7fa]/10">
-              <Volume2 className={cn('h-3.5 w-3.5', testing && 'animate-pulse')} /> {testing ? 'Playing…' : 'Test speakers'}
-            </button>
-          </div>
         </div>
 
-        <div className="flex w-full max-w-[380px] flex-1 flex-col items-center text-center">
-          <h1 className="text-[34px] font-normal leading-tight tracking-tight text-[#e3e8f0]">{p.nameEditable && !p.name.trim() ? 'What’s your name?' : 'Ready to join?'}</h1>
+        <div className="flex w-full max-w-[380px] flex-col items-center justify-self-center text-center lg:col-start-2 lg:row-span-2 lg:row-start-1 [@media(orientation:landscape)_and_(max-height:540px)]:col-start-2 [@media(orientation:landscape)_and_(max-height:540px)]:row-span-2 [@media(orientation:landscape)_and_(max-height:540px)]:row-start-1">
+          <h1 className="text-[28px] font-normal sm:text-[34px] [@media(orientation:landscape)_and_(max-height:540px)]:text-2xl leading-tight tracking-tight text-[#e3e8f0]">{p.nameEditable && !p.name.trim() ? 'What’s your name?' : 'Ready to join?'}</h1>
           <p className="mt-2 text-[15px] text-[#9aa4b2]">{p.title}</p>
           {schedule ? (
             <p className="mt-2 flex flex-wrap items-center justify-center gap-2 text-sm text-[#c4cbd6]">
@@ -708,7 +698,7 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
             type="button"
             disabled={joining || !p.name.trim()}
             onClick={onJoin}
-            className="mt-6 flex h-14 min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#a8c7fa] px-10 text-[15px] font-medium text-[#062e6f] shadow-lg shadow-black/20 transition hover:bg-[#b9d2fb] hover:shadow-[#a8c7fa]/20 active:scale-[0.98] disabled:opacity-50"
+            className="mt-6 flex h-14 min-w-[220px] [@media(orientation:landscape)_and_(max-height:540px)]:mt-3 [@media(orientation:landscape)_and_(max-height:540px)]:h-12 items-center justify-center gap-2 rounded-full bg-[#a8c7fa] px-10 text-[15px] font-medium text-[#062e6f] shadow-lg shadow-black/20 transition hover:bg-[#b9d2fb] hover:shadow-[#a8c7fa]/20 active:scale-[0.98] disabled:opacity-50"
           >
             {joining ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
             {joining ? 'Joining…' : first && (p.isHost || !p.hostName) ? 'Start the meeting' : 'Join now'}
@@ -718,9 +708,26 @@ function PreJoin(p: IganiMeetProps & { name: string; setName: (v: string) => voi
               <Avatar name={p.hostName} src={p.hostAvatar} className="h-5 w-5 text-[8px]" /> Hosted by {p.hostName}
             </p>
           ) : null}
-          <p className="mt-3 text-xs text-[#6b7686]">
+          <p className="mt-3 text-xs text-[#6b7686] [@media(hover:none)]:hidden">
             Press <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">Enter</kbd> to join · <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">Ctrl</kbd>+<kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">D</kbd> mic · <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">Ctrl</kbd>+<kbd className="rounded bg-white/10 px-1.5 py-0.5 font-sans">E</kbd> camera
           </p>
+        </div>
+        <div className="w-full min-w-0 max-w-[740px] justify-self-center lg:col-start-1 lg:row-start-2 lg:self-start [@media(orientation:landscape)_and_(max-height:540px)]:col-start-1 [@media(orientation:landscape)_and_(max-height:540px)]:row-start-2 [@media(orientation:landscape)_and_(max-height:540px)]:self-start">
+          <button type="button" onClick={() => setDevicesOpen((v) => !v)} aria-expanded={devicesOpen} className="mx-auto flex items-center gap-2 rounded-full px-3 py-2 text-sm text-[#a8c7fa] transition hover:bg-[#a8c7fa]/10 lg:hidden [@media(orientation:landscape)_and_(max-height:540px)]:hidden">
+            <Settings2 className="h-4 w-4" /> Audio and video settings <ChevronDown className={cn('h-4 w-4 transition', devicesOpen && 'rotate-180')} />
+          </button>
+          <div className={cn('mt-2 gap-2 sm:grid-cols-3 lg:mt-0 lg:grid [@media(orientation:landscape)_and_(max-height:540px)]:grid', devicesOpen ? 'grid' : 'hidden')}>
+            <DeviceSelect icon={<Mic />} label="Microphone" list={picked.devices.audioInput} value={micId} onChange={(id) => set({ micId: id })} className={devicePill} />
+            {canPickSpeaker ? <DeviceSelect icon={<Volume2 />} label="Speakers" list={picked.devices.audioOutput} value={picked.spkId} onChange={(id) => set({ spkId: id })} className={devicePill} /> : null}
+            <DeviceSelect icon={<Video />} label="Camera" list={picked.devices.videoInput} value={camId} onChange={(id) => set({ camId: id })} className={devicePill} />
+          </div>
+          <div className="mt-2.5 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[#9aa4b2]">
+            <Check2 ok={perm === 'ok' && mic} label={mic ? (perm === 'ok' ? 'Microphone works' : 'Microphone') : 'Microphone off'} />
+            <Check2 ok={perm === 'ok' && cam} label={cam ? (perm === 'ok' ? 'Camera works' : 'Camera') : 'Camera off'} />
+            <button type="button" onClick={testSpeaker} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[#a8c7fa] transition hover:bg-[#a8c7fa]/10">
+              <Volume2 className={cn('h-3.5 w-3.5', testing && 'animate-pulse')} /> {testing ? 'Playing…' : 'Test speakers'}
+            </button>
+          </div>
         </div>
       </main>
     </div>
@@ -839,6 +846,9 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
   const [unread, setUnread] = useState(0)
   const [flying, setFlying] = useState<Flying[]>([])
   const [full, setFull] = useState(false)
+  // what this device can do: iPhones can't share their screen or go full screen from a web page
+  const [canShare] = useState(() => typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getDisplayMedia === 'function' && !/iPhone|iPod|Android.*Mobile/i.test(navigator.userAgent))
+  const [canFull] = useState(() => typeof document !== 'undefined' && Boolean(document.fullscreenEnabled))
   const [filmstrip, setFilmstrip] = useState(true)
   const leftRef = useRef(onLeft)
   const failRef = useRef(onFail)
@@ -1050,6 +1060,30 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
     }
   }, [])
 
+  // phones and tablets: keep the screen awake while in the call (the browser lets go when the tab is hidden, so ask again)
+  useEffect(() => {
+    if (!joinedAt || !('wakeLock' in navigator)) return
+    let lock: { release: () => Promise<void> } | null = null
+    let alive = true
+    const ask = (): void => {
+      if (document.visibilityState !== 'visible') return
+      void (navigator as Navigator & { wakeLock: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }).wakeLock
+        .request('screen')
+        .then((l) => {
+          if (alive) lock = l
+          else void l.release()
+        })
+        .catch(() => undefined)
+    }
+    ask()
+    document.addEventListener('visibilitychange', ask)
+    return () => {
+      alive = false
+      document.removeEventListener('visibilitychange', ask)
+      void lock?.release().catch(() => undefined)
+    }
+  }, [joinedAt])
+
   // the tab shows the call (and a red dot while recording)
   useEffect(() => {
     const before = document.title
@@ -1176,7 +1210,7 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
   )
 
   const panel = side ? (
-    <aside className="meet-pop flex h-full min-h-0 flex-col overflow-hidden bg-[#1a2333] text-[#e3e8f0] md:rounded-2xl">
+    <aside className="meet-pop flex h-full min-h-0 flex-col overflow-hidden bg-[#1a2333] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-[#e3e8f0] md:rounded-2xl md:pb-0 md:pt-0">
       <div className="flex items-center justify-between px-5 pb-2 pt-4">
         <h2 className="text-lg">{side === 'details' ? 'Meeting details' : side === 'people' ? 'People' : side === 'chat' ? 'In-call messages' : 'Host controls'}</h2>
         <button type="button" onClick={() => setSide(null)} aria-label="Close" className="rounded-full p-2 text-[#c4cbd6] hover:bg-white/10">
@@ -1195,8 +1229,21 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
       {slot ? createPortal(overlay, slot) : null}
       {sideSlot && panel ? createPortal(panel, sideSlot) : null}
       {settingsOpen ? <SettingsDialog api={api} onClose={() => setSettingsOpen(false)} /> : null}
-      <footer className="relative grid h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-3 sm:px-5">
-        <div className="hidden min-w-0 items-center gap-3 text-[15px] text-[#e3e8f0] md:flex">
+      {menu === 'reactions' ? (
+        <div className="relative z-30 flex justify-center px-2">
+          <Popover onClose={closeMenu} className="!bottom-1 rounded-full p-1.5">
+            <div className="flex max-w-[calc(100vw-1rem)] gap-0.5 overflow-x-auto">
+              {REACTIONS.map((r) => (
+                <button key={r} type="button" onClick={() => react(r)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-2xl transition hover:scale-125 hover:bg-white/10 active:scale-110" aria-label={`React ${r}`}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          </Popover>
+        </div>
+      ) : null}
+      <footer className="relative grid min-h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 pb-[env(safe-area-inset-bottom)] sm:px-5">
+        <div className="hidden min-w-0 items-center gap-3 text-[15px] text-[#e3e8f0] lg:flex">
           <span className="tabular-nums">{hhmm(now)}</span>
           <span className="h-4 w-px bg-white/25" />
           <span className="truncate" title={title}>
@@ -1206,36 +1253,30 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
         <div className="col-start-2 flex items-center gap-2 sm:gap-2.5">
           <CtrlButton onClick={cmd('toggleAudio')} off={!mic} label={mic ? 'Turn off microphone (ctrl + d)' : 'Turn on microphone (ctrl + d)'} icon={mic ? <Mic /> : <MicOff />} />
           <CtrlButton onClick={cmd('toggleVideo')} off={!cam} label={cam ? 'Turn off camera (ctrl + e)' : 'Turn on camera (ctrl + e)'} icon={cam ? <Video /> : <VideoOff />} />
-          <div className="relative hidden sm:block">
-            <CtrlButton onClick={() => setMenu(menu === 'reactions' ? null : 'reactions')} active={menu === 'reactions'} label="Send a reaction" icon={<Smile />} />
-            {menu === 'reactions' ? (
-              <Popover onClose={closeMenu} className="left-1/2 -translate-x-1/2 rounded-full p-1.5">
-                <div className="flex gap-0.5">
-                  {REACTIONS.map((r) => (
-                    <button key={r} type="button" onClick={() => react(r)} className="flex h-10 w-10 items-center justify-center rounded-full text-2xl transition hover:scale-125 hover:bg-white/10" aria-label={`React ${r}`}>
-                      {r}
-                    </button>
-                  ))}
-                </div>
-              </Popover>
-            ) : null}
-          </div>
-          <CtrlButton onClick={cmd('toggleShareScreen')} active={sharing} label={sharing ? 'Stop presenting' : 'Present now'} icon={<MonitorUp />} className="hidden sm:flex" />
+          <CtrlButton onClick={() => setMenu(menu === 'reactions' ? null : 'reactions')} active={menu === 'reactions'} label="Send a reaction" icon={<Smile />} className="hidden sm:flex" />
+          {canShare ? <CtrlButton onClick={cmd('toggleShareScreen')} active={sharing} label={sharing ? 'Stop presenting' : 'Present now'} icon={<MonitorUp />} className="hidden sm:flex" /> : null}
           <CtrlButton onClick={cmd('toggleRaiseHand')} active={myHand} label={myHand ? 'Lower hand' : 'Raise hand'} icon={<Hand />} />
           {canRecord ? <CtrlButton onClick={toggleRecording} disabled={rec.pending} active={rec.on} label={rec.on ? 'Stop recording' : rec.pending ? 'Starting recording…' : 'Record the call'} icon={rec.pending ? <Loader2 className="animate-spin" /> : <CircleDot className={rec.on ? '' : 'text-[#f28b82]'} />} className="hidden sm:flex" /> : null}
           <div className="relative">
-            <CtrlButton onClick={() => setMenu(menu === 'more' || menu === 'layout' ? null : 'more')} active={menu === 'more' || menu === 'layout'} label="More options" icon={<EllipsisVertical />} />
+            <CtrlButton onClick={() => setMenu(menu === 'more' || menu === 'layout' ? null : 'more')} active={menu === 'more' || menu === 'layout'} label="More options" icon={<EllipsisVertical />} dot={unread > 0} className={unread > 0 ? 'md:[&>span:last-child]:hidden' : undefined} />
             {menu === 'more' ? (
               <Popover onClose={closeMenu} className="left-1/2 w-64 -translate-x-1/2 py-2">
                 <MenuItem icon={<LayoutGrid />} onClick={() => setMenu('layout')}>
                   Change layout
                 </MenuItem>
-                <MenuItem icon={full ? <Minimize /> : <Maximize />} onClick={toggleFull}>
-                  {full ? 'Exit full screen' : 'Full screen'}
+                {canFull ? (
+                  <MenuItem icon={full ? <Minimize /> : <Maximize />} onClick={toggleFull}>
+                    {full ? 'Exit full screen' : 'Full screen'}
+                  </MenuItem>
+                ) : null}
+                <MenuItem icon={<Smile />} onClick={() => setMenu('reactions')} className="sm:hidden">
+                  Send a reaction
                 </MenuItem>
-                <MenuItem icon={<MonitorUp />} onClick={() => (setMenu(null), api.executeCommand('toggleShareScreen'))} className="sm:hidden">
-                  {sharing ? 'Stop presenting' : 'Present now'}
-                </MenuItem>
+                {canShare ? (
+                  <MenuItem icon={<MonitorUp />} onClick={() => (setMenu(null), api.executeCommand('toggleShareScreen'))} className="sm:hidden">
+                    {sharing ? 'Stop presenting' : 'Present now'}
+                  </MenuItem>
+                ) : null}
                 {canRecord ? (
                   <MenuItem icon={<CircleDot />} onClick={toggleRecording} className="sm:hidden">
                     {rec.on ? 'Stop recording' : 'Record the call'}
@@ -1250,6 +1291,11 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
                 <MenuItem icon={<MessageSquare />} onClick={() => openSide('chat')} className="md:hidden">
                   Chat{unread ? ` (${unread})` : ''}
                 </MenuItem>
+                {moderator ? (
+                  <MenuItem icon={<ShieldCheck />} onClick={() => openSide('host')} className="md:hidden">
+                    Host controls
+                  </MenuItem>
+                ) : null}
                 <div className="my-1 h-px bg-white/10" />
                 <MenuItem
                   icon={<Settings2 />}
@@ -1363,7 +1409,7 @@ function DetailsPanel({ code, roomId, title, joinedAt, now, testServer }: { code
       {roomId ? (
         <div>
           <p className="font-medium">Add people</p>
-          <textarea value={emails} onChange={(e) => setEmails(e.target.value)} rows={2} placeholder="dana@client.com, mike@company.com" className="mt-2 w-full resize-none rounded-lg border border-white/15 bg-transparent px-3 py-2 outline-none placeholder:text-[#6b7686] focus:border-[#a8c7fa] focus-visible:ring-0 focus-visible:ring-offset-0" />
+          <textarea value={emails} onChange={(e) => setEmails(e.target.value)} rows={2} placeholder="dana@client.com, mike@company.com" className="mt-2 w-full resize-none rounded-lg border border-white/15 bg-transparent px-3 py-2 text-base outline-none sm:text-sm placeholder:text-[#6b7686] focus:border-[#a8c7fa] focus-visible:ring-0 focus-visible:ring-offset-0" />
           <button
             type="button"
             disabled={pending || !emails.trim()}
@@ -1485,7 +1531,7 @@ function ChatPanel({ api, messages }: { api: JitsiApi; messages: ChatMsg[] }): R
             }}
             placeholder="Send a message"
             maxLength={2000}
-            className="h-10 min-w-0 flex-1 border-0 bg-transparent text-sm shadow-none outline-none ring-0 placeholder:text-[#9aa4b2] focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-10 min-w-0 flex-1 border-0 bg-transparent text-base sm:text-sm shadow-none outline-none ring-0 placeholder:text-[#9aa4b2] focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
           />
           <button type="button" onClick={send} disabled={!text.trim()} aria-label="Send message" className="rounded-full p-2.5 text-[#a8c7fa] transition hover:bg-white/10 disabled:text-[#5b6575]">
             <Send className="h-5 w-5" />

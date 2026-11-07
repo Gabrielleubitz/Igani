@@ -44,7 +44,7 @@ export function Invitees({ teammates, picked, setPicked, emails, setEmails, excl
       ) : null}
       <label className="block">
         <span className="mb-1.5 block text-xs text-muted-foreground">Other people (any email, comma or new line between them)</span>
-        <Textarea rows={2} value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="dana@client.com, Mike Amory <mike@cryo.com>" className="text-sm" />
+        <Textarea rows={2} value={emails} onChange={(e) => setEmails(e.target.value)} placeholder="dana@client.com, Mike Amory <mike@cryo.com>" className="text-base sm:text-sm" />
       </label>
     </div>
   )
