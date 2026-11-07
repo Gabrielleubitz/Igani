@@ -40,27 +40,64 @@ struct RootView: View {
             case .signedIn:
                 MainTabs().transition(.opacity)
             }
+            if session.phase == .signedIn { PhoneLayer() }
             ToastOverlay()
         }
         .animation(.easeInOut(duration: 0.35), value: session.phase)
         .task { await session.start() }
+        .onAppear { ToastCenter.shared = toasts }
+        .onChange(of: session.phase) { _, p in
+            if p == .signedIn { Task { await Phone.shared.prepare() } } else if p == .signedOut { Phone.shared.signedOut() }
+        }
+    }
+    @Environment(Toasts.self) private var toasts
+}
+
+/// The call on top of everything: full screen while it matters, a bar while you browse, and the wrap-up after.
+struct PhoneLayer: View {
+    @State private var phone = Phone.shared
+    var body: some View {
+        ZStack(alignment: .top) {
+            if phone.active != nil, phone.expanded {
+                CallScreen().transition(.move(edge: .bottom))
+                    .zIndex(2)
+            }
+            VStack { CallBar(); Spacer() }
+                .zIndex(1)
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: phone.expanded)
+        .animation(.spring(response: 0.45, dampingFraction: 0.86), value: phone.active?.id)
+        .sheet(item: $phone.wrapUp) { w in WrapUpSheet(wrap: w) }
     }
 }
 
-enum AppTab: Hashable { case today, leads, tasks, meet, more }
+enum AppTab: Hashable { case today, leads, phone, tasks, meet, more }
 
 /// The app's five places. On iOS 26 the tab bar is Liquid Glass.
 struct MainTabs: View {
+    @Environment(Session.self) private var session
     @State private var tab: AppTab = MainTabs.initialTab
+    @State private var router = TabRouter.shared
+    private var seller: Bool { ["ADMIN", "SALES"].contains(session.me?.role ?? "") }
     var body: some View {
         TabView(selection: $tab) {
             Tab("Today", systemImage: "sun.max", value: AppTab.today) { TodayView(tab: $tab) }
             Tab("Leads", systemImage: "person.2", value: AppTab.leads) { LeadsView() }
+            if seller {
+                Tab("Phone", systemImage: "phone", value: AppTab.phone) { PhoneView() }
+            }
             Tab("Tasks", systemImage: "checklist", value: AppTab.tasks) { TasksView() }
-            Tab("Meet", systemImage: "video", value: AppTab.meet) { MeetView() }
-            Tab("More", systemImage: "square.grid.2x2", value: AppTab.more) { MoreView() }
+            if !seller {
+                Tab("Meet", systemImage: "video", value: AppTab.meet) { MeetView() }
+            }
+            Tab("More", systemImage: "square.grid.2x2", value: AppTab.more) { MoreView(tab: $tab) }
         }
         .sensoryFeedback(.selection, trigger: tab)
+        .onChange(of: router.request) { _, r in
+            guard let r else { return }
+            tab = r
+            router.request = nil
+        }
     }
 
     /// Debug builds: `-tab leads` opens on a tab (for screenshots and testing).
@@ -69,6 +106,7 @@ struct MainTabs: View {
         switch UserDefaults.standard.string(forKey: "tab") {
         case "leads": return .leads
         case "tasks": return .tasks
+        case "phone": return .phone
         case "meet": return .meet
         case "more": return .more
         default: return .today
@@ -76,5 +114,16 @@ struct MainTabs: View {
         #else
         return .today
         #endif
+    }
+}
+
+/// Lets any screen switch tabs (a phone link opens the keypad).
+@MainActor @Observable final class TabRouter {
+    static let shared = TabRouter()
+    var request: AppTab?
+    /// Opens the keypad with this number ready (it doesn't dial by itself).
+    func dial(_ number: String) {
+        PendingDial.shared.set(PhoneFmt.clean(number))
+        request = .phone
     }
 }

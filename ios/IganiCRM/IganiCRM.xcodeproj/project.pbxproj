@@ -8,20 +8,32 @@
 
 /* Begin PBXBuildFile section */
 		0F5E97C818697F4EC33A30C5 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE97091850781D10E84C6BF /* Components.swift */; };
+		148CD474A078BDA83690A6B5 /* PhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E119EDECFFFB3927FA0FADA /* PhoneView.swift */; };
+		28D8BD35A109661F98C43AD9 /* TwilioVoice in Frameworks */ = {isa = PBXBuildFile; productRef = 47CF8BCA1AE4264FC518E18D /* TwilioVoice */; };
+		3477A4EAADF6785EFF2B3E07 /* igani-ring.wav in Resources */ = {isa = PBXBuildFile; fileRef = 66B487E85B8AB8F2761FE7FE /* igani-ring.wav */; };
 		3A605B987D820B3760D355DA /* MeetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61B2A7D8C4BFA63DDA05974 /* MeetView.swift */; };
 		3DC1B48D9081FB9CAFAC7608 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EEEC73D5773D0379A11131 /* Session.swift */; };
 		47EED45D468556E8BD16D742 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3ED34ECD1E29AC583984C9F /* Config.swift */; };
+		56D176A75BDA53A26E3EC3FB /* Phone.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78991C25C1C3E2A8CD0CDAE3 /* Phone.swift */; };
 		5B8E8FF6F84D160EB966BEE2 /* LeadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C8A7F5693162BF97C2C016B /* LeadsView.swift */; };
 		5DA30FDF705266D1AF8009CC /* WebScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A09F2722C2EBCCDCC145D9A /* WebScreen.swift */; };
+		612FD05791A039F05FF9FA4B /* CallsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35005F07570C45CD38FD96E7 /* CallsView.swift */; };
 		7D55DC8A3345C1A1841587F3 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BC87E63111A9D67CA81BF09 /* Keychain.swift */; };
 		8D9F984422276B937D82271F /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 253AAC50CF65AE0D44D0DC8B /* TodayView.swift */; };
+		8EE2B4621F9F5156398A399B /* PhoneModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FB06BBB5F9FB41E4C93F2A /* PhoneModels.swift */; };
 		903553F55CDF9F2CA048171E /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = C886FB0077AACB35D5F5B797 /* API.swift */; };
 		9F69DDD51CE891C30BCD013F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A0808D1539A54F0177473CB /* Assets.xcassets */; };
 		A15F5500AD6242CBEA201805 /* IganiMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AED7D151F6D1F06D1DD9E7 /* IganiMark.swift */; };
+		A865E362433AA2F8B8266648 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A53300417C06F0752FB2239 /* MessagesView.swift */; };
+		AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A46A2AFA5181FA13B53711E /* CallScreen.swift */; };
 		B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508FFF27437A22EE664F4639 /* MoreView.swift */; };
+		B468571772913AD07DB6C968 /* Pieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7545C8F3138B87B3CC295E7E /* Pieces.swift */; };
+		B6EBB0C4CE28385959DF338E /* WrapUpSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF403E81F5FE24ABA583855A /* WrapUpSheet.swift */; };
 		C7765FEE97A3F182CA106FC3 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E4615C35E8176210721E9 /* TasksView.swift */; };
 		CA1C86D23CC5675E81222C62 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED0EEE2B860342C9F0D81F00 /* SignInView.swift */; };
+		CB3FA6D8F97C586EA343828E /* TwilioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55F2A2D48A01191D24C44BF1 /* TwilioEngine.swift */; };
 		D69AD20D3A30005B9D249046 /* Routes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B1073B3507AE26F08A1FBD /* Routes.swift */; };
+		DE059216019C407A68943D88 /* NativePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87093D6F5B926DB09EDCCB42 /* NativePage.swift */; };
 		E046274C63F15212E6E7B5B3 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5E508DD140AA183506097D /* Models.swift */; };
 		E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67AA1A6DF8D2B5DF06A32D0 /* LeadDetailView.swift */; };
 		EF3E8DFD3D3E16FA49E3E3A0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57445395BE86C1E3CD6FF679 /* Theme.swift */; };
@@ -32,17 +44,29 @@
 		177B9EF4A4BE958799D9DCA7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1BC87E63111A9D67CA81BF09 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		253AAC50CF65AE0D44D0DC8B /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		35005F07570C45CD38FD96E7 /* CallsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsView.swift; sourceTree = "<group>"; };
 		3C5E508DD140AA183506097D /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		508FFF27437A22EE664F4639 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		55F2A2D48A01191D24C44BF1 /* TwilioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwilioEngine.swift; sourceTree = "<group>"; };
+		56B5B80BB1A7B2271F0FD834 /* IganiCRM.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = IganiCRM.entitlements; sourceTree = "<group>"; };
 		57445395BE86C1E3CD6FF679 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		5A46A2AFA5181FA13B53711E /* CallScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallScreen.swift; sourceTree = "<group>"; };
+		62FB06BBB5F9FB41E4C93F2A /* PhoneModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneModels.swift; sourceTree = "<group>"; };
+		66B487E85B8AB8F2761FE7FE /* igani-ring.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "igani-ring.wav"; sourceTree = "<group>"; };
 		6AE97091850781D10E84C6BF /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		72830A72288F0694DCA02EBF /* IganiCRMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IganiCRMApp.swift; sourceTree = "<group>"; };
+		7545C8F3138B87B3CC295E7E /* Pieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pieces.swift; sourceTree = "<group>"; };
+		78991C25C1C3E2A8CD0CDAE3 /* Phone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phone.swift; sourceTree = "<group>"; };
 		7A09F2722C2EBCCDCC145D9A /* WebScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebScreen.swift; sourceTree = "<group>"; };
+		7A53300417C06F0752FB2239 /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
+		87093D6F5B926DB09EDCCB42 /* NativePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePage.swift; sourceTree = "<group>"; };
 		8C8A7F5693162BF97C2C016B /* LeadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadsView.swift; sourceTree = "<group>"; };
 		94EEEC73D5773D0379A11131 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		9A0808D1539A54F0177473CB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9E119EDECFFFB3927FA0FADA /* PhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneView.swift; sourceTree = "<group>"; };
 		A11E4615C35E8176210721E9 /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
 		A2B1073B3507AE26F08A1FBD /* Routes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Routes.swift; sourceTree = "<group>"; };
+		AF403E81F5FE24ABA583855A /* WrapUpSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WrapUpSheet.swift; sourceTree = "<group>"; };
 		B3AED7D151F6D1F06D1DD9E7 /* IganiMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IganiMark.swift; sourceTree = "<group>"; };
 		B67AA1A6DF8D2B5DF06A32D0 /* LeadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadDetailView.swift; sourceTree = "<group>"; };
 		C3ED34ECD1E29AC583984C9F /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
@@ -52,12 +76,24 @@
 		F3B66F7004A02B060CBF3375 /* IganiCRM.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IganiCRM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFrameworksBuildPhase section */
+		2CA93C3F3457D9144EAAEB2F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				28D8BD35A109661F98C43AD9 /* TwilioVoice in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
 /* Begin PBXGroup section */
 		06806D8E2309A3D49B9CC6EE /* UI */ = {
 			isa = PBXGroup;
 			children = (
 				6AE97091850781D10E84C6BF /* Components.swift */,
 				B3AED7D151F6D1F06D1DD9E7 /* IganiMark.swift */,
+				7545C8F3138B87B3CC295E7E /* Pieces.swift */,
 				A2B1073B3507AE26F08A1FBD /* Routes.swift */,
 				57445395BE86C1E3CD6FF679 /* Theme.swift */,
 			);
@@ -67,9 +103,11 @@
 		1646BA30EFB5B3B1B7EFBCE1 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				AF8D5597BC1645732E3BA316 /* Calls */,
 				FE0868ED4C96511EF64B97E0 /* Leads */,
 				CF1F5F9F05ACBE529FAF8B8E /* Meet */,
 				BB66E1C04CAA6284E0A71082 /* More */,
+				B02C672F1EFFD55CD290A5C8 /* Phone */,
 				D55A07299733631337F188B6 /* SignIn */,
 				DF22AA6313B099E4700D7B47 /* Tasks */,
 				EF1A87B6D5211E0A0ADB3A41 /* Today */,
@@ -110,19 +148,52 @@
 			isa = PBXGroup;
 			children = (
 				9A0808D1539A54F0177473CB /* Assets.xcassets */,
+				56B5B80BB1A7B2271F0FD834 /* IganiCRM.entitlements */,
 				177B9EF4A4BE958799D9DCA7 /* Info.plist */,
 				5A98F6C8C2C331B1254F471A /* App */,
 				661AA9C8E43C7B26F5DE687E /* Core */,
 				1646BA30EFB5B3B1B7EFBCE1 /* Features */,
+				B28C2FAB66C35759A5395AF3 /* Resources */,
 				06806D8E2309A3D49B9CC6EE /* UI */,
 			);
 			path = IganiCRM;
+			sourceTree = "<group>";
+		};
+		AF8D5597BC1645732E3BA316 /* Calls */ = {
+			isa = PBXGroup;
+			children = (
+				35005F07570C45CD38FD96E7 /* CallsView.swift */,
+			);
+			path = Calls;
+			sourceTree = "<group>";
+		};
+		B02C672F1EFFD55CD290A5C8 /* Phone */ = {
+			isa = PBXGroup;
+			children = (
+				5A46A2AFA5181FA13B53711E /* CallScreen.swift */,
+				7A53300417C06F0752FB2239 /* MessagesView.swift */,
+				78991C25C1C3E2A8CD0CDAE3 /* Phone.swift */,
+				62FB06BBB5F9FB41E4C93F2A /* PhoneModels.swift */,
+				9E119EDECFFFB3927FA0FADA /* PhoneView.swift */,
+				55F2A2D48A01191D24C44BF1 /* TwilioEngine.swift */,
+				AF403E81F5FE24ABA583855A /* WrapUpSheet.swift */,
+			);
+			path = Phone;
+			sourceTree = "<group>";
+		};
+		B28C2FAB66C35759A5395AF3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				66B487E85B8AB8F2761FE7FE /* igani-ring.wav */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		BB66E1C04CAA6284E0A71082 /* More */ = {
 			isa = PBXGroup;
 			children = (
 				508FFF27437A22EE664F4639 /* MoreView.swift */,
+				87093D6F5B926DB09EDCCB42 /* NativePage.swift */,
 			);
 			path = More;
 			sourceTree = "<group>";
@@ -193,6 +264,7 @@
 			buildPhases = (
 				8B24CC4C741B507DF47B1FBB /* Sources */,
 				21692383EFC19E7E2531AD21 /* Resources */,
+				2CA93C3F3457D9144EAAEB2F /* Frameworks */,
 			);
 			buildRules = (
 			);
@@ -200,6 +272,7 @@
 			);
 			name = IganiCRM;
 			packageProductDependencies = (
+				47CF8BCA1AE4264FC518E18D /* TwilioVoice */,
 			);
 			productName = IganiCRM;
 			productReference = F3B66F7004A02B060CBF3375 /* IganiCRM.app */;
@@ -229,6 +302,9 @@
 			);
 			mainGroup = 31DC2F610055F18456DA21DE;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				098D20603B5B2B9FD721F5FA /* XCRemoteSwiftPackageReference "twilio-voice-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F8284934A77ED75E27B27ED8 /* Products */;
 			projectDirPath = "";
@@ -245,6 +321,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9F69DDD51CE891C30BCD013F /* Assets.xcassets in Resources */,
+				3477A4EAADF6785EFF2B3E07 /* igani-ring.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,6 +333,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				903553F55CDF9F2CA048171E /* API.swift in Sources */,
+				AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */,
+				612FD05791A039F05FF9FA4B /* CallsView.swift in Sources */,
 				0F5E97C818697F4EC33A30C5 /* Components.swift in Sources */,
 				47EED45D468556E8BD16D742 /* Config.swift in Sources */,
 				FB162594143CF3015BBB9A25 /* IganiCRMApp.swift in Sources */,
@@ -264,15 +343,23 @@
 				E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */,
 				5B8E8FF6F84D160EB966BEE2 /* LeadsView.swift in Sources */,
 				3A605B987D820B3760D355DA /* MeetView.swift in Sources */,
+				A865E362433AA2F8B8266648 /* MessagesView.swift in Sources */,
 				E046274C63F15212E6E7B5B3 /* Models.swift in Sources */,
 				B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */,
+				DE059216019C407A68943D88 /* NativePage.swift in Sources */,
+				56D176A75BDA53A26E3EC3FB /* Phone.swift in Sources */,
+				8EE2B4621F9F5156398A399B /* PhoneModels.swift in Sources */,
+				148CD474A078BDA83690A6B5 /* PhoneView.swift in Sources */,
+				B468571772913AD07DB6C968 /* Pieces.swift in Sources */,
 				D69AD20D3A30005B9D249046 /* Routes.swift in Sources */,
 				3DC1B48D9081FB9CAFAC7608 /* Session.swift in Sources */,
 				CA1C86D23CC5675E81222C62 /* SignInView.swift in Sources */,
 				C7765FEE97A3F182CA106FC3 /* TasksView.swift in Sources */,
 				EF3E8DFD3D3E16FA49E3E3A0 /* Theme.swift in Sources */,
 				8D9F984422276B937D82271F /* TodayView.swift in Sources */,
+				CB3FA6D8F97C586EA343828E /* TwilioEngine.swift in Sources */,
 				5DA30FDF705266D1AF8009CC /* WebScreen.swift in Sources */,
+				B6EBB0C4CE28385959DF338E /* WrapUpSheet.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -284,6 +371,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = IganiCRM/IganiCRM.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
@@ -430,6 +518,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = IganiCRM/IganiCRM.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				ENABLE_PREVIEWS = YES;
@@ -468,6 +557,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		098D20603B5B2B9FD721F5FA /* XCRemoteSwiftPackageReference "twilio-voice-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/twilio/twilio-voice-ios";
+			requirement = {
+				kind = exactVersion;
+				version = 6.13.8;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		47CF8BCA1AE4264FC518E18D /* TwilioVoice */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 098D20603B5B2B9FD721F5FA /* XCRemoteSwiftPackageReference "twilio-voice-ios" */;
+			productName = TwilioVoice;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3BB038FE6608CCC5D34676DB /* Project object */;
 }

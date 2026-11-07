@@ -30,7 +30,9 @@
 	</array>
 	<key>UIUserInterfaceStyle</key><string>Dark</string>
 	<key>NSCameraUsageDescription</key><string>Igani Meet uses your camera so people in the call can see you.</string>
-	<key>NSMicrophoneUsageDescription</key><string>Igani Meet and calls use your microphone so people can hear you.</string>
+	<key>NSMicrophoneUsageDescription</key><string>Igani CRM uses your microphone for phone calls and Igani Meet, so people can hear you.</string>
+	<key>UIBackgroundModes</key>
+	<array><string>audio</string><string>voip</string><string>remote-notification</string></array>
 	<key>NSAppTransportSecurity</key>
 	<dict><key>NSAllowsLocalNetworking</key><true/></dict>
 	<key>LSApplicationQueriesSchemes</key>

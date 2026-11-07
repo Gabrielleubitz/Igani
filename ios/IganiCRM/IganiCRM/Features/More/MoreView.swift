@@ -3,6 +3,7 @@ import SwiftUI
 /// Everything else in the CRM, grouped like the website's sidebar (only what your role may open). Each page opens
 /// inside the app, signed in.
 struct MoreView: View {
+    @Binding var tab: AppTab
     @Environment(Session.self) private var session
     @State private var path = NavigationPath()
     @State private var showProfile = false
@@ -42,7 +43,7 @@ struct MoreView: View {
                 ForEach(groups, id: \.0) { g in
                     Section(g.0) {
                         ForEach(g.1) { p in
-                            NavigationLink(value: Route.web(path: p.href, title: p.label)) {
+                            NavigationLink(value: Route.page(p)) {
                                 Label {
                                     Text(p.label).foregroundStyle(Theme.text)
                                 } icon: {

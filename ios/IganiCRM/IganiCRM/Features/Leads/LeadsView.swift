@@ -41,7 +41,9 @@ struct LeadsView: View {
                             NavigationLink(value: Route.lead(l.id)) { row(l) }
                                 .listRowBackground(Theme.card)
                                 .swipeActions(edge: .leading) {
-                                    if let p = l.phone, let u = URL(string: "tel:\(p.filter { $0.isNumber || $0 == "+" })") {
+                                    if let p = l.phone, Phone.shared.isSeller {
+                                        Button { Task { do { try await Phone.shared.call(p, leadId: l.id, name: l.name) } catch { ToastCenter.shared?.show(error.localizedDescription, tone: .warn) } } } label: { Label("Call", systemImage: "phone.fill") }.tint(Theme.green)
+                                    } else if let p = l.phone, let u = URL(string: "tel:\(p.filter { $0.isNumber || $0 == "+" })") {
                                         Button { UIApplication.shared.open(u) } label: { Label("Call", systemImage: "phone.fill") }.tint(Theme.green)
                                     }
                                 }

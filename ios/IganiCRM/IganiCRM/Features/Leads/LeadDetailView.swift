@@ -56,8 +56,15 @@ struct LeadDetailView: View {
 
             // quick actions
             HStack(spacing: 10) {
-                quick("Call", "phone.fill", Theme.green, l.phone.flatMap { URL(string: "tel:\($0.filter { $0.isNumber || $0 == "+" })") })
-                quick("Text", "message.fill", Theme.blue, l.phone.flatMap { URL(string: "sms:\($0.filter { $0.isNumber || $0 == "+" })") })
+                if Phone.shared.isSeller {
+                    Button { Task { await dial(l) } } label: { quickLabel("Call", "phone.fill", Theme.green) }
+                        .buttonStyle(PressStyle()).disabled(l.phone == nil).opacity(l.phone == nil ? 0.35 : 1)
+                    NavigationLink(value: CallRoute.thread(l.phone ?? "", l.name)) { quickLabel("Text", "message.fill", Theme.blue) }
+                        .buttonStyle(PressStyle()).disabled(l.phone == nil).opacity(l.phone == nil ? 0.35 : 1)
+                } else {
+                    quick("Call", "phone.fill", Theme.green, l.phone.flatMap { URL(string: "tel:\($0.filter { $0.isNumber || $0 == "+" })") })
+                    quick("Text", "message.fill", Theme.blue, l.phone.flatMap { URL(string: "sms:\($0.filter { $0.isNumber || $0 == "+" })") })
+                }
                 quick("Email", "envelope.fill", Theme.violet, l.email.flatMap { URL(string: "mailto:\($0)") })
                 Button { Task { await meet(l) } } label: { quickLabel("Meet", meetBusy ? "hourglass" : "video.fill", Theme.accent) }
                     .buttonStyle(PressStyle())
@@ -125,7 +132,7 @@ struct LeadDetailView: View {
                     SectionTitle(title: "Calls")
                     VStack(spacing: 0) {
                         ForEach(l.calls) { c in
-                            NavigationLink(value: Route.web(path: "/sales/calls/\(c.id)", title: "Call")) {
+                            NavigationLink(value: CallRoute.detail(c.id)) {
                                 HStack(spacing: 12) {
                                     Image(systemName: c.direction == "INBOUND" ? "phone.arrow.down.left" : "phone.arrow.up.right").foregroundStyle(Theme.green)
                                         .frame(width: 34, height: 34).background(Theme.green.opacity(0.13), in: Circle())
@@ -164,6 +171,12 @@ struct LeadDetailView: View {
         .padding(.bottom, 40)
         .sheet(isPresented: $stageSheet) { StageSheet(current: l.status) { s, reason in await setStage(s, reason) } }
         .sheet(isPresented: $taskSheet) { NewTaskSheet(leadId: l.id, leadName: l.name) { Task { await load() } } }
+    }
+
+    /// Calls the contact from the user's Igani number (logged on the contact, with a wrap-up after).
+    private func dial(_ l: LeadDetail) async {
+        guard let p = l.phone else { return }
+        do { try await Phone.shared.call(p, leadId: l.id, name: l.name) } catch { ToastCenter.shared?.show(error.localizedDescription, tone: .warn) }
     }
 
     private func quick(_ title: String, _ icon: String, _ tint: Color, _ url: URL?) -> some View {

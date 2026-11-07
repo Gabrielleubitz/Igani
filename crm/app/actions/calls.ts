@@ -321,6 +321,10 @@ export async function searchDialerContacts(query: string): Promise<ActionResult<
 
 export interface RecentCall {
   id: string
+  direction: 'INBOUND' | 'OUTBOUND'
+  /** the other side's number (who we called, or who called us) */
+  other: string
+  otherDisplay: string
   to: string
   display: string
   lead: { id: string; name: string } | null
@@ -345,6 +349,9 @@ export async function recentCalls(): Promise<ActionResult<RecentCall[]>> {
       ok: true,
       data: rows.map((c) => ({
         id: c.id,
+        direction: c.direction,
+        other: c.direction === 'INBOUND' ? c.fromNumber : c.toNumber,
+        otherDisplay: formatPhone(c.direction === 'INBOUND' ? c.fromNumber : c.toNumber),
         to: c.toNumber,
         display: formatPhone(c.toNumber),
         lead: c.lead ? { id: c.lead.id, name: leadName(c.lead) } : null,

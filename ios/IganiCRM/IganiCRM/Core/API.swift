@@ -2,6 +2,9 @@ import Foundation
 
 private struct ServerError: Decodable { let error: String }
 
+/// Decodes from any JSON (for answers we ignore).
+struct Anything: Decodable { init(from decoder: Decoder) throws {} }
+
 struct APIError: LocalizedError {
     let message: String
     let status: Int
@@ -42,6 +45,24 @@ struct APIError: LocalizedError {
 
     func post<T: Decodable>(_ path: String, _ body: [String: Any], authenticated: Bool = true) async throws -> T {
         try await send(path, method: "POST", query: [], body: try JSONSerialization.data(withJSONObject: body), authenticated: authenticated)
+    }
+
+    /// Runs one of the website's own server actions by name (POST /api/mobile/v1/do/<name>): same checks as on the web.
+    /// Pass NSNull() for a missing argument.
+    func act<T: Decodable>(_ name: String, _ args: Any...) async throws -> T? {
+        let r: Ok<T> = try await post("/api/mobile/v1/do/\(name)", ["args": args])
+        return r.data
+    }
+
+    /// An action whose answer we don't need.
+    func run(_ name: String, _ args: Any...) async throws {
+        let _: Ok<Anything> = try await post("/api/mobile/v1/do/\(name)", ["args": args])
+    }
+
+    /// The Cookie header for requests made outside this class (the call recording player, file downloads).
+    var cookieHeader: String? {
+        guard let s = session?.stored else { return nil }
+        return "\(s.cookie)=\(s.token); igani-app=1"
     }
 
     private func send<T: Decodable>(_ path: String, method: String, query: [URLQueryItem], body: Data?, authenticated: Bool) async throws -> T {

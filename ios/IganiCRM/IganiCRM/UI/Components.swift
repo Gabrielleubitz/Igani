@@ -100,7 +100,11 @@ struct Avatar: View {
     var body: some View {
         ZStack {
             Circle().fill(Theme.gradient(for: name))
-            Text(initials.isEmpty ? "?" : initials).font(.system(size: size * 0.36, weight: .semibold, design: .rounded)).foregroundStyle(.white)
+            if name.first.map({ $0 == "+" || $0.isNumber }) == true || initials.isEmpty {
+                Image(systemName: "person.fill").font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(.white.opacity(0.92))
+            } else {
+                Text(initials).font(.system(size: size * 0.36, weight: .semibold, design: .rounded)).foregroundStyle(.white)
+            }
             if let url, let u = URL(string: url) {
                 AsyncImage(url: u) { img in img.resizable().scaledToFill() } placeholder: { Color.clear }
                     .clipShape(Circle())

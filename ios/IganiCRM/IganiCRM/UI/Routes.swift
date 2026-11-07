@@ -4,12 +4,15 @@ import SwiftUI
 enum Route: Hashable {
     case lead(String)
     case web(path: String, title: String)
+    /// a CRM section with its own screen in the app (the More tab)
+    case page(NavPage)
 
     /// A website link (from Today's actions, agenda…) → the native screen when there is one.
     static func from(href: String, title: String) -> Route {
         let parts = href.split(separator: "?").first.map(String.init) ?? href
         let segs = parts.split(separator: "/")
         if segs.count == 3, segs[0] == "sales", segs[1] == "leads" { return .lead(String(segs[2])) }
+        if let page = NativePage.page(for: parts, title: title) { return .page(page) }
         return .web(path: href, title: title)
     }
 }
@@ -20,8 +23,10 @@ extension View {
             switch r {
             case .lead(let id): LeadDetailView(id: id)
             case .web(let path, let title): WebScreen(path: path, title: title)
+            case .page(let page): NativePage(page: page)
             }
         }
+        .callRoutes()
     }
 }
 

@@ -128,6 +128,11 @@ struct WebView: UIViewRepresentable {
         func webView(_ web: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             guard let url = action.request.url else { return decisionHandler(.allow) }
             if let scheme = url.scheme?.lowercased(), ["tel", "sms", "mailto", "facetime", "maps"].contains(scheme) {
+                // phone links on CRM pages open the app's own keypad (calls go out from the Igani number)
+                if scheme == "tel", Phone.shared.isSeller {
+                    TabRouter.shared.dial(url.absoluteString.replacingOccurrences(of: "tel:", with: "").removingPercentEncoding ?? "")
+                    return decisionHandler(.cancel)
+                }
                 UIApplication.shared.open(url)
                 return decisionHandler(.cancel)
             }
