@@ -8,6 +8,12 @@ export const DEFAULT_WHATSAPP_FALLBACK = '+972584477757'
 export const GABRIEL_PHONE = '+972 58-447-7757'
 export const AMITAY_PHONE = '+972 54-540-8814'
 
+/** The office lines the new site shows (same defaults as public/site and the shell header). */
+export const OFFICE_PHONES = [
+  { label: 'Israel office', display: '09-376-1325', tel: '+97293761325' },
+  { label: 'US office', display: '+1 (570) 634-8730', tel: '+15706348730' },
+] as const
+
 /** One display format for every Israeli number, whatever way it was typed: "+972 58-447-7757". Anything else is shown as typed. */
 export function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '')

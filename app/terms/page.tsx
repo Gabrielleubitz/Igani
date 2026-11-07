@@ -1,6 +1,6 @@
 import { T } from '@/components/T'
 import { NewSiteShell } from '@/components/newsite/NewSiteShell'
-import { GABRIEL_PHONE, formatPhone } from '@/lib/siteSocial'
+import { OFFICE_PHONES } from '@/lib/siteSocial'
 
 export default function TermsPage() {
   return (
@@ -141,7 +141,9 @@ export default function TermsPage() {
                   <T>For questions regarding these Terms of Service, please contact us:</T>
                 </p>
                 <div className="lg__box"><p><T>Email:</T> info@igani.co</p>
-                  <p><T>Phone:</T> {formatPhone(GABRIEL_PHONE)}</p>
+                  {OFFICE_PHONES.map((p) => (
+                    <p key={p.tel}><T>{p.label}</T>: <a href={`tel:${p.tel}`}>{p.display}</a></p>
+                  ))}
                   <p><T>Location:</T> Netanya, Israel</p>
                 </div>
               </section>
