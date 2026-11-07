@@ -15,25 +15,13 @@ import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { localDateKey, localMidnight } from '@/lib/time'
 import { cn } from '@/lib/utils'
+import { RANGES, VIEWS, VIEW_WHERE, searchWhere, type Range, type View } from '@/lib/call-query'
 
 export const metadata = { title: 'Calls' }
 export const dynamic = 'force-dynamic'
 
 const DAY = 86_400_000
 const PAGE = 60
-
-const VIEWS = ['all', 'talked', 'missed', 'incoming', 'callback'] as const
-type View = (typeof VIEWS)[number]
-const RANGES = ['today', '7d', '30d', 'all'] as const
-type Range = (typeof RANGES)[number]
-
-const VIEW_WHERE: Record<View, Prisma.CallWhereInput> = {
-  all: {},
-  talked: { status: 'COMPLETED', durationSec: { gt: 0 } },
-  missed: { OR: [{ status: { in: ['BUSY', 'NO_ANSWER', 'FAILED', 'CANCELED'] } }, { status: 'COMPLETED', OR: [{ durationSec: null }, { durationSec: 0 }] }] },
-  incoming: { direction: 'INBOUND' },
-  callback: { outcome: 'callback' },
-}
 
 type Row = Awaited<ReturnType<typeof loadCalls>>[number]
 
@@ -61,26 +49,6 @@ function loadCalls(where: Prisma.CallWhereInput, take: number) {
       user: { select: { name: true, email: true } },
     },
   })
-}
-
-/** Search by name, company, email or number. */
-function searchWhere(q: string): Prisma.CallWhereInput | null {
-  const t = q.trim()
-  if (!t) return null
-  const or: Prisma.CallWhereInput[] = [
-    { lead: { firstName: { contains: t, mode: 'insensitive' } } },
-    { lead: { lastName: { contains: t, mode: 'insensitive' } } },
-    { lead: { company: { contains: t, mode: 'insensitive' } } },
-    { lead: { email: { contains: t, mode: 'insensitive' } } },
-    { prospect: { name: { contains: t, mode: 'insensitive' } } },
-  ]
-  // a full name ("dana levi")
-  const [first, ...rest] = t.split(/\s+/)
-  if (rest.length) or.push({ lead: { firstName: { contains: first, mode: 'insensitive' }, lastName: { contains: rest.join(' '), mode: 'insensitive' } } })
-  // a number, typed any way (050-123-4567, +972 50…): match on the national digits
-  const digits = t.replace(/\D/g, '').replace(/^(00)?972/, '').replace(/^0/, '')
-  if (digits.length >= 3) or.push({ toNumber: { contains: digits } }, { fromNumber: { contains: digits } })
-  return { OR: or }
 }
 
 /** Calls, organized: by day, with repeat attempts to the same contact folded together. Salespeople see their own; admins see everyone. */

@@ -42,11 +42,20 @@ export function userIdFromClient(from: string | null | undefined): string | null
 }
 
 /** Short-lived browser token: outgoing calls through our TwiML app, and incoming calls to this user's browser. */
-export function voiceToken(c: TwilioConfig, userId: string, ttlSec = 3600): string {
+export function voiceToken(c: TwilioConfig, userId: string, ttlSec = 3600, pushCredentialSid?: string): string {
   const { AccessToken } = twilio.jwt
   const token = new AccessToken(c.accountSid, c.apiKeySid, c.apiKeySecret, { identity: identityFor(userId), ttl: ttlSec })
-  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: c.appSid, incomingAllow: true }))
+  token.addGrant(new AccessToken.VoiceGrant({ outgoingApplicationSid: c.appSid, incomingAllow: true, ...(pushCredentialSid ? { pushCredentialSid } : {}) }))
   return token.toJwt()
+}
+
+/**
+ * The iPhone app's push credential in Twilio (an Apple VoIP push certificate uploaded to Twilio), so calls ring the
+ * phone even when the app is closed. Debug builds use Apple's sandbox, App Store/TestFlight builds production.
+ */
+export function iosPushCredential(sandbox: boolean): string | null {
+  const v = (sandbox ? process.env.TWILIO_PUSH_CREDENTIAL_SID_SANDBOX : process.env.TWILIO_PUSH_CREDENTIAL_SID)?.trim()
+  return v && /^CR[0-9a-f]{32}$/i.test(v) ? v : null
 }
 
 export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done' | 'sms' | 'sms-status'
