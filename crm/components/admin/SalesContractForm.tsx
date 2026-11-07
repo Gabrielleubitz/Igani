@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { AGREEMENT_CSS, DEFAULT_FIGURES, agreementHtml, basePayout, validate, type Figures } from '@/lib/sales-contract-core'
+import { AGREEMENT_CSS, DEFAULT_FIGURES, EMPTY_TERMS, agreementHtml, basePayout, validate, type Figures, type LegalTerms } from '@/lib/sales-contract-core'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -16,17 +16,18 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
   const [email, setEmail] = useState('')
   const [date, setDate] = useState(today())
   const [f, setF] = useState<Figures>(DEFAULT_FIGURES)
+  const [t, setT] = useState<LegalTerms>(EMPTY_TERMS)
   const sig = signature
   const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [pending, start] = useTransition()
 
-  const data = { name, email, effectiveDate: date, figures: f }
+  const data = { name, email, effectiveDate: date, figures: f, terms: t }
   const preview = useMemo(
     () =>
       agreementHtml(
-        { name: name.trim() || '[Representative name]', email: email || 'representative@email', effectiveDate: date || today(), figures: f },
+        { name: name.trim() || '[Representative name]', email: email || 'representative@email', effectiveDate: date || today(), figures: f, terms: { ...t, companyLegalName: t.companyLegalName || '[Company legal name]', companyAddress: t.companyAddress || '[Company address]', agentAddress: t.agentAddress || '[Representative address]', jurisdiction: t.jurisdiction || '[Jurisdiction]' } },
         {
           logo: '/igani-logo%202.png',
           status: 'preview',
@@ -35,7 +36,7 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
           rep: { name: name.trim(), email, signature: null, signedAt: null },
         },
       ),
-    [name, email, date, f, sig, adminName, adminEmail],
+    [name, email, date, f, t, sig, adminName, adminEmail],
   )
 
   const num = (key: keyof Figures, label: string, suffix: string): React.ReactElement => (
@@ -43,6 +44,22 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
       <span className="font-medium">{label}</span>
       <div className="flex items-center gap-2">
         <Input type="number" min={0} step="any" value={Number.isFinite(f[key]) ? f[key] : ''} onChange={(e) => (setLink(null), setF({ ...f, [key]: e.target.value === '' ? NaN : Number(e.target.value) }))} />
+        <span className="text-muted-foreground">{suffix}</span>
+      </div>
+    </label>
+  )
+
+  const txt = (key: 'companyLegalName' | 'companyAddress' | 'agentAddress' | 'jurisdiction', label: string, placeholder: string): React.ReactElement => (
+    <label className="block space-y-1 text-sm">
+      <span className="font-medium">{label}</span>
+      <Input value={t[key]} onChange={(e) => (setLink(null), setT({ ...t, [key]: e.target.value }))} placeholder={placeholder} />
+    </label>
+  )
+  const days = (key: 'payoutDays' | 'clawbackDays' | 'noticeDays', label: string, suffix: string): React.ReactElement => (
+    <label className="block space-y-1 text-sm">
+      <span className="font-medium">{label}</span>
+      <div className="flex items-center gap-2">
+        <Input type="number" min={1} step={1} value={Number.isFinite(t[key]) ? t[key] : ''} onChange={(e) => (setLink(null), setT({ ...t, [key]: e.target.value === '' ? NaN : Number(e.target.value) }))} />
         <span className="text-muted-foreground">{suffix}</span>
       </div>
     </label>
@@ -89,6 +106,16 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
               <span className="font-medium">Base payout (calculated)</span>
               <p className="mt-2 text-lg font-semibold">{Number.isFinite(basePayout(f)) ? basePayout(f).toLocaleString('en-US') : '—'} ILS</p>
             </div>
+          </div>
+          <p className="pt-1 text-sm font-medium">Legal terms (no defaults: choose each one with your lawyer)</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {txt('companyLegalName', 'Company legal name', 'Igani Ltd.')}
+            {txt('companyAddress', 'Company address', 'Street, city')}
+            {txt('agentAddress', 'Representative address', 'Street, city')}
+            {txt('jurisdiction', 'Governing jurisdiction', 'the State of Israel')}
+            {days('payoutDays', 'Payout after month end', 'business days')}
+            {days('clawbackDays', 'Clawback window', 'days')}
+            {days('noticeDays', 'Termination notice', 'days')}
           </div>
           {sig ? <p className="text-sm text-muted-foreground">Igani signs as <b>{adminName}</b> using the signature saved in Settings.</p> : <p className="text-sm text-amber-500">No Igani signature saved yet. <Link className="underline" href="/admin/settings">Save it in Settings → Contract signer</Link> first.</p>}
           {error ? <p className="text-sm text-red-500">{error}</p> : null}

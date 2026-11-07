@@ -16,7 +16,7 @@ export async function generateContractLink(data: ContractData): Promise<LinkResu
   const [signer, signature] = await Promise.all([getSetting('contract.signer'), getSetting('contract.signature')])
   if (!signature || !PNG_DATA_URL.test(signature)) return { ok: false, error: 'Save the Igani signature first: Admin → Settings → Contract signer.' }
   const link = await createContractLink(
-    { name: data.name.trim(), email: data.email.trim(), effectiveDate: data.effectiveDate, figures: data.figures },
+    { name: data.name.trim(), email: data.email.trim(), effectiveDate: data.effectiveDate, figures: data.figures, terms: data.terms },
     { name: signer.name || user.name || user.email, email: user.email, signature },
   )
   return { ok: true, url: link.url, expiresAt: link.expiresAt.toISOString() }
