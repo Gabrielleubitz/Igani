@@ -49,7 +49,7 @@ export interface ContractData {
 export const EMPTY_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: '', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: NaN, clawbackDays: NaN, noticeDays: NaN, jurisdiction: '' }
 /** The values the owner chose (Nov 2026). Caleno is an exempt dealer (one individual), so the name, number and address come from the tax certificate and are typed in the form, never committed. */
 export const CHOSEN_TERMS: LegalTerms = { companyLegalName: '', companyTradingAs: 'Caleno', companyIdNumber: '', companyAddress: '', agentAddress: '', payoutDays: 5, clawbackDays: 60, noticeDays: 7, jurisdiction: 'Israel' }
-export const CONTRACT_VERSION = '2026-11-lawyer-v2'
+export const CONTRACT_VERSION = '2026-11-lawyer-v3'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -125,8 +125,10 @@ export function agreementSectionsHtml(d: ContractData): string {
   <p class="boxtitle">Commission schedule (tiered)</p>
   <p class="item"><b>Deals up to ${ils(f.threshold)}:</b> the Sales Representative receives ${pct(f.basePercent)} of the calculation base.</p>
   <p class="item"><b>Deals above ${ils(f.threshold)}:</b> a base payout of ${ils(basePayout(f))} (${pct(f.basePercent)} of ${ils(f.threshold)}) plus an additional ${ils(f.bonus)} bonus for every completed ${ils(f.increment)} increment above ${ils(f.threshold)}. A part increment earns nothing.</p>
+  <p class="item"><b>Recurring maintenance:</b> the Sales Representative receives ${pct(f.basePercent)} of every recurring maintenance payment the client pays, for as long as the client keeps paying and this agreement is in force.</p>
 </div>
 <p class="clause"><b>Calculation base:</b> the contract price collected by the Company from the secured client, excluding third-party hosting fees, taxes and direct out-of-pocket expenses.</p>
+<p class="clause"><b>Recurring maintenance:</b> if the secured client pays the Company a recurring maintenance fee (monthly or otherwise), the Sales Representative earns commission on each of those payments at the same rate as above (${pct(f.basePercent)}), calculated on the payment collected, excluding third-party hosting fees, taxes and direct out-of-pocket expenses. The bonus increments apply only to the contract price, not to maintenance payments. Each maintenance payment is earned once it has cleared, and is paid with the rest of that month’s commission under Section 4.</p>
 <p class="clause"><b>Commission type:</b> tiered commission on a collected contract price, as set out above.</p>
 <h2><span class="n">4.</span>PAYMENT SCHEDULE</h2>
 <p class="clause">Commissions earned in a calendar month are processed and paid by the Company within <b>${t.payoutDays} business days</b> after the end of that month, provided all invoiced funds have cleared.</p>
@@ -136,7 +138,7 @@ export function agreementSectionsHtml(d: ContractData): string {
 <p class="clause">The Sales Representative may receive proprietary business information, client lists, code structures and trade secrets belonging to the Company. The Sales Representative keeps all of it strictly confidential and does not use it for competing ventures or give it to unauthorized third parties.</p>
 <h2><span class="n">7.</span>TERMINATION AND PENDING DEALS</h2>
 <p class="clause">Either party may end this agreement with <b>${t.noticeDays} days’ written notice</b> to the other party.</p>
-<p class="clause">After termination, the Sales Representative is still entitled to commission on deals where the Trigger Event happened before the termination takes effect. No commission accrues or is payable on deals finalized or paid after the termination date, whatever earlier negotiations or discussions took place.</p>
+<p class="clause">After termination, the Sales Representative is still entitled to commission on deals where the Trigger Event happened before the termination takes effect. No commission accrues or is payable on deals finalized or paid after the termination date, whatever earlier negotiations or discussions took place. This includes recurring maintenance payments: commission is earned only on maintenance payments that cleared before the termination takes effect.</p>
 <h2><span class="n">8.</span>GOVERNING LAW AND DISPUTE RESOLUTION</h2>
 <p class="clause">This agreement is governed by, and enforced in accordance with, the laws of <b>${esc(t.jurisdiction.trim())}</b>. Any dispute under this agreement is resolved exclusively by binding arbitration or by the local courts of that jurisdiction.</p>
 <p class="clause">The commission terms, payment terms and dispute terms apply in the same way whatever country the client is in, and whichever law governs the client’s own agreement.</p>`
