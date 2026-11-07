@@ -151,3 +151,38 @@
 @media (prefers-reduced-motion: reduce) {
   .dh-nav, .dh-copy { animation: none; }
 }
+
+/* ---- Phones and tablets: the donkey turns as you scroll (added by dumb-hero.js) ----
+   The hero sticks to the screen while you scroll; the buttons wait until he has finished turning. */
+.dh-cue { display: none; }
+.dh.dh--scrub { position: sticky; top: var(--dh-stick, 0px); height: calc(100vh - var(--dh-stick, 0px)); height: calc(100svh - var(--dh-stick, 0px)); min-height: 0; }
+.dh--scrub .dh-donkey { aspect-ratio: 508 / 600; }
+.dh--scrub .dh-copy__btns { position: relative; }
+.dh--scrub .dh-copy__btns > .dh-btn,
+.dh--scrub .dh-copy__btns > .dh-link {
+  opacity: 0; visibility: hidden; transform: translateY(14px);
+  transition: opacity 0.45s ease, transform 0.45s ease, visibility 0s linear 0.45s;
+}
+.dh--done .dh-copy__btns > .dh-btn,
+.dh--done .dh-copy__btns > .dh-link {
+  opacity: 1; visibility: visible; transform: none;
+  transition: opacity 0.45s ease 0.05s, transform 0.45s ease 0.05s, visibility 0s;
+}
+.dh--scrub .dh-cue {
+  display: flex; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  flex-direction: column; align-items: flex-start; gap: 12px;
+  font: 500 15px/1.2 var(--sans, "DM Sans", sans-serif); color: var(--dh-slate);
+  transition: opacity 0.3s ease, visibility 0s;
+}
+.dh--done .dh-cue { opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0s linear 0.3s; }
+.dh-cue__label { display: inline-flex; align-items: center; gap: 10px; color: var(--dh-ink); }
+.dh-cue__arrow { width: 20px; height: 20px; flex: none; color: var(--dh-blue); animation: dh-bob 1.4s ease-in-out infinite; }
+.dh-cue__bar { display: block; width: 100%; max-width: 240px; height: 3px; border-radius: 3px; background: rgba(20, 34, 59, 0.12); overflow: hidden; }
+.dh-cue__bar i { display: block; height: 100%; background: var(--dh-blue); transform-origin: left; transform: scaleX(0); }
+@keyframes dh-bob { 0%, 100% { transform: translateY(-2px); } 50% { transform: translateY(4px); } }
+@media (max-width: 820px), (max-width: 1024px) and (orientation: portrait) {
+  .dh--scrub .dh-donkey { height: clamp(240px, 46svh, 620px); min-height: 0; margin-top: 4px; }
+  .dh--scrub .dh-copy { margin-top: 10px; padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px)); }
+  .dh--scrub .dh-copy__lede { margin-top: 0.9em; }
+}
+@media (prefers-reduced-motion: reduce) { .dh-cue__arrow { animation: none; } }

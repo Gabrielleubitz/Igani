@@ -1,6 +1,8 @@
 /* IGANI donkey hero.
    Desktop (mouse + screen wider than 1024px): the donkey follows the cursor.
-   Phones and tablets: no interaction, he just looks to the right (one image, nothing else loads). */
+   Phones and tablets: the hero pins to the screen and the donkey turns from left to right as you scroll;
+   when he has turned, the buttons appear and the page carries on. They use a smaller, cropped set of frames.
+   Reduced motion or data saver: one still image, nothing else loads. */
 (() => {
   const hero = document.querySelector('.dh');
   const canvas = document.getElementById('dh-donkey');
@@ -23,15 +25,19 @@
 
   // Where the frames live, relative to the page. Change this if you move the folder.
   const FRAME_DIR = (hero.dataset.frames || 'img/donkey-frames/').replace(/\/?$/, '/');
-  const frameSrc = (i) => FRAME_DIR + String(i + 1).padStart(4, '0') + '.webp';
+  // Desktop frames (1280x720, 229) and the phone set (cropped around the donkey, every second frame, 115).
+  const DESKTOP_SET = { dir: FRAME_DIR, count: 229, fps: 24, right: 217 };
+  const SCRUB_SET = { dir: FRAME_DIR.replace(/donkey-frames\/$/, 'donkey-frames-m/'), count: 115, fps: 12, right: 108 };
+  let activeDir = FRAME_DIR;
+  const frameSrc = (i) => activeDir + String(i + 1).padStart(4, '0') + '.webp';
 
-  const FRAME_COUNT = 229;
-  const FPS = 24;
-  const DURATION = FRAME_COUNT / FPS;
+  let FRAME_COUNT = DESKTOP_SET.count;
+  let FPS = DESKTOP_SET.fps;
+  const DURATION = 229 / 24;   // seconds of video, the same for both sets
   const SPAN = 0.8 * DURATION;   // full screen width covers 80% of the video
   const START = 1.4;             // left edge: turned left
   const SMOOTH = 0.18;           // easing per frame
-  const RIGHT_FRAME = 217;       // file 0218: looking right (same pose as cursor at far right)
+  const RIGHT_FRAME = DESKTOP_SET.right;       // file 0218: looking right (same pose as cursor at far right)
 
   const desktopQuery = window.matchMedia('(min-width: 1025px) and (hover: hover) and (pointer: fine)');
 
@@ -52,7 +58,7 @@
     ctx.imageSmoothingQuality = 'high';
   }
 
-  const frames = new Array(FRAME_COUNT);
+  let frames = new Array(FRAME_COUNT);
   let current = Math.round((START + SPAN / 2) * FPS) / FPS;  // start facing forward
   let target = current;
   let shownPos = -1;
@@ -133,7 +139,87 @@
     idle(step);
   }
 
+  // Switch which set of frames is in use (and forget the ones already loaded).
+  function useSet(set) {
+    activeDir = set.dir;
+    FRAME_COUNT = set.count;
+    FPS = set.fps;
+    frames = new Array(FRAME_COUNT);
+    current = target = Math.round((START + SPAN / 2) * FPS) / FPS;
+    shownPos = -1;
+    preloaded = false;
+  }
+
+  // ---- Phones and tablets: scroll turns the donkey ----
+  const track = hero.parentElement && hero.parentElement.classList.contains('dh-track') ? hero.parentElement : null;
+  const bar = hero.querySelector('[data-dh-bar]');
+  const SCROLL_SCREENS = 1.6;   // how far you scroll while he turns, in screens
+  let scrubbing = false;
+  let done = false;
+
+  function layoutScrub() {
+    if (!track) return;
+    const header = document.querySelector('.hd');
+    const stick = header ? Math.round(header.getBoundingClientRect().height) : 0;
+    hero.style.setProperty('--dh-stick', stick + 'px');
+    const heroH = window.innerHeight - stick;
+    track.style.height = Math.round(heroH + window.innerHeight * SCROLL_SCREENS) + 'px';
+  }
+
+  function progress() {
+    const stick = parseFloat(hero.style.getPropertyValue('--dh-stick')) || 0;
+    const r = track.getBoundingClientRect();
+    const span = r.height - hero.offsetHeight;
+    return span > 0 ? Math.min(1, Math.max(0, (stick - r.top) / span)) : 0;
+  }
+
+  function onScroll() {
+    const p = progress();
+    target = Math.round((START + p * SPAN) * FPS) / FPS;
+    if (bar) bar.style.transform = 'scaleX(' + p.toFixed(3) + ')';
+    const isDone = p >= 0.97;
+    if (isDone !== done) { done = isDone; hero.classList.toggle('dh--done', done); }
+    schedule();
+  }
+
+  function enableScrub() {
+    if (!track) { enableStatic(); return; }
+    disableAll();
+    scrubbing = true;
+    useSet(SCRUB_SET);
+    active = true;
+    done = false;
+    still.hidden = true;
+    canvas.hidden = false;
+    hero.classList.add('dh--scrub');
+    track.classList.add('is-scrub');
+    layoutScrub();
+    fitCanvas();
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResizeScrub, { passive: true });
+    schedule();
+    preloadAll();
+  }
+
+  function onResizeScrub() { layoutScrub(); fitCanvas(); onScroll(); }
+
+  function disableAll() {
+    active = false;
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onResizeScrub);
+    if (scrubbing) {
+      scrubbing = false;
+      hero.classList.remove('dh--scrub', 'dh--done');
+      if (track) { track.classList.remove('is-scrub'); track.style.height = ''; }
+      useSet(DESKTOP_SET);
+    }
+  }
+
   function enableDesktop() {
+    disableAll();
     active = true;
     still.hidden = true;
     canvas.hidden = false;
@@ -145,15 +231,15 @@
   }
 
   function enableStatic() {
-    active = false;
-    if (raf) { cancelAnimationFrame(raf); raf = 0; }
-    window.removeEventListener('mousemove', onMove);
+    disableAll();
     canvas.hidden = true;
     still.src = frameSrc(RIGHT_FRAME);
     still.hidden = false;
   }
 
-  const apply = () => (desktopQuery.matches ? enableDesktop() : enableStatic());
+  // Scroll-driven only when motion is welcome and the visitor hasn't asked to save data.
+  const motionOk = () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches && !(navigator.connection && navigator.connection.saveData);
+  const apply = () => (desktopQuery.matches ? enableDesktop() : motionOk() ? enableScrub() : enableStatic());
   apply();
   desktopQuery.addEventListener ? desktopQuery.addEventListener('change', apply) : desktopQuery.addListener(apply);
 })();
