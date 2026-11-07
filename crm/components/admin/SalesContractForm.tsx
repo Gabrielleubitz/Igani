@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { AGREEMENT_CSS, DEFAULT_FIGURES, EMPTY_TERMS, agreementHtml, basePayout, validate, type Figures, type LegalTerms } from '@/lib/sales-contract-core'
+import { AGREEMENT_CSS, CHOSEN_TERMS, DEFAULT_FIGURES, agreementHtml, basePayout, validate, type Figures, type LegalTerms } from '@/lib/sales-contract-core'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -16,7 +16,7 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
   const [email, setEmail] = useState('')
   const [date, setDate] = useState(today())
   const [f, setF] = useState<Figures>(DEFAULT_FIGURES)
-  const [t, setT] = useState<LegalTerms>(EMPTY_TERMS)
+  const [t, setT] = useState<LegalTerms>(CHOSEN_TERMS)
   const sig = signature
   const [link, setLink] = useState<{ url: string; expiresAt: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -107,7 +107,7 @@ export function SalesContractForm({ adminName, adminEmail, signature }: { adminN
               <p className="mt-2 text-lg font-semibold">{Number.isFinite(basePayout(f)) ? basePayout(f).toLocaleString('en-US') : '—'} ILS</p>
             </div>
           </div>
-          <p className="pt-1 text-sm font-medium">Legal terms (no defaults: choose each one with your lawyer)</p>
+          <p className="pt-1 text-sm font-medium">Legal terms (prefilled with the agreed values; confirm the company name and address against the registration)</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {txt('companyLegalName', 'Company legal name', 'Igani Ltd.')}
             {txt('companyAddress', 'Company address', 'Street, city')}

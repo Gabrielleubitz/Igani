@@ -43,6 +43,8 @@ export interface ContractData {
 
 /** Not defaults: the form starts empty for the legal terms so each one is chosen on purpose. */
 export const EMPTY_TERMS: LegalTerms = { companyLegalName: '', companyAddress: '', agentAddress: '', payoutDays: NaN, clawbackDays: NaN, noticeDays: NaN, jurisdiction: '' }
+/** The values the owner chose (Nov 2026). The company name and address still need confirming against the registration. */
+export const CHOSEN_TERMS: LegalTerms = { companyLegalName: 'Caleno', companyAddress: '', agentAddress: '', payoutDays: 5, clawbackDays: 60, noticeDays: 7, jurisdiction: 'the State of Israel' }
 export const CONTRACT_VERSION = '2026-11-lawyer-v1'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
