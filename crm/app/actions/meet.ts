@@ -127,6 +127,41 @@ export async function addMeetInvites(input: { roomId: string; userIds?: string[]
   }
 }
 
+export interface InCallInvite {
+  id: string
+  name: string | null
+  email: string
+  teammate: boolean
+  link: string
+  state: 'joined' | 'invited' | 'failed' | 'link'
+}
+
+/** For the host (or an admin) inside a call: who's invited and how they're doing, plus teammates not invited yet. */
+export async function meetRoomInvites(roomId: string): Promise<ActionResult<{ invites: InCallInvite[]; teammates: { id: string; name: string; email: string }[] }>> {
+  try {
+    const { id } = await manageRoom(roomId)
+    const room = await prisma.meetRoom.findUniqueOrThrow({ where: { id }, select: { code: true, hostId: true, invites: { orderBy: { createdAt: 'asc' } } } })
+    const invited = new Set(room.invites.map((i) => i.email))
+    const team = await prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES', 'MARKETING'] }, email: { not: null }, ...(room.hostId ? { NOT: { id: room.hostId } } : {}) }, select: { id: true, name: true, email: true }, orderBy: { name: 'asc' } })
+    return {
+      ok: true,
+      data: {
+        invites: room.invites.map((i) => ({
+          id: i.id,
+          name: i.name,
+          email: i.email,
+          teammate: Boolean(i.userId),
+          link: meetUrl(`/${room.code}?t=${encodeURIComponent(i.token)}`),
+          state: i.joinedAt ? 'joined' : i.sendError ? 'failed' : i.sentAt ? 'invited' : 'link',
+        })),
+        teammates: team.filter((t) => !invited.has(t.email!.toLowerCase())).map((t) => ({ id: t.id, name: t.name ?? t.email!, email: t.email!.toLowerCase() })),
+      },
+    }
+  } catch (err) {
+    return meetError(err)
+  }
+}
+
 export async function resendMeetInvite(inviteId: string): Promise<ActionResult<{ sent: number; failed: number }>> {
   try {
     const inv = await prisma.meetInvite.findUniqueOrThrow({ where: { id: z.string().parse(inviteId) }, select: { id: true, roomId: true } })

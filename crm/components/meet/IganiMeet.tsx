@@ -1,12 +1,13 @@
 'use client'
 
-import { Bell, BellOff, CalendarClock, Check, ChevronDown, CircleDot, Copy, EllipsisVertical, Hand, Info, LayoutGrid, Loader2, LogOut, Maximize, MessageSquare, Mic, MicOff, Minimize, MonitorUp, PhoneOff, Pin, RotateCcw, Send, Settings2, ShieldCheck, Smile, Sparkles, UserX, Users, Video, VideoOff, Volume2, X } from 'lucide-react'
+import { Bell, BellOff, CalendarClock, Check, ChevronDown, CircleDot, Copy, EllipsisVertical, Hand, Info, LayoutGrid, Link2, Loader2, LogOut, Mail, Maximize, MessageSquare, Mic, MicOff, Minimize, MonitorUp, PhoneOff, Pin, RotateCcw, Send, Settings2, ShieldCheck, Signal, SignalLow, SignalMedium, Smile, Sparkles, UserPlus, UserX, Users, Video, VideoOff, Volume2, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
-import { addMeetInvites, joinMeet } from '@/app/actions/meet'
+import { addMeetInvites, joinMeet, meetRoomInvites, removeMeetInvite, resendMeetInvite, type InCallInvite } from '@/app/actions/meet'
 import type { MeetConfig } from '@/lib/meet'
 import { isStaleDeployError, markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
+import { netLevel, readNet, type NetLevel } from './net'
 import { useMeetPaths } from './paths'
 import { playCue, setSoundOutput, setSoundsMuted, unlockSounds } from './sounds'
 
@@ -30,6 +31,9 @@ interface JitsiApi {
   setAudioInputDevice(label: string, id: string): void
   setAudioOutputDevice(label: string, id: string): void
   setVideoInputDevice(label: string, id: string): void
+  /** live connection numbers (packet loss, round trip, bitrate) */
+  getConnectionStats?(): Promise<unknown>
+  isP2pActive?(): Promise<boolean>
   dispose(): void
 }
 type JitsiCtor = new (domain: string, opts: Record<string, unknown>) => JitsiApi
@@ -160,8 +164,15 @@ function jitsiOptions(cfg: MeetConfig, node: HTMLElement, me: { name: string; em
       p2p: { enabled: true },
       enableNoisyMicDetection: true,
       enableNoAudioDetection: true,
+      // Smooth voices first: send at most 720p (1080p chokes a home upload), stop sending video layers nobody is
+      // watching, let Jitsi drop resolution when the computer or network can't keep up, and send each bit of audio
+      // with a backup copy (Opus RED) so lost Wi-Fi packets don't turn into choppy or late speech.
       resolution: 720,
-      constraints: { video: { height: { ideal: 720, max: 1080, min: 240 } } },
+      constraints: { video: { height: { ideal: 720, max: 720, min: 180 }, frameRate: { ideal: 30, max: 30 } } },
+      enableLayerSuspension: true,
+      videoQuality: { enableAdaptiveMode: true },
+      enableOpusRed: true,
+      audioQuality: { stereo: false },
     },
     interfaceConfigOverwrite: {
       SHOW_JITSI_WATERMARK: false,
@@ -226,6 +237,7 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
   const [session, setSession] = useState<{ api: JitsiApi; testServer: boolean; moderator: boolean; canRecord: boolean; name: string; avatar: string | null } | null>(null)
   const [slot, setSlot] = useState<HTMLDivElement | null>(null)
   const [sideSlot, setSideSlot] = useState<HTMLDivElement | null>(null)
+  const [topSlot, setTopSlot] = useState<HTMLDivElement | null>(null)
   const stage = useRef<HTMLDivElement>(null)
   const api = useRef<JitsiApi | null>(null)
   /** automatic rejoins in a row (reset once a call connects) and when the current join started */
@@ -312,7 +324,9 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
       {phase === 'ended' ? <Notice title="The meeting has ended" body={`${p.title} is over. Thanks for joining.`} action={{ label: 'Rejoin', onClick: () => setPhase('prejoin') }} secondary={home} /> : null}
       {/* the call itself stays mounted while live: stage (+ side panel) above Igani's bottom bar */}
       <div className={cn('relative flex min-h-0 flex-1 flex-col', phase !== 'live' && 'hidden')}>
-        <div className="flex min-h-0 flex-1 gap-3 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-4 sm:pt-4">
+        {/* the bar above the video: title, recording, who's here and Add people (kept off the video so nothing covers a camera) */}
+        <div ref={setTopSlot} className="relative z-20 flex h-12 shrink-0 items-center gap-3 px-3 pt-[env(safe-area-inset-top)] empty:hidden sm:h-14 sm:px-5" />
+        <div className="flex min-h-0 flex-1 gap-3 px-2 sm:px-4">
           <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl bg-[#0b1220]">
             <div ref={stage} className="absolute inset-0" />
             <div ref={setSlot} className="pointer-events-none absolute inset-0" />
@@ -324,6 +338,7 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
             api={session.api}
             slot={slot}
             sideSlot={sideSlot}
+            topSlot={topSlot}
             code={p.code}
             roomId={p.roomId}
             title={p.title}
@@ -811,6 +826,7 @@ interface LiveProps {
   api: JitsiApi
   slot: HTMLDivElement | null
   sideSlot: HTMLDivElement | null
+  topSlot: HTMLDivElement | null
   code: string
   roomId: string | null
   title: string
@@ -828,7 +844,7 @@ interface LiveProps {
   log: (kind: string, data?: Record<string, unknown>) => void
 }
 
-function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, moderator, canRecord, startMic, startCam, blur, me, presence, onJoined, onLeft, onFail, log }: LiveProps): React.ReactElement {
+function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testServer, moderator, canRecord, startMic, startCam, blur, me, presence, onJoined, onLeft, onFail, log }: LiveProps): React.ReactElement {
   const api = apiRaw
   const [mic, setMic] = useState(startMic)
   const [cam, setCam] = useState(startCam)
@@ -843,6 +859,12 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
   const [rec, setRec] = useState<{ on: boolean; since: number | null; pending: boolean }>({ on: false, since: null, pending: false })
   const [toasts, setToasts] = useState<Toast[]>([])
   const [side, setSide] = useState<Side | null>(null)
+  /** connection health and the data saver (pauses incoming video): off, switched on for you, or by you */
+  const [net, setNet] = useState<NetLevel | null>(null)
+  const [saver, setSaver] = useState<'off' | 'auto' | 'on'>('off')
+  const saverRef = useRef<'off' | 'auto' | 'on'>('off')
+  /** People panel opened from "Add people": put the cursor in the invite box */
+  const [inviteFocus, setInviteFocus] = useState(0)
   const [menu, setMenu] = useState<Menu>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMsg[]>([])
@@ -1124,6 +1146,72 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
 
   const cmd = (name: string, ...args: unknown[]) => () => api.executeCommand(name, ...args)
   const closeMenu = useCallback(() => setMenu(null), [])
+  const setDataSaver = useCallback(
+    (v: 'off' | 'auto' | 'on') => {
+      saverRef.current = v
+      setSaver(v)
+      api.executeCommand('setLowBandwidthMode', v !== 'off')
+    },
+    [api],
+  )
+
+  // Connection watch: every 5 s read 8x8's stats. On a weak link lower the video so voices stay clear; if it's very
+  // weak, pause incoming video too. Put things back once it has been healthy for half a minute. A summary goes to the
+  // logs every minute (and on every change) so slow calls can be diagnosed afterwards.
+  useEffect(() => {
+    if (!joinedAt || !api.getConnectionStats) return
+    let bad = 0
+    let worst = 0
+    let good = 0
+    let lowered = false
+    let last: NetLevel | null = null
+    let lastLog = 0
+    let shape = false
+    let live = true
+    const t = setInterval(() => {
+      void (async () => {
+        const raw = await api.getConnectionStats!().catch(() => null)
+        if (!live || !raw) return
+        if (!shape) {
+          shape = true
+          logRef.current('net-shape', { keys: Object.keys(raw as object).slice(0, 25) })
+        }
+        const s = readNet(raw)
+        const level = netLevel(s)
+        setNet(level)
+        bad = level === 'good' ? 0 : bad + 1
+        worst = level === 'poor' ? worst + 1 : 0
+        good = level === 'good' ? good + 1 : 0
+        if (bad >= 2 && !lowered) {
+          lowered = true
+          api.executeCommand('setVideoQuality', 360)
+          toast('Weak connection: Igani lowered the video quality so voices stay clear.', 'warn')
+        }
+        if (worst >= 3 && saverRef.current === 'off') {
+          setDataSaver('auto')
+          toast('Very weak connection: incoming video is paused so you can keep talking. Tap the signal icon to bring it back.', 'warn')
+        }
+        if (good >= 6 && (lowered || saverRef.current === 'auto')) {
+          if (lowered) api.executeCommand('setVideoQuality', 720)
+          if (saverRef.current === 'auto') setDataSaver('off')
+          lowered = false
+          toast('Connection is back to normal: full video restored.')
+        }
+        const now = Date.now()
+        if (level !== last || now - lastLog > 60_000) {
+          const p2p = await api.isP2pActive?.().catch(() => null)
+          logRef.current('net', { level, ...s, p2p: p2p ?? null, lowered, saver: saverRef.current })
+          last = level
+          lastLog = now
+        }
+      })()
+    }, 5000)
+    return () => {
+      live = false
+      clearInterval(t)
+    }
+  }, [joinedAt, api, toast, setDataSaver])
+
   const openSide = (s: Side): void => {
     setMenu(null)
     setSide((cur) => (cur === s ? null : s))
@@ -1180,16 +1268,6 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
         </span>
         <p className="px-6 text-center text-sm text-[#c4cbd6]">Joining {title}…</p>
       </div>
-      {rec.on ? (
-        <span className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-[#0e1626]/80 px-3 py-1.5 text-xs font-medium text-white ring-1 ring-white/10 backdrop-blur" title="This call is being recorded">
-          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#ea4335]" /> Recording{rec.since ? ` · ${clock(Math.max(0, Math.floor((now - rec.since) / 1000)))}` : ''}
-        </span>
-      ) : null}
-      {joinedAt ? (
-        <div className="pointer-events-auto absolute right-3 top-3">
-          <PeopleRings people={ring} max={5} size="sm" onClick={() => openSide('people')} />
-        </div>
-      ) : null}
       {alone ? (
         <div className="absolute inset-x-0 top-16 flex justify-center px-4">
           <span className="meet-pop rounded-full bg-[#0e1626]/85 px-4 py-2 text-center text-sm text-[#e3e8f0] ring-1 ring-white/10 backdrop-blur">You’re the only one here</span>
@@ -1205,9 +1283,48 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
         {toasts.map((t) => (
           <div key={t.id} role="status" className={cn('meet-pop flex max-w-full items-center gap-2 rounded-lg px-4 py-3 text-sm shadow-xl', t.tone === 'rec' ? 'bg-[#3c1d1b] text-white' : t.tone === 'warn' ? 'bg-[#3d3216] text-amber-100' : 'bg-[#e3e8f0] text-[#1f2937]')}>
             {t.tone === 'rec' ? <span className="h-2 w-2 shrink-0 rounded-full bg-[#ea4335]" /> : null}
-            <span className="truncate">{t.text}</span>
+            <span className="line-clamp-3">{t.text}</span>
           </div>
         ))}
+      </div>
+    </>
+  )
+
+  const addPeople = (): void => {
+    setInviteFocus((n) => n + 1)
+    setMenu(null)
+    setSide('people')
+  }
+  const top = (
+    <>
+      <div className="flex min-w-0 items-center gap-2.5">
+        {rec.on ? (
+          <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#3c1d1b] px-3 py-1.5 text-xs font-medium text-white" title="This call is being recorded">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#ea4335]" /> REC{rec.since ? ` ${clock(Math.max(0, Math.floor((now - rec.since) / 1000)))}` : ''}
+          </span>
+        ) : null}
+        <span className="truncate text-[15px] font-medium text-[#e3e8f0] lg:hidden">{title}</span>
+        {net ? (
+          <button
+            type="button"
+            onClick={() => setDataSaver(saver === 'off' ? 'on' : 'off')}
+            title={`${net === 'good' ? 'Good connection' : net === 'weak' ? 'Weak connection: video quality is lowered to keep voices clear' : 'Very weak connection'}. ${saver === 'off' ? 'Click to pause incoming video and save data.' : 'Incoming video is paused. Click to turn it back on.'}`}
+            aria-label={saver === 'off' ? 'Pause incoming video to save data' : 'Turn incoming video back on'}
+            className={cn('flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium transition hover:bg-white/10', net === 'good' ? 'text-emerald-300/80' : net === 'weak' ? 'bg-amber-400/10 text-amber-200' : 'bg-rose-400/10 text-rose-200')}
+          >
+            {net === 'good' ? <Signal className="h-4 w-4" /> : net === 'weak' ? <SignalMedium className="h-4 w-4" /> : <SignalLow className="h-4 w-4" />}
+            {net !== 'good' ? <span className="hidden sm:inline">{net === 'weak' ? 'Weak connection' : 'Very weak connection'}</span> : null}
+            {saver !== 'off' ? <span className="rounded-full bg-white/10 px-1.5 py-px text-[10px] text-white/80">Data saver</span> : null}
+          </button>
+        ) : null}
+      </div>
+      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        {joinedAt ? <PeopleRings people={ring} max={4} size="sm" onClick={() => openSide('people')} /> : null}
+        {roomId ? (
+          <button type="button" onClick={addPeople} title="Add people" aria-label="Add people" className="flex h-9 items-center gap-2 rounded-full bg-[#a8c7fa]/10 px-2.5 text-sm font-medium text-[#a8c7fa] ring-1 ring-[#a8c7fa]/25 transition hover:bg-[#a8c7fa]/20 sm:px-3.5">
+            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add people</span>
+          </button>
+        ) : null}
       </div>
     </>
   )
@@ -1220,8 +1337,8 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
           <X className="h-5 w-5" />
         </button>
       </div>
-      {side === 'details' ? <DetailsPanel code={code} roomId={roomId} title={title} joinedAt={joinedAt} now={now} testServer={testServer} /> : null}
-      {side === 'people' ? <PeoplePanel api={api} ring={ring} hands={hands} moderator={moderator} myId={myId} /> : null}
+      {side === 'details' ? <DetailsPanel code={code} title={title} joinedAt={joinedAt} now={now} testServer={testServer} onAddPeople={roomId ? addPeople : null} /> : null}
+      {side === 'people' ? <PeoplePanel api={api} ring={ring} hands={hands} moderator={moderator} myId={myId} roomId={roomId} inviteFocus={inviteFocus} /> : null}
       {side === 'chat' ? <ChatPanel api={api} messages={messages} /> : null}
       {side === 'host' ? <HostPanel api={api} onEndAll={() => hangup(true)} /> : null}
     </aside>
@@ -1230,6 +1347,7 @@ function Live({ api: apiRaw, slot, sideSlot, code, roomId, title, testServer, mo
   return (
     <>
       {slot ? createPortal(overlay, slot) : null}
+      {topSlot ? createPortal(top, topSlot) : null}
       {sideSlot && panel ? createPortal(panel, sideSlot) : null}
       {settingsOpen ? <SettingsDialog api={api} onClose={() => setSettingsOpen(false)} /> : null}
       {menu === 'reactions' ? (
@@ -1379,11 +1497,8 @@ function Popover({ children, onClose, className }: { children: React.ReactNode; 
   )
 }
 
-function DetailsPanel({ code, roomId, title, joinedAt, now, testServer }: { code: string; roomId: string | null; title: string; joinedAt: number | null; now: number; testServer: boolean }): React.ReactElement {
+function DetailsPanel({ code, title, joinedAt, now, testServer, onAddPeople }: { code: string; title: string; joinedAt: number | null; now: number; testServer: boolean; onAddPeople: (() => void) | null }): React.ReactElement {
   const [copied, setCopied] = useState(false)
-  const [emails, setEmails] = useState('')
-  const [msg, setMsg] = useState<string | null>(null)
-  const [pending, start] = useTransition()
   const { path } = useMeetPaths()
   const link = typeof window !== 'undefined' ? `${window.location.origin}${path(`/${code}`)}` : path(`/${code}`)
   return (
@@ -1408,38 +1523,24 @@ function DetailsPanel({ code, roomId, title, joinedAt, now, testServer }: { code
         >
           {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />} {copied ? 'Copied' : 'Copy joining info'}
         </button>
-        <p className="mt-1 text-xs text-[#9aa4b2]">This link works for Igani admins and invited teammates. Guests need their personal invite, so add them below.</p>
+        <p className="mt-1 text-xs text-[#9aa4b2]">This link works for the host and invited teammates. Guests need their own personal invite: use Add people.</p>
       </div>
-      {roomId ? (
-        <div>
-          <p className="font-medium">Add people</p>
-          <textarea value={emails} onChange={(e) => setEmails(e.target.value)} rows={2} placeholder="dana@client.com, mike@company.com" className="mt-2 w-full resize-none rounded-lg border border-white/15 bg-transparent px-3 py-2 text-base outline-none sm:text-sm placeholder:text-[#6b7686] focus:border-[#a8c7fa] focus-visible:ring-0 focus-visible:ring-offset-0" />
-          <button
-            type="button"
-            disabled={pending || !emails.trim()}
-            onClick={() =>
-              start(async () => {
-                const r = await addMeetInvites({ roomId, emails })
-                setMsg(r.ok ? `Invite sent to ${r.data.sent} ${r.data.sent === 1 ? 'person' : 'people'}${r.data.failed ? ` (${r.data.failed} couldn’t be emailed)` : ''}.` : r.error)
-                if (r.ok) setEmails('')
-              })
-            }
-            className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#a8c7fa] px-4 py-2 font-medium text-[#062e6f] transition hover:bg-[#b9d2fb] disabled:opacity-50"
-          >
-            {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send invite
-          </button>
-          {msg ? <p className="mt-2 text-xs text-[#c4cbd6]">{msg}</p> : null}
-        </div>
+      {onAddPeople ? (
+        <button type="button" onClick={onAddPeople} className="inline-flex items-center gap-2 rounded-full bg-[#a8c7fa] px-4 py-2 font-medium text-[#062e6f] transition hover:bg-[#b9d2fb]">
+          <UserPlus className="h-4 w-4" /> Add people
+        </button>
       ) : null}
     </div>
   )
 }
 
-function PeoplePanel({ api, ring, hands, moderator, myId }: { api: JitsiApi; ring: Person[]; hands: string[]; moderator: boolean; myId: string | null }): React.ReactElement {
+function PeoplePanel({ api, ring, hands, moderator, myId, roomId, inviteFocus }: { api: JitsiApi; ring: Person[]; hands: string[]; moderator: boolean; myId: string | null; roomId: string | null; inviteFocus: number }): React.ReactElement {
   const [open, setOpen] = useState<string | null>(null)
   const raised = ring.filter((x) => hands.includes(x.you ? (myId ?? '') : x.id))
+  const inv = useInvites(roomId)
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 text-sm">
+      {roomId ? <InviteBox roomId={roomId} focus={inviteFocus} teammates={inv.data?.teammates ?? []} onChange={inv.reload} /> : null}
       {raised.length ? (
         <div className="mb-3 rounded-xl bg-white/[0.04] p-2">
           <p className="px-2 pb-1 text-xs font-medium uppercase tracking-wide text-[#9aa4b2]">Raised hands</p>
@@ -1492,6 +1593,7 @@ function PeoplePanel({ api, ring, hands, moderator, myId }: { api: JitsiApi; rin
           </li>
         ))}
       </ul>
+      {roomId ? <InvitedList invites={inv.data?.invites ?? null} onChange={inv.reload} /> : null}
     </div>
   )
 }
@@ -1700,6 +1802,177 @@ IganiMeet.Closed = function Closed({ title, body }: { title: string; body: strin
   return (
     <div className="dark fixed inset-0 flex flex-col text-white" style={{ background: BG }}>
       <Notice title={title} body={body} />
+    </div>
+  )
+}
+
+/** The host's view of the room's invites (and teammates not invited yet), refreshed every 15 s while open. */
+function useInvites(roomId: string | null): { data: { invites: InCallInvite[]; teammates: { id: string; name: string; email: string }[] } | null; reload: () => void } {
+  const [data, setData] = useState<{ invites: InCallInvite[]; teammates: { id: string; name: string; email: string }[] } | null>(null)
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    if (!roomId) return
+    let live = true
+    const load = (): void => {
+      void meetRoomInvites(roomId)
+        .then((r) => {
+          if (live && r.ok) setData(r.data)
+        })
+        .catch(() => undefined)
+    }
+    load()
+    const t = setInterval(load, 15_000)
+    return () => {
+      live = false
+      clearInterval(t)
+    }
+  }, [roomId, tick])
+  return { data, reload: () => setTick((n) => n + 1) }
+}
+
+/** Invite from inside the call: type a teammate's name or any email; every person gets their own link by email. */
+function InviteBox({ roomId, focus, teammates, onChange }: { roomId: string; focus: number; teammates: { id: string; name: string; email: string }[]; onChange: () => void }): React.ReactElement {
+  const [text, setText] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [pending, start] = useTransition()
+  const input = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (focus) input.current?.focus()
+  }, [focus])
+  const q = text.trim().toLowerCase()
+  const matches = q && !q.includes('@') && !q.includes(',') ? teammates.filter((t) => t.name.toLowerCase().includes(q) || t.email.includes(q)).slice(0, 5) : []
+  const send = (payload: { userIds?: string[]; emails?: string }, who: string): void =>
+    start(async () => {
+      setMsg(null)
+      const r = await addMeetInvites({ roomId, ...payload })
+      if (r.ok) {
+        setText('')
+        setMsg({ ok: !r.data.failed, text: r.data.failed ? `Added ${who}, but the email couldn’t be sent. Copy their link below.` : `Invite sent to ${who}.` })
+        onChange()
+      } else setMsg({ ok: false, text: r.error })
+    })
+  const submit = (): void => {
+    if (!q) return
+    if (q.includes('@')) send({ emails: text }, text.includes(',') ? 'everyone listed' : text.trim())
+    else if (matches.length === 1) send({ userIds: [matches[0]!.id] }, matches[0]!.name)
+    else setMsg({ ok: false, text: matches.length ? 'Pick one of the teammates below.' : 'Type an email address, or a teammate’s name.' })
+  }
+  return (
+    <div className="mx-1 mb-4 rounded-2xl bg-white/[0.04] p-3 ring-1 ring-white/10">
+      <p className="mb-2 flex items-center gap-2 font-medium">
+        <UserPlus className="h-4 w-4 text-[#a8c7fa]" /> Add people
+      </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+        className="flex gap-2"
+      >
+        <input ref={input} value={text} onChange={(e) => setText(e.target.value)} placeholder="Name or email" aria-label="Name or email to invite" className="min-w-0 flex-1 rounded-full border border-white/15 bg-transparent px-3.5 py-2 text-base outline-none placeholder:text-[#6b7686] focus:border-[#a8c7fa] focus-visible:ring-0 focus-visible:ring-offset-0 sm:text-sm" />
+        <button type="submit" disabled={pending || !q} aria-label="Send invite" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#a8c7fa] text-[#062e6f] transition hover:bg-[#b9d2fb] disabled:opacity-40">
+          {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </button>
+      </form>
+      {matches.length ? (
+        <ul className="mt-2 overflow-hidden rounded-xl bg-[#232d3f] ring-1 ring-white/10">
+          {matches.map((t) => (
+            <li key={t.id}>
+              <button type="button" disabled={pending} onClick={() => send({ userIds: [t.id] }, t.name)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.06]">
+                <Avatar name={t.name} src={null} className="h-7 w-7 text-[10px]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{t.name}</span>
+                  <span className="block truncate text-xs text-[#9aa4b2]">{t.email}</span>
+                </span>
+                <Send className="h-3.5 w-3.5 text-[#a8c7fa]" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : !q && teammates.length ? (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {teammates.slice(0, 6).map((t) => (
+            <button key={t.id} type="button" disabled={pending} onClick={() => send({ userIds: [t.id] }, t.name)} title={`Invite ${t.email}`} className="rounded-full bg-white/[0.06] px-2.5 py-1 text-xs text-[#c4cbd6] ring-1 ring-white/10 transition hover:bg-[#a8c7fa]/15 hover:text-[#a8c7fa] disabled:opacity-50">
+              + {t.name.split(' ')[0]}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {msg ? <p className={cn('mt-2 text-xs', msg.ok ? 'text-emerald-300' : 'text-amber-200')}>{msg.text}</p> : <p className="mt-2 text-xs text-[#9aa4b2]">Each person gets their own link by email. Separate several emails with commas.</p>}
+    </div>
+  )
+}
+
+const INVITE_TAG: Record<InCallInvite['state'], { label: string; cls: string }> = {
+  joined: { label: 'Joined', cls: 'bg-emerald-400/15 text-emerald-300' },
+  invited: { label: 'Invited', cls: 'bg-[#a8c7fa]/15 text-[#a8c7fa]' },
+  failed: { label: 'Not emailed', cls: 'bg-amber-400/15 text-amber-200' },
+  link: { label: 'Link only', cls: 'bg-white/10 text-[#c4cbd6]' },
+}
+
+/** Everyone invited to this call and whether they've joined; copy a personal link, email it again, or take it back. */
+function InvitedList({ invites, onChange }: { invites: InCallInvite[] | null; onChange: () => void }): React.ReactElement {
+  const [pending, start] = useTransition()
+  const [copied, setCopied] = useState<string | null>(null)
+  const [msg, setMsg] = useState<string | null>(null)
+  const act = (fn: () => Promise<{ ok: boolean; error?: string }>, done: string): void =>
+    start(async () => {
+      const r = await fn()
+      setMsg(r.ok ? done : (r.error ?? 'Something went wrong.'))
+      onChange()
+    })
+  const icon = 'rounded-full p-1.5 text-[#c4cbd6] opacity-70 transition hover:bg-white/10 hover:opacity-100 disabled:opacity-30'
+  return (
+    <div className="mt-4">
+      <p className="px-2 pb-2 text-xs font-medium uppercase tracking-wide text-[#9aa4b2]">Invited{invites ? ` · ${invites.length}` : ''}</p>
+      {invites === null ? (
+        <p className="flex items-center gap-2 px-2 py-2 text-[#9aa4b2]">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+        </p>
+      ) : invites.length ? (
+        <ul>
+          {invites.map((i) => {
+            const tag = INVITE_TAG[i.state]
+            return (
+              <li key={i.id} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.05]">
+                <Avatar name={i.name ?? i.email} src={null} className="h-9 w-9 text-xs" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate">{i.name ?? i.email}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-[#9aa4b2]">
+                    <span className={cn('rounded-full px-1.5 py-px text-[10px] font-medium', tag.cls)}>{tag.label}</span>
+                    <span className="truncate">{i.name ? i.email : i.teammate ? 'teammate' : ''}</span>
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  title="Copy their personal link"
+                  aria-label={`Copy ${i.name ?? i.email}’s link`}
+                  className={icon}
+                  onClick={() =>
+                    void navigator.clipboard?.writeText(i.link).then(() => {
+                      setCopied(i.id)
+                      setTimeout(() => setCopied(null), 1500)
+                    })
+                  }
+                >
+                  {copied === i.id ? <Check className="h-4 w-4 text-emerald-300" /> : <Link2 className="h-4 w-4" />}
+                </button>
+                {i.state !== 'joined' ? (
+                  <button type="button" disabled={pending} title="Email the invite again" aria-label={`Email ${i.email} again`} className={icon} onClick={() => act(() => resendMeetInvite(i.id), `Sent again to ${i.email}.`)}>
+                    <Mail className="h-4 w-4" />
+                  </button>
+                ) : null}
+                <button type="button" disabled={pending} title="Remove (their link stops working)" aria-label={`Remove ${i.email}`} className={cn(icon, 'hover:text-rose-300')} onClick={() => act(() => removeMeetInvite(i.id), `${i.name ?? i.email} was removed.`)}>
+                  <X className="h-4 w-4" />
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <p className="px-2 py-1 text-[#9aa4b2]">No one invited yet.</p>
+      )}
+      {msg ? <p className="px-2 pt-1 text-xs text-[#c4cbd6]">{msg}</p> : null}
     </div>
   )
 }

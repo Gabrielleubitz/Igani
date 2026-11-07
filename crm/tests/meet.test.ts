@@ -146,3 +146,16 @@ describe('Igani Meet on its own host', () => {
     expect(canManageMeet({ id: 'u3', role: 'ADMIN' }, { hostId: 'u1' })).toBe(true)
   })
 })
+
+describe('Igani Meet connection health', () => {
+  it('reads 8x8’s connection stats defensively and grades them', async () => {
+    const { readNet, netLevel } = await import('@/components/meet/net')
+    expect(readNet(null)).toEqual({ lossUp: 0, lossDown: 0, rtt: null, upKbps: null, downKbps: null, score: null })
+    const weak = readNet({ packetLoss: { upload: 6, download: '1' }, jvbRTT: 120, bitrate: { upload: 900, download: 1500 } })
+    expect(weak).toMatchObject({ lossUp: 6, lossDown: 1, rtt: 120, upKbps: 900 })
+    expect(netLevel(weak)).toBe('weak')
+    expect(netLevel(readNet({ packetLoss: { upload: 0, download: 0 }, transport: [{ rtt: 40 }] }))).toBe('good')
+    expect(netLevel(readNet({ packetLoss: { upload: 1, download: 2 }, transport: [{ rtt: 950 }] }))).toBe('poor')
+    expect(netLevel(readNet({ packetLoss: { upload: 20 } }))).toBe('poor')
+  })
+})
