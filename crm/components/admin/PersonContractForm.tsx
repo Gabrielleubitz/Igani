@@ -8,7 +8,7 @@ import { generateContractLink } from '@/app/actions/sales-contracts'
 import type { SignerView } from '@/components/admin/SignerPicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AGREEMENT_CSS, agreementHtml, basePayout, companyIsComplete, termsFromCompany, validate, type CompanySettings, type Figures } from '@/lib/sales-contract-core'
+import { AGREEMENT_CSS, agreementHtml, companyIsComplete, termsFromCompany, validate, type CompanySettings, type Figures } from '@/lib/sales-contract-core'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -112,12 +112,11 @@ export function PersonContractForm({
         </label>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        {num('threshold', 'Tier threshold', 'ILS')}
-        {num('basePercent', 'Commission up to the threshold', '%')}
-        {num('bonus', 'Bonus per increment', 'ILS')}
-        {num('increment', 'Increment size above the threshold', 'ILS')}
+        {num('threshold', 'Bonus starts above a contract price of', 'ILS')}
+        {num('basePercent', 'Commission on every payment', '%')}
+        {num('bonus', 'Bonus for each step above that (paid at the end)', 'ILS')}
+        {num('increment', 'Step size', 'ILS')}
       </div>
-      <p className="text-muted-foreground">Base payout: {Number.isFinite(basePayout(f)) ? basePayout(f).toLocaleString('en-US') : '—'} ILS</p>
       <label className="block space-y-1">
         <span className="font-medium">Signs for the company</span>
         {ready.length === 0 ? (

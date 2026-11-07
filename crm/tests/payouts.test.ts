@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { addBusinessDays, groupPayouts, monthKey, payoutDueDate, type PayoutRow } from '../lib/payouts'
 
 const d = (s: string): Date => new Date(`${s}T00:00:00Z`)
-const row = (o: Partial<PayoutRow>): PayoutRow => ({ leadId: 'l', lead: 'Deal', salesperson: 'Ariel', email: 'a@b.co', amount: 1000, receivedAt: d('2026-11-10'), paidAt: null, refundedAt: null, payoutDays: 10, clawbackDays: 60, ...o })
+const row = (o: Partial<PayoutRow>): PayoutRow => ({ leadId: 'l', paymentId: 'p', label: 'Payment', lead: 'Deal', salesperson: 'Ariel', email: 'a@b.co', amount: 1000, receivedAt: d('2026-11-10'), paidAt: null, refundedAt: null, payoutDays: 10, clawbackDays: 60, ...o })
 
 describe('business days (Sunday to Thursday)', () => {
   it('skips Friday and Saturday', () => {

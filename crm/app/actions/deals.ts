@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
-import { type CommissionTerms, dealTerms, parseTerms } from '@/lib/commission'
+import { type CommissionTerms, bonusDue, dealTerms, parseTerms, paymentCommission } from '@/lib/commission'
 import { setQuotedPrice, snapshotWonCommission, termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
@@ -44,11 +44,9 @@ export async function saveQuotedPrice(id: string, price: number | null): Promise
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
     const value = price === null ? null : money.parse(price)
-    if (value === null || value <= 0) {
-      const cur = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
-      if (cur?.status === 'WON' && (cur.finalPaymentReceivedAt || cur.finalPaidAt)) {
-        throw new BookingError('The client’s payment or the commission payout is already recorded for this deal, so its price can’t be cleared.', 'INVALID_STATE')
-      }
+    const cur = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, finalPaidAt: true, finalPaymentReceivedAt: true, payments: { select: { id: true }, take: 1 } } })
+    if (cur?.status === 'WON' && cur.quotedPrice !== value && (cur.payments.length || cur.finalPaidAt || cur.finalPaymentReceivedAt)) {
+      throw new BookingError('A client payment or a payout is already recorded for this deal, so its price can’t be changed. Remove the payments first.', 'INVALID_STATE')
     }
     const result = await prisma.$transaction((tx) => setQuotedPrice(lid, value, admin.id, tx))
     refresh(lid)
@@ -81,9 +79,9 @@ export async function recalculateWonCommission(id: string): Promise<ActionResult
   try {
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
-    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, finalPaidAt: true } })
+    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, finalPaidAt: true, payments: { select: { id: true }, take: 1 } } })
     if (!lead || lead.status !== 'WON') throw new BookingError('Only a won deal has a frozen commission.', 'INVALID_STATE')
-    if (lead.finalPaidAt) throw new BookingError('This commission was already paid out. Undo the payout first if it really has to change.', 'INVALID_STATE')
+    if (lead.finalPaidAt || lead.payments.length) throw new BookingError('A client payment is already recorded, and each payment’s commission was fixed when it was entered. Remove the payments first if the commission really has to change.', 'INVALID_STATE')
     if (!lead.quotedPrice) throw new BookingError('Enter the quoted price first.', 'INVALID_STATE')
     await prisma.$transaction(async (tx) => {
       await snapshotWonCommission(lid, tx, { force: true })
@@ -96,42 +94,161 @@ export async function recalculateWonCommission(id: string): Promise<ActionResult
   }
 }
 
-const paymentSchema = z.object({
-  /** received = the client paid us; paid = we paid the salesperson their commission */
-  kind: z.enum(['received', 'paid']),
-  /** YYYY-MM-DD, or null to undo */
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-})
+const dateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/)
+const realDate = (v: string | null): Date | null => {
+  if (!v) return null
+  const d = new Date(`${v}T12:00:00Z`)
+  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== v) throw new BookingError('That date does not exist. Pick a real date.', 'INVALID_STATE')
+  return d
+}
 
-/** Mark the client's payment as received (with its date), or the commission as paid out, or undo either. */
-export async function setCommissionPayment(id: string, input: z.input<typeof paymentSchema>): Promise<ActionResult> {
+type Tx = Prisma.TransactionClient
+
+/** Sets finalPaymentReceivedAt to the day the whole price was paid (net of refunds), or clears it when the price is no longer fully paid. */
+async function syncFullyPaid(tx: Tx, leadId: string): Promise<void> {
+  const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { quotedPrice: true, finalPaymentReceivedAt: true, payments: { select: { amount: true, receivedAt: true, refundedAt: true } } } })
+  const live = lead.payments.filter((p) => !p.refundedAt)
+  const net = live.reduce((n, p) => n + p.amount, 0)
+  const full = bonusDue(net, lead.quotedPrice ?? 0)
+  const last = live.reduce<Date | null>((m, p) => (!m || p.receivedAt > m ? p.receivedAt : m), null)
+  const next = full ? last : null
+  if ((next?.getTime() ?? null) !== (lead.finalPaymentReceivedAt?.getTime() ?? null)) await tx.lead.update({ where: { id: leadId }, data: { finalPaymentReceivedAt: next } })
+}
+
+/** Does this salesperson's agreement end before the given day? Then a payment received after it earns no commission. */
+async function endedBefore(tx: Tx, leadId: string, day: Date): Promise<boolean> {
+  const l = await tx.lead.findUnique({ where: { id: leadId }, select: { assignedTo: { select: { email: true } } } })
+  if (!l?.assignedTo?.email) return false
+  const ended = await tx.allowedUser.findUnique({ where: { email: l.assignedTo.email }, select: { terminatedAt: true } })
+  return !!ended?.terminatedAt && day > ended.terminatedAt
+}
+
+const paymentInput = z.object({ amount: z.number().int().positive().max(1_000_000_000), date: dateInput })
+
+/** The client made a payment (any part of the price). Its commission is worked out and is payable straight away. */
+export async function addLeadPayment(id: string, input: z.input<typeof paymentInput>): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
-    const m = paymentSchema.parse(input)
-    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, assignedTo: { select: { email: true } } } })
-    if (!lead || lead.status !== 'WON' || lead.commissionTotal === null) throw new BookingError('Win the deal and enter its price first: that is when the commission is set.', 'INVALID_STATE')
-    const date = m.date ? new Date(`${m.date}T12:00:00Z`) : null
-    // "2026-02-31" passes a pattern check but is not a day: reject it instead of letting the database throw.
-    if (m.date && (!date || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== m.date)) throw new BookingError('That date does not exist. Pick a real date.', 'INVALID_STATE')
-    if (m.kind === 'paid' && date && lead.refundedAt) throw new BookingError('The client’s money was returned, so this commission is cancelled. Undo the refund first if that was a mistake.', 'INVALID_STATE')
-    if (m.kind === 'paid' && date && lead.finalPaymentReceivedAt && lead.assignedTo?.email) {
-      const ended = await prisma.allowedUser.findUnique({ where: { email: lead.assignedTo.email }, select: { terminatedAt: true } })
-      if (ended?.terminatedAt && lead.finalPaymentReceivedAt > ended.terminatedAt) throw new BookingError('The salesperson’s agreement ended before the client paid, so no commission is owed on this deal.', 'INVALID_STATE')
-    }
-    if (m.kind === 'paid' && date && lead.finalPaymentReceivedAt && date < lead.finalPaymentReceivedAt) throw new BookingError('The payout date can’t be before the day the client paid.', 'INVALID_STATE')
-    if (m.kind === 'paid' && date && !lead.finalPaymentReceivedAt) {
-      throw new BookingError('Nothing is payable before the client’s money is collected. Mark the payment as received first.', 'INVALID_STATE')
-    }
-    if (m.kind === 'received' && !date && lead.finalPaidAt) {
-      throw new BookingError('The salesperson was already paid. Undo the payout first.', 'INVALID_STATE')
-    }
-    const field = m.kind === 'received' ? 'finalPaymentReceivedAt' : 'finalPaidAt'
+    const m = paymentInput.parse(input)
+    const date = realDate(m.date)!
     await prisma.$transaction(async (tx) => {
-      await tx.lead.update({ where: { id: lid }, data: { [field]: date } })
-      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.commission_payment', actorId: admin.id, metadata: { kind: m.kind, date: m.date } }, tx)
+      const lead = await tx.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, excludedCosts: true, commissionTotal: true, commissionSnapshot: true, payments: { select: { amount: true, refundedAt: true } } } })
+      if (!lead || lead.status !== 'WON' || lead.commissionTotal === null || !lead.quotedPrice) throw new BookingError('Win the deal and enter its price first: that is when the commission is set.', 'INVALID_STATE')
+      const paidBefore = lead.payments.filter((p) => !p.refundedAt).reduce((n, p) => n + p.amount, 0)
+      if (paidBefore + m.amount > lead.quotedPrice) throw new BookingError(`That is more than the price. ${Math.max(0, lead.quotedPrice - paidBefore).toLocaleString('en-US')} is still to be paid.`, 'INVALID_STATE')
+      const rate = parseTerms((lead.commissionSnapshot as { terms?: unknown } | null)?.terms).baseRatePct
+      const commission = paymentCommission(m.amount, paidBefore, lead.quotedPrice, lead.excludedCosts ?? 0, rate)
+      await tx.leadPayment.create({ data: { leadId: lid, amount: m.amount, receivedAt: date, commission } })
+      await syncFullyPaid(tx, lid)
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.payment_added', actorId: admin.id, metadata: { amount: m.amount, date: m.date, commission } }, tx)
     })
     refresh(lid)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Remove a payment entered by mistake. Only the latest one, and only while its commission has not been paid out. */
+export async function deleteLeadPayment(paymentId: string): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const pid = z.string().cuid().parse(paymentId)
+    let lid = ''
+    await prisma.$transaction(async (tx) => {
+      const pay = await tx.leadPayment.findUnique({ where: { id: pid }, select: { leadId: true, commissionPaidAt: true, createdAt: true, amount: true } })
+      if (!pay) throw new BookingError('Payment not found.', 'NOT_FOUND')
+      lid = pay.leadId
+      const newer = await tx.leadPayment.count({ where: { leadId: lid, createdAt: { gt: pay.createdAt } } })
+      const lead = await tx.lead.findUniqueOrThrow({ where: { id: lid }, select: { finalPaidAt: true } })
+      if (pay.commissionPaidAt) throw new BookingError('The commission on this payment was already paid out. Undo that first.', 'INVALID_STATE')
+      if (newer > 0) throw new BookingError('Remove the later payments first, newest first.', 'INVALID_STATE')
+      if (lead.finalPaidAt) throw new BookingError('The bonus was already paid out. Undo that first.', 'INVALID_STATE')
+      await tx.leadPayment.delete({ where: { id: pid } })
+      await syncFullyPaid(tx, lid)
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.payment_removed', actorId: admin.id, metadata: { amount: pay.amount } }, tx)
+    })
+    refresh(lid)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** The commission on one payment was paid out to the salesperson (or undo it with null). */
+export async function setPaymentCommissionPaid(paymentId: string, date: string | null): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const pid = z.string().cuid().parse(paymentId)
+    const d = realDate(date === null ? null : dateInput.parse(date))
+    let lid = ''
+    await prisma.$transaction(async (tx) => {
+      const pay = await tx.leadPayment.findUnique({ where: { id: pid }, select: { leadId: true, receivedAt: true, refundedAt: true } })
+      if (!pay) throw new BookingError('Payment not found.', 'NOT_FOUND')
+      lid = pay.leadId
+      if (d) {
+        if (pay.refundedAt) throw new BookingError('This payment was returned to the client, so its commission is cancelled. Undo the refund first if that was a mistake.', 'INVALID_STATE')
+        if (d < pay.receivedAt) throw new BookingError('The payout date can’t be before the day the client paid.', 'INVALID_STATE')
+        if (await endedBefore(tx, lid, pay.receivedAt)) throw new BookingError('The salesperson’s agreement ended before this payment arrived, so no commission is owed on it.', 'INVALID_STATE')
+      }
+      await tx.leadPayment.update({ where: { id: pid }, data: { commissionPaidAt: d } })
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.commission_payment', actorId: admin.id, metadata: { payment: pid, date } }, tx)
+    })
+    refresh(lid)
+    revalidatePath('/admin/payouts')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** One payment was returned to the client (or undo with null). An unpaid commission on it is cancelled; a paid one is clawed back. */
+export async function setPaymentRefund(paymentId: string, date: string | null): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const pid = z.string().cuid().parse(paymentId)
+    const d = realDate(date === null ? null : dateInput.parse(date))
+    let lid = ''
+    await prisma.$transaction(async (tx) => {
+      const pay = await tx.leadPayment.findUnique({ where: { id: pid }, select: { leadId: true, receivedAt: true } })
+      if (!pay) throw new BookingError('Payment not found.', 'NOT_FOUND')
+      lid = pay.leadId
+      if (d && d < pay.receivedAt) throw new BookingError('The refund can’t be before the day the client paid.', 'INVALID_STATE')
+      const lead = await tx.lead.findUniqueOrThrow({ where: { id: lid }, select: { finalPaidAt: true } })
+      if (d && lead.finalPaidAt) throw new BookingError('The bonus was already paid out. Undo that first, then record the refund.', 'INVALID_STATE')
+      await tx.leadPayment.update({ where: { id: pid }, data: { refundedAt: d } })
+      await syncFullyPaid(tx, lid)
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.refund_recorded', actorId: admin.id, metadata: { payment: pid, date } }, tx)
+    })
+    refresh(lid)
+    revalidatePath('/admin/payouts')
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** The bonus was paid out (or undo with null). It exists only once the whole price has been paid. */
+export async function setBonusPaid(id: string, date: string | null): Promise<ActionResult> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const lid = leadId.parse(id)
+    const d = realDate(date === null ? null : dateInput.parse(date))
+    await prisma.$transaction(async (tx) => {
+      const lead = await tx.lead.findUnique({ where: { id: lid }, select: { status: true, finalPaymentReceivedAt: true, refundedAt: true } })
+      if (!lead || lead.status !== 'WON') throw new BookingError('Only a won deal has a bonus.', 'INVALID_STATE')
+      if (d) {
+        if (!lead.finalPaymentReceivedAt) throw new BookingError('The bonus is paid only after the whole price has been paid.', 'INVALID_STATE')
+        if (lead.refundedAt) throw new BookingError('The client’s money was returned, so the bonus is cancelled.', 'INVALID_STATE')
+        if (d < lead.finalPaymentReceivedAt) throw new BookingError('The payout date can’t be before the day the price was fully paid.', 'INVALID_STATE')
+        if (await endedBefore(tx, lid, lead.finalPaymentReceivedAt)) throw new BookingError('The salesperson’s agreement ended before the price was fully paid, so no bonus is owed.', 'INVALID_STATE')
+      }
+      await tx.lead.update({ where: { id: lid }, data: { finalPaidAt: d } })
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.bonus_payment', actorId: admin.id, metadata: { date } }, tx)
+    })
+    refresh(lid)
+    revalidatePath('/admin/payouts')
     return { ok: true, data: undefined }
   } catch (err) {
     return toActionError(err)
@@ -173,13 +290,6 @@ export async function saveSalespersonTerms(userId: string, terms: CommissionTerm
   }
 }
 
-const realDate = (v: string | null): Date | null => {
-  if (!v) return null
-  const d = new Date(`${v}T12:00:00Z`)
-  if (Number.isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== v) throw new BookingError('That date does not exist. Pick a real date.', 'INVALID_STATE')
-  return d
-}
-const dateInput = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()
 
 /** Hosting, taxes and out-of-pocket costs taken off the price before commission. Locked once the client's money is recorded, like the price. */
 export async function saveExcludedCosts(id: string, amount: number | null): Promise<ActionResult> {
@@ -187,9 +297,9 @@ export async function saveExcludedCosts(id: string, amount: number | null): Prom
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
     const value = amount === null || amount === 0 ? null : money.parse(amount)
-    const cur = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, finalPaymentReceivedAt: true, excludedCosts: true } })
+    const cur = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, excludedCosts: true, payments: { select: { id: true }, take: 1 } } })
     if (!cur) throw new BookingError('Lead not found.', 'NOT_FOUND')
-    if (cur.finalPaymentReceivedAt) throw new BookingError('The client’s payment is already recorded, so the commission base can’t change. Undo the payment first.', 'INVALID_STATE')
+    if (cur.payments.length) throw new BookingError('A client payment is already recorded, so the commission base can’t change. Remove the payments first.', 'INVALID_STATE')
     if (value !== null && cur.quotedPrice !== null && value >= cur.quotedPrice) throw new BookingError('The excluded costs must be less than the price.', 'INVALID_STATE')
     await prisma.$transaction(async (tx) => {
       await tx.lead.update({ where: { id: lid }, data: { excludedCosts: value } })
@@ -203,34 +313,12 @@ export async function saveExcludedCosts(id: string, amount: number | null): Prom
   }
 }
 
-/** The client's money was returned (refund, default or dispute). Cancels an unpaid commission; a paid one becomes an overpayment to claw back. `null` undoes it. */
-export async function setDealRefund(id: string, date: string | null): Promise<ActionResult> {
-  try {
-    const admin = await requireUser(['ADMIN'])
-    const lid = leadId.parse(id)
-    const d = realDate(dateInput.parse(date))
-    const lead = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, finalPaymentReceivedAt: true } })
-    if (!lead || lead.status !== 'WON') throw new BookingError('Only a won deal can be refunded.', 'INVALID_STATE')
-    if (d && !lead.finalPaymentReceivedAt) throw new BookingError('The client has not paid yet, so there is nothing to refund. The commission simply stays unpaid.', 'INVALID_STATE')
-    if (d && lead.finalPaymentReceivedAt && d < lead.finalPaymentReceivedAt) throw new BookingError('The refund can’t be before the day the client paid.', 'INVALID_STATE')
-    await prisma.$transaction(async (tx) => {
-      await tx.lead.update({ where: { id: lid }, data: { refundedAt: d } })
-      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.refund_recorded', actorId: admin.id, metadata: { date } }, tx)
-    })
-    refresh(lid)
-    revalidatePath('/admin/payouts')
-    return { ok: true, data: undefined }
-  } catch (err) {
-    return toActionError(err)
-  }
-}
-
 /** The day a salesperson's agreement ended (null = still active). Only deals the client paid for before this day still pay commission. */
 export async function setSalespersonTermination(userId: string, date: string | null): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
     const uid = z.string().cuid().parse(userId)
-    const d = realDate(dateInput.parse(date))
+    const d = realDate(date === null ? null : dateInput.parse(date))
     const user = await prisma.user.findUnique({ where: { id: uid }, select: { email: true } })
     if (!user?.email) throw new BookingError('Teammate not found.', 'NOT_FOUND')
     await prisma.$transaction(async (tx) => {

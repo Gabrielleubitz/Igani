@@ -19,7 +19,7 @@ export default async function PayoutsPage(): Promise<React.ReactElement> {
   const now = new Date()
   return (
     <div className="space-y-5">
-      <PageIntro title="Payouts" hint="Commissions are earned when the client has paid in full. Each month’s commissions are due within the business days written in the salesperson’s signed agreement." />
+      <PageIntro title="Payouts" hint="Commission is earned on every payment the client makes; the bonus once the whole price is paid. Each month’s commissions are due within the business days written in the salesperson’s signed agreement." />
       {months.length === 0 && clawbacks.length === 0 ? <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">Nothing to pay right now.</p> : null}
       {months.map((m) => (
         <Card key={m.month}>
@@ -38,7 +38,7 @@ export default async function PayoutsPage(): Promise<React.ReactElement> {
           </CardHeader>
           <CardContent className="divide-y p-0">
             {m.rows.map((r) => (
-              <CommissionPayRow key={r.leadId} leadId={r.leadId} lead={r.lead} salesperson={r.salesperson} amount={r.amount} clientPaid paidOut={false} />
+              <CommissionPayRow key={r.paymentId ?? `${r.leadId}-bonus`} leadId={r.leadId} paymentId={r.paymentId} label={r.label} lead={r.lead} salesperson={r.salesperson} amount={r.amount} paidOut={false} />
             ))}
           </CardContent>
         </Card>
@@ -50,10 +50,10 @@ export default async function PayoutsPage(): Promise<React.ReactElement> {
           </CardHeader>
           <CardContent className="divide-y p-0 text-sm">
             {clawbacks.map(({ row, withinWindow }) => (
-              <div key={row.leadId} className="flex flex-wrap items-center justify-between gap-3 p-3">
+              <div key={row.paymentId ?? `${row.leadId}-bonus`} className="flex flex-wrap items-center justify-between gap-3 p-3">
                 <div>
                   <a href={`/sales/leads/${row.leadId}`} className="font-medium underline-offset-4 hover:underline">{row.lead}</a>
-                  <div className="text-xs text-muted-foreground">{row.salesperson} · paid {formatIls(row.amount)} · client refunded {row.refundedAt ? day(row.refundedAt) : ''}</div>
+                  <div className="text-xs text-muted-foreground">{row.salesperson} · {row.label.toLowerCase()} paid {formatIls(row.amount)} · client refunded {row.refundedAt ? day(row.refundedAt) : ''}</div>
                 </div>
                 <span className={withinWindow === false ? 'text-xs text-muted-foreground' : 'text-xs text-amber-300'}>
                   {withinWindow === null ? 'No signed agreement to check the clawback window' : withinWindow ? `Within the ${row.clawbackDays}-day window: deduct from the next payout or ask for repayment` : `Outside the ${row.clawbackDays}-day window: the agreement does not claw this back`}

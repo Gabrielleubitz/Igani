@@ -2,11 +2,11 @@
  * Salesperson commission: ONE pure function the whole app uses (lead page, win dialog, snapshots, tests).
  * Money is whole shekels; percentages are plain numbers (30 = 30%).
  *
- *  - deal ≤ threshold:  deal × baseRate
- *  - deal > threshold:  threshold × baseRate + bonusPerIncrement × floor((deal − threshold) / incrementSize)
- *    (a partial increment earns nothing)
+ *  - the base rate applies to EVERY payment the client makes (the price minus excluded costs, whatever its size)
+ *  - bonus (paid only at the very end, once the whole price has been paid):
+ *      bonusPerIncrement × floor((price − threshold) / incrementSize), and nothing for a partial increment
  *
- * The commission becomes payable once the client's payment is collected, and is then paid out in one go.
+ * Each payment's commission becomes payable when that payment is collected; the bonus when the price is fully paid.
  */
 export interface CommissionTerms {
   /** % of the deal (up to the threshold) the salesperson earns */
@@ -28,7 +28,7 @@ export const DEFAULT_COMMISSION_TERMS: CommissionTerms = {
 
 export interface CommissionBreakdown {
   amount: number
-  /** The part of the deal the base rate applies to (the deal itself, capped at the threshold) */
+  /** The part of the deal the base rate applies to (the price minus excluded costs) */
   baseAmount: number
   baseCommission: number
   completedIncrements: number
@@ -49,13 +49,34 @@ export function calculateCommission(dealAmount: number, terms: CommissionTerms =
   const excluded = Math.max(0, whole(num(excludedCosts, 0)))
   const amount = Math.max(0, whole(num(dealAmount, 0)) - excluded)
   const rate = Math.max(0, terms.baseRatePct) / 100
-  const baseAmount = Math.min(amount, Math.max(0, terms.threshold))
+  const baseAmount = amount
   const baseCommission = baseAmount * rate
   const completedIncrements = amount > terms.threshold && terms.incrementSize > 0 ? Math.floor((amount - terms.threshold) / terms.incrementSize) : 0
   const bonusTotal = completedIncrements * Math.max(0, terms.bonusPerIncrement)
   // A commission can never exceed the deal itself, and always fits the database column (Int4).
   const total = Math.min(whole(baseCommission + bonusTotal), amount, 2_000_000_000)
   return { amount, baseAmount, baseCommission: whole(baseCommission), completedIncrements, bonusTotal: whole(bonusTotal), total, ...(excluded > 0 ? { excludedCosts: excluded } : {}) }
+}
+
+/**
+ * The commission on ONE payment: the base rate applied to that payment's commissionable share (excluded costs are spread over the
+ * payments in proportion). It is the difference between the commission on everything paid after it and before it, rounded once, so
+ * the payments always add up to exactly the commission on the full price. Overpayment above the price earns nothing extra.
+ */
+export function paymentCommission(amount: number, paidBefore: number, price: number, excludedCosts: number, ratePct: number): number {
+  if (!(price > 0) || !(amount > 0)) return 0
+  const share = (price - Math.min(Math.max(0, excludedCosts), price)) / price
+  const upTo = (paid: number): number => Math.round((Math.max(0, ratePct) / 100) * share * Math.min(Math.max(0, paid), price))
+  return upTo(paidBefore + amount) - upTo(paidBefore)
+}
+
+/** The bonus is due only when the client has paid the whole price. */
+export const bonusDue = (paid: number, price: number): boolean => price > 0 && paid >= price
+
+/** The bonus part of a frozen commission snapshot (0 when there is none). */
+export function bonusOf(snapshot: unknown): number {
+  const b = ((snapshot as { breakdown?: { bonusTotal?: unknown } } | null)?.breakdown?.bonusTotal ?? 0) as unknown
+  return typeof b === 'number' && Number.isFinite(b) && b > 0 ? b : 0
 }
 
 /** Reads saved terms (a JSON column) defensively: anything missing or invalid falls back to the default. */
@@ -86,6 +107,14 @@ export interface PaymentDates {
   terminatedAt?: Date | null
 }
 
+/** One client payment and the commission on it. */
+export interface PaymentLine {
+  commission: number
+  receivedAt: Date
+  commissionPaidAt: Date | null
+  refundedAt: Date | null
+}
+
 export interface CommissionStatus {
   total: number
   /** Already paid out to the salesperson */
@@ -100,9 +129,14 @@ export interface CommissionStatus {
   clawback?: number
 }
 
-/** Paid / payable / pending for one won deal. Nothing is payable before the client's money is collected. */
-export function commissionStatus(c: { commissionTotal: number | null } & PaymentDates): CommissionStatus {
+/**
+ * Paid / payable / pending for one won deal. Nothing is payable before the client's money is collected.
+ * With `payments` (the normal case) every payment's commission is payable as that payment arrives, and the bonus (`bonus`) only once
+ * the whole price is paid (`finalPaymentReceivedAt`). Without `payments`, the older one-payment rules apply.
+ */
+export function commissionStatus(c: { commissionTotal: number | null; bonus?: number; payments?: PaymentLine[] } & PaymentDates): CommissionStatus {
   const total = c.commissionTotal ?? 0
+  if (c.payments !== undefined) return commissionStatusByPayment(c as { commissionTotal: number | null; bonus?: number; payments: PaymentLine[] } & PaymentDates, total)
   if (c.refundedAt) return c.finalPaidAt ? { total, paid: total, payable: 0, pending: 0, clawback: total } : { total, paid: 0, payable: 0, pending: 0, voided: total }
   if (c.terminatedAt && c.finalPaymentReceivedAt && c.finalPaymentReceivedAt > c.terminatedAt && !c.finalPaidAt) return { total, paid: 0, payable: 0, pending: 0, voided: total }
   if (c.finalPaymentReceivedAt && c.finalPaidAt) return { total, paid: total, payable: 0, pending: 0 }
@@ -110,9 +144,44 @@ export function commissionStatus(c: { commissionTotal: number | null } & Payment
   return { total, paid: 0, payable: 0, pending: total }
 }
 
+function commissionStatusByPayment(c: { bonus?: number; payments: PaymentLine[] } & PaymentDates, total: number): CommissionStatus {
+  let paid = 0
+  let payable = 0
+  let voided = 0
+  let clawback = 0
+  const settle = (amount: number, receivedAt: Date, paidAt: Date | null, refundedAt: Date | null | undefined): void => {
+    if (amount <= 0) return
+    if (c.refundedAt || refundedAt) {
+      // The client's money came back: a paid commission is an overpayment to claw back, an unpaid one is cancelled
+      if (paidAt) { paid += amount; clawback += amount } else voided += amount
+    } else if (c.terminatedAt && receivedAt > c.terminatedAt && !paidAt) voided += amount
+    else if (paidAt) paid += amount
+    else payable += amount
+  }
+  for (const p of c.payments) settle(p.commission, p.receivedAt, p.commissionPaidAt, p.refundedAt)
+  // The bonus only exists once the whole price has been paid
+  if (c.finalPaymentReceivedAt) settle(c.bonus ?? 0, c.finalPaymentReceivedAt, c.finalPaidAt, null)
+  const pending = Math.max(0, total - paid - payable - voided)
+  return { total, paid, payable, pending, ...(voided > 0 ? { voided } : {}), ...(clawback > 0 ? { clawback } : {}) }
+}
+
+/** The row of a won deal as the pages select it; `statusOf` turns it into paid / payable / pending. */
+export interface DealRow {
+  commissionTotal: number | null
+  commissionSnapshot?: unknown
+  finalPaymentReceivedAt: Date | null
+  finalPaidAt: Date | null
+  refundedAt?: Date | null
+  terminatedAt?: Date | null
+  payments: { commission: number; receivedAt: Date; commissionPaidAt: Date | null; refundedAt: Date | null }[]
+}
+
+export const statusOf = (r: DealRow): CommissionStatus =>
+  commissionStatus({ commissionTotal: r.commissionTotal, bonus: bonusOf(r.commissionSnapshot), finalPaymentReceivedAt: r.finalPaymentReceivedAt, finalPaidAt: r.finalPaidAt, refundedAt: r.refundedAt ?? null, terminatedAt: r.terminatedAt ?? null, payments: r.payments })
+
 /** What a salesperson may see about a won deal: the commission, how much is paid and how much is still to come. */
 export function salespersonCommissionView(s: CommissionStatus): { total: number; paid: number; pending: number; clawback?: number } {
-  return { total: s.total, paid: s.paid, pending: s.total - s.paid - (s.voided ?? 0) - (s.clawback ? s.total - s.paid : 0), ...(s.clawback ? { clawback: s.clawback } : {}) }
+  return { total: s.total, paid: s.paid, pending: Math.max(0, s.total - s.paid - (s.voided ?? 0)), ...(s.clawback ? { clawback: s.clawback } : {}) }
 }
 
 export const formatIls = (n: number): string => `₪${Math.round(n).toLocaleString('en-US')}`

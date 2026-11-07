@@ -60,7 +60,7 @@ export function termsFromCompany(c: CompanySettings, agentAddress: string): Lega
 /** True when the one-time company details needed on every agreement are filled in. */
 export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.trim().length >= 2 && c.idNumber.trim().length >= 5 && c.address.trim().length >= 5
 
-export const CONTRACT_VERSION = '2026-11-lawyer-v3'
+export const CONTRACT_VERSION = '2026-11-lawyer-v4'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -127,29 +127,29 @@ export function agreementSectionsHtml(d: ContractData): string {
 <p class="clause">${company} (the “Company”), engages ${name} (the “Sales Representative”) to solicit, introduce and secure clients for the Company’s web development, design and digital architecture services. The Sales Representative acts as an independent contractor and not as an employee, partner or legal representative of the Company.</p>
 <p class="clause">This agreement applies to every client the Sales Representative secures, wherever in the world that client is located or based.</p>
 <h2><span class="n">2.</span>COMMISSION TRIGGER EVENT</h2>
-<p class="clause">The Sales Representative earns a commission only when both of the following have happened (the “Trigger Event”):</p>
+<p class="clause">The Sales Representative earns commission on every payment the referred client makes, as each payment clears (each a “Trigger Event”). A payment earns commission once both of the following have happened:</p>
 <p class="item">The Company has received a fully executed, signed client agreement or statement of work, <b>and</b></p>
-<p class="item">the Company has received, in cleared funds, the full amount owed by the referred client under that agreement.</p>
-<p class="clause">No commission is earned or payable for unsigned proposals, defaulted payments, partly paid accounts or unpaid client accounts. No commission is paid in part, or advanced, before the full amount has been collected.</p>
+<p class="item">the Company has received that payment from the referred client in cleared funds.</p>
+<p class="clause">For example, if the client pays half of the contract price upfront, the Sales Representative earns the commission rate on that half; when the client pays the other half, the Sales Representative earns the commission rate on that half too. No commission is earned or payable for unsigned proposals, defaulted payments or money the Company has not received. The bonus described in Section 3 is not paid on any payment along the way: it is earned only at the end, as set out there.</p>
 <h2><span class="n">3.</span>COMMISSION RATE AND CALCULATION</h2>
 <div class="box">
-  <p class="boxtitle">Commission schedule (tiered)</p>
-  <p class="item"><b>Deals up to ${ils(f.threshold)}:</b> the Sales Representative receives ${pct(f.basePercent)} of the calculation base.</p>
-  <p class="item"><b>Deals above ${ils(f.threshold)}:</b> a base payout of ${ils(basePayout(f))} (${pct(f.basePercent)} of ${ils(f.threshold)}) plus an additional ${ils(f.bonus)} bonus for every completed ${ils(f.increment)} increment above ${ils(f.threshold)}. A part increment earns nothing.</p>
-  <p class="item"><b>Recurring maintenance:</b> the Sales Representative receives ${pct(f.basePercent)} of every recurring maintenance payment the client pays, for as long as the client keeps paying and this agreement is in force.</p>
+  <p class="boxtitle">Commission schedule</p>
+  <p class="item"><b>Rate:</b> the Sales Representative receives ${pct(f.basePercent)} of every payment the client pays, calculated on the calculation base.</p>
+  <p class="item"><b>Bonus, paid at the end only:</b> if the contract price is above ${ils(f.threshold)}, the Sales Representative also earns a ${ils(f.bonus)} bonus for every completed ${ils(f.increment)} of the contract price above ${ils(f.threshold)}. A part increment earns nothing. The bonus is paid only together with the commission on the final payment, once the client has paid the whole contract price. It is never paid in part or in advance, and it is not paid on earlier payments.</p>
+  <p class="item"><b>Recurring maintenance:</b> the Sales Representative receives ${pct(f.basePercent)} of every recurring maintenance payment the client pays, for as long as the client keeps paying and this agreement is in force. No bonus applies to maintenance payments.</p>
 </div>
-<p class="clause"><b>Calculation base:</b> the contract price collected by the Company from the secured client, excluding third-party hosting fees, taxes and direct out-of-pocket expenses.</p>
-<p class="clause"><b>Recurring maintenance:</b> if the secured client pays the Company a recurring maintenance fee (monthly or otherwise), the Sales Representative earns commission on each of those payments at the same rate as above (${pct(f.basePercent)}), calculated on the payment collected, excluding third-party hosting fees, taxes and direct out-of-pocket expenses. The bonus increments apply only to the contract price, not to maintenance payments. Each maintenance payment is earned once it has cleared, and is paid with the rest of that month’s commission under Section 4.</p>
-<p class="clause"><b>Commission type:</b> tiered commission on a collected contract price, as set out above.</p>
+<p class="clause"><b>Calculation base:</b> each payment the client pays to the Company, excluding third-party hosting fees, taxes and direct out-of-pocket expenses (these are spread over the payments in proportion).</p>
+<p class="clause"><b>Recurring maintenance:</b> if the secured client pays the Company a recurring maintenance fee (monthly or otherwise), the Sales Representative earns commission on each of those payments at the same rate (${pct(f.basePercent)}), calculated on the payment collected, excluding third-party hosting fees, taxes and direct out-of-pocket expenses. Each maintenance payment is earned once it has cleared, and is paid with the rest of that month’s commission under Section 4.</p>
+<p class="clause"><b>Commission type:</b> a percentage of every payment collected, plus a bonus at the end as set out above.</p>
 <h2><span class="n">4.</span>PAYMENT SCHEDULE</h2>
 <p class="clause">Commissions earned in a calendar month are processed and paid by the Company within <b>${t.payoutDays} business days</b> after the end of that month, provided all invoiced funds have cleared.</p>
 <h2><span class="n">5.</span>CLAWBACKS AND REFUNDS</h2>
-<p class="clause">If a client defaults, receives a legitimate refund, or the Company returns funds because the project was not delivered or is in dispute, within <b>${t.clawbackDays} days</b> of the transaction, any commission paid for that transaction is an overpayment. The Company may deduct that amount from future commission payments or ask the Sales Representative to repay it directly.</p>
+<p class="clause">If a client defaults, receives a legitimate refund, or the Company returns funds because the project was not delivered or is in dispute, within <b>${t.clawbackDays} days</b> of the transaction, any commission paid on that payment, and any bonus that depended on it, is an overpayment. The Company may deduct that amount from future commission payments or ask the Sales Representative to repay it directly.</p>
 <h2><span class="n">6.</span>CONFIDENTIALITY AND INTELLECTUAL PROPERTY</h2>
 <p class="clause">The Sales Representative may receive proprietary business information, client lists, code structures and trade secrets belonging to the Company. The Sales Representative keeps all of it strictly confidential and does not use it for competing ventures or give it to unauthorized third parties.</p>
 <h2><span class="n">7.</span>TERMINATION AND PENDING DEALS</h2>
 <p class="clause">Either party may end this agreement with <b>${t.noticeDays} days’ written notice</b> to the other party.</p>
-<p class="clause">After termination, the Sales Representative is still entitled to commission on deals where the Trigger Event happened before the termination takes effect. No commission accrues or is payable on deals finalized or paid after the termination date, whatever earlier negotiations or discussions took place. This includes recurring maintenance payments: commission is earned only on maintenance payments that cleared before the termination takes effect.</p>
+<p class="clause">After termination, the Sales Representative is still entitled to commission on every payment that cleared before the termination takes effect. No commission accrues or is payable on payments the Company receives after the termination date, whatever earlier negotiations or discussions took place. This includes recurring maintenance payments. The bonus is earned only if the client had paid the whole contract price before the termination takes effect.</p>
 <h2><span class="n">8.</span>GOVERNING LAW AND DISPUTE RESOLUTION</h2>
 <p class="clause">This agreement is governed by, and enforced in accordance with, the laws of <b>${esc(t.jurisdiction.trim())}</b>. Any dispute under this agreement is resolved exclusively by binding arbitration or by the local courts of that jurisdiction.</p>
 <p class="clause">The commission terms, payment terms and dispute terms apply in the same way whatever country the client is in, and whichever law governs the client’s own agreement.</p>`

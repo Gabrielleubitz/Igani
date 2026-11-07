@@ -97,7 +97,7 @@ d('audit fixes', async () => {
     const noPrice = await prisma.lead.create({ data: { email: 'b2@x.com', assignedToId: ann, status: 'PROPOSAL_SENT' } })
     const out = await prisma.$transaction(() => bulkUpdateLeadsTx([priced.id, noPrice.id], { status: 'WON' }, admin))
     expect(out.skippedNoPrice).toEqual([noPrice.id])
-    expect(await prisma.lead.findUniqueOrThrow({ where: { id: priced.id } })).toMatchObject({ status: 'WON', commissionTotal: 6_500 })
+    expect(await prisma.lead.findUniqueOrThrow({ where: { id: priced.id } })).toMatchObject({ status: 'WON', commissionTotal: 9_500 })
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: noPrice.id } })).status).toBe('PROPOSAL_SENT')
   })
 
@@ -132,9 +132,9 @@ d('audit fixes', async () => {
     expect(await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).toMatchObject({ assignedToId: bo, commissionTotal: 6_500 })
 
     expect((await leadActions.assignLead(l.id, ann, { mode: 'recalculate' })).ok).toBe(true) // Ann has the default 30%
-    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).commissionTotal).toBe(6_500)
-    expect((await leadActions.assignLead(l.id, bo, { mode: 'recalculate' })).ok).toBe(true) // Bo has 50%: 15,000 × 50% + 2 × 1,000
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).commissionTotal).toBe(9_500)
+    expect((await leadActions.assignLead(l.id, bo, { mode: 'recalculate' })).ok).toBe(true) // Bo has 50%: 25,000 × 50% + 2 × 1,000
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).commissionTotal).toBe(14_500)
 
     expect((await leadActions.assignLead(l.id, ann, { mode: 'custom', amount: 4_000 })).ok).toBe(true)
     expect(await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).toMatchObject({ assignedToId: ann, commissionTotal: 4_000 })
@@ -186,11 +186,26 @@ d('audit fixes', async () => {
   })
 
   it('payment dates must be real days, and the payout cannot precede the client payment', async () => {
-    const l = await won('dt@x.com')
-    expect((await dealActions.setCommissionPayment(l.id, { kind: 'received', date: '2026-02-31' })).ok).toBe(false)
-    expect((await dealActions.setCommissionPayment(l.id, { kind: 'received', date: '2026-11-10' })).ok).toBe(true)
-    expect((await dealActions.setCommissionPayment(l.id, { kind: 'paid', date: '2026-11-09' })).ok).toBe(false)
-    expect((await dealActions.setCommissionPayment(l.id, { kind: 'paid', date: '2026-11-10' })).ok).toBe(true)
+    const l = await won('dt@x.com') // price 25,000
+    expect((await dealActions.addLeadPayment(l.id, { amount: 25_000, date: '2026-02-31' })).ok).toBe(false)
+    expect((await dealActions.addLeadPayment(l.id, { amount: 25_000, date: '2026-11-10' })).ok).toBe(true)
+    const pay = await prisma.leadPayment.findFirstOrThrow({ where: { leadId: l.id } })
+    expect(pay.commission).toBe(7_500) // 30% of what was paid
+    expect((await dealActions.setPaymentCommissionPaid(pay.id, '2026-11-09')).ok).toBe(false)
+    expect((await dealActions.setPaymentCommissionPaid(pay.id, '2026-11-10')).ok).toBe(true)
+  })
+
+  it('commission is payable on each payment; the bonus only once the whole price is paid', async () => {
+    const l = await won('parts@x.com') // price 25,000, 30%: 7,500 plus a 2,000 bonus at the end
+    expect((await dealActions.addLeadPayment(l.id, { amount: 12_500, date: '2026-11-10' })).ok).toBe(true)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).finalPaymentReceivedAt).toBeNull() // not fully paid: no bonus yet
+    expect((await dealActions.setBonusPaid(l.id, '2026-11-11')).ok).toBe(false)
+    expect((await dealActions.addLeadPayment(l.id, { amount: 20_000, date: '2026-11-12' })).ok).toBe(false) // more than the price
+    expect((await dealActions.addLeadPayment(l.id, { amount: 12_500, date: '2026-11-20' })).ok).toBe(true)
+    const rows = await prisma.leadPayment.findMany({ where: { leadId: l.id }, orderBy: { createdAt: 'asc' } })
+    expect(rows.map((r) => r.commission)).toEqual([3_750, 3_750])
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).finalPaymentReceivedAt).not.toBeNull()
+    expect((await dealActions.setBonusPaid(l.id, '2026-11-21')).ok).toBe(true)
   })
 
   it('the team page counts a win by when it was won, not when the lead was last edited', async () => {

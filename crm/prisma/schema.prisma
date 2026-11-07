@@ -215,6 +215,8 @@ model Lead {
   excludedCosts          Int?
   /// The client's money was returned (refund, default or dispute). A paid commission then becomes an overpayment to claw back.
   refundedAt             DateTime?
+  /// Every payment the client made. Each one earns its own commission; finalPaymentReceivedAt is the day the whole price was paid.
+  payments               LeadPayment[]
   /// Legacy global flag. Archiving is per person now (LeadArchive); the migration moved existing archives over and this is unused.
   archived               Boolean        @default(false)
   tags                   String[]       @default([])
@@ -1010,4 +1012,23 @@ model VideoAck {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, videoId, createdAt])
+}
+
+/// One payment from the client on a won deal. The commission on it is fixed when it is recorded and is payable as it arrives.
+model LeadPayment {
+  id               String    @id @default(cuid())
+  leadId           String
+  /// Whole currency units the client paid
+  amount           Int
+  receivedAt       DateTime
+  /// The salesperson's commission on this payment (whole units), fixed when recorded
+  commission       Int
+  /// When that commission was paid out to the salesperson
+  commissionPaidAt DateTime?
+  /// When this payment was returned to the client (a paid commission is then clawed back)
+  refundedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  lead             Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, createdAt])
 }

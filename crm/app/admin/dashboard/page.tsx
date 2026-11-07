@@ -2,7 +2,8 @@ import { Banknote, Briefcase, CalendarCheck, CalendarDays, CircleCheck, HandCoin
 import { StatTile, Tag, type Tone } from '@/components/ui/tone'
 import Link from 'next/link'
 import { CommissionPayRow } from '@/components/admin/CommissionPayRow'
-import { commissionStatus } from '@/lib/commission'
+import { statusOf } from '@/lib/commission'
+import { loadPayoutRows } from '@/lib/payout-data'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -41,7 +42,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
     prisma.lead.aggregate({ where: open, _sum: { quotedPrice: true } }),
     prisma.lead.findMany({
       where: { status: 'WON', commissionTotal: { not: null } },
-      select: { id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, assignedTo: { select: { name: true, email: true } } },
+      select: { id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, commissionSnapshot: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, payments: { select: { commission: true, receivedAt: true, commissionPaidAt: true, refundedAt: true } }, assignedTo: { select: { name: true, email: true } } },
       orderBy: { updatedAt: 'desc' },
     }),
     prisma.lead.findMany({ orderBy: { createdAt: 'desc' }, take: 6, include: { assignedTo: { select: { name: true, email: true } } } }),
@@ -65,10 +66,10 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
   const openTasks = [...byPerson.entries()]
     .map(([id, v]) => ({ id, name: id === 'none' ? 'Unassigned' : (nameById.get(id) ?? 'Former teammate'), ...v, total: v.lead + v.meeting.length }))
     .sort((a, b) => b.total - a.total)
-  // Payable first (the client paid, the salesperson has not been paid), then waiting on the client, then paid.
-  const rank = (r: { finalPaymentReceivedAt: Date | null; finalPaidAt: Date | null }): number => (r.finalPaidAt ? 2 : r.finalPaymentReceivedAt ? 0 : 1)
+  // Commissions that can be paid out now: one row per client payment (and the bonus once the price is fully paid)
+  const payableRows = (await loadPayoutRows()).filter((r) => !r.paidAt && !r.refundedAt).sort((a, b) => (a.receivedAt?.getTime() ?? 0) - (b.receivedAt?.getTime() ?? 0))
   const owed = commissionRows.reduce((t, r) => {
-    const s = commissionStatus(r)
+    const s = statusOf(r)
     return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
   }, { total: 0, paid: 0, payable: 0, pending: 0 })
   const tiles: { label: string; value: string | number; href: string; icon: React.ReactNode; tone: Tone; tag?: React.ReactNode }[] = [
@@ -116,31 +117,21 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
                 { label: 'Total owed', value: owed.total, tone: 'blue', icon: <Wallet /> },
                 { label: 'Paid', value: owed.paid, tone: 'emerald', icon: <CircleCheck /> },
                 { label: 'Payable now', value: owed.payable, tone: owed.payable ? 'amber' : 'slate', icon: <HandCoins /> },
-                { label: 'Pending (client has not paid yet)', value: owed.pending, tone: 'violet', icon: <Hourglass /> },
+                { label: 'Pending (not paid by the client yet)', value: owed.pending, tone: 'violet', icon: <Hourglass /> },
               ] satisfies { label: string; value: number; tone: Tone; icon: React.ReactNode }[]
             ).map((t) => (
               <StatTile key={t.label} icon={t.icon} tone={t.tone} label={t.label} value={`₪${formatMoney(t.value)}`} />
             ))}
           </div>
-          {commissionRows.length > 0 ? (
+          {payableRows.length > 0 ? (
             <div className="mt-4 divide-y rounded-lg border">
-              {[...commissionRows]
-                .filter((r) => r.refundedAt === null || r.finalPaidAt !== null)
-                .sort((a, b) => rank(a) - rank(b))
-                .slice(0, 40)
-                .map((r) => (
-                  <CommissionPayRow
-                    key={r.id}
-                    leadId={r.id}
-                    lead={leadName(r)}
-                    salesperson={r.assignedTo ? (r.assignedTo.name ?? r.assignedTo.email ?? 'Teammate') : 'Unassigned'}
-                    amount={r.commissionTotal ?? 0}
-                    clientPaid={r.finalPaymentReceivedAt !== null}
-                    paidOut={r.finalPaidAt !== null}
-                  />
-                ))}
+              {payableRows.slice(0, 40).map((r) => (
+                <CommissionPayRow key={r.paymentId ?? `${r.leadId}-bonus`} leadId={r.leadId} paymentId={r.paymentId} label={r.label} lead={r.lead} salesperson={r.salesperson} amount={r.amount} paidOut={false} />
+              ))}
             </div>
-          ) : null}
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">Nothing is payable right now. Each client payment you record on a deal shows up here.</p>
+          )}
         </CardContent>
       </Card>
       <Card>

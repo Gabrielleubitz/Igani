@@ -38,6 +38,10 @@ export function payoutDueDate(month: string, payoutDays: number | null): Date | 
 
 export interface PayoutRow {
   leadId: string
+  /** The payment this commission is on, or null for the bonus */
+  paymentId: string | null
+  /** "Payment" or "Bonus" */
+  label: string
   lead: string
   salesperson: string
   email: string | null

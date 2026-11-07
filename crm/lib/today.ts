@@ -9,7 +9,7 @@ import type { SessionUser } from '@/lib/auth'
 import { bookingScope } from '@/lib/bookings'
 import { asAnalysis } from '@/lib/call-analysis'
 import { OPEN_PROSPECT } from '@/lib/call-lists'
-import { commissionStatus, salespersonCommissionView } from '@/lib/commission'
+import { salespersonCommissionView, statusOf } from '@/lib/commission'
 import { leadName } from '@/lib/format'
 import { notArchivedBy } from '@/lib/lead-archive'
 import { leadScope } from '@/lib/lead-access'
@@ -219,11 +219,11 @@ export async function loadToday(user: SessionUser) {
   // ── Money ──
   const pipelineValue = isAdmin ? openLeads.reduce((n, l) => n + (l.quotedPrice ?? 0), 0) : 0
   const proposals = openLeads.filter((l) => l.status === 'PROPOSAL_SENT' || l.status === 'SIGNED').length
-  const commissionRows = isAdmin || !seller ? [] : await prisma.lead.findMany({ where: { status: 'WON', assignedToId: user.id, commissionTotal: { not: null } }, select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true } })
+  const commissionRows = isAdmin || !seller ? [] : await prisma.lead.findMany({ where: { status: 'WON', assignedToId: user.id, commissionTotal: { not: null } }, select: { commissionTotal: true, commissionSnapshot: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, payments: { select: { commission: true, receivedAt: true, commissionPaidAt: true, refundedAt: true } } } })
   const commission = salespersonCommissionView(
     commissionRows.reduce(
       (t, r) => {
-        const s = commissionStatus(r)
+        const s = statusOf(r)
         return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
       },
       { total: 0, paid: 0, payable: 0, pending: 0 },

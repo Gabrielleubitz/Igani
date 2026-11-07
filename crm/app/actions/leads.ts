@@ -25,11 +25,11 @@ export async function updateLeadStatus(
     const id = z.string().cuid().parse(leadId)
     await assertCanMoveLead(id, user)
     const parsed = z.nativeEnum(LeadStatus).parse(status)
-    const current = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { status: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
+    const current = await prisma.lead.findUniqueOrThrow({ where: { id }, select: { status: true, finalPaymentReceivedAt: true, finalPaidAt: true, payments: { select: { id: true }, take: 1 } } })
     const problem = stageChangeProblem(user.role, current.status, parsed)
     if (problem) throw new BookingError(problem, 'FORBIDDEN')
-    if (current.status === 'WON' && parsed !== 'WON' && (current.finalPaymentReceivedAt || current.finalPaidAt)) {
-      throw new BookingError('This deal can’t leave Won: the client’s payment or the commission payout is already recorded. Undo those on the lead first.', 'INVALID_STATE')
+    if (current.status === 'WON' && parsed !== 'WON' && (current.finalPaymentReceivedAt || current.finalPaidAt || current.payments.length)) {
+      throw new BookingError('This deal can’t leave Won: a client payment or a commission payout is already recorded. Remove those on the lead first.', 'INVALID_STATE')
     }
     const ex = z.object({ lostReason: z.string().trim().max(500).optional(), quotedPrice: z.number().int().min(0).max(1_000_000_000).optional() }).parse(extras)
     // Prices are an admin matter: a salesperson can never enter or change one.
@@ -252,7 +252,7 @@ export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: 
     const ch = z.object({ assigneeId: z.string().cuid().nullable().optional(), status: z.nativeEnum(LeadStatus).optional() }).parse(change)
     if (ch.assigneeId !== undefined && admin.role !== 'ADMIN') throw new BookingError('Only admins can reassign contacts in bulk.', 'FORBIDDEN')
     if (ch.status) await assertCanSeeLeads(ids, admin, true)
-    const rows = await prisma.lead.findMany({ where: { id: { in: ids } }, select: { status: true, assignedToId: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true } })
+    const rows = await prisma.lead.findMany({ where: { id: { in: ids } }, select: { status: true, assignedToId: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, payments: { select: { id: true }, take: 1 } } })
     if (ch.assigneeId !== undefined && rows.some((r) => r.status === 'WON' && r.commissionTotal !== null && r.assignedToId !== ch.assigneeId)) {
       throw new BookingError('Some of these are won deals with a commission. Reassign those one at a time, from the lead, so you can decide what happens to the commission.', 'INVALID_STATE')
     }
@@ -260,7 +260,7 @@ export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: 
       const problem = rows.map((r) => stageChangeProblem(admin.role, r.status, ch.status!)).find(Boolean)
       if (problem) throw new BookingError(problem, 'FORBIDDEN')
     }
-    if (ch.status && ch.status !== 'WON' && rows.some((r) => r.status === 'WON' && (r.finalPaymentReceivedAt || r.finalPaidAt))) {
+    if (ch.status && ch.status !== 'WON' && rows.some((r) => r.status === 'WON' && (r.finalPaymentReceivedAt || r.finalPaidAt || r.payments.length))) {
       throw new BookingError('Some of these deals can’t leave Won: the client’s payment or the commission payout is already recorded.', 'INVALID_STATE')
     }
     if (ch.status === 'LOST') throw new BookingError('Mark leads as lost one by one so a reason is recorded.', 'INVALID_STATE')

@@ -51,10 +51,10 @@ export async function setQuotedPrice(leadId: string, price: number | null, actor
 export async function snapshotWonCommission(leadId: string, db: Db = prisma, opts: { force?: boolean } = {}): Promise<void> {
   const lead = await db.lead.findUniqueOrThrow({
     where: { id: leadId },
-    select: { status: true, quotedPrice: true, excludedCosts: true, assignedToId: true, commissionOverrides: true, commissionSnapshot: true, finalPaymentReceivedAt: true },
+    select: { status: true, quotedPrice: true, excludedCosts: true, assignedToId: true, commissionOverrides: true, commissionSnapshot: true, finalPaymentReceivedAt: true, payments: { select: { id: true }, take: 1 } },
   })
   if (lead.status !== 'WON' || !lead.quotedPrice || lead.quotedPrice <= 0) return
-  if (!opts.force && lead.finalPaymentReceivedAt) return
+  if (!opts.force && (lead.payments.length || lead.finalPaymentReceivedAt)) return
   const frozen = (lead.commissionSnapshot as { terms?: unknown } | null)?.terms
   const base = !opts.force && frozen ? parseTerms(frozen) : await termsForAssignee(lead.assignedToId, db)
   const terms = dealTerms(base, lead.commissionOverrides)

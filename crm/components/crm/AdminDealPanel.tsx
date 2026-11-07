@@ -3,12 +3,12 @@
 import type { LeadSourceType } from '@prisma/client'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
-import { recalculateWonCommission, saveCommissionOverrides, saveQuotedPrice, setCommissionPayment, setLeadSourceType } from '@/app/actions/deals'
+import { addLeadPayment, deleteLeadPayment, recalculateWonCommission, saveCommissionOverrides, saveQuotedPrice, setBonusPaid, setLeadSourceType, setPaymentCommissionPaid, setPaymentRefund } from '@/app/actions/deals'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input, Label, Select } from '@/components/ui/input'
 import { parseShekels } from '@/lib/money'
-import { type CommissionBreakdown, type CommissionTerms, calculateCommission, commissionStatus, formatIls } from '@/lib/commission'
+import { type CommissionBreakdown, type CommissionTerms, bonusOf, calculateCommission, commissionStatus, formatIls } from '@/lib/commission'
 import { DEFAULT_TIME_ZONE } from '@/lib/default-time-zone'
 import { localDateKey } from '@/lib/time'
 
@@ -25,8 +25,10 @@ export interface DealPanelProps {
   overridden: boolean
   /** Frozen when the deal was won */
   snapshot: { terms: CommissionTerms; breakdown: CommissionBreakdown; at: string | null; overridden: boolean } | null
-  /** The client's payment (makes the commission payable) and the payout to the salesperson */
+  /** The day the whole price was paid (the bonus becomes payable) and the day the bonus was paid out */
   payment: { finalPaymentReceivedAt: string | null; finalPaidAt: string | null }
+  /** Every client payment, with the commission on it */
+  payments: { id: string; amount: number; receivedAt: string; commission: number; commissionPaidAt: string | null; refundedAt: string | null }[]
 }
 
 const SOURCE_LABEL: Record<LeadSourceType, string> = { COLD_CALL: 'Salesperson cold call', ADS: 'Ads', OTHER: 'Other' }
@@ -102,57 +104,104 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
   const live = amount > 0 ? calculateCommission(amount, workingTerms) : null
   const frozen = p.isWon && p.snapshot
   const m = p.payment
+  const bonus = frozen ? bonusOf({ breakdown: p.snapshot!.breakdown }) : 0
   const status = frozen
     ? commissionStatus({
         commissionTotal: p.snapshot!.breakdown.total,
+        bonus,
         finalPaymentReceivedAt: m.finalPaymentReceivedAt ? new Date(m.finalPaymentReceivedAt) : null,
         finalPaidAt: m.finalPaidAt ? new Date(m.finalPaidAt) : null,
+        payments: p.payments.map((x) => ({ commission: x.commission, receivedAt: new Date(x.receivedAt), commissionPaidAt: x.commissionPaidAt ? new Date(x.commissionPaidAt) : null, refundedAt: x.refundedAt ? new Date(x.refundedAt) : null })),
       })
     : null
+  const dealPrice = p.quotedPrice ?? 0
+  const paidSoFar = p.payments.filter((x) => !x.refundedAt).reduce((n, x) => n + x.amount, 0)
+  const [payAmount, setPayAmount] = useState('')
+  const parsedPay = parseShekels(payAmount)
 
-  const paymentBox = (amountDue: number): React.ReactElement => (
-    <div className="space-y-2 rounded-md border p-3 text-sm">
+  const paymentsBox = (): React.ReactElement => (
+    <div className="space-y-3 rounded-md border p-3 text-sm">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-medium">Payout</span>
-        <span className="tabular-nums">{formatIls(amountDue)}</span>
+        <span className="font-medium">Client payments</span>
+        <span className="tabular-nums text-muted-foreground">
+          {formatIls(paidSoFar)} of {formatIls(dealPrice)} paid
+        </span>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {m.finalPaymentReceivedAt ? (
-          <>
-            <span className="text-emerald-400">Client paid on {day(m.finalPaymentReceivedAt)}</span>
-            {!m.finalPaidAt ? (
-              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'received', date: null }), 'Undone.')}>
-                Undo
-              </Button>
-            ) : null}
-          </>
-        ) : (
-          <Button size="sm" variant="outline" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'received', date: payDate }), 'Client payment recorded.')}>
-            Client payment received
-          </Button>
-        )}
-      </div>
-      {m.finalPaymentReceivedAt ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {m.finalPaidAt ? (
-            <>
-              <span className="text-emerald-400">Commission paid out on {day(m.finalPaidAt)}</span>
-              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'paid', date: null }), 'Undone.')}>
-                Undo
-              </Button>
-            </>
+      {p.payments.length === 0 ? <p className="text-xs text-muted-foreground">No payment yet. The commission on each payment becomes payable as you record it.</p> : null}
+      {p.payments.map((x, i) => (
+        <div key={x.id} className="space-y-1.5 rounded-md bg-muted/40 p-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              Payment {i + 1}: <b className="tabular-nums">{formatIls(x.amount)}</b> on {day(x.receivedAt)}
+            </span>
+            <span className="tabular-nums">Commission {formatIls(x.commission)}</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {x.refundedAt ? (
+              <>
+                <span className="text-amber-300">Returned to the client on {day(x.refundedAt)}{x.commissionPaidAt ? ': claw back the commission' : ': commission cancelled'}</span>
+                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setPaymentRefund(x.id, null), 'Refund undone.')}>Undo refund</Button>
+              </>
+            ) : x.commissionPaidAt ? (
+              <>
+                <span className="text-emerald-400">Commission paid out on {day(x.commissionPaidAt)}</span>
+                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setPaymentCommissionPaid(x.id, null), 'Undone.')}>Undo</Button>
+                <Button size="sm" variant="ghost" disabled={pending} onClick={() => window.confirm('Record that this payment was returned to the client? The commission already paid on it becomes an overpayment to claw back.') && run(() => setPaymentRefund(x.id, payDate), 'Refund recorded.')}>Refunded</Button>
+              </>
+            ) : (
+              <>
+                <span className="text-amber-300">Payable now: {formatIls(x.commission)}</span>
+                <Button size="sm" disabled={pending} onClick={() => run(() => setPaymentCommissionPaid(x.id, payDate), 'Marked as paid out.')}>Mark paid</Button>
+                <Button size="sm" variant="ghost" disabled={pending} onClick={() => window.confirm('Record that this payment was returned to the client? Its commission is cancelled.') && run(() => setPaymentRefund(x.id, payDate), 'Refund recorded.')}>Refunded</Button>
+                {i === p.payments.length - 1 ? (
+                  <Button size="sm" variant="ghost" disabled={pending} onClick={() => window.confirm('Remove this payment? Use this only if it was entered by mistake.') && run(() => deleteLeadPayment(x.id), 'Payment removed.')}>Remove</Button>
+                ) : null}
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+      {bonus > 0 ? (
+        <div className="space-y-1.5 rounded-md bg-muted/40 p-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>Bonus (paid only once the whole price is paid)</span>
+            <span className="tabular-nums">{formatIls(bonus)}</span>
+          </div>
+          {!m.finalPaymentReceivedAt ? (
+            <p className="text-xs text-muted-foreground">Not payable yet: {formatIls(Math.max(0, dealPrice - paidSoFar))} of the price is still to be paid.</p>
+          ) : m.finalPaidAt ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-emerald-400">Bonus paid out on {day(m.finalPaidAt)}</span>
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setBonusPaid(p.leadId, null), 'Undone.')}>Undo</Button>
+            </div>
           ) : (
-            <>
-              <span className="text-amber-300">Payable now: {formatIls(amountDue)}</span>
-              <Button size="sm" disabled={pending} onClick={() => run(() => setCommissionPayment(p.leadId, { kind: 'paid', date: payDate }), 'Marked as paid out.')}>
-                Mark commission paid
-              </Button>
-            </>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-amber-300">Payable now: {formatIls(bonus)}</span>
+              <Button size="sm" disabled={pending} onClick={() => run(() => setBonusPaid(p.leadId, payDate), 'Bonus marked as paid out.')}>Mark bonus paid</Button>
+            </div>
           )}
         </div>
-      ) : (
-        <p className="text-xs text-muted-foreground">Not payable until the client’s money is in.</p>
-      )}
+      ) : null}
+      {paidSoFar < dealPrice ? (
+        <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+          <label className="space-y-1 text-xs text-muted-foreground">
+            Client paid (₪)
+            <Input inputMode="numeric" className="h-8 w-32" placeholder={String(Math.max(0, dealPrice - paidSoFar))} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
+          </label>
+          <Button
+            size="sm"
+            disabled={pending || !parsedPay.ok || !parsedPay.value}
+            onClick={() => {
+              if (!parsedPay.ok || !parsedPay.value) return
+              run(() => addLeadPayment(p.leadId, { amount: parsedPay.value!, date: payDate }), 'Payment recorded.')
+              setPayAmount('')
+            }}
+          >
+            Add payment
+          </Button>
+          {!parsedPay.ok ? <span className="text-xs text-red-400">{parsedPay.error}</span> : null}
+        </div>
+      ) : null}
     </div>
   )
 
@@ -214,14 +263,14 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
                   </div>
                 ) : null}
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="pay-date" className="text-xs">Date for the next action</Label>
+                  <Label htmlFor="pay-date" className="text-xs">Date for the next payment or payout</Label>
                   <Input id="pay-date" type="date" className="h-8 w-40" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
                 </div>
-                {paymentBox(p.snapshot!.breakdown.total)}
+                {paymentsBox()}
                 {live && (live.total !== p.snapshot!.breakdown.total || amount !== p.snapshot!.breakdown.amount) ? (
                   <p className="text-xs text-amber-300">The price or terms now would give {formatIls(live.total)}. Save the price, then recalculate to refresh the frozen commission.</p>
                 ) : null}
-                {!m.finalPaymentReceivedAt ? null : <p className="text-xs text-muted-foreground">Client money is already in, so the commission only changes if you recalculate it yourself.</p>}
+                {p.payments.length === 0 ? null : <p className="text-xs text-muted-foreground">A client payment is recorded, and each payment’s commission was fixed when you entered it. Remove the payments first if the price or commission has to change.</p>}
                 <Button size="sm" variant="outline" disabled={pending} onClick={() => window.confirm('Recalculate this deal’s commission from the current price and terms?') && run(() => recalculateWonCommission(p.leadId), 'Commission recalculated.')}>
                   Recalculate
                 </Button>

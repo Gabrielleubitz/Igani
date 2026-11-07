@@ -30,7 +30,7 @@ import { appUrl } from '@/lib/env'
 import { formatDateTime, formatMoney, leadName, statusLabel, timeAgo } from '@/lib/format'
 import { recipientLabel } from '@/lib/email-labels'
 import { canSeeLead } from '@/lib/lead-access'
-import { dealTerms, parseTerms, commissionStatus, salespersonCommissionView, type CommissionBreakdown, type CommissionTerms } from '@/lib/commission'
+import { dealTerms, parseTerms, salespersonCommissionView, statusOf, type CommissionBreakdown, type CommissionTerms } from '@/lib/commission'
 import { termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
@@ -73,7 +73,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
   const isAdmin = user.role === 'ADMIN'
   const lead = await prisma.lead.findUnique({
     where: { id: params.id },
-    include: { assignedTo: { select: { name: true, email: true } }, bookings: { orderBy: { startTime: 'desc' }, take: 20, include: { host: { select: { name: true } }, meeting: true } } },
+    include: { assignedTo: { select: { name: true, email: true } }, payments: { orderBy: { createdAt: 'asc' } }, bookings: { orderBy: { startTime: 'desc' }, take: 20, include: { host: { select: { name: true } }, meeting: true } } },
   })
   if (!lead || !canSeeLead(user, lead)) notFound()
 
@@ -291,7 +291,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
       })()
     : null
   const myCommission =
-    !isAdmin && lead.status === 'WON' && lead.commissionTotal !== null && lead.assignedToId === user.id ? salespersonCommissionView(commissionStatus(lead)) : null
+    !isAdmin && lead.status === 'WON' && lead.commissionTotal !== null && lead.assignedToId === user.id ? salespersonCommissionView(statusOf(lead)) : null
 
   const facts: [string, React.ReactNode][] = (
     [
@@ -386,6 +386,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
                 finalPaymentReceivedAt: lead.finalPaymentReceivedAt?.toISOString() ?? null,
                 finalPaidAt: lead.finalPaidAt?.toISOString() ?? null,
               }}
+              payments={lead.payments.map((x) => ({ id: x.id, amount: x.amount, receivedAt: x.receivedAt.toISOString(), commission: x.commission, commissionPaidAt: x.commissionPaidAt?.toISOString() ?? null, refundedAt: x.refundedAt?.toISOString() ?? null }))}
             />
           ) : null}
           {adminDeal && lead.status === 'WON' ? (
@@ -394,8 +395,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
               leadId={lead.id}
               quotedPrice={lead.quotedPrice}
               excludedCosts={lead.excludedCosts}
-              clientPaidAt={lead.finalPaymentReceivedAt?.toISOString() ?? null}
-              refundedAt={lead.refundedAt?.toISOString() ?? null}
+              hasPayments={lead.payments.length > 0}
             />
           ) : null}
           {myCommission ? <MyCommissionCard {...myCommission} /> : null}

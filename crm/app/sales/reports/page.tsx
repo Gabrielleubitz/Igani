@@ -1,4 +1,4 @@
-import { commissionStatus, formatIls } from '@/lib/commission'
+import { formatIls, statusOf } from '@/lib/commission'
 import { buildReport } from '@/components/crm/crm-utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -37,7 +37,7 @@ export default async function ReportsPage(props: { searchParams: Promise<{ scope
     // Commission on my own won deals. These columns are all a salesperson ever gets; no prices, no terms.
     prisma.lead.findMany({
       where: { status: 'WON', commissionTotal: { not: null }, ...(user.role === 'ADMIN' ? (mine ? { assignedToId: user.id } : {}) : { assignedToId: user.id }) },
-      select: { commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true },
+      select: { commissionTotal: true, commissionSnapshot: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, payments: { select: { commission: true, receivedAt: true, commissionPaidAt: true, refundedAt: true } } },
     }),
     prisma.user.findMany({ where: user.role === 'SALES' ? { id: user.id } : {}, select: { id: true, name: true, email: true } }),
     prisma.booking.findMany({ where: { endTime: { lt: new Date(now), gte: d60 }, leadId: { not: null }, ...(mine ? { hostId: user.id } : {}) }, select: { status: true, endTime: true } }),
@@ -74,7 +74,7 @@ export default async function ReportsPage(props: { searchParams: Promise<{ scope
   const prev = window(d60, d30)
   const totalPipeline = leads.filter((l) => l.status !== 'WON' && l.status !== 'LOST').reduce((n, l) => n + (l.quotedPrice ?? 0), 0)
   const commission = commissionRows.reduce((t, r) => {
-    const s = commissionStatus(r)
+    const s = statusOf(r)
     return { total: t.total + s.total, paid: t.paid + s.paid, payable: t.payable + s.payable, pending: t.pending + s.pending }
   }, { total: 0, paid: 0, payable: 0, pending: 0 })
   /** Change in an amount, as a percentage of the previous period. */

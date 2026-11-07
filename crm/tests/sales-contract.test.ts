@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_FIGURES, type LegalTerms, namesMatch, agreementHtml as html, basePayout, validate, type ContractData } from '@/lib/sales-contract-core'
+import { DEFAULT_FIGURES, type LegalTerms, namesMatch, agreementHtml as html, validate, type ContractData } from '@/lib/sales-contract-core'
 import { isLinkCode, linkKey, newLinkCode, parseLink } from '@/lib/sales-contract-token'
 
 const TERMS: LegalTerms = { companyLegalName: 'Test Person', companyTradingAs: 'Test Brand', companyIdNumber: '123456789', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street, Rep City', payoutDays: 10, clawbackDays: 60, noticeDays: 30, jurisdiction: 'Test Jurisdiction' }
@@ -11,23 +11,27 @@ describe('commission wording', () => {
   const agreementHtml = (d: ContractData): string => html(d, view)
   const text = agreementHtml(data).replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')
   it('matches the reference agreement for Ariel’s figures', () => {
-    expect(basePayout(data.figures)).toBe(4500)
     expect(text).toContain('Representative: Ariel Tzadok | Effective Date: October 31, 2026')
     expect(text).toContain('Commission Agreement')
     expect(agreementHtml(data)).toContain('class="logo"')
     expect(text).toContain('Awaiting signature')
-    expect(text).toContain('Deals up to 15,000 ILS: the Sales Representative receives 30% of the calculation base.')
-    expect(text).toContain('a base payout of 4,500 ILS (30% of 15,000 ILS) plus an additional 1,000 ILS bonus for every completed 5,000 ILS increment above 15,000 ILS.')
+    expect(text).toContain('Rate: the Sales Representative receives 30% of every payment the client pays')
+    expect(text).toContain('Bonus, paid at the end only: if the contract price is above 15,000 ILS')
+    expect(text).toContain('a 1,000 ILS bonus for every completed 5,000 ILS of the contract price above 15,000 ILS')
+    expect(text).toContain('The bonus is paid only together with the commission on the final payment, once the client has paid the whole contract price. It is never paid in part or in advance')
+    expect(text).toContain('if the client pays half of the contract price upfront, the Sales Representative earns the commission rate on that half')
+    expect(text).not.toContain('base payout')
     expect(text).toContain('Test Person, trading as Test Brand (dba Igani), 1 Test Street, Test City, registered no. 123456789 (the “Company”)')
     expect(text).toContain('wherever in the world that client is located or based')
     expect(text).toContain('whatever country the client is in')
     expect(text.match(/dba Igani/g)?.length ?? 0).toBeGreaterThanOrEqual(3)
-    expect(text).toContain('the full amount owed by the referred client')
+    expect(text).toContain('the Company has received that payment from the referred client in cleared funds')
+    expect(text).not.toContain('full amount owed by the referred client')
     expect(text).toContain('Recurring maintenance: the Sales Representative receives 30% of every recurring maintenance payment the client pays')
-    expect(text).toContain('earns commission on each of those payments at the same rate as above (30%)')
-    expect(text).toContain('The bonus increments apply only to the contract price, not to maintenance payments')
-    expect(text).toContain('commission is earned only on maintenance payments that cleared before the termination takes effect')
-    expect(text).toContain('No commission is paid in part, or advanced')
+    expect(text).toContain('earns commission on each of those payments at the same rate (30%)')
+    expect(text).toContain('No bonus applies to maintenance payments')
+    expect(text).toContain('commission on every payment that cleared before the termination takes effect')
+    expect(text).toContain('The bonus is earned only if the client had paid the whole contract price before the termination takes effect')
     expect(text).toContain('excluding third-party hosting fees, taxes and direct out-of-pocket expenses')
     expect(text).toContain('within 10 business days after the end of that month')
     expect(text).toContain('within 60 days of the transaction')
@@ -40,7 +44,8 @@ describe('commission wording', () => {
   it('changes only the injected values and escapes them', () => {
     const t = agreementHtml({ ...data, name: '<b>X</b>', figures: { ...data.figures, threshold: 20000, basePercent: 25 } })
     expect(t).toContain('&lt;b&gt;X&lt;/b&gt;')
-    expect(t).toContain('5,000 ILS (25% of 20,000 ILS)')
+    expect(t).toContain('receives 25% of every payment the client pays')
+    expect(t).toContain('if the contract price is above 20,000 ILS')
   })
   it('validates input', () => {
     expect(validate(data)).toBeNull()

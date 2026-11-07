@@ -1,5 +1,5 @@
 import 'server-only'
-import { commissionStatus } from './commission'
+import { bonusOf } from './commission'
 import type { PayoutRow } from './payouts'
 import { prisma } from './prisma'
 
@@ -19,11 +19,19 @@ export async function latestTermsByEmail(emails: string[]): Promise<Map<string, 
   return out
 }
 
-/** Won deals whose client payment is in: the rows the Payouts page groups. Cancelled commissions (after termination) are left out. */
+/**
+ * The rows the Payouts page groups: one per client payment (its commission), plus one for the bonus once the whole price is paid.
+ * Commissions cancelled by the agreement ending are left out.
+ */
 export async function loadPayoutRows(): Promise<PayoutRow[]> {
   const leads = await prisma.lead.findMany({
-    where: { status: 'WON', commissionTotal: { not: null }, finalPaymentReceivedAt: { not: null } },
-    select: { id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true, assignedTo: { select: { name: true, email: true } } },
+    where: { status: 'WON', commissionTotal: { not: null }, payments: { some: {} } },
+    select: {
+      id: true, firstName: true, lastName: true, email: true, company: true, commissionTotal: true, commissionSnapshot: true,
+      finalPaymentReceivedAt: true, finalPaidAt: true, refundedAt: true,
+      payments: { select: { id: true, commission: true, receivedAt: true, commissionPaidAt: true, refundedAt: true }, orderBy: { createdAt: 'asc' } },
+      assignedTo: { select: { name: true, email: true } },
+    },
   })
   const emails = [...new Set(leads.map((l) => l.assignedTo?.email?.toLowerCase()).filter((e): e is string => !!e))]
   const [terms, allowed] = await Promise.all([
@@ -34,21 +42,21 @@ export async function loadPayoutRows(): Promise<PayoutRow[]> {
   const rows: PayoutRow[] = []
   for (const l of leads) {
     const email = l.assignedTo?.email?.toLowerCase() ?? null
-    const s = commissionStatus({ commissionTotal: l.commissionTotal, finalPaymentReceivedAt: l.finalPaymentReceivedAt, finalPaidAt: l.finalPaidAt, refundedAt: l.refundedAt, terminatedAt: email ? ended.get(email) ?? null : null })
-    if (s.voided) continue
+    const endedAt = email ? ended.get(email) ?? null : null
     const t = email ? terms.get(email) : undefined
-    rows.push({
-      leadId: l.id,
-      lead: l.company || [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || 'Deal',
-      salesperson: l.assignedTo?.name ?? l.assignedTo?.email ?? 'Unassigned',
-      email,
-      amount: l.commissionTotal ?? 0,
-      receivedAt: l.finalPaymentReceivedAt,
-      paidAt: l.finalPaidAt,
-      refundedAt: l.refundedAt,
-      payoutDays: t?.payoutDays ?? null,
-      clawbackDays: t?.clawbackDays ?? null,
-    })
+    const name = l.company || [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || 'Deal'
+    const person = l.assignedTo?.name ?? l.assignedTo?.email ?? 'Unassigned'
+    const common = { leadId: l.id, lead: name, salesperson: person, email, payoutDays: t?.payoutDays ?? null, clawbackDays: t?.clawbackDays ?? null }
+    const cancelled = (receivedAt: Date, paidAt: Date | null): boolean => !!endedAt && receivedAt > endedAt && !paidAt
+    for (const p of l.payments) {
+      if (p.commission <= 0 || cancelled(p.receivedAt, p.commissionPaidAt)) continue
+      rows.push({ ...common, paymentId: p.id, label: 'Payment', amount: p.commission, receivedAt: p.receivedAt, paidAt: p.commissionPaidAt, refundedAt: p.refundedAt ?? l.refundedAt })
+    }
+    const bonus = bonusOf(l.commissionSnapshot)
+    if (bonus > 0 && l.finalPaymentReceivedAt && !cancelled(l.finalPaymentReceivedAt, l.finalPaidAt)) {
+      rows.push({ ...common, paymentId: null, label: 'Bonus', amount: bonus, receivedAt: l.finalPaymentReceivedAt, paidAt: l.finalPaidAt, refundedAt: l.refundedAt })
+    }
   }
   return rows
 }
+
