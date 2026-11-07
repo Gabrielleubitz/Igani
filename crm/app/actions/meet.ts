@@ -8,6 +8,8 @@ import { sendMeetInviteEmail } from '@/lib/email'
 import { appUrl } from '@/lib/env'
 import { deleteMeetRecording as deleteStoredRecording } from '@/lib/cloudinary'
 import { meetAvailable, meetConfigFor, meetRecordingReady, meetSetupProblem, newInviteToken, newRoomCode, parseInviteEmails, type MeetConfig } from '@/lib/meet'
+import { canManageMeet } from '@/lib/meet-access'
+import { meetUrl } from '@/lib/meet-links'
 import { saveMeetRecording } from '@/lib/meet-recording'
 import { prisma } from '@/lib/prisma'
 import { zonedInputToDate } from '@/lib/time'
@@ -24,6 +26,24 @@ const RoomInput = z.object({
   emails: z.string().max(5000).default(''),
   send: z.boolean().default(true),
 })
+
+/** Only the meeting's host or an admin may change it. Throws a plain message otherwise. */
+async function manageRoom(roomId: string): Promise<{ id: string }> {
+  const user = await requireUser()
+  const room = await prisma.meetRoom.findUnique({ where: { id: z.string().max(40).parse(roomId) }, select: { id: true, hostId: true } })
+  if (!room || !canManageMeet(user, room)) throw new MeetForbidden()
+  return room
+}
+
+class MeetForbidden extends Error {
+  constructor() {
+    super('Only the meeting’s host or an admin can do that.')
+  }
+}
+
+function meetError(err: unknown): { ok: false; error: string } {
+  return err instanceof MeetForbidden ? { ok: false, error: err.message } : toActionError(err)
+}
 
 /** Teammates (by id) plus outside addresses, deduplicated by email. */
 async function people(userIds: string[], emails: string): Promise<{ email: string; name: string | null; userId: string | null }[]> {
@@ -52,7 +72,7 @@ async function sendInvites(roomId: string, inviteIds: string[]): Promise<{ sent:
         title: room.title,
         hostName: room.host?.name ?? 'Igani',
         hostEmail: room.host?.email ?? 'hello@igani.co',
-        joinUrl: appUrl(`/meet/${room.code}?t=${encodeURIComponent(inv.token)}`),
+        joinUrl: meetUrl(`/${room.code}?t=${encodeURIComponent(inv.token)}`),
         start: room.scheduledAt,
         durationMin: room.durationMin,
         timeZone: room.host?.timeZone ?? 'Asia/Jerusalem',
@@ -71,7 +91,7 @@ async function sendInvites(roomId: string, inviteIds: string[]): Promise<{ sent:
 
 export async function createMeetRoom(input: z.input<typeof RoomInput>): Promise<ActionResult<{ code: string; sent: number; failed: number }>> {
   try {
-    const user = await requireUser(['ADMIN'])
+    const user = await requireUser()
     if (!meetAvailable()) return { ok: false, error: meetSetupProblem() ?? 'Igani Meet isn’t set up yet: add the 8x8 keys in Vercel (see the setup box on this page).' }
     const v = RoomInput.parse(input)
     const me = await prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { timeZone: true, email: true } })
@@ -86,13 +106,13 @@ export async function createMeetRoom(input: z.input<typeof RoomInput>): Promise<
     revalidatePath(PAGE)
     return { ok: true, data: { code: room.code, ...r } }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }
 
 export async function addMeetInvites(input: { roomId: string; userIds?: string[]; emails?: string }): Promise<ActionResult<{ added: number; sent: number; failed: number }>> {
   try {
-    await requireUser(['ADMIN'])
+    await manageRoom(input.roomId)
     const room = await prisma.meetRoom.findUniqueOrThrow({ where: { id: z.string().parse(input.roomId) }, select: { id: true, host: { select: { email: true } }, invites: { select: { email: true } } } })
     const have = new Set([...room.invites.map((i) => i.email), room.host?.email?.toLowerCase()])
     const fresh = (await people(input.userIds ?? [], input.emails ?? '')).filter((p) => !have.has(p.email))
@@ -102,38 +122,38 @@ export async function addMeetInvites(input: { roomId: string; userIds?: string[]
     revalidatePath(PAGE)
     return { ok: true, data: { added: created.length, ...r } }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }
 
 export async function resendMeetInvite(inviteId: string): Promise<ActionResult<{ sent: number; failed: number }>> {
   try {
-    await requireUser(['ADMIN'])
     const inv = await prisma.meetInvite.findUniqueOrThrow({ where: { id: z.string().parse(inviteId) }, select: { id: true, roomId: true } })
+    await manageRoom(inv.roomId)
     const r = await sendInvites(inv.roomId, [inv.id])
     revalidatePath(PAGE)
     return { ok: true, data: r }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }
 
 export async function removeMeetInvite(inviteId: string): Promise<ActionResult> {
   try {
-    await requireUser(['ADMIN'])
-    await prisma.meetInvite.delete({ where: { id: z.string().parse(inviteId) } })
+    const inv = await prisma.meetInvite.findUniqueOrThrow({ where: { id: z.string().parse(inviteId) }, select: { id: true, roomId: true } })
+    await manageRoom(inv.roomId)
+    await prisma.meetInvite.delete({ where: { id: inv.id } })
     revalidatePath(PAGE)
     return { ok: true, data: undefined }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }
 
 /** Ends a room: its links stop working. Deleting removes it from the list. */
 export async function endMeetRoom(roomId: string, opts: { remove?: boolean } = {}): Promise<ActionResult> {
   try {
-    await requireUser(['ADMIN'])
-    const id = z.string().parse(roomId)
+    const { id } = await manageRoom(roomId)
     if (opts.remove) {
       const recs = await prisma.meetRecording.findMany({ where: { roomId: id, publicId: { not: null } }, select: { publicId: true } })
       await Promise.all(recs.map((r) => deleteStoredRecording(r.publicId!).catch((err: unknown) => console.error('[meet] recording delete failed', err))))
@@ -143,36 +163,38 @@ export async function endMeetRoom(roomId: string, opts: { remove?: boolean } = {
     revalidatePath(PAGE)
     return { ok: true, data: undefined }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }
 
 /** Tries again to copy a recording into Igani's storage (while 8x8 still has it). */
 export async function retryMeetRecording(recordingId: string): Promise<ActionResult> {
   try {
-    await requireUser(['ADMIN'])
-    await saveMeetRecording(z.string().max(40).parse(recordingId))
+    const rec = await prisma.meetRecording.findUniqueOrThrow({ where: { id: z.string().max(40).parse(recordingId) }, select: { id: true, roomId: true } })
+    await manageRoom(rec.roomId)
+    await saveMeetRecording(rec.id)
     revalidatePath(PAGE)
     return { ok: true, data: undefined }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }
 
 export async function removeMeetRecording(recordingId: string): Promise<ActionResult> {
   try {
-    await requireUser(['ADMIN'])
-    const rec = await prisma.meetRecording.delete({ where: { id: z.string().max(40).parse(recordingId) }, select: { publicId: true } })
+    const found = await prisma.meetRecording.findUniqueOrThrow({ where: { id: z.string().max(40).parse(recordingId) }, select: { id: true, roomId: true } })
+    await manageRoom(found.roomId)
+    const rec = await prisma.meetRecording.delete({ where: { id: found.id }, select: { publicId: true } })
     if (rec.publicId) await deleteStoredRecording(rec.publicId).catch((err: unknown) => console.error('[meet] recording delete failed', err))
     revalidatePath(PAGE)
     return { ok: true, data: undefined }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }
 
 /**
- * Joining a room: with an invite token (guests and invited teammates), or signed in as an admin (hosts). Returns the
+ * Joining a room: with an invite token (guests and invited teammates), or signed in as its host, an invited teammate or an admin. Returns the
  * signed pass for this person only. Ended rooms and wrong tokens get a plain answer, never a hint about other rooms.
  */
 export async function joinMeet(input: { code: string; token: string | null; name: string }): Promise<ActionResult<{ config: MeetConfig; name: string; avatar: string | null; moderator: boolean; canRecord: boolean }>> {
@@ -185,7 +207,7 @@ export async function joinMeet(input: { code: string; token: string | null; name
     const user = await currentUserOrNull()
     const invite = input.token ? await prisma.meetInvite.findUnique({ where: { token: z.string().max(100).parse(input.token) } }) : null
     if (invite && invite.roomId !== room.id) return { ok: false, error: 'This call link isn’t valid.' }
-    const viaUser = !invite && user ? (user.role === 'ADMIN' ? true : Boolean(await prisma.meetInvite.findFirst({ where: { roomId: room.id, userId: user.id }, select: { id: true } }))) : false
+    const viaUser = !invite && user ? (canManageMeet(user, room) ? true : Boolean(await prisma.meetInvite.findFirst({ where: { roomId: room.id, userId: user.id }, select: { id: true } }))) : false
     if (!invite && !viaUser) return { ok: false, error: input.token ? 'This invite link isn’t valid any more. Ask the host to send it again.' : 'You need an invite link to join this call.' }
     const me = user ? await prisma.user.findUnique({ where: { id: user.id }, select: { id: true, name: true, email: true, image: true, role: true } }) : null
     const teammate = me && (!invite || invite.userId === me.id || invite.email === me.email?.toLowerCase()) ? me : null
@@ -203,6 +225,6 @@ export async function joinMeet(input: { code: string; token: string | null; name
     if (invite) await prisma.meetInvite.update({ where: { id: invite.id }, data: { joinedAt: invite.joinedAt ?? new Date(), ...(teammate ? {} : { name }) } })
     return { ok: true, data: { config, name: display, avatar, moderator, canRecord: moderator && !config.testServer && meetRecordingReady() } }
   } catch (err) {
-    return toActionError(err)
+    return meetError(err)
   }
 }

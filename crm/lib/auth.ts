@@ -40,6 +40,13 @@ export async function timeZoneFor(email: string): Promise<string> {
   return typeof zone === 'string' && zone ? zone : DEFAULT_TIME_ZONE
 }
 
+/**
+ * The CRM (app.igani.co) and Igani Meet (meet.igani.co) each have their own sign-in on their own host, so NextAuth
+ * must build its URLs (Google's return address, redirects, cookies) from the host the request came in on rather than one
+ * fixed NEXTAUTH_URL. On Vercel the host is set by Vercel itself, so trusting it is safe; locally AUTH_TRUST_HOST=1 opts in.
+ */
+if (process.env.VERCEL || process.env.AUTH_TRUST_HOST) delete process.env.NEXTAUTH_URL
+
 /** Dev/QA-only email login. Never enabled in production builds, and still requires an active whitelist entry. */
 const devLoginEnabled = (): boolean => process.env.NODE_ENV !== 'production' && process.env.DEV_LOGIN === '1'
 

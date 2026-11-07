@@ -8,6 +8,7 @@ import { addMeetInvites, createMeetRoom } from '@/app/actions/meet'
 import { cn } from '@/lib/utils'
 import { Invitees, NewMeetForm, RoomCard, type RoomView, type Teammate } from './MeetAdmin'
 import { MeetCarousel } from './MeetCarousel'
+import { useMeetPaths } from './paths'
 
 export interface MeetStatus {
   configured: boolean
@@ -21,8 +22,9 @@ export interface MeetStatus {
 const BLUE_BTN = 'inline-flex items-center justify-center gap-2 rounded-full bg-[#a8c7fa] font-medium text-[#062e6f] transition hover:bg-[#b9d2fb] hover:shadow-lg hover:shadow-[#a8c7fa]/10 active:scale-[0.98] disabled:opacity-50'
 
 /** A Google Meet-style home for Igani Meet: start or schedule a meeting, join by code, and manage your meetings. */
-export function MeetHome({ me, status, teammates, rooms }: { me: { name: string; email: string; avatar: string | null }; status: MeetStatus; teammates: Teammate[]; rooms: RoomView[] }): React.ReactElement {
+export function MeetHome({ me, admin, status, teammates, rooms }: { me: { name: string; email: string; avatar: string | null }; admin: boolean; status: MeetStatus; teammates: Teammate[]; rooms: RoomView[] }): React.ReactElement {
   const router = useRouter()
+  const { path, crm } = useMeetPaths()
   const [now, setNow] = useState<number | null>(null)
   const [menu, setMenu] = useState(false)
   const [dialog, setDialog] = useState<'later' | 'schedule' | 'setup' | null>(null)
@@ -55,7 +57,7 @@ export function MeetHome({ me, status, teammates, rooms }: { me: { name: string;
     start(async () => {
       const r = await createMeetRoom({ title: `${first}’s meeting`, send: false })
       if (!r.ok) return setErr(r.error)
-      if (instant) router.push(`/meet/${r.data.code}`)
+      if (instant) router.push(path(`/${r.data.code}`))
       else {
         router.refresh()
         setLater({ code: r.data.code })
@@ -67,9 +69,9 @@ export function MeetHome({ me, status, teammates, rooms }: { me: { name: string;
     const v = code.trim()
     if (!v) return
     const m = /\/meet\/([a-z0-9-]+)(\?[^#\s]*)?/i.exec(v)
-    if (m) return router.push(`/meet/${m[1]!.toLowerCase()}${m[2] ?? ''}`)
+    if (m) return router.push(path(`/${m[1]!.toLowerCase()}${m[2] ?? ''}`))
     const c = v.toLowerCase().replace(/\s+/g, '')
-    router.push(`/meet/${c.startsWith('igani-') ? c : `igani-${c}`}`)
+    router.push(path(`/${c.startsWith('igani-') ? c : `igani-${c}`}`))
   }
   const open = rooms.filter((r) => !r.ended)
   const ended = rooms.filter((r) => r.ended)
@@ -78,7 +80,7 @@ export function MeetHome({ me, status, teammates, rooms }: { me: { name: string;
   return (
     <div className="dark min-h-screen bg-[#0e1626] pb-[env(safe-area-inset-bottom)] text-[#e3e8f0]">
       <header className="flex h-16 items-center gap-3 px-4 pt-[env(safe-area-inset-top)] sm:px-6">
-        <Link href="/meet" className="flex items-center gap-2.5">
+        <Link href={path('/')} className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element -- static brand icon */}
           <img src="/meet/igani-meet-icon.png" alt="" className="h-10 w-10 rounded-[24%] shadow-lg shadow-black/30" />
           <span className="text-[22px] tracking-tight">
@@ -91,13 +93,15 @@ export function MeetHome({ me, status, teammates, rooms }: { me: { name: string;
               {new Date(now).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} • {new Date(now).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
             </span>
           ) : null}
-          <button type="button" onClick={() => setDialog('setup')} aria-label="Settings" title="Settings" className="relative rounded-full p-2.5 text-[#c4cbd6] transition hover:bg-white/10">
-            <Settings className="h-6 w-6" />
-            {status.problem || !status.configured || !status.recording ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-400" /> : null}
-          </button>
-          <Link href="/sales/today" aria-label="Back to the CRM" title="Back to the CRM" className="rounded-full p-2.5 text-[#c4cbd6] transition hover:bg-white/10">
+          {admin ? (
+            <button type="button" onClick={() => setDialog('setup')} aria-label="Settings" title="Settings" className="relative rounded-full p-2.5 text-[#c4cbd6] transition hover:bg-white/10">
+              <Settings className="h-6 w-6" />
+              {status.problem || !status.configured || !status.recording ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-400" /> : null}
+            </button>
+          ) : null}
+          <a href={crm} aria-label="Back to the CRM" title="Back to the CRM" className="rounded-full p-2.5 text-[#c4cbd6] transition hover:bg-white/10">
             <LayoutGrid className="h-6 w-6" />
-          </Link>
+          </a>
           <span className="ml-1 flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-[#6aa6ff] to-[#2f5fd0] text-sm font-semibold" title={`${me.name}\n${me.email}`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- small profile photo */}
             {me.avatar ? <img src={me.avatar} alt="" className="h-full w-full object-cover" /> : me.name.charAt(0).toUpperCase()}
@@ -239,7 +243,8 @@ function LaterDialog({ code, roomId, teammates, onClose }: { code: string; roomI
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
   const router = useRouter()
-  const link = typeof window !== 'undefined' ? `${window.location.origin}/meet/${code}` : `/meet/${code}`
+  const { path } = useMeetPaths()
+  const link = typeof window !== 'undefined' ? `${window.location.origin}${path(`/${code}`)}` : path(`/${code}`)
   return (
     <Dialog title="Here’s your meeting" onClose={onClose}>
       <p className="text-sm text-[#9aa4b2]">Save this link to use later. It works for Igani admins and anyone you add below.</p>
@@ -292,7 +297,7 @@ function LaterDialog({ code, roomId, teammates, onClose }: { code: string; roomI
         </p>
       )}
       <div className="mt-6 flex justify-end gap-2">
-        <Link href={`/meet/${code}`} className={cn(BLUE_BTN, 'h-10 px-5 text-sm')}>
+        <Link href={path(`/${code}`)} className={cn(BLUE_BTN, 'h-10 px-5 text-sm')}>
           <Video className="h-4 w-4" /> Join now
         </Link>
       </div>
@@ -351,7 +356,7 @@ function SetupDialog({ status, onClose }: { status: MeetStatus; onClose: () => v
         {row(status.storage, status.storage ? 'Recordings are kept' : 'Recordings expire after 24 hours', status.storage ? 'Each recording is copied to Igani’s private storage (Cloudinary).' : 'Add CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET in Vercel so recordings are kept.')}
       </div>
       <p className="mt-4 flex items-center gap-2 text-xs text-[#9aa4b2]">
-        <CircleDot className="h-3.5 w-3.5 text-[#f28b82]" /> Igani Meet is for admins for now. Guests join with the personal link from their invite.
+        <CircleDot className="h-3.5 w-3.5 text-[#f28b82]" /> Only signed-in teammates can open Igani Meet and start meetings (no sign-ups). Guests join with the personal link from their invite.
       </p>
     </Dialog>
   )

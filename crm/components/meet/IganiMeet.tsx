@@ -7,6 +7,7 @@ import { addMeetInvites, joinMeet } from '@/app/actions/meet'
 import type { MeetConfig } from '@/lib/meet'
 import { isStaleDeployError, markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
+import { useMeetPaths } from './paths'
 import { playCue, setSoundOutput, setSoundsMuted, unlockSounds } from './sounds'
 
 /* The parts of Jitsi's iframe API we use (https://jitsi.github.io/handbook/docs/dev-guide/dev-guide-iframe). */
@@ -208,9 +209,10 @@ export interface IganiMeetProps {
   hostAvatar: string | null
   startsAt: string | null
   durationMin: number
-  /** admins: the room (to add people from inside the call) and a way back to Igani Meet's home */
+  /** the host or an admin: the room, to add people from inside the call */
   roomId: string | null
-  isAdmin: boolean
+  /** a signed-in teammate: gets a way back to the Meet home */
+  isMember: boolean
 }
 
 type Phase = 'prejoin' | 'joining' | 'reconnecting' | 'live' | 'left' | 'ended' | 'error'
@@ -299,7 +301,8 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
 
   useEffect(() => () => api.current?.dispose(), [])
 
-  const home = p.isAdmin ? { label: 'Return to home screen', href: '/meet' } : undefined
+  const { path } = useMeetPaths()
+  const home = p.isMember ? { label: 'Return to home screen', href: path('/') } : undefined
   return (
     <div className="dark fixed inset-0 flex flex-col overflow-hidden text-white" style={{ background: BG }}>
       {phase === 'prejoin' || phase === 'joining' ? <PreJoin {...p} name={name} setName={setName} picked={picked} setPicked={setPicked} joining={phase === 'joining'} onJoin={() => void join()} /> : null}
@@ -1381,7 +1384,8 @@ function DetailsPanel({ code, roomId, title, joinedAt, now, testServer }: { code
   const [emails, setEmails] = useState('')
   const [msg, setMsg] = useState<string | null>(null)
   const [pending, start] = useTransition()
-  const link = typeof window !== 'undefined' ? `${window.location.origin}/meet/${code}` : `/meet/${code}`
+  const { path } = useMeetPaths()
+  const link = typeof window !== 'undefined' ? `${window.location.origin}${path(`/${code}`)}` : path(`/${code}`)
   return (
     <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-5 pb-5 text-sm">
       <div>

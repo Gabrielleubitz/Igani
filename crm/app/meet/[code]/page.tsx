@@ -3,6 +3,7 @@ import { IganiMeet } from '@/components/meet/IganiMeet'
 import { currentUserOrNull } from '@/lib/auth'
 import { avatarPath } from '@/lib/avatar'
 import { meetScriptUrl } from '@/lib/meet'
+import { canManageMeet } from '@/lib/meet-access'
 import { prisma } from '@/lib/prisma'
 
 export const metadata: Metadata = { robots: { index: false, follow: false } }
@@ -22,7 +23,8 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
   ])
   const invite = room && token ? await prisma.meetInvite.findFirst({ where: { token, roomId: room.id }, select: { name: true, email: true, userId: true } }) : null
   const invitedUser = room && user && !invite ? await prisma.meetInvite.findFirst({ where: { roomId: room.id, userId: user.id }, select: { id: true } }) : null
-  const allowed = Boolean(room && !room.endedAt && (invite || user?.role === 'ADMIN' || invitedUser))
+  const manages = Boolean(room && user && canManageMeet(user, room))
+  const allowed = Boolean(room && !room.endedAt && (invite || manages || invitedUser))
   if (!room || !allowed) {
     return (
       <IganiMeet.Closed
@@ -48,8 +50,8 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
       hostAvatar={room.host ? avatarPath(room.host) : null}
       startsAt={room.scheduledAt?.toISOString() ?? null}
       durationMin={room.durationMin}
-      roomId={user?.role === 'ADMIN' ? room.id : null}
-      isAdmin={user?.role === 'ADMIN'}
+      roomId={manages ? room.id : null}
+      isMember={Boolean(user)}
     />
   )
 }

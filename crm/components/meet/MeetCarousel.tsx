@@ -113,7 +113,7 @@ function ShareScene(): React.ReactElement {
           <div className="mt-3 flex items-center gap-1.5 rounded-lg bg-[#0b1322] px-2.5 py-2 text-[11px] text-[#c4cbd6]">
             <Link2 className="h-3.5 w-3.5 shrink-0 text-[#a8c7fa]" />
             <motion.span className="block overflow-hidden whitespace-nowrap" animate={{ maxWidth: [0, 0, 162, 162, 0] }} transition={beat([0, 0.06, 0.3, 0.95, 1], 'linear')}>
-              app.igani.co/meet/kq7-m2x
+              meet.igani.co/kq7-m2x
             </motion.span>
             <motion.span className="h-3.5 w-px bg-[#a8c7fa]" animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} />
           </div>

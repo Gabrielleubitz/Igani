@@ -108,3 +108,41 @@ describe('Igani Meet', () => {
     expect(withFromName('Igani <bookings@igani.co>', '  ')).toBe('Igani <bookings@igani.co>')
   })
 })
+
+describe('Igani Meet on its own host', () => {
+  it('recognises meet.igani.co, meet.localhost and MEET_URL’s host, nothing else', async () => {
+    const { isMeetHost } = await import('@/lib/meet-host')
+    expect(isMeetHost('meet.igani.co')).toBe(true)
+    expect(isMeetHost('MEET.igani.co')).toBe(true)
+    expect(isMeetHost('meet.localhost:3100')).toBe(true)
+    expect(isMeetHost('app.igani.co')).toBe(false)
+    expect(isMeetHost('meet.app.igani.co')).toBe(false)
+    expect(isMeetHost('evilmeet.igani.co')).toBe(false)
+    expect(isMeetHost(null)).toBe(false)
+    const before = process.env.MEET_URL
+    process.env.MEET_URL = 'https://calls.example.com'
+    try {
+      expect(isMeetHost('calls.example.com')).toBe(true)
+    } finally {
+      if (before === undefined) delete process.env.MEET_URL
+      else process.env.MEET_URL = before
+    }
+  })
+
+  it('maps the CRM’s /meet paths to the Meet host’s root', async () => {
+    const { stripMeetPrefix, isFilePath } = await import('@/lib/meet-host')
+    expect(stripMeetPrefix('/meet')).toBe('/')
+    expect(stripMeetPrefix('/meet/igani-abc')).toBe('/igani-abc')
+    expect(stripMeetPrefix('/meeting')).toBe('/meeting')
+    expect(isFilePath('/meet/icon-32.png')).toBe(true)
+    expect(isFilePath('/meet/igani-abc')).toBe(false)
+  })
+
+  it('lets the host or an admin run a meeting, and no other teammate', async () => {
+    const { canManageMeet } = await import('@/lib/meet-access')
+    expect(canManageMeet({ id: 'u1', role: 'SALES' }, { hostId: 'u1' })).toBe(true)
+    expect(canManageMeet({ id: 'u2', role: 'SALES' }, { hostId: 'u1' })).toBe(false)
+    expect(canManageMeet({ id: 'u2', role: 'MARKETING' }, { hostId: null })).toBe(false)
+    expect(canManageMeet({ id: 'u3', role: 'ADMIN' }, { hostId: 'u1' })).toBe(true)
+  })
+})

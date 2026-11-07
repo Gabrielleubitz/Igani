@@ -1,4 +1,7 @@
 import type { Metadata, Viewport } from 'next'
+import { MeetPathsProvider } from '@/components/meet/paths'
+import { appUrl } from '@/lib/env'
+import { meetBase } from '@/lib/meet-links'
 
 /** Igani Meet has its own icon in the browser tab (the CRM's stays everywhere else). */
 export const metadata: Metadata = {
@@ -10,6 +13,8 @@ export const metadata: Metadata = {
 /** Calls use the whole screen on phones, edge to edge (controls keep clear of the notch and home bar). */
 export const viewport: Viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover', themeColor: '#0e1626' }
 
-export default function MeetLayout({ children }: { children: React.ReactNode }): React.ReactNode {
-  return children
+export default async function MeetLayout({ children }: { children: React.ReactNode }): Promise<React.ReactElement> {
+  const base = await meetBase()
+  // On meet.igani.co the CRM is another host, so its link must be absolute
+  return <MeetPathsProvider value={{ base, crm: base ? '/sales/today' : appUrl('/sales/today') }}>{children}</MeetPathsProvider>
 }

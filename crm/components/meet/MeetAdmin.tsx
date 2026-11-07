@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input, Select, Textarea } from '@/components/ui/input'
 import { Tag } from '@/components/ui/tone'
 import { cn } from '@/lib/utils'
+import { useMeetPaths } from './paths'
 
 export interface Teammate {
   id: string
@@ -52,6 +53,7 @@ export function Invitees({ teammates, picked, setPicked, emails, setEmails, excl
 
 export function NewMeetForm({ teammates, ready, onDone }: { teammates: Teammate[]; ready: boolean; onDone?: () => void }): React.ReactElement {
   const router = useRouter()
+  const { path } = useMeetPaths()
   const [title, setTitle] = useState('')
   const [when, setWhen] = useState('')
   const [duration, setDuration] = useState(30)
@@ -72,7 +74,7 @@ export function NewMeetForm({ teammates, ready, onDone }: { teammates: Teammate[
       setPicked([])
       setEmails('')
       router.refresh()
-      if (startNow) router.push(`/meet/${code}`)
+      if (startNow) router.push(path(`/${code}`))
       else if (onDone) setTimeout(onDone, 900)
     })
 
@@ -121,6 +123,8 @@ export interface RoomView {
   durationMin: number
   ended: boolean
   hostName: string
+  /** the viewer hosts it (or is an admin): may invite, end, and play or delete recordings */
+  manage: boolean
   recordings: RecordingView[]
   invites: { id: string; email: string; name: string | null; teammate: boolean; link: string; sent: boolean; error: string | null; joined: boolean }[]
 }
@@ -145,7 +149,7 @@ const STATE_TAG: Record<RecordingView['state'], { tone: 'emerald' | 'sky' | 'amb
 /** One recording: play it right here, download it, and (while 8x8 still has it) save a copy again. */
 function RecordingRow({ rec, pending, run }: { rec: RecordingView; pending: boolean; run: (fn: () => Promise<{ ok: boolean; error?: string }>) => void }): React.ReactElement {
   const [playing, setPlaying] = useState(false)
-  const src = `/api/admin/meet/recordings/${rec.id}`
+  const src = `/api/meet/recordings/${rec.id}`
   const playable = rec.state !== 'expired'
   const tag = STATE_TAG[rec.state]
   const btn = 'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50'
@@ -210,6 +214,7 @@ function CopyIcon({ text }: { text: string }): React.ReactElement {
 
 export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teammate[] }): React.ReactElement {
   const router = useRouter()
+  const { path } = useMeetPaths()
   const [adding, setAdding] = useState(false)
   const [picked, setPicked] = useState<string[]>([])
   const [emails, setEmails] = useState('')
@@ -239,18 +244,22 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
         {!room.ended ? (
           <div className="flex shrink-0 items-center gap-1.5">
             <Button asChild size="sm">
-              <a href={`/meet/${room.code}`}>
+              <a href={path(`/${room.code}`)}>
                 <Video className="mr-1.5 h-4 w-4" /> Join
               </a>
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setAdding((v) => !v)}>
-              <UserPlus className="mr-1.5 h-4 w-4" /> Invite
-            </Button>
-            <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => endMeetRoom(room.id))} title="End the call: links stop working">
-              End
-            </Button>
+            {room.manage ? (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setAdding((v) => !v)}>
+                  <UserPlus className="mr-1.5 h-4 w-4" /> Invite
+                </Button>
+                <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => endMeetRoom(room.id))} title="End the call: links stop working">
+                  End
+                </Button>
+              </>
+            ) : null}
           </div>
-        ) : (
+        ) : !room.manage ? null : (
           <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => endMeetRoom(room.id, { remove: true }))}>
             <Trash2 className="mr-1.5 h-4 w-4" /> Remove
           </Button>
@@ -270,7 +279,7 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
                 </span>
               </span>
               {i.joined ? <Tag tone="emerald">Joined</Tag> : i.error ? <Tag tone="rose">Not emailed</Tag> : i.sent ? <Tag tone="sky">Invited</Tag> : <Tag tone="slate">Link only</Tag>}
-              {!room.ended ? (
+              {!room.ended && room.manage ? (
                 <>
                   <CopyIcon text={i.link} />
                   <button type="button" disabled={pending} title="Email the invite again" aria-label="Email the invite again" onClick={() => run(() => resendMeetInvite(i.id))} className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground">
@@ -284,11 +293,11 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
             </li>
           ))}
         </ul>
-      ) : !room.ended ? (
+      ) : !room.ended && room.manage ? (
         <p className="mt-3 text-xs text-muted-foreground">No one invited yet. Use Invite to add teammates or any email.</p>
       ) : null}
 
-      {room.recordings.length ? (
+      {room.recordings.length && room.manage ? (
         <div className="mt-3">
           <div className="mb-1.5 text-xs text-muted-foreground">Recordings</div>
           <ul className="divide-y divide-border/60 rounded-xl border">
@@ -299,7 +308,7 @@ export function RoomCard({ room, teammates }: { room: RoomView; teammates: Teamm
         </div>
       ) : null}
 
-      {adding && !room.ended ? (
+      {adding && !room.ended && room.manage ? (
         <div className="mt-3 space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
           <Invitees teammates={teammates} picked={picked} setPicked={setPicked} emails={emails} setEmails={setEmails} exclude={room.invites.map((i) => i.email)} />
           <Button
