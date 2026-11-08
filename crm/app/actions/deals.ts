@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
-import { type CommissionTerms, bonusDue, bonusOf, dealTerms, parseTerms, paymentCommission } from '@/lib/commission'
+import { type CommissionTerms, bonusDue, bonusOf, dealTerms, paymentCutoff, parseTerms, paymentCommission } from '@/lib/commission'
 import { setQuotedPrice, snapshotWonCommission, termsForAssignee } from '@/lib/deals'
 import { lockedMessage, termsLockedBy } from '@/lib/commission-lock'
 import { prisma } from '@/lib/prisma'
@@ -125,10 +125,11 @@ async function syncFullyPaid(tx: Tx, leadId: string): Promise<void> {
 
 /** Does this salesperson's agreement end before the given day? Then a payment received after it earns no commission. */
 async function endedBefore(tx: Tx, leadId: string, day: Date): Promise<boolean> {
-  const l = await tx.lead.findUnique({ where: { id: leadId }, select: { assignedTo: { select: { email: true } } } })
+  const l = await tx.lead.findUnique({ where: { id: leadId }, select: { commissionSnapshot: true, assignedTo: { select: { email: true } } } })
   if (!l?.assignedTo?.email) return false
-  const ended = await tx.allowedUser.findUnique({ where: { email: l.assignedTo.email }, select: { terminatedAt: true } })
-  return !!ended?.terminatedAt && day > ended.terminatedAt
+  const ended = await tx.allowedUser.findUnique({ where: { email: l.assignedTo.email }, select: { terminatedAt: true, endedForCause: true } })
+  const cutoff = paymentCutoff(ended?.terminatedAt, ended?.endedForCause, l.commissionSnapshot)
+  return !!cutoff && day > cutoff
 }
 
 const paymentInput = z.object({ amount: z.number().int().positive().max(1_000_000_000), date: dateInput, final: z.boolean().optional() })
@@ -303,8 +304,8 @@ export async function saveSalespersonTerms(userId: string, terms: CommissionTerm
 }
 
 
-/** The day a salesperson's agreement ended (null = still active). Only deals the client paid for before this day still pay commission. */
-export async function setSalespersonTermination(userId: string, date: string | null): Promise<ActionResult> {
+/** The day a salesperson's agreement ended (null = still active). Payments before it always pay; later payments on a deal closed before it pay too, unless it ended immediately for cause. */
+export async function setSalespersonTermination(userId: string, date: string | null, forCause = false): Promise<ActionResult> {
   try {
     const admin = await requireUser(['ADMIN'])
     const uid = z.string().cuid().parse(userId)
@@ -312,8 +313,8 @@ export async function setSalespersonTermination(userId: string, date: string | n
     const user = await prisma.user.findUnique({ where: { id: uid }, select: { email: true } })
     if (!user?.email) throw new BookingError('Teammate not found.', 'NOT_FOUND')
     await prisma.$transaction(async (tx) => {
-      await tx.allowedUser.update({ where: { email: user.email! }, data: { terminatedAt: d } })
-      await logActivity({ entityType: 'USER', entityId: uid, action: 'user.agreement_terminated', actorId: admin.id, metadata: { date } }, tx)
+      await tx.allowedUser.update({ where: { email: user.email! }, data: { terminatedAt: d, endedForCause: d ? forCause === true : false } })
+      await logActivity({ entityType: 'USER', entityId: uid, action: 'user.agreement_terminated', actorId: admin.id, metadata: { date, forCause } }, tx)
     })
     revalidatePath(`/admin/team/${uid}`)
     revalidatePath('/admin/payouts')

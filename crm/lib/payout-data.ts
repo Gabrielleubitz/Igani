@@ -1,4 +1,5 @@
 import 'server-only'
+import { paymentCutoff } from './commission'
 import type { PayoutRow } from './payouts'
 import { prisma } from './prisma'
 
@@ -35,13 +36,14 @@ export async function loadPayoutRows(): Promise<PayoutRow[]> {
   const emails = [...new Set(leads.map((l) => l.assignedTo?.email?.toLowerCase()).filter((e): e is string => !!e))]
   const [terms, allowed] = await Promise.all([
     latestTermsByEmail(emails),
-    prisma.allowedUser.findMany({ where: { email: { in: emails } }, select: { email: true, terminatedAt: true } }),
+    prisma.allowedUser.findMany({ where: { email: { in: emails } }, select: { email: true, terminatedAt: true, endedForCause: true } }),
   ])
-  const ended = new Map(allowed.map((a) => [a.email.toLowerCase(), a.terminatedAt]))
+  const ended = new Map(allowed.map((a) => [a.email.toLowerCase(), { at: a.terminatedAt, forCause: a.endedForCause }]))
   const rows: PayoutRow[] = []
   for (const l of leads) {
     const email = l.assignedTo?.email?.toLowerCase() ?? null
-    const endedAt = email ? ended.get(email) ?? null : null
+    const e = email ? ended.get(email) : undefined
+    const endedAt = paymentCutoff(e?.at, e?.forCause, l.commissionSnapshot)
     const t = email ? terms.get(email) : undefined
     const name = l.company || [l.firstName, l.lastName].filter(Boolean).join(' ') || l.email || 'Deal'
     const person = l.assignedTo?.name ?? l.assignedTo?.email ?? 'Unassigned'

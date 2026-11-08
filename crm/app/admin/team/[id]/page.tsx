@@ -38,6 +38,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
   const agreements = await prisma.agreement.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, fileName: true, size: true, createdAt: true } })
   const signed = user.email ? await prisma.agreementAcceptance.findMany({ where: { email: user.email.toLowerCase() }, orderBy: { signedAt: 'desc' }, select: { id: true, version: true, signedAt: true } }) : []
   const endedOn = user.email ? (await prisma.allowedUser.findUnique({ where: { email: user.email }, select: { terminatedAt: true } }))?.terminatedAt ?? null : null
+  const endedForCause = user.email ? (await prisma.allowedUser.findUnique({ where: { email: user.email }, select: { endedForCause: true } }))?.endedForCause ?? false : false
   // The agreement maker lives here, per person: their pending link, the admins who can sign, and the saved company details
   const agreementData =
     user.role === 'SALES' && user.email
@@ -246,7 +247,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
             ) : null}
             <div className="border-t pt-3">
               <p className="mb-2 font-medium">Agreement end date</p>
-              <TerminationForm userId={user.id} endedOn={endedOn ? endedOn.toISOString().slice(0, 10) : null} />
+              <TerminationForm userId={user.id} endedOn={endedOn ? endedOn.toISOString().slice(0, 10) : null} forCause={endedForCause} />
             </div>
           </CardContent>
         </Card>

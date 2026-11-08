@@ -6,15 +6,16 @@ import { setSalespersonTermination } from '@/app/actions/deals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
-/** The day this salesperson's agreement ended. Only deals the client paid for before that day still pay commission. */
-export function TerminationForm({ userId, endedOn }: { userId: string; endedOn: string | null }): React.ReactElement {
+/** The day this salesperson's agreement ended, and whether it ended immediately for an unfixable breach. */
+export function TerminationForm({ userId, endedOn, forCause: wasForCause = false }: { userId: string; endedOn: string | null; forCause?: boolean }): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [date, setDate] = useState(endedOn ?? '')
+  const [forCause, setForCause] = useState(wasForCause)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const save = (value: string | null): void =>
     start(async () => {
-      const res = await setSalespersonTermination(userId, value)
+      const res = await setSalespersonTermination(userId, value, forCause)
       setMsg(res.ok ? { ok: true, text: value ? 'Saved.' : 'Agreement active again.' } : { ok: false, text: res.error })
       if (res.ok && !value) setDate('')
       router.refresh()
@@ -26,7 +27,11 @@ export function TerminationForm({ userId, endedOn }: { userId: string; endedOn: 
         <Button size="sm" disabled={pending || !date} onClick={() => save(date)}>Set end date</Button>
         {endedOn ? <Button size="sm" variant="ghost" disabled={pending} onClick={() => save(null)}>Clear</Button> : null}
       </div>
-      <p className="text-xs text-muted-foreground">After this date, a deal whose client payment arrives later earns no commission. Payments received before it still pay out.</p>
+      <label className="flex items-center gap-2 text-xs">
+        <input type="checkbox" checked={forCause} onChange={(e) => setForCause(e.target.checked)} />
+        Ended immediately for an unfixable breach (dishonesty or fraud, breaking confidentiality, diverting a lead or client)
+      </label>
+      <p className="text-xs text-muted-foreground">Payments received before this date always pay out. A client who signed before it keeps paying commission on later contract payments (not maintenance), unless this is ticked. A client who signs after it earns nothing.</p>
       {msg ? <p className={msg.ok ? 'text-emerald-400' : 'text-red-400'}>{msg.text}</p> : null}
     </div>
   )

@@ -83,6 +83,8 @@ model AllowedUser {
   commissionTerms  Json?
   /// When the sales agreement ended. Only deals whose client payment arrived before this date still pay commission.
   terminatedAt     DateTime?
+  /// The agreement was ended immediately for an unfixable breach: the client's later payments then earn nothing. Otherwise a deal closed while engaged keeps paying.
+  endedForCause    Boolean   @default(false)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

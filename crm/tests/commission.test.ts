@@ -176,3 +176,24 @@ describe('payments in another currency (final payment, uncapped commission)', ()
     expect(paymentCommission(4_900, 10_000, 15_000, 30, 0, false)).toBe(1_470)
   })
 })
+
+import { paymentCutoff } from '../lib/commission'
+
+describe('payments after the agreement ended', () => {
+  const end = new Date('2026-12-01T00:00:00Z')
+  const wonBefore = { snapshotAt: '2026-11-10T09:00:00.000Z' }
+  const wonAfter = { snapshotAt: '2026-12-05T09:00:00.000Z' }
+  it('keeps paying a deal closed while engaged when he quits or is let go without cause', () => {
+    expect(paymentCutoff(end, false, wonBefore)).toBeNull()
+  })
+  it('stops everything after the end date when it ended immediately for cause', () => {
+    expect(paymentCutoff(end, true, wonBefore)).toEqual(end)
+  })
+  it('never pays a deal won after the end date, or one with no record of when it was won', () => {
+    expect(paymentCutoff(end, false, wonAfter)).toEqual(end)
+    expect(paymentCutoff(end, false, null)).toEqual(end)
+  })
+  it('has no cutoff while the agreement is active', () => {
+    expect(paymentCutoff(null, false, wonBefore)).toBeNull()
+  })
+})

@@ -112,6 +112,19 @@ export interface PaymentDates {
   terminatedAt?: Date | null
 }
 
+/**
+ * The day after which a client's payment earns the salesperson nothing, or null when none does that. A deal the client signed
+ * (the commission was set) while the salesperson was engaged keeps paying on the client's later contract payments after the
+ * agreement ends, unless it was ended immediately for an unfixable breach. A deal won after the end date never pays.
+ */
+export function paymentCutoff(endedAt: Date | null | undefined, endedForCause: boolean | null | undefined, snapshot: unknown): Date | null {
+  if (!endedAt) return null
+  if (endedForCause) return endedAt
+  const at = (snapshot as { snapshotAt?: unknown } | null)?.snapshotAt
+  const won = typeof at === 'string' ? new Date(at) : null
+  return won && !Number.isNaN(won.getTime()) && won <= endedAt ? null : endedAt
+}
+
 /** One client payment and the commission on it. */
 export interface PaymentLine {
   commission: number
