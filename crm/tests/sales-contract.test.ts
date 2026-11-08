@@ -142,3 +142,13 @@ describe('the representative signs in the name of their registered business', ()
     expect(h).toContain('&lt;script&gt;')
   })
 })
+
+import { sameName } from '@/lib/sales-contract-core'
+
+describe('the company is never the representative', () => {
+  it('spots the same name whatever the case or spacing', () => {
+    expect(sameName('Jack Flanders', '  jack   FLANDERS ')).toBe(true)
+    expect(sameName('Amitai David Hanson', 'Jack Flanders')).toBe(false)
+    expect(sameName('', '')).toBe(false)
+  })
+})

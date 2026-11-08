@@ -94,6 +94,8 @@ export function validate(d: ContractData): string | null {
 
 /** Names must match exactly (only stray spaces around/between words are ignored). */
 export const normName = (s: string): string => s.normalize('NFC').trim().replace(/\s+/g, ' ')
+/** The same person's name, ignoring case and stray spaces: used to stop the company and the representative being the same name. */
+export const sameName = (a: string, b: string): boolean => normName(a).toLowerCase() === normName(b).toLowerCase() && normName(a) !== ''
 export const namesMatch = (typed: string, expected: string): boolean => normName(typed) === normName(expected)
 
 export const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

@@ -2,7 +2,7 @@
 
 import { requireUser } from '@/lib/auth'
 import { createContractLink } from '@/lib/sales-contract'
-import { companyIsComplete, termsFromCompany, validate, type ContractData } from '@/lib/sales-contract-core'
+import { companyIsComplete, sameName, termsFromCompany, validate, type ContractData } from '@/lib/sales-contract-core'
 import { getSetting } from '@/lib/settings'
 import { PNG_DATA_URL } from '@/lib/sales-contract-token'
 import { prisma } from '@/lib/prisma'
@@ -15,6 +15,7 @@ export async function generateContractLink(data: ContractData, signerUserId: str
   // The company details and the fixed legal terms come from Settings, not from the browser; only the representative's address is per agreement
   const company = await getSetting('contract.company')
   if (!companyIsComplete(company)) return { ok: false, error: 'Set the company details first (the Company details card on this page).' }
+  if (sameName(company.legalName, data.name)) return { ok: false, error: `The company name in Company details is the same as the salesman’s name (${data.name.trim()}). Put the registered owner’s name there, as on the tax certificate.` }
   data = { ...data, terms: termsFromCompany(company, data.terms.agentAddress) }
   const err = validate(data)
   if (err) return { ok: false, error: err }

@@ -8,7 +8,7 @@ import { generateContractLink } from '@/app/actions/sales-contracts'
 import type { SignerView } from '@/components/admin/SignerPicker'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { AGREEMENT_CSS, agreementHtml, companyIsComplete, termsFromCompany, validate, type CompanySettings, type Figures } from '@/lib/sales-contract-core'
+import { AGREEMENT_CSS, agreementHtml, companyIsComplete, sameName, termsFromCompany, validate, type CompanySettings, type Figures } from '@/lib/sales-contract-core'
 
 const today = (): string => new Date().toISOString().slice(0, 10)
 
@@ -92,6 +92,14 @@ export function PersonContractForm({
     return (
       <p className="text-sm text-amber-400">
         The company details aren’t saved yet. Fill them in once on the <Link className="underline" href="/admin/sales-contracts">contract setup page</Link>, then come back to send {person.name}’s agreement.
+      </p>
+    )
+  }
+
+  if (sameName(company.legalName, person.name)) {
+    return (
+      <p className="text-sm text-red-500">
+        The company name saved in Company details is the same as {person.name}’s, so the agreement would have them hiring themselves. Fix it on the <Link className="underline" href="/admin/sales-contracts">contract setup page</Link>: the company is the registered owner on the tax certificate.
       </p>
     )
   }
