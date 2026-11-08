@@ -60,7 +60,7 @@ export function termsFromCompany(c: CompanySettings, agentAddress: string): Lega
 /** True when the one-time company details needed on every agreement are filled in. */
 export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.trim().length >= 2 && c.idNumber.trim().length >= 5 && c.address.trim().length >= 5
 
-export const CONTRACT_VERSION = '2026-11-lawyer-v5'
+export const CONTRACT_VERSION = '2026-11-lawyer-v6'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -125,6 +125,7 @@ export function agreementSectionsHtml(d: ContractData): string {
   return `
 <h2><span class="n">1.</span>APPOINTMENT AND SCOPE</h2>
 <p class="clause">${company} (the “Company”), engages ${name} (the “Sales Representative”) to solicit, introduce and secure clients for the Company’s web development, design and digital architecture services. The Sales Representative acts as an independent contractor and not as an employee, partner or legal representative of the Company.</p>
+<p class="clause">The Sales Representative is an independent freelancer, engaged by the Company for their services. The Company does not employ the Sales Representative, and nothing in this agreement creates an employment relationship, partnership or agency between them. The Sales Representative has no employee rights or benefits, works at their own times and in their own way without the Company’s supervision, uses their own equipment, and is solely responsible for their own taxes, VAT, social security, insurance and expenses.</p>
 <p class="clause">This agreement applies to every client the Sales Representative secures, wherever in the world that client is located or based.</p>
 <p class="clause">The Sales Representative signs this agreement in the name of their registered business, whose name and registration number are written in the signature block below, and confirms that the business is duly registered under the law that applies to it.</p>
 <h2><span class="n">2.</span>COMMISSION TRIGGER EVENT</h2>
@@ -144,6 +145,7 @@ export function agreementSectionsHtml(d: ContractData): string {
 <p class="clause"><b>Commission type:</b> a percentage of every payment collected, plus a bonus at the end as set out above.</p>
 <h2><span class="n">4.</span>PAYMENT SCHEDULE</h2>
 <p class="clause">Commissions earned in a calendar month are processed and paid by the Company within <b>${t.payoutDays} business days</b> after the end of that month, provided all invoiced funds have cleared.</p>
+<p class="clause">Commission is paid only by bank transfer to the business bank account of the Sales Representative’s registered business, which the Sales Representative gives the Company in writing. Where the law requires it, the Sales Representative’s business issues an invoice or receipt for each payment, and payment is made against it. The Company does not pay commission in cash or to a private account, and does not deduct employment taxes or contributions from it.</p>
 <h2><span class="n">5.</span>CLAWBACKS AND REFUNDS</h2>
 <p class="clause">If a client defaults, receives a legitimate refund, or the Company returns funds because the project was not delivered or is in dispute, within <b>${t.clawbackDays} days</b> of the transaction, any commission paid on that payment, and any bonus that depended on it, is an overpayment. The Company may deduct that amount from future commission payments or ask the Sales Representative to repay it directly.</p>
 <h2><span class="n">6.</span>CONFIDENTIALITY AND INTELLECTUAL PROPERTY</h2>
