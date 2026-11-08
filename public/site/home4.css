@@ -82,6 +82,8 @@ h1 em, h2 em, blockquote em, .ct__h em { font-style: normal; color: inherit; }
 .xh__cl ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 24px 40px; }
 .xh__cl img { height: 28px; width: auto; filter: brightness(0); opacity: .62; transition: opacity 180ms; }
 .xh__cl img:hover { opacity: .9; }
+/* Melons Logistics has a swoosh that makes its text small at the standard height, so it gets a little more */
+.xh__cl img.xh__cl-tall { height: 36px; }
 .xh__nda { grid-column: 2; margin: 0; font-size: 13px; color: var(--ink-3); }
 
 /* 2. problem: sticky argument on the left, the evidence on the right */
@@ -320,6 +322,7 @@ h1 em, h2 em, blockquote em, .ct__h em { font-style: normal; color: inherit; }
   .xh__cl { grid-template-columns: 1fr; margin-top: 64px; }
   .xh__cl ul { justify-content: flex-start; gap: 20px 28px; }
   .xh__cl img { height: 22px; }
+  .xh__cl img.xh__cl-tall { height: 26px; }
   .xh__nda { grid-column: 1; }
   .dt__k { grid-template-columns: 1fr 1fr; }
   .dt__k > div:last-child { grid-template-columns: 1fr; }
