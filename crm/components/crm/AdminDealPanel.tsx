@@ -185,7 +185,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
       {paidSoFar < dealPrice ? (
         <div className="flex flex-wrap items-end gap-2 border-t pt-3">
           <label className="space-y-1 text-xs text-muted-foreground">
-            Client paid (₪)
+            Client paid (₪, converted at that day’s rate)
             <Input inputMode="numeric" className="h-8 w-32" placeholder={String(Math.max(0, dealPrice - paidSoFar))} value={payAmount} onChange={(e) => setPayAmount(e.target.value)} />
           </label>
           <Button

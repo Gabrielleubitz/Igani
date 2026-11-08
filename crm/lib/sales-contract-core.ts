@@ -60,7 +60,7 @@ export function termsFromCompany(c: CompanySettings, agentAddress: string): Lega
 /** True when the one-time company details needed on every agreement are filled in. */
 export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.trim().length >= 2 && c.idNumber.trim().length >= 5 && c.address.trim().length >= 5
 
-export const CONTRACT_VERSION = '2026-11-lawyer-v7'
+export const CONTRACT_VERSION = '2026-11-lawyer-v8'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -142,10 +142,11 @@ export function agreementSectionsHtml(d: ContractData): string {
 </div>
 <p class="clause"><b>Calculation base:</b> commission is calculated on profit, not on the gross payment: each payment the client pays to the Company, less third-party hosting fees, third-party tool and software fees, taxes and direct out-of-pocket expenses. Those costs are spread over the payments in proportion, and the commission rate applies to what is left.</p>
 <p class="clause"><b>Recurring maintenance:</b> if the secured client pays the Company a recurring maintenance fee (monthly or otherwise), the Sales Representative earns commission on each of those payments at the same rate (${pct(f.basePercent)}), calculated on profit in the same way: the payment collected, less third-party hosting fees, third-party tool and software fees, taxes and direct out-of-pocket expenses. Each maintenance payment is earned once it has cleared, and is paid with the rest of that month’s commission under Section 4.</p>
+<p class="clause"><b>Currency:</b> commission is calculated and paid in Israeli shekels (ILS). If the client pays in another currency, for example US dollars, each payment is converted to ILS at the representative exchange rate published by the Bank of Israel on the day the Company receives that payment, and commission is calculated on the converted amount. The same applies to recurring maintenance payments.</p>
 <p class="clause"><b>Commission type:</b> a percentage of every payment collected, plus a bonus at the end as set out above.</p>
 <h2><span class="n">4.</span>PAYMENT SCHEDULE</h2>
 <p class="clause">Commissions earned in a calendar month are processed and paid by the Company within <b>${t.payoutDays} business days</b> after the end of that month, provided all invoiced funds have cleared.</p>
-<p class="clause">Commission is paid only by bank transfer to the business bank account of the Sales Representative’s registered business, which the Sales Representative gives the Company in writing. Payment is conditional on the Company receiving, for the amount paid, a valid tax invoice or a receipt issued by the Sales Representative’s business, whichever its registration requires. The Company does not pay commission in cash or to a private account, and does not deduct employment taxes or contributions from it.</p>
+<p class="clause">Commission is paid in ILS, only by bank transfer to the business bank account of the Sales Representative’s registered business, which the Sales Representative gives the Company in writing. Payment is conditional on the Company receiving, for the amount paid, a valid tax invoice or a receipt issued by the Sales Representative’s business, whichever its registration requires. The Company does not pay commission in cash or to a private account, and does not deduct employment taxes or contributions from it.</p>
 <h2><span class="n">5.</span>CLAWBACKS AND REFUNDS</h2>
 <p class="clause">If a client defaults, receives a legitimate refund, or the Company returns funds because the project was not delivered or is in dispute, within <b>${t.clawbackDays} days</b> of the transaction, any commission paid on that payment, and any bonus that depended on it, is an overpayment. The Company may deduct that amount from future commission payments or ask the Sales Representative to repay it directly.</p>
 <h2><span class="n">6.</span>CONFIDENTIALITY, INTELLECTUAL PROPERTY AND NON-SOLICITATION</h2>
