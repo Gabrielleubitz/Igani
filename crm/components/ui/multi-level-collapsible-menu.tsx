@@ -3,7 +3,7 @@
 import { ChevronRightIcon } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { type ReactElement, useEffect, useMemo, useState } from 'react'
+import { type ReactElement, useEffect, useMemo, useRef, useState } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/multi-level-collapsible-menu-utils/collapsible'
 import { ItemMedia, ItemTitle, itemVariants } from '@/components/ui/multi-level-collapsible-menu-utils/item'
 import { cn } from '@/lib/utils'
@@ -42,9 +42,15 @@ function Badge({ count }: { count: number }): ReactElement | null {
 function MenuItem({ node, level, active, expanded }: { node: MenuNode; level: number; active: string | null; expanded: boolean }): ReactElement {
   const isFolder = !!node.children?.length
   const hasActive = containsActive(node, active)
-  const [open, setOpen] = useState(expanded || hasActive)
-  // Moving to a page inside a folder opens it (the user can still close it afterwards)
+  // Folders start closed when the site opens, even the one holding the current page (`expanded` opens them on request)
+  const [open, setOpen] = useState(expanded)
+  // Moving to a page inside a folder later opens it (the user can still close it afterwards); the first render is skipped so nothing starts open
+  const first = useRef(true)
   useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
     if (hasActive) setOpen(true)
   }, [hasActive])
   const pad = { paddingLeft: `${level * 12 + 8}px` }
@@ -96,7 +102,7 @@ function MenuItem({ node, level, active, expanded }: { node: MenuNode; level: nu
   )
 }
 
-/** The sidebar menu: folders open and close, nested to any depth; the page you are on is highlighted and its folders are open. */
+/** The sidebar menu: folders open and close, nested to any depth; all start closed, and the page you are on is highlighted. */
 export function NavMenu({ nodes, expanded = false, label = 'Main' }: { nodes: MenuNode[]; expanded?: boolean; label?: string }): ReactElement {
   const pathname = usePathname() ?? ''
   const active = useMemo(() => activeHref(nodes, pathname), [nodes, pathname])

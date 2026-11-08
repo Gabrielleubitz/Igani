@@ -105,7 +105,7 @@ export function AppNav({ nodes, expanded = false }: { nodes: NavNode[]; expanded
   return <NavMenu nodes={menu} expanded={expanded} />
 }
 
-/** Phone/tablet: a Menu button that opens every grouped link in a panel. */
+/** Phone/tablet: a Menu button that opens a panel; the folders inside start closed. */
 export function MobileMenu({ nodes }: { nodes: NavNode[] }): React.ReactElement {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
@@ -123,7 +123,7 @@ export function MobileMenu({ nodes }: { nodes: NavNode[] }): React.ReactElement 
       </button>
       {open ? (
         <div id="mobile-menu" className="absolute inset-x-0 top-full z-50 max-h-[calc(100vh-4rem)] overflow-y-auto border-b bg-background p-4 shadow-lg">
-          <AppNav nodes={nodes} expanded />
+          <AppNav nodes={nodes} />
         </div>
       ) : null}
     </div>
