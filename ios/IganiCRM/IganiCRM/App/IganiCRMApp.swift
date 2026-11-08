@@ -40,7 +40,10 @@ struct RootView: View {
             case .signedIn:
                 MainTabs().transition(.opacity)
             }
-            if session.phase == .signedIn { PhoneLayer() }
+            if session.phase == .signedIn {
+                KeypadFab()
+                PhoneLayer()
+            }
             ToastOverlay()
         }
         .animation(.easeInOut(duration: 0.35), value: session.phase)
@@ -93,6 +96,7 @@ struct MainTabs: View {
             Tab("More", systemImage: "square.grid.2x2", value: AppTab.more) { MoreView(tab: $tab) }
         }
         .sensoryFeedback(.selection, trigger: tab)
+        .onChange(of: tab, initial: true) { _, t in router.current = t }
         .onChange(of: router.request) { _, r in
             guard let r else { return }
             tab = r
@@ -121,6 +125,8 @@ struct MainTabs: View {
 @MainActor @Observable final class TabRouter {
     static let shared = TabRouter()
     var request: AppTab?
+    /// The tab on screen (the floating keypad hides on the Phone tab).
+    var current: AppTab = .today
     /// Opens the keypad with this number ready (it doesn't dial by itself).
     func dial(_ number: String) {
         PendingDial.shared.set(PhoneFmt.clean(number))
