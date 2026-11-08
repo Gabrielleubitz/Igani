@@ -63,7 +63,7 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'voice.countries': ['IL', 'US'],
   'contract.signer': { name: '', title: '', email: '', phone: '' },
   'contract.signature': '',
-  'contract.company': { legalName: '', tradingAs: 'Caleno', idNumber: '', address: '', jurisdiction: 'Israel', payoutDays: 5, clawbackDays: 60, noticeDays: 7 },
+  'contract.company': { legalName: '', tradingAs: 'Caleno', idNumber: '', address: '', jurisdiction: 'Israel', payoutDays: 5, clawbackDays: 90, noticeDays: 7 },
 }
 
 export function isSettingKey(key: string): key is SettingKey {
