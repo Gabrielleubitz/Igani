@@ -27,6 +27,7 @@ extension View {
             }
         }
         .callRoutes()
+        .chatRoutes()
     }
 }
 

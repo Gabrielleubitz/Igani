@@ -23,6 +23,10 @@ import UIKit
     private var calls: [UUID: Call] = [:]
     private var invites: [UUID: CallInvite] = [:]
     private var pending: [UUID: (callId: String, to: String)] = [:]
+    /// calls that are an admin listening in (joined muted with the listen parameter)
+    private var listening: Set<UUID> = []
+    /// conference calls: tell CallKit "connected" only once the client answers
+    private var late: Set<UUID> = []
     private var answered: Set<UUID> = []
     private var speakerOn = false
 
@@ -82,6 +86,28 @@ import UIKit
         }
     }
 
+    func startListening(uuid: UUID, callId: String, name: String) throws {
+        pending[uuid] = (callId, "")
+        listening.insert(uuid)
+        let action = CXStartCallAction(call: uuid, handle: CXHandle(type: .generic, value: name))
+        action.contactIdentifier = name
+        controller.request(CXTransaction(action: action)) { [weak self] error in
+            guard let error else { return }
+            MainActor.assumeIsolated {
+                self?.pending[uuid] = nil
+                self?.listening.remove(uuid)
+                self?.onEvent?(.ended(uuid, failure: "Couldn’t listen in: \(error.localizedDescription)"))
+            }
+        }
+    }
+
+    func expectLateAnswer(_ uuid: UUID) { late.insert(uuid) }
+
+    func answeredLate(_ uuid: UUID) {
+        guard late.remove(uuid) != nil else { return }
+        provider.reportOutgoingCall(with: uuid, connectedAt: Date())
+    }
+
     func answer(uuid: UUID) {
         controller.request(CXTransaction(action: CXAnswerCallAction(call: uuid))) { _ in }
     }
@@ -135,6 +161,8 @@ import UIKit
         calls[uuid] = nil
         invites[uuid] = nil
         pending[uuid] = nil
+        listening.remove(uuid)
+        late.remove(uuid)
         answered.remove(uuid)
         speakerOn = false
         if known { onEvent?(.ended(uuid, failure: failure)) }
@@ -170,8 +198,9 @@ extension TwilioEngine: CXProviderDelegate {
             guard let p = pending[action.callUUID] else { action.fail(); return }
             provider.reportOutgoingCall(with: action.callUUID, startedConnectingAt: Date())
             audio.isEnabled = false
+            let listen = listening.contains(action.callUUID)
             let options = ConnectOptions(accessToken: token) { b in
-                b.params = ["callId": p.callId, "To": p.to]
+                b.params = listen ? ["listen": p.callId] : ["callId": p.callId, "To": p.to]
                 b.uuid = action.callUUID
             }
             calls[action.callUUID] = TwilioVoiceSDK.connect(options: options, delegate: self)
@@ -251,7 +280,8 @@ extension TwilioEngine: CallDelegate {
     nonisolated func callDidConnect(call: Call) {
         MainActor.assumeIsolated {
             guard let uuid = call.uuid else { return }
-            provider.reportOutgoingCall(with: uuid, connectedAt: Date())
+            if listening.contains(uuid) { call.isMuted = true } // the room mutes us too
+            if !late.contains(uuid) { provider.reportOutgoingCall(with: uuid, connectedAt: Date()) }
             applyRoute()
             onEvent?(.connected(uuid))
         }

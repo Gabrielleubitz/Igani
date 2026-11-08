@@ -89,6 +89,7 @@ struct AdminOverviewView: View {
     @State private var loader = AdminLoader<OverviewData>("overview")
     var body: some View {
         AdminPage(title: "Overview", loader: loader) { d in
+            LiveCallsPanel()
             if d.cronOff {
                 Label("Reminders and email sync are off: the hourly job needs CRON_SECRET in Vercel.", systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(Theme.amber).card()
             }

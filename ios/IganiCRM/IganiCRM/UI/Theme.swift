@@ -77,6 +77,7 @@ enum Symbols {
         case "team": return "person.badge.key"
         case "audit": return "list.clipboard"
         case "settings": return "gearshape"
+        case "chat": return "bubble.left.and.bubble.right.fill"
         default: return "square.grid.2x2"
         }
     }

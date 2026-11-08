@@ -84,6 +84,11 @@ struct MoreView: View {
                     .background(Theme.gradient(for: p.id), in: RoundedRectangle(cornerRadius: 11, style: .continuous))
                 Spacer()
                 if NativePage.browserOnly.contains(p.id) { Image(systemName: "arrow.up.right").font(.caption.weight(.bold)).foregroundStyle(Theme.muted) }
+                if p.id == "chat", ChatBadge.shared.unread > 0 {
+                    Text("\(ChatBadge.shared.unread)").font(.caption2.weight(.bold)).foregroundStyle(.white)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(ChatBadge.shared.mentions > 0 ? Theme.red : Theme.accent, in: Capsule())
+                }
             }
             Text(p.label).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(2).multilineTextAlignment(.leading)
         }

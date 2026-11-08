@@ -16,7 +16,7 @@ struct KeypadFab: View {
 
     private let size: CGFloat = 60
     private var seller: Bool { ["ADMIN", "SALES"].contains(session.me?.role ?? "") }
-    private var visible: Bool { seller && phone.active == nil && router.current != .phone && !keyboard }
+    private var visible: Bool { seller && phone.active == nil && router.current != .phone && !router.chatOpen && !keyboard }
 
     var body: some View {
         GeometryReader { geo in

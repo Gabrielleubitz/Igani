@@ -7,7 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		07ACCDDC79461783819CE743 /* ChatViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CCF43D7548265E175098940 /* ChatViews.swift */; };
 		0F5E97C818697F4EC33A30C5 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE97091850781D10E84C6BF /* Components.swift */; };
+		108ECCAC5C6185D3971FBDEE /* LiveCallsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798463C65EFF8848E44EA13B /* LiveCallsSection.swift */; };
 		148CD474A078BDA83690A6B5 /* PhoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E119EDECFFFB3927FA0FADA /* PhoneView.swift */; };
 		28D8BD35A109661F98C43AD9 /* TwilioVoice in Frameworks */ = {isa = PBXBuildFile; productRef = 47CF8BCA1AE4264FC518E18D /* TwilioVoice */; };
 		3477A4EAADF6785EFF2B3E07 /* igani-ring.wav in Resources */ = {isa = PBXBuildFile; fileRef = 66B487E85B8AB8F2761FE7FE /* igani-ring.wav */; };
@@ -39,6 +41,7 @@
 		DE059216019C407A68943D88 /* NativePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87093D6F5B926DB09EDCCB42 /* NativePage.swift */; };
 		E046274C63F15212E6E7B5B3 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5E508DD140AA183506097D /* Models.swift */; };
 		E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67AA1A6DF8D2B5DF06A32D0 /* LeadDetailView.swift */; };
+		E884A8FA7397014B026B73C3 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E791ADFD67E35F28D4E05D /* ChatModels.swift */; };
 		EF3E8DFD3D3E16FA49E3E3A0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57445395BE86C1E3CD6FF679 /* Theme.swift */; };
 		FB162594143CF3015BBB9A25 /* IganiCRMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72830A72288F0694DCA02EBF /* IganiCRMApp.swift */; };
 		FEBAD04EC82C2D5E48BA7E15 /* KeypadFab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A576F7741A54254AA872E1 /* KeypadFab.swift */; };
@@ -46,10 +49,12 @@
 
 /* Begin PBXFileReference section */
 		02DD255EAADE2743D3FD479B /* MeetingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingScreens.swift; sourceTree = "<group>"; };
+		07E791ADFD67E35F28D4E05D /* ChatModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatModels.swift; sourceTree = "<group>"; };
 		177B9EF4A4BE958799D9DCA7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		1BC87E63111A9D67CA81BF09 /* Keychain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keychain.swift; sourceTree = "<group>"; };
 		21A576F7741A54254AA872E1 /* KeypadFab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeypadFab.swift; sourceTree = "<group>"; };
 		253AAC50CF65AE0D44D0DC8B /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
+		2CCF43D7548265E175098940 /* ChatViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViews.swift; sourceTree = "<group>"; };
 		3227A979AB1764CF5308A252 /* AdminScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminScreens.swift; sourceTree = "<group>"; };
 		35005F07570C45CD38FD96E7 /* CallsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsView.swift; sourceTree = "<group>"; };
 		3C5E508DD140AA183506097D /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -64,6 +69,7 @@
 		72830A72288F0694DCA02EBF /* IganiCRMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IganiCRMApp.swift; sourceTree = "<group>"; };
 		7545C8F3138B87B3CC295E7E /* Pieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pieces.swift; sourceTree = "<group>"; };
 		78991C25C1C3E2A8CD0CDAE3 /* Phone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Phone.swift; sourceTree = "<group>"; };
+		798463C65EFF8848E44EA13B /* LiveCallsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveCallsSection.swift; sourceTree = "<group>"; };
 		7A09F2722C2EBCCDCC145D9A /* WebScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebScreen.swift; sourceTree = "<group>"; };
 		7A53300417C06F0752FB2239 /* MessagesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MessagesView.swift; sourceTree = "<group>"; };
 		87093D6F5B926DB09EDCCB42 /* NativePage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePage.swift; sourceTree = "<group>"; };
@@ -113,6 +119,7 @@
 			children = (
 				FE82359C7A193500C54D4F40 /* Admin */,
 				AF8D5597BC1645732E3BA316 /* Calls */,
+				2B7E9FAB2A6E92D036139C45 /* Chat */,
 				FE0868ED4C96511EF64B97E0 /* Leads */,
 				CF1F5F9F05ACBE529FAF8B8E /* Meet */,
 				BB66E1C04CAA6284E0A71082 /* More */,
@@ -124,6 +131,15 @@
 				FD4543475C8B5AEE61361C39 /* Web */,
 			);
 			path = Features;
+			sourceTree = "<group>";
+		};
+		2B7E9FAB2A6E92D036139C45 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				07E791ADFD67E35F28D4E05D /* ChatModels.swift */,
+				2CCF43D7548265E175098940 /* ChatViews.swift */,
+			);
+			path = Chat;
 			sourceTree = "<group>";
 		};
 		31DC2F610055F18456DA21DE = {
@@ -182,6 +198,7 @@
 			isa = PBXGroup;
 			children = (
 				35005F07570C45CD38FD96E7 /* CallsView.swift */,
+				798463C65EFF8848E44EA13B /* LiveCallsSection.swift */,
 			);
 			path = Calls;
 			sourceTree = "<group>";
@@ -364,6 +381,8 @@
 				A9968F402EB4541879754B24 /* AdminScreens.swift in Sources */,
 				AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */,
 				612FD05791A039F05FF9FA4B /* CallsView.swift in Sources */,
+				E884A8FA7397014B026B73C3 /* ChatModels.swift in Sources */,
+				07ACCDDC79461783819CE743 /* ChatViews.swift in Sources */,
 				0F5E97C818697F4EC33A30C5 /* Components.swift in Sources */,
 				47EED45D468556E8BD16D742 /* Config.swift in Sources */,
 				FB162594143CF3015BBB9A25 /* IganiCRMApp.swift in Sources */,
@@ -372,6 +391,7 @@
 				FEBAD04EC82C2D5E48BA7E15 /* KeypadFab.swift in Sources */,
 				E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */,
 				5B8E8FF6F84D160EB966BEE2 /* LeadsView.swift in Sources */,
+				108ECCAC5C6185D3971FBDEE /* LiveCallsSection.swift in Sources */,
 				3A605B987D820B3760D355DA /* MeetView.swift in Sources */,
 				ADE73497A600D23D81005708 /* MeetingScreens.swift in Sources */,
 				A865E362433AA2F8B8266648 /* MessagesView.swift in Sources */,

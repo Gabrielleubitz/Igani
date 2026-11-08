@@ -36,6 +36,9 @@ struct CallScreen: View {
                             .transition(.scale(scale: 0.9).combined(with: .opacity))
                     } else if call.status == .incoming {
                         incomingButtons
+                    } else if call.listening {
+                        listeningPanel(call)
+                            .transition(.opacity)
                     } else {
                         controls(call)
                             .transition(.opacity)
@@ -52,8 +55,11 @@ struct CallScreen: View {
                         .disabled(call.status == .ended)
                         .opacity(call.status == .ended ? 0.4 : 1)
                         .padding(.top, 26)
-                        .padding(.bottom, 30)
-                        .accessibilityLabel("Hang up")
+                        .padding(.bottom, call.listening ? 8 : 30)
+                        .accessibilityLabel(call.listening ? "Stop listening" : "Hang up")
+                        if call.listening {
+                            Text("Stop listening").font(.footnote.weight(.semibold)).foregroundStyle(Theme.muted).padding(.bottom, 24)
+                        }
                     }
                 }
             }
@@ -94,7 +100,7 @@ struct CallScreen: View {
             Text(call.name).font(.system(size: 30, weight: .bold, design: .rounded)).foregroundStyle(Theme.text).multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.7)
             if let sub = call.sub { Text(sub).font(.subheadline).foregroundStyle(Theme.muted).multilineTextAlignment(.center) }
             status(call)
-            if let leadId = call.leadId, call.status != .incoming {
+            if let leadId = call.leadId, call.status != .incoming, !call.listening {
                 Button { openLead = leadId } label: { Label("Contact card", systemImage: "person.crop.circle").font(.footnote.weight(.semibold)).padding(.horizontal, 14).padding(.vertical, 8).glass(in: Capsule(), interactive: true) }
                     .foregroundStyle(Theme.accent)
             }
@@ -114,7 +120,7 @@ struct CallScreen: View {
         case .ended:
             Text(call.failure ?? "Call ended").font(.headline).foregroundStyle(call.failure == nil ? Theme.muted : Theme.red).multilineTextAlignment(.center)
         default:
-            Text(call.status == .connecting ? "Calling…" : call.status == .ringing ? "Ringing…" : call.status == .incoming ? "Incoming call" : "Reconnecting…")
+            Text(call.listening && call.status == .connecting ? "Joining…" : call.status == .connecting ? "Calling…" : call.status == .ringing ? "Ringing…" : call.status == .incoming ? "Incoming call" : "Reconnecting…")
                 .font(.headline).foregroundStyle(Theme.accent)
                 .phaseAnimator([0.45, 1]) { t, o in t.opacity(o) } animation: { _ in .easeInOut(duration: 0.9) }
         }
@@ -134,6 +140,24 @@ struct CallScreen: View {
             if showKeys { EmptyView() }
         }
         .onChange(of: call.status) { _, s in if s != .live { showKeys = false } }
+    }
+
+    /// Listening in: no mute, keypad or hold (you're muted by the room); just the speaker and a clear reminder.
+    private func listeningPanel(_ call: Phone.ActiveCall) -> some View {
+        VStack(spacing: 18) {
+            HStack(spacing: 10) {
+                Image(systemName: "ear.fill").font(.headline).foregroundStyle(Theme.green)
+                    .symbolEffect(.variableColor.iterative, isActive: call.status == .live)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(call.status == .live ? "You’re listening in" : "Joining the call…").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
+                    Text("You’re muted. Neither side can hear you or see that you joined.").font(.caption).foregroundStyle(Theme.muted)
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: 340, alignment: .leading)
+            .glass(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            CallControl(icon: "speaker.wave.3.fill", label: "Speaker", on: call.speaker) { phone.toggleSpeaker() }
+        }
     }
 
     private var incomingButtons: some View {
@@ -245,21 +269,23 @@ struct CallBar: View {
         if let call = phone.active, !phone.expanded {
             Button { withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { phone.expanded = true } } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "phone.fill").font(.footnote.weight(.bold)).foregroundStyle(.white)
+                    Image(systemName: call.listening ? "ear.fill" : "phone.fill").font(.footnote.weight(.bold)).foregroundStyle(.white)
                         .frame(width: 30, height: 30).background(Theme.green, in: Circle())
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(call.name).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
+                        Text(call.listening ? "Listening · \(call.name)" : call.name).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
                         if call.status == .live {
                             TimelineView(.periodic(from: .now, by: 1)) { ctx in
                                 Text(PhoneFmt.clock(max(0, Int(ctx.date.timeIntervalSince(call.connectedAt ?? ctx.date))))).font(.caption).monospacedDigit().foregroundStyle(Theme.green)
                             }
                         } else {
-                            Text(call.status == .incoming ? "Incoming call" : call.status == .ended ? "Call ended" : "Calling…").font(.caption).foregroundStyle(Theme.accent)
+                            Text(call.status == .incoming ? "Incoming call" : call.status == .ended ? "Call ended" : call.status == .ringing ? "Ringing…" : "Calling…").font(.caption).foregroundStyle(Theme.accent)
                         }
                     }
                     Spacer()
-                    Button { phone.toggleMute() } label: { Image(systemName: call.muted ? "mic.slash.fill" : "mic.fill").frame(width: 34, height: 34) }
-                        .foregroundStyle(call.muted ? Theme.amber : Theme.text)
+                    if !call.listening {
+                        Button { phone.toggleMute() } label: { Image(systemName: call.muted ? "mic.slash.fill" : "mic.fill").frame(width: 34, height: 34) }
+                            .foregroundStyle(call.muted ? Theme.amber : Theme.text)
+                    }
                     Button { phone.hangUp() } label: { Image(systemName: "phone.down.fill").foregroundStyle(.white).frame(width: 34, height: 34).background(Theme.red, in: Circle()) }
                 }
                 .padding(.leading, 8)

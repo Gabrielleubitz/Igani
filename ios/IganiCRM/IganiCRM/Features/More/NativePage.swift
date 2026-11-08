@@ -15,7 +15,7 @@ struct NativePage: View {
     }
 
     private static let ids: [String: String] = [
-        "/sales/board": "board", "/sales/reports": "analytics", "/sales/calls": "calls", "/sales/call-lists": "call-lists",
+        "/sales/chat": "chat", "/sales/board": "board", "/sales/reports": "analytics", "/sales/calls": "calls", "/sales/call-lists": "call-lists",
         "/meet": "igani-meet", "/sales/team-meeting": "team-meeting", "/sales/invite": "invite", "/sales/videos": "straight-line",
         "/sales/documents": "documents", "/marketing": "marketing", "/admin/dashboard": "overview", "/admin/payouts": "payouts",
         "/admin/sales-contracts": "sales-contracts", "/admin/bookings": "bookings", "/admin/booking-pages": "booking-pages",
@@ -25,6 +25,7 @@ struct NativePage: View {
 
     var body: some View {
         switch page.id {
+        case "chat": ChatHomeView()
         case "board": BoardView()
         case "analytics": AnalyticsView()
         case "calls": CallsView()

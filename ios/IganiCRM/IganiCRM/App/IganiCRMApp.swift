@@ -50,7 +50,7 @@ struct RootView: View {
         .task { await session.start() }
         .onAppear { ToastCenter.shared = toasts }
         .onChange(of: session.phase) { _, p in
-            if p == .signedIn { Task { await Phone.shared.prepare() } } else if p == .signedOut { Phone.shared.signedOut() }
+            if p == .signedIn { Task { await Phone.shared.prepare() }; ChatBadge.shared.start() } else if p == .signedOut { Phone.shared.signedOut(); ChatBadge.shared.stop() }
         }
     }
     @Environment(Toasts.self) private var toasts
@@ -94,6 +94,7 @@ struct MainTabs: View {
                 Tab("Meet", systemImage: "video", value: AppTab.meet) { MeetView() }
             }
             Tab("More", systemImage: "square.grid.2x2", value: AppTab.more) { MoreView(tab: $tab) }
+                .badge(ChatBadge.shared.unread)
         }
         .sensoryFeedback(.selection, trigger: tab)
         .onChange(of: tab, initial: true) { _, t in router.current = t }
@@ -127,6 +128,8 @@ struct MainTabs: View {
     var request: AppTab?
     /// The tab on screen (the floating keypad hides on the Phone tab).
     var current: AppTab = .today
+    /// a chat conversation is open (its composer sits where the floating keypad would)
+    var chatOpen = false
     /// Opens the keypad with this number ready (it doesn't dial by itself).
     func dial(_ number: String) {
         PendingDial.shared.set(PhoneFmt.clean(number))

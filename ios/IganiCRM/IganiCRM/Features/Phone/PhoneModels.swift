@@ -14,7 +14,27 @@ struct StartedCall: Decodable {
     let prospect: Prospect?
     let record: Bool
     let demo: Bool
+    /// through a conference room (listen-in on): connecting doesn't mean the client answered
+    let conference: Bool?
 }
+
+/// A call happening right now (admins: Calls → Live now).
+struct LiveCall: Decodable, Identifiable, Hashable {
+    struct Rep: Decodable, Hashable, Identifiable { let id: String; let name: String }
+    var id: String { callId }
+    let callId: String
+    let rep: Rep
+    let contact: String
+    let company: String?
+    let number: String
+    let status: String
+    let startedAt: Date
+    let answeredAt: Date?
+    let canListen: Bool
+}
+
+struct LiveCalls: Decodable { let calls: [LiveCall]; let listenIn: Bool }
+struct CallProgress: Decodable { let status: String; let answered: Bool }
 
 struct RecentCall: Decodable, Identifiable, Hashable {
     struct Lead: Decodable, Hashable { let id: String; let name: String }

@@ -31,6 +31,11 @@ enum VoiceEvent {
     func digits(_ d: String, uuid: UUID)
     /// update the system call screen with the caller's name once the CRM knows it
     func named(_ name: String, uuid: UUID)
+    /// admins: join a live call's room, muted (never starts or ends the call)
+    func startListening(uuid: UUID, callId: String, name: String) throws
+    /// conference calls: connecting isn't answering, so the system call timer waits for answered(late:)
+    func expectLateAnswer(_ uuid: UUID)
+    func answeredLate(_ uuid: UUID)
 }
 
 /// The app's phone: one call at a time, from the user's own Igani number. Every call is a row in the CRM (startCall),
@@ -58,6 +63,10 @@ enum VoiceEvent {
         var record = false
         var failure: String?
         var digits = ""
+        /// placed through a conference room: wait for the server to say the client answered
+        var conference = false
+        /// an admin listening in on someone else's call (muted, no wrap-up)
+        var listening = false
     }
 
     /// After a call: what happened (saved on the call and the contact).
@@ -146,8 +155,9 @@ enum VoiceEvent {
         let shown = s.prospect?.name ?? (s.lead.map { $0.name.hasPrefix("+") ? nil : $0.name } ?? nil) ?? name ?? s.display
         let uuid = UUID()
         answeredFlag = false
-        active = ActiveCall(id: uuid, callId: s.callId, direction: "OUTBOUND", name: shown, sub: s.prospect?.askFor.map { "Ask for \($0)" } ?? s.lead?.company ?? (shown == s.display ? nil : s.display), number: s.display, leadId: s.lead?.id, prospect: s.prospect, status: .connecting, record: s.record)
+        active = ActiveCall(id: uuid, callId: s.callId, direction: "OUTBOUND", name: shown, sub: s.prospect?.askFor.map { "Ask for \($0)" } ?? s.lead?.company ?? (shown == s.display ? nil : s.display), number: s.display, leadId: s.lead?.id, prospect: s.prospect, status: .connecting, record: s.record, conference: s.conference ?? false)
         expanded = true
+        if s.conference == true { engine.expectLateAnswer(uuid) }
         do {
             try engine.start(uuid: uuid, callId: s.callId, to: s.to, name: shown)
         } catch {
@@ -162,13 +172,31 @@ enum VoiceEvent {
         engine?.end(uuid: a.id)
     }
 
+    /// Admins: listen in on a teammate's live call, muted and unannounced (needs Settings → Phone → Allow listening in).
+    func listen(to call: LiveCall) async throws {
+        guard active == nil else { throw APIError(message: "Hang up your own call first.", status: 0) }
+        await prepare()
+        guard let engine, !(engine is DemoEngine) else { throw APIError(message: setupMessage ?? "Listening in needs Twilio (it can’t run in demo mode).", status: 0) }
+        try await Phone.askForMicrophone()
+        let uuid = UUID()
+        answeredFlag = false
+        active = ActiveCall(id: uuid, callId: call.callId, direction: "LISTEN", name: "\(call.rep.name) → \(call.contact)", sub: "Listening in · they can’t hear you", number: call.number, status: .connecting, muted: true, listening: true)
+        expanded = true
+        do {
+            try engine.startListening(uuid: uuid, callId: call.callId, name: "Listening: \(call.rep.name)")
+        } catch {
+            active = nil
+            throw error
+        }
+    }
+
     func answer() {
         guard let a = active, a.status == .incoming else { return }
         engine?.answer(uuid: a.id)
     }
 
     func toggleMute() {
-        guard var a = active else { return }
+        guard var a = active, !a.listening else { return }
         a.muted.toggle()
         active = a
         engine?.setMuted(a.muted, uuid: a.id)
@@ -223,6 +251,13 @@ enum VoiceEvent {
             if a.callId.isEmpty == false, engine is DemoEngine { Task { try? await API.shared.run("simulateCallProgress", ["callId": a.callId, "status": "RINGING"]) } }
         case .connected(let id), .answered(let id):
             guard var a = active, a.id == id else { return }
+            // a conference call is connected to its room before the client answers: watch the server for the answer
+            if case .connected = ev, a.conference, !a.listening, a.status != .live {
+                a.status = .ringing
+                active = a
+                watchForAnswer(a)
+                return
+            }
             if a.status != .live {
                 a.status = .live
                 a.connectedAt = a.connectedAt ?? Date()
@@ -249,6 +284,19 @@ enum VoiceEvent {
             ToastCenter.shared?.show("Missed call from \(a.name)", tone: .warn)
         case .ended(let id, let failure):
             guard let a = active, a.id == id else { return }
+            if a.listening {
+                var ended = a
+                ended.status = .ended
+                ended.failure = failure
+                active = ended
+                Task {
+                    try? await Task.sleep(for: .seconds(failure == nil ? 0.7 : 2.4))
+                    guard self.active?.id == id else { return }
+                    self.active = nil
+                    self.expanded = false
+                }
+                return
+            }
             let seconds = a.connectedAt.map { Int(Date().timeIntervalSince($0)) } ?? 0
             let demo = engine is DemoEngine
             if !answeredFlag, a.direction == "OUTBOUND", a.status == .connecting {
@@ -268,6 +316,25 @@ enum VoiceEvent {
                 if a.direction == "INBOUND" && !self.answeredFlag { return }
                 let busy = failure?.localizedCaseInsensitiveContains("busy") == true
                 self.wrapUp = WrapUp(callId: a.callId, name: a.name, number: a.number, direction: a.direction, answered: self.answeredFlag, seconds: seconds, leadId: a.leadId, prospect: a.prospect != nil, known: a.name != a.number, suggested: self.answeredFlag ? .connected : (busy ? .busy : .no_answer))
+            }
+        }
+    }
+
+    /// Conference calls: ask the server every second whether the client picked up (their leg's status).
+    private func watchForAnswer(_ call: ActiveCall) {
+        Task {
+            for _ in 0..<120 {
+                try? await Task.sleep(for: .seconds(1))
+                guard var a = active, a.id == call.id, a.status != .ended else { return }
+                guard let p: CallProgress = try? await API.shared.act("callProgress", call.callId) else { continue }
+                if p.answered {
+                    a.status = .live
+                    a.connectedAt = Date()
+                    answeredFlag = true
+                    active = a
+                    engine?.answeredLate(a.id)
+                    return
+                }
             }
         }
     }
@@ -361,4 +428,7 @@ enum VoiceEvent {
     func setSpeaker(_ on: Bool) {}
     func digits(_ d: String, uuid: UUID) {}
     func named(_ name: String, uuid: UUID) {}
+    func startListening(uuid: UUID, callId: String, name: String) throws { throw APIError(message: "Listening in needs Twilio (it can’t run in demo mode).", status: 0) }
+    func expectLateAnswer(_ uuid: UUID) {}
+    func answeredLate(_ uuid: UUID) {}
 }

@@ -49,6 +49,11 @@ struct CallsView: View {
     var body: some View {
         List {
             if let page {
+                if page.isAdmin {
+                    Section { LiveCallsPanel() }
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+                }
                 Section {
                     VStack(spacing: 12) {
                         StatGrid {
