@@ -91,7 +91,7 @@ export function PersonContractForm({
   if (!companyIsComplete(company)) {
     return (
       <p className="text-sm text-amber-400">
-        The company details aren’t saved yet. Fill them in once on <Link className="underline" href="/admin/sales-contracts">Sales contracts</Link>, then come back to send {person.name}’s agreement.
+        The company details aren’t saved yet. Fill them in once on the <Link className="underline" href="/admin/sales-contracts">contract setup page</Link>, then come back to send {person.name}’s agreement.
       </p>
     )
   }
@@ -121,7 +121,7 @@ export function PersonContractForm({
         <span className="font-medium">Signs for the company</span>
         {ready.length === 0 ? (
           <span className="block text-amber-400">
-            No admin has a saved signature yet. Add one on <Link className="underline" href="/admin/sales-contracts">Sales contracts</Link>.
+            No admin has a saved signature yet. Add one on the <Link className="underline" href="/admin/sales-contracts">contract setup page</Link>.
           </span>
         ) : (
           <select className="h-10 w-full rounded-md border border-input bg-background px-3" value={signerId} onChange={(e) => setSignerId(e.target.value)}>

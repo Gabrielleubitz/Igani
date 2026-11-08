@@ -205,7 +205,10 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
             {signed.length > 1 ? <p className="text-xs text-muted-foreground">{signed.length} signed copies on file.</p> : null}
             {agreementData ? (
               <div className="border-t pt-3">
-                <p className="mb-3 font-medium">Send the agreement</p>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-medium">Send the agreement</p>
+                  <a className="text-xs underline" href="/admin/sales-contracts">Company details, signatures and everyone’s status</a>
+                </div>
                 <PersonContractForm
                   key={agreementData[0]?.code ?? 'none'}
                   person={{ name: user.name ?? user.email ?? 'Salesperson', email: user.email ?? '' }}

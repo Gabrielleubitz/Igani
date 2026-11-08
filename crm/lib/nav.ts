@@ -70,7 +70,6 @@ export const NAV: NavEntry[] = [
         roles: ['ADMIN'],
         children: [
           { id: 'offers', label: 'Offers', icon: 'offers', href: '/admin/offers', roles: ['ADMIN'] },
-          { id: 'sales-contracts', label: 'Sales contracts', icon: 'documents', href: '/admin/sales-contracts', roles: ['ADMIN'] },
           { id: 'payouts', label: 'Payouts', icon: 'documents', href: '/admin/payouts', roles: ['ADMIN'] },
           { id: 'bookings', label: 'Bookings', icon: 'bookings', href: '/admin/bookings', roles: ['ADMIN'] },
           { id: 'booking-pages', label: 'Booking pages', icon: 'pages', href: '/admin/booking-pages', roles: ['ADMIN'] },

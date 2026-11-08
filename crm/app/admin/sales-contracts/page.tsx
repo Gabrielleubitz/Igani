@@ -9,7 +9,7 @@ import { listPendingLinks } from '@/lib/sales-contract'
 import { CONTRACT_VERSION } from '@/lib/sales-contract-core'
 import { getSetting } from '@/lib/settings'
 
-export const metadata = { title: 'Sales contracts' }
+export const metadata = { title: 'Contract setup' }
 export const dynamic = 'force-dynamic'
 
 /**
@@ -31,7 +31,7 @@ export default async function SalesContractsPage(): Promise<React.ReactElement> 
   const signers = admins.map((a) => ({ userId: a.id, name: a.contractSigner?.name || a.name || a.email || 'Admin', title: a.contractSigner?.title ?? '', signature: a.contractSigner?.signature ?? '' }))
   return (
     <div className="space-y-5">
-      <PageIntro title="Sales contracts" hint="Set up the company details and the signatures once. Each salesperson's agreement is sent from their own page, so one person's contract never replaces another's." />
+      <PageIntro title="Contract setup" hint="Set up the company details and the signatures once. Each salesperson's agreement is sent from their own page, so one person's contract never replaces another's." />
       <CompanyDetailsCard company={company} />
       <Card>
         <CardHeader>
