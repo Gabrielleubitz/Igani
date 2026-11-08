@@ -9,7 +9,7 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
-    DEVELOPMENT_TEAM: ""
+    DEVELOPMENT_TEAM: 8T65J68WA2
 packages:
   TwilioVoice:
     url: https://github.com/twilio/twilio-voice-ios
