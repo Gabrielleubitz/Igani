@@ -1,3 +1,4 @@
+import { UploadPastCall } from '@/components/calls/UploadPastCall'
 import type { Prisma } from '@prisma/client'
 import { ChevronDown, Clock, Mic, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOutgoing, Sparkles, Star, Users } from 'lucide-react'
 import Link from 'next/link'
@@ -151,6 +152,8 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
         <StatTile icon={<Clock />} tone="violet" label="Talk time" value={talkTime(mine.talk)} sub="Last 30 days" />
         <StatTile icon={<Star />} tone="amber" label="Average score" value={<span className={cn(avgScore != null && scoreTone(avgScore).text)}>{avgScore ?? '—'}</span>} sub={avgScore == null ? 'After the first analyzed call' : `${mine.scores.length} analyzed calls`} muted={avgScore == null} />
       </div>
+
+      {isAdmin ? <UploadPastCall people={people.map((p) => ({ id: p.id, name: p.name ?? p.email ?? 'Teammate' }))} /> : null}
 
       {isAdmin && stats.size > 0 ? (
         <details className="group rounded-2xl border bg-card/60" open={!person}>

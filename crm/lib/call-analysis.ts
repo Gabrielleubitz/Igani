@@ -401,6 +401,37 @@ export async function analyzeCall(callId: string, opts: { force?: boolean; ignor
   }
 }
 
+/**
+ * Reviews audio an admin uploaded for a call that has no Twilio recording (a training call, say), exactly like a live call: the same
+ * transcription, speaker split, review and tone check. The audio is not kept; only the transcript and the review are saved.
+ * It skips the 60-second minimum, like an admin's "Review anyway".
+ */
+export async function analyzeUploadedCall(callId: string, audio: Blob): Promise<'ready' | 'failed' | 'none'> {
+  const key = process.env.OPENAI_API_KEY
+  if (!key) return 'none'
+  const fail = async (error: string): Promise<'failed'> => {
+    await prisma.call.update({ where: { id: callId }, data: { analysisStatus: 'failed', analysisError: error.slice(0, 300), analyzedAt: new Date() } })
+    return 'failed'
+  }
+  try {
+    await prisma.call.update({ where: { id: callId }, data: { analysisStatus: 'processing', analyzedAt: new Date(), analysisAttempts: { increment: 1 } } })
+    const { segments } = await transcribe(audio, key)
+    if (segments.length < 2) return await fail('Nothing was said on the recording.')
+    const last = segments[segments.length - 1]
+    const seconds = Math.max(1, Math.round(last?.end ?? 0))
+    const { speakers, analysis } = await analyseSegments(segments.slice(0, 800), key, 'Outgoing call: the rep called the client.', { audio, durationSec: seconds })
+    const transcript: TranscriptLine[] = segments.map((s, i) => ({ ...s, speaker: speakers[i] ?? 'rep' }))
+    await prisma.call.update({
+      where: { id: callId },
+      data: { transcript: transcript as unknown as Prisma.InputJsonValue, analysis: analysis as unknown as Prisma.InputJsonValue, analysisStatus: 'ready', analyzedAt: new Date(), analysisError: null, durationSec: seconds, recordingSec: seconds },
+    })
+    return 'ready'
+  } catch (err) {
+    console.error('[call-analysis] upload review failed', callId, err instanceof Error ? err.message : err)
+    return await fail(err instanceof Error ? err.message : 'The review failed.')
+  }
+}
+
 export const asAnalysis = (v: unknown): CallAnalysis | null => {
   const r = CallAnalysis.safeParse(v)
   if (!r.success) return null
