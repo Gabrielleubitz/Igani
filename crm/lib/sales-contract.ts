@@ -5,7 +5,7 @@ import type { Prisma } from '@prisma/client'
 import { env } from './env'
 import { htmlToPdf } from './pdf-render'
 import { prisma } from './prisma'
-import { AGREEMENT_CSS, CONTRACT_VERSION, agreementHtml, agreementSectionsHtml, type ContractData, type AgreementView } from './sales-contract-core'
+import { AGREEMENT_CSS, CONTRACT_VERSION, agreementHtml, agreementSectionsHtml, type ContractData, type AgreementView, type Figures } from './sales-contract-core'
 import { LINK_HOURS, LINK_PREFIX, isLinkCode, linkKey, newLinkCode, parseLink, type LinkPayload } from './sales-contract-token'
 
 const asJson = (v: unknown): Prisma.InputJsonValue => JSON.parse(JSON.stringify(v)) as Prisma.InputJsonValue
@@ -28,7 +28,7 @@ export async function createContractLink(data: ContractData, admin: { name: stri
 
 export const linkUrl = (code: string): string => `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/sign/${code}`
 
-export interface PendingLink { code: string; url: string; expiresAt: Date; email: string; name: string }
+export interface PendingLink { code: string; url: string; expiresAt: Date; email: string; name: string; figures: Figures }
 
 /** Every unsigned, unexpired contract link, with who it is for. */
 export async function listPendingLinks(now = new Date()): Promise<PendingLink[]> {
@@ -38,7 +38,7 @@ export async function listPendingLinks(now = new Date()): Promise<PendingLink[]>
     const code = row.key.slice(LINK_PREFIX.length)
     if (!isLinkCode(code)) continue
     const r = parseLink(code, row.value, now)
-    if (r.ok) out.push({ code, url: linkUrl(code), expiresAt: new Date(r.payload.exp * 1000), email: r.payload.data.email.trim().toLowerCase(), name: r.payload.data.name })
+    if (r.ok) out.push({ code, url: linkUrl(code), expiresAt: new Date(r.payload.exp * 1000), email: r.payload.data.email.trim().toLowerCase(), name: r.payload.data.name, figures: r.payload.data.figures })
   }
   return out
 }

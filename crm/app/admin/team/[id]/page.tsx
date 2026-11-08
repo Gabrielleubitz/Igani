@@ -187,13 +187,20 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
           <CardContent>
             {lockedTerms ? (
               (() => {
-                const t = agreementData?.[3]
+                // While a contract is waiting for signature, show the figures in that contract; once signed, the signed terms
+                const pend = lockedTerms.kind === 'pending' ? agreementData?.[0] : null
+                const saved = agreementData?.[3]
+                const t = pend ? { baseRatePct: pend.figures.basePercent, threshold: pend.figures.threshold, incrementSize: pend.figures.increment, bonusPerIncrement: pend.figures.bonus } : saved
                 return t ? (
                   <div className="space-y-2 text-sm">
                     <p>
                       <b>{t.baseRatePct}%</b> of every payment the client makes. Bonus of <b>{formatIls(t.bonusPerIncrement)}</b> for every <b>{formatIls(t.incrementSize)}</b> of the contract price above <b>{formatIls(t.threshold)}</b>, paid only once the whole price is paid.
                     </p>
-                    <p className="text-muted-foreground">Locked by the agreement signed on {lockedTerms.signedAt.toLocaleDateString('en-GB')}. You can see these terms but not change them. To change them, send a new agreement below with the new figures.</p>
+                    <p className="text-muted-foreground">
+                      {lockedTerms.kind === 'signed'
+                        ? `Locked by the agreement signed on ${lockedTerms.at.toLocaleDateString('en-GB')}. You can see these terms but not change them. To change them, send a new agreement below with the new figures.`
+                        : 'Locked: this contract was sent and is waiting for the salesperson’s signature. You can see these figures but not change them here. To change them, send a new agreement below with the new figures: it replaces the link.'}
+                    </p>
                   </div>
                 ) : null
               })()
