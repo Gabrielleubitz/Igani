@@ -22,6 +22,8 @@ describe('commission wording', () => {
     expect(text).toContain('if the client pays 90%, 90% of the bonus')
     expect(text).not.toContain('never paid in part')
     expect(text).toContain('The Company’s contracts with its clients state that payments are non-refundable')
+    expect(text).toContain('because of the Sales Representative, for example because they misled the client or breached this agreement')
+    expect(text).toContain('the Sales Representative keeps the commission and nothing is clawed back')
     expect(text).toContain('The Sales Representative does not need the client to have paid the whole price')
     expect(text).toContain('if the client pays half of the contract price upfront, the Sales Representative earns the commission rate on that half')
     expect(text).not.toContain('base payout')
