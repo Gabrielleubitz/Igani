@@ -46,6 +46,8 @@ export interface StartedCall {
   /** live Straight Line hints are on (setting + OpenAI key) */
   hints: boolean
   demo: boolean
+  /** placed through a conference room (listen-in on): the app connecting doesn't mean the client answered — watch callProgress */
+  conference: boolean
 }
 
 /**
@@ -90,11 +92,12 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     const lead = await callContact(leadId)
     const record = await getSetting('voice.record')
     const hints = (await getSetting('voice.hints')) && Boolean(process.env.OPENAI_API_KEY)
+    const conference = !demo && (await getSetting('voice.listenIn'))
     const call = await prisma.call.create({
-      data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo },
+      data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo, conference },
       select: { id: true },
     })
-    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, hints, demo } }
+    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, hints, demo, conference } }
   } catch (err) {
     return toActionError(err)
   }
@@ -420,6 +423,59 @@ export async function simulateIncomingCall(): Promise<ActionResult<{ callId: str
     const from = (lead?.phone && toE164(lead.phone)) || '+972501234567'
     const call = await prisma.call.create({ data: { userId: user.id, leadId: lead?.id ?? null, direction: 'INBOUND', status: 'RINGING', fromNumber: from, toNumber: '+15005550006', simulated: true } })
     return { ok: true, data: { callId: call.id, from } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Where an outgoing call stands (listen-in calls: the app is connected before the client answers). */
+export async function callProgress(callId: string): Promise<ActionResult<{ status: string; answered: boolean }>> {
+  try {
+    const user = await requireUser([...callers])
+    const call = await prisma.call.findUnique({ where: { id: z.string().regex(/^[a-z0-9]{20,40}$/i).parse(callId) }, select: { userId: true, status: true, answeredAt: true } })
+    if (!call || call.userId !== user.id) return { ok: false, error: 'Call not found.' }
+    return { ok: true, data: { status: call.status, answered: Boolean(call.answeredAt) || call.status === 'IN_PROGRESS' } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+export interface LiveCall {
+  callId: string
+  rep: { id: string; name: string }
+  /** the client: their name, else the number */
+  contact: string
+  company: string | null
+  number: string
+  status: 'INITIATED' | 'RINGING' | 'IN_PROGRESS'
+  startedAt: string
+  answeredAt: string | null
+  /** an admin can join it muted (it runs through a conference room) */
+  canListen: boolean
+}
+
+/** Calls happening right now across the team, for admins (Calls page → Live now). */
+export async function liveCalls(): Promise<ActionResult<{ calls: LiveCall[]; listenIn: boolean }>> {
+  try {
+    const user = await requireUser(['ADMIN'])
+    const rows = await prisma.call.findMany({
+      where: { status: { in: [...LIVE_STATUSES] }, simulated: false, startedAt: { gt: new Date(Date.now() - 95 * 60_000) }, twilioCallSid: { not: null } },
+      orderBy: { startedAt: 'desc' },
+      take: 50,
+      include: { user: { select: { id: true, name: true, email: true } }, lead: { select: { firstName: true, lastName: true, email: true, company: true } }, prospect: { select: { name: true } } },
+    })
+    const calls: LiveCall[] = rows.map((c) => ({
+      callId: c.id,
+      rep: { id: c.userId ?? '', name: c.user?.name ?? c.user?.email ?? 'Teammate' },
+      contact: c.lead ? leadName(c.lead) : (c.prospect?.name ?? formatPhone(c.direction === 'OUTBOUND' ? c.toNumber : c.fromNumber)),
+      company: c.lead?.company ?? null,
+      number: formatPhone(c.direction === 'OUTBOUND' ? c.toNumber : c.fromNumber),
+      status: c.status as LiveCall['status'],
+      startedAt: c.startedAt.toISOString(),
+      answeredAt: c.answeredAt?.toISOString() ?? null,
+      canListen: c.conference && Boolean(c.conferenceSid) && c.userId !== user.id,
+    }))
+    return { ok: true, data: { calls, listenIn: await getSetting('voice.listenIn') } }
   } catch (err) {
     return toActionError(err)
   }

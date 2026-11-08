@@ -6,7 +6,7 @@ import { Messages } from './Messages'
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect } from '@/app/actions/call-lists'
-import { abandonCall, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
+import { abandonCall, callProgress, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
 import { dialProblem, formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
@@ -318,7 +318,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     const c = call.accept()
     active.current = c
     const display = caller?.display ?? formatPhone(call.from)
-    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ?? null, prospect: null, record: false, hints: false, demo }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in', company: caller?.id?.prospect?.name ?? caller?.id?.label?.company ?? null })
+    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ?? null, prospect: null, record: false, hints: false, demo, conference: false }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in', company: caller?.id?.prospect?.name ?? caller?.id?.label?.company ?? null })
     const finish = (): void => {
       active.current = null
       setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'answered' } : s))
@@ -388,13 +388,31 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
           return
         }
         active.current = c
+        // Listen-in calls run through a conference room: the app joins the room straight away, so "accepted" only
+        // means ringing has started. Whether the client answered comes from the server (their leg's status).
+        let watch: number | null = null
+        const stopWatch = (): void => {
+          if (watch != null) window.clearInterval(watch)
+          watch = null
+        }
         const finish = (ended: Session['ended']): void => {
+          stopWatch()
           active.current = null
           setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: s.answeredAt ? 'answered' : s.rang ? ended : 'failed' } : s))
           setOpen(true)
         }
         c.on('ringing', () => setSession((s) => (s && s.phase === 'connecting' ? { ...s, phase: 'ringing', rang: true } : s)))
-        c.on('accept', () => setSession((s) => (s ? { ...s, phase: 'live', answeredAt: Date.now() } : s)))
+        c.on('accept', () => {
+          if (!call.conference) return setSession((s) => (s ? { ...s, phase: 'live', answeredAt: Date.now() } : s))
+          setSession((s) => (s && s.phase === 'connecting' ? { ...s, phase: 'ringing', rang: true } : s))
+          watch = window.setInterval(() => {
+            void callProgress(call.callId).then((r) => {
+              if (!r.ok || !r.data.answered) return
+              stopWatch()
+              setSession((s) => (s && s.phase !== 'wrapup' && !s.answeredAt ? { ...s, phase: 'live', answeredAt: Date.now() } : s))
+            })
+          }, 1000)
+        })
         c.on('disconnect', () => finish('no_answer'))
         c.on('cancel', () => finish('canceled'))
         c.on('error', (e) => {

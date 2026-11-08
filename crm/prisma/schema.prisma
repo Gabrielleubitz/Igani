@@ -122,6 +122,10 @@ model User {
   leadNotes       LeadNote[]
   phoneLine       PhoneLine?
   calls           Call[]
+  chatMemberships ChatMember[]
+  chatMessages    ChatMessage[]
+  chatReactions   ChatReaction[]
+  createdChannels ChatChannel[]   @relation("ChatChannelCreator")
   callShares      CallShare[]     @relation("CallSharedWith")
   smsMessages     SmsMessage[]
   meetRooms       MeetRoom[]
@@ -799,6 +803,9 @@ model Call {
   simulated        Boolean       @default(false)
   /// A call to a business on a call list (before it is a lead)
   prospectId       String?
+  /// Calls placed through a Twilio conference room (Settings → Phone → Allow listening in), so admins can listen in
+  conferenceSid    String?
+  conference       Boolean       @default(false)
 
   user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   lead     Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
@@ -1035,4 +1042,75 @@ model LeadPayment {
   lead             Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@index([leadId, createdAt])
+}
+
+enum ChatKind {
+  CHANNEL
+  DM
+}
+
+/// Team chat: a channel (public to the whole team, or private to its members) or a direct conversation.
+model ChatChannel {
+  id            String    @id @default(cuid())
+  kind          ChatKind  @default(CHANNEL)
+  /// lowercase, dashes (e.g. "sales-floor"); empty for direct conversations
+  name          String    @default("")
+  topic         String?
+  /// private channels are seen only by their members; public ones by everyone on the team
+  private       Boolean   @default(false)
+  /// direct conversations: the members' ids, sorted and joined, so each pair has one conversation
+  dmKey         String?   @unique
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  lastMessageAt DateTime  @default(now())
+  archivedAt    DateTime?
+
+  createdBy User?         @relation("ChatChannelCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members   ChatMember[]
+  messages  ChatMessage[]
+
+  @@index([kind, lastMessageAt])
+}
+
+model ChatMember {
+  channelId  String
+  userId     String
+  joinedAt   DateTime @default(now())
+  /// everything before this is read
+  lastReadAt DateTime @default(now())
+
+  channel ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        String    @id @default(cuid())
+  channelId String
+  /// kept as empty if the teammate is deleted
+  userId    String?
+  body      String
+  createdAt DateTime  @default(now())
+  editedAt  DateTime?
+  deletedAt DateTime?
+
+  channel   ChatChannel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  reactions ChatReaction[]
+
+  @@index([channelId, createdAt])
+}
+
+model ChatReaction {
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, userId, emoji])
 }

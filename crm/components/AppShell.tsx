@@ -4,8 +4,10 @@ import type { ReactNode } from 'react'
 import type { SessionUser } from '@/lib/auth'
 import { Logo } from '@/components/brand/Logo'
 import { TaskAlert } from '@/components/crm/TaskAlert'
+import { ChatPulse } from '@/components/chat/ChatPulse'
 import { avatarPath, isGooglePhoto } from '@/lib/avatar'
 import { ensureAvatar } from '@/lib/avatar-sync'
+import { chatUnreadFor } from '@/lib/chat'
 import { prisma } from '@/lib/prisma'
 import { SignOutButton } from './AuthButtons'
 import { ThemeToggle } from './ThemeToggle'
@@ -37,14 +39,15 @@ export async function AppShell({ user, children }: { user: SessionUser; children
       </main>
     )
   }
-  const [pendingApprovals, me] = await Promise.all([
+  const [pendingApprovals, me, chat] = await Promise.all([
     user.role === 'ADMIN' ? prisma.booking.count({ where: { status: 'PENDING', source: 'PUBLIC_PAGE', startTime: { gt: new Date() } } }) : Promise.resolve(0),
     prisma.user.findUnique({ where: { id: user.id }, select: { id: true, image: true } }),
+    chatUnreadFor(user.id).catch(() => ({ unread: 0, mentions: 0 })),
   ])
   // No photo yet: find it now (stored sign-in token, else Google; capped at ~2.5 s and retried every few hours)
   const image = isGooglePhoto(me?.image) ? me.image : (me ? await Promise.race([ensureAvatar(me.id).catch(() => null), new Promise<null>((r) => setTimeout(() => r(null), 2500))]) : null)
   const photo = me ? avatarPath({ id: me.id, image }) : null
-  const nodes = visible(NAV, user.role, { bookings: pendingApprovals })
+  const nodes = visible(NAV, user.role, { bookings: pendingApprovals, chat: chat.unread })
   const initials = (user.name ?? user.email)
     .split(/[\s@.]+/)
     .filter(Boolean)
@@ -102,6 +105,7 @@ export async function AppShell({ user, children }: { user: SessionUser; children
           </div>
           <TaskAlert userId={user.id} role={user.role} />
           {children}
+          <ChatPulse initialUnread={chat.unread} />
         </div>
       </main>
     </div>

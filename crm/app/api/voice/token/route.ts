@@ -13,6 +13,7 @@ export async function GET(): Promise<NextResponse> {
   const c = twilioConfig()
   if (!c) return NextResponse.json({ error: 'Calling is not set up yet.' }, { status: 503 })
   const line = await prisma.phoneLine.findUnique({ where: { userId: user.id } })
-  if (!line?.active) return NextResponse.json({ error: 'You don’t have a phone line yet. Ask an admin.' }, { status: 403 })
+  // admins without a line still get a token, to listen in on calls (placing calls still needs a line: see the TwiML webhook)
+  if (!line?.active && user.role !== 'ADMIN') return NextResponse.json({ error: 'You don’t have a phone line yet. Ask an admin.' }, { status: 403 })
   return NextResponse.json({ token: voiceToken(c, user.id), identity: identityFor(user.id), ttlSec: 3600 }, { headers: { 'cache-control': 'no-store' } })
 }

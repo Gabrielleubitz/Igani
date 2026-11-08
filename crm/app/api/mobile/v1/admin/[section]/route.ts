@@ -151,6 +151,7 @@ const SECTIONS: Record<string, (user: User, sp: Params) => Promise<unknown>> = {
       numbers,
       record: settings['voice.record'],
       hints: settings['voice.hints'],
+      listenIn: settings['voice.listenIn'],
       countries: settings['voice.countries'],
       team: team.map((u) => {
         const l = lineOf.get(u.id)
@@ -226,6 +227,7 @@ const SECTIONS: Record<string, (user: User, sp: Params) => Promise<unknown>> = {
         'notifications.weeklySummary': s['notifications.weeklySummary'],
         'voice.record': s['voice.record'],
         'voice.hints': s['voice.hints'],
+        'voice.listenIn': s['voice.listenIn'],
       },
       signer: s['contract.signer'],
       company: s['contract.company'],

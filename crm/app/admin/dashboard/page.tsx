@@ -3,6 +3,7 @@ import { StatTile, Tag, type Tone } from '@/components/ui/tone'
 import Link from 'next/link'
 import { CommissionPayRow } from '@/components/admin/CommissionPayRow'
 import { PageIntro } from '@/components/PageIntro'
+import { LiveNow } from '@/components/calls/LiveNow'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { loadOverview } from '@/lib/admin-overview'
@@ -36,6 +37,7 @@ export default async function DashboardPage(): Promise<React.ReactElement> {
         </div>
       ) : null}
       <PageIntro title="Overview" hint="A snapshot of the whole business: leads, pipeline, meetings and how each teammate is doing. Click any number to dig in." />
+      <LiveNow />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {tiles.map((t) => (
           <StatTile key={t.label} href={t.href} icon={t.icon} tone={t.tone} label={t.label} value={t.value} tag={t.tag} />

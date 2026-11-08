@@ -12,6 +12,7 @@ export type NavEntry = { id: string; label: string; icon?: string; href?: string
 /** The sidebar: categories that open into their pages. Each entry lists who may see it; folders with nothing left are hidden. */
 export const NAV: NavEntry[] = [
   { id: 'today', label: 'Today', icon: 'today', href: '/sales/today', roles: ALL },
+  { id: 'chat', label: 'Team chat', icon: 'chat', href: '/sales/chat', roles: ALL },
   {
     id: 'sales',
     label: 'Sales',

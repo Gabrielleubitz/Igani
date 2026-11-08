@@ -3,6 +3,7 @@ import { ChevronDown, Clock, Mic, PhoneCall, PhoneIncoming, PhoneMissed, PhoneOu
 import Link from 'next/link'
 import { CallFilters, type CallTab } from '@/components/calls/CallFilters'
 import { PageIntro } from '@/components/PageIntro'
+import { LiveNow } from '@/components/calls/LiveNow'
 import { EmptyState } from '@/components/ui/empty-state'
 import { IconChip, StatTile, Tag, type Tone } from '@/components/ui/tone'
 import { requireUser } from '@/lib/auth'
@@ -142,6 +143,7 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
   return (
     <div className="space-y-6">
       <PageIntro title="Calls" hint={isAdmin ? 'Every call made from the CRM, by day. Repeat tries to the same person are folded together; click a call for the recording, transcript and coaching.' : 'Your calls, by day. Repeat tries to the same person are folded together; click a call for the recording and coaching.'} />
+      {isAdmin ? <LiveNow /> : null}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile icon={<PhoneCall />} tone="blue" label="Today" value={mine.today} sub={`${mine.calls} in the last 30 days`} />

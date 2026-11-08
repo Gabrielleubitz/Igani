@@ -58,7 +58,7 @@ export function iosPushCredential(sandbox: boolean): string | null {
   return v && /^CR[0-9a-f]{32}$/i.test(v) ? v : null
 }
 
-export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done' | 'sms' | 'sms-status'
+export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done' | 'sms' | 'sms-status' | 'conference'
 
 /** Public URL of one of our voice webhooks (what Twilio calls, and what its signature is computed over). */
 export function voiceUrl(path: VoicePath, callId?: string): string {
@@ -177,3 +177,6 @@ export async function fetchTwilioCall(c: TwilioConfig, callSid: string): Promise
 }
 
 export const twiml = (): InstanceType<typeof twilio.twiml.VoiceResponse> => new twilio.twiml.VoiceResponse()
+
+/** A REST client for the account (API key auth). */
+export const twilioClient = (c: TwilioConfig): ReturnType<typeof twilio> => twilio(c.apiKeySid, c.apiKeySecret, { accountSid: c.accountSid })

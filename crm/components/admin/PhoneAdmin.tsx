@@ -72,7 +72,7 @@ export function PhoneLineRow({ userId, name, role, current, numbers, takenBy }: 
 }
 
 /** Recording, and which countries can be called. */
-export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hints: boolean; countries: DialCountry[] } }): React.ReactElement {
+export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hints: boolean; listenIn: boolean; countries: DialCountry[] } }): React.ReactElement {
   const router = useRouter()
   const [v, setV] = useState(initial)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -80,7 +80,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
   const save = (): void =>
     start(async () => {
       setMsg(null)
-      const r = await saveSettings({ 'voice.record': v.record, 'voice.hints': v.hints, 'voice.countries': v.countries })
+      const r = await saveSettings({ 'voice.record': v.record, 'voice.hints': v.hints, 'voice.listenIn': v.listenIn, 'voice.countries': v.countries })
       setMsg(r.ok ? { ok: true, text: 'Saved' } : { ok: false, text: r.error })
       if (r.ok) router.refresh()
     })
@@ -98,6 +98,15 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
         <span>
           <span className="font-medium">Live Straight Line hints</span>
           <span className="block text-xs text-muted-foreground">While a salesperson is on a call, short coaching hints appear on their screen. Their call audio is transcribed live by OpenAI and not stored by us. Each rep can switch it off for themselves.</span>
+        </span>
+      </label>
+      <label id="listen-in" className="flex scroll-mt-24 items-start gap-3">
+        <input type="checkbox" className="mt-1" checked={v.listenIn} onChange={(e) => setV({ ...v, listenIn: e.target.checked })} />
+        <span>
+          <span className="font-medium">Allow listening in</span>
+          <span className="block text-xs text-muted-foreground">
+            Admins can join any live outgoing call from Calls → Live now, muted and unannounced: neither the salesperson nor the client hears them. Calls placed after you switch this on run through a Twilio conference room (a little more per minute). Each time someone listens, it’s noted in the audit log. Check that listening to calls is allowed where you and your clients are.
+          </span>
         </span>
       </label>
       <fieldset className="space-y-1">

@@ -26,6 +26,7 @@ import {
   PhoneCall,
   Users,
   type LucideIcon,
+  MessagesSquare,
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -59,6 +60,7 @@ const ICONS: Record<string, LucideIcon> = {
   tests: FlaskConical,
   meet: Video,
   settings: Settings,
+  chat: MessagesSquare,
 }
 
 /** A menu entry as the server sends it: icons are names (mapped to lucide icons here), folders have children. */
@@ -91,6 +93,7 @@ const ICON_COLOR: Record<string, string> = {
   phone: 'text-emerald-400',
   calls: 'text-emerald-400',
   callLists: 'text-teal-400',
+  chat: 'text-fuchsia-400',
 }
 
 function toMenu(nodes: NavNode[]): MenuNode[] {

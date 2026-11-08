@@ -2,6 +2,7 @@ import * as admin from '@/app/actions/admin'
 import * as bookings from '@/app/actions/bookings'
 import * as callLists from '@/app/actions/call-lists'
 import * as callShares from '@/app/actions/call-shares'
+import * as chat from '@/app/actions/chat'
 import * as calls from '@/app/actions/calls'
 import * as deals from '@/app/actions/deals'
 import * as leads from '@/app/actions/leads'
@@ -33,6 +34,24 @@ const ACTIONS: Record<string, Action> = {
   simulateCallProgress: calls.simulateCallProgress,
   simulateIncomingCall: calls.simulateIncomingCall,
   saveCallWrapUp: calls.saveCallWrapUp,
+  callProgress: calls.callProgress,
+  liveCalls: calls.liveCalls,
+  // team chat
+  chatOverview: chat.chatOverview,
+  chatUnread: chat.chatUnread,
+  chatMessages: chat.chatMessages,
+  chatSend: chat.chatSend,
+  chatEdit: chat.chatEdit,
+  chatDelete: chat.chatDelete,
+  chatReact: chat.chatReact,
+  chatMarkRead: chat.chatMarkRead,
+  chatCreateChannel: chat.chatCreateChannel,
+  chatUpdateChannel: chat.chatUpdateChannel,
+  chatArchiveChannel: chat.chatArchiveChannel,
+  chatAddMembers: chat.chatAddMembers,
+  chatJoin: chat.chatJoin,
+  chatLeave: chat.chatLeave,
+  chatOpenDm: chat.chatOpenDm,
   searchDialerContacts: calls.searchDialerContacts,
   recentCalls: calls.recentCalls,
   lookupIncoming: calls.lookupIncoming,

@@ -24,12 +24,14 @@ import {
   Users,
   Video,
   type LucideIcon,
+  MessagesSquare,
 } from 'lucide-react'
 import { GradientChip, type Tone } from '@/components/ui/tone'
 
 /** Each page's badge: the same icon as its menu entry, in its section's color. */
 const PAGE_BADGE: Record<string, { icon: LucideIcon; tone: Tone }> = {
   Leads: { icon: Users, tone: 'blue' },
+  'Team chat': { icon: MessagesSquare, tone: 'pink' },
   'Archived leads': { icon: Archive, tone: 'slate' },
   Board: { icon: SquareKanban, tone: 'indigo' },
   Tasks: { icon: SquareCheck, tone: 'emerald' },
