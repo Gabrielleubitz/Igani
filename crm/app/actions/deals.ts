@@ -113,10 +113,11 @@ type Tx = Prisma.TransactionClient
 
 /** Sets finalPaymentReceivedAt to the day the whole price was paid (net of refunds), or clears it when the price is no longer fully paid. */
 async function syncFullyPaid(tx: Tx, leadId: string): Promise<void> {
-  const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { quotedPrice: true, finalPaymentReceivedAt: true, payments: { select: { amount: true, receivedAt: true, refundedAt: true } } } })
+  const lead = await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { quotedPrice: true, finalPaymentReceivedAt: true, payments: { select: { amount: true, receivedAt: true, refundedAt: true, isFinal: true } } } })
   const live = lead.payments.filter((p) => !p.refundedAt)
   const net = live.reduce((n, p) => n + p.amount, 0)
-  const full = bonusDue(net, lead.quotedPrice ?? 0)
+  // Paid in full when the shekel payments reach the price, or when a payment was marked as the final one (payments in another currency can drift a little)
+  const full = bonusDue(net, lead.quotedPrice ?? 0) || live.some((p) => p.isFinal)
   const last = live.reduce<Date | null>((m, p) => (!m || p.receivedAt > m ? p.receivedAt : m), null)
   const next = full ? last : null
   if ((next?.getTime() ?? null) !== (lead.finalPaymentReceivedAt?.getTime() ?? null)) await tx.lead.update({ where: { id: leadId }, data: { finalPaymentReceivedAt: next } })
@@ -130,7 +131,7 @@ async function endedBefore(tx: Tx, leadId: string, day: Date): Promise<boolean> 
   return !!ended?.terminatedAt && day > ended.terminatedAt
 }
 
-const paymentInput = z.object({ amount: z.number().int().positive().max(1_000_000_000), date: dateInput })
+const paymentInput = z.object({ amount: z.number().int().positive().max(1_000_000_000), date: dateInput, final: z.boolean().optional() })
 
 /** The client made a payment (any part of the price). Its commission is worked out and is payable straight away. */
 export async function addLeadPayment(id: string, input: z.input<typeof paymentInput>): Promise<ActionResult> {
@@ -143,12 +144,14 @@ export async function addLeadPayment(id: string, input: z.input<typeof paymentIn
       const lead = await tx.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, excludedCosts: true, commissionTotal: true, commissionSnapshot: true, payments: { select: { amount: true, refundedAt: true } } } })
       if (!lead || lead.status !== 'WON' || lead.commissionTotal === null || !lead.quotedPrice) throw new BookingError('Win the deal and enter its price first: that is when the commission is set.', 'INVALID_STATE')
       const paidBefore = lead.payments.filter((p) => !p.refundedAt).reduce((n, p) => n + p.amount, 0)
-      if (paidBefore + m.amount > lead.quotedPrice) throw new BookingError(`That is more than the price. ${Math.max(0, lead.quotedPrice - paidBefore).toLocaleString('en-US')} is still to be paid.`, 'INVALID_STATE')
+      // The final payment may differ a little from what is left (payments in another currency are converted at the day's rate), but not wildly
+      const limit = m.final ? Math.round(lead.quotedPrice * 1.25) : lead.quotedPrice
+      if (paidBefore + m.amount > limit) throw new BookingError(`That is more than the price. ${Math.max(0, lead.quotedPrice - paidBefore).toLocaleString('en-US')} is still to be paid.`, 'INVALID_STATE')
       const rate = parseTerms((lead.commissionSnapshot as { terms?: unknown } | null)?.terms).baseRatePct
-      const commission = paymentCommission(m.amount, paidBefore, lead.quotedPrice, lead.excludedCosts ?? 0, rate)
-      await tx.leadPayment.create({ data: { leadId: lid, amount: m.amount, receivedAt: date, commission } })
+      const commission = paymentCommission(m.amount, paidBefore, lead.quotedPrice, lead.excludedCosts ?? 0, rate, !m.final)
+      await tx.leadPayment.create({ data: { leadId: lid, amount: m.amount, receivedAt: date, commission, isFinal: !!m.final } })
       await syncFullyPaid(tx, lid)
-      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.payment_added', actorId: admin.id, metadata: { amount: m.amount, date: m.date, commission } }, tx)
+      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.payment_added', actorId: admin.id, metadata: { amount: m.amount, date: m.date, commission, final: !!m.final } }, tx)
     })
     refresh(lid)
     return { ok: true, data: undefined }

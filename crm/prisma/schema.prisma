@@ -1027,6 +1027,8 @@ model LeadPayment {
   commissionPaidAt DateTime?
   /// When this payment was returned to the client (a paid commission is then clawed back)
   refundedAt       DateTime?
+  /// The client has now paid the whole price (matters when payments arrive in another currency and the shekel total drifts from the locked shekel price)
+  isFinal          Boolean   @default(false)
   createdAt        DateTime  @default(now())
   lead             Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
 

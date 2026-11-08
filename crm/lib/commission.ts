@@ -63,10 +63,10 @@ export function calculateCommission(dealAmount: number, terms: CommissionTerms =
  * payments in proportion). It is the difference between the commission on everything paid after it and before it, rounded once, so
  * the payments always add up to exactly the commission on the full price. Overpayment above the price earns nothing extra.
  */
-export function paymentCommission(amount: number, paidBefore: number, price: number, excludedCosts: number, ratePct: number): number {
+export function paymentCommission(amount: number, paidBefore: number, price: number, excludedCosts: number, ratePct: number, capAtPrice = true): number {
   if (!(price > 0) || !(amount > 0)) return 0
   const share = (price - Math.min(Math.max(0, excludedCosts), price)) / price
-  const upTo = (paid: number): number => Math.round((Math.max(0, ratePct) / 100) * share * Math.min(Math.max(0, paid), price))
+  const upTo = (paid: number): number => Math.round((Math.max(0, ratePct) / 100) * share * (capAtPrice ? Math.min(Math.max(0, paid), price) : Math.max(0, paid)))
   return upTo(paidBefore + amount) - upTo(paidBefore)
 }
 

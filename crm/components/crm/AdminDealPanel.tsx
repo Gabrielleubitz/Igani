@@ -119,6 +119,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
   const dealPrice = p.quotedPrice ?? 0
   const paidSoFar = p.payments.filter((x) => !x.refundedAt).reduce((n, x) => n + x.amount, 0)
   const [payAmount, setPayAmount] = useState('')
+  const [payFinal, setPayFinal] = useState(false)
   const parsedPay = parseShekels(payAmount)
 
   const paymentsBox = (): React.ReactElement => (
@@ -184,7 +185,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
           )}
         </div>
       ) : null}
-      {paidSoFar < dealPrice ? (
+      {!m.finalPaymentReceivedAt ? (
         <div className="flex flex-wrap items-end gap-2 border-t pt-3">
           <label className="space-y-1 text-xs text-muted-foreground">
             Client paid (₪, converted at that day’s rate)
@@ -195,12 +196,17 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
             disabled={pending || !parsedPay.ok || !parsedPay.value}
             onClick={() => {
               if (!parsedPay.ok || !parsedPay.value) return
-              run(() => addLeadPayment(p.leadId, { amount: parsedPay.value!, date: payDate }), 'Payment recorded.')
+              run(() => addLeadPayment(p.leadId, { amount: parsedPay.value!, date: payDate, final: payFinal }), 'Payment recorded.')
               setPayAmount('')
+              setPayFinal(false)
             }}
           >
             Add payment
           </Button>
+          <label className="flex items-center gap-1.5 pb-1.5 text-xs text-muted-foreground">
+            <input type="checkbox" checked={payFinal} onChange={(e) => setPayFinal(e.target.checked)} />
+            This is the final payment (the whole price is now paid)
+          </label>
           {!parsedPay.ok ? <span className="text-xs text-red-400">{parsedPay.error}</span> : null}
         </div>
       ) : null}
@@ -214,7 +220,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="quoted-price">Quoted price (₪)</Label>
+          <Label htmlFor="quoted-price">Quoted price (₪, locked on the day the client signs)</Label>
           <div className="flex gap-2">
             <Input id="quoted-price" inputMode="numeric" placeholder="e.g. 17000" value={price} onChange={(e) => setPrice(e.target.value)} />
             <Button
@@ -231,7 +237,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
             </Button>
           </div>
           {priceError ? <p className="text-xs text-red-400">{priceError}</p> : null}
-          <p className="text-xs text-muted-foreground">The price agreed with the client after the call. Saving a price moves the lead to Proposal sent. Salespeople never see it.</p>
+          <p className="text-xs text-muted-foreground">The price agreed with the client after the call, in shekels. If it was quoted in another currency, enter it converted at the Bank of Israel rate on the day the client signs: that shekel price is then fixed, and it is the price the bonus steps use. Saving a price moves the lead to Proposal sent. Salespeople never see it.</p>
         </div>
 
         <div className="space-y-2">

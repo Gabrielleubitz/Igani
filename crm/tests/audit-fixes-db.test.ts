@@ -208,6 +208,16 @@ d('audit fixes', async () => {
     expect((await dealActions.setBonusPaid(l.id, '2026-11-21')).ok).toBe(true)
   })
 
+  it('a payment marked final completes the deal even if payments in another currency add up a little under the shekel price', async () => {
+    const l = await won('fx@x.com') // price 25,000 (the shekel price locked when the client signed)
+    expect((await dealActions.addLeadPayment(l.id, { amount: 12_000, date: '2026-11-10' })).ok).toBe(true)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).finalPaymentReceivedAt).toBeNull()
+    expect((await dealActions.addLeadPayment(l.id, { amount: 12_900, date: '2026-11-20', final: true })).ok).toBe(true) // 24,900 in total
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).finalPaymentReceivedAt).not.toBeNull()
+    const rows = await prisma.leadPayment.findMany({ where: { leadId: l.id }, orderBy: { createdAt: 'asc' } })
+    expect(rows.map((r) => r.commission)).toEqual([3_600, 3_870]) // 30% of what was actually received
+  })
+
   it('the team page counts a win by when it was won, not when the lead was last edited', async () => {
     const old = await won('old@x.com')
     await prisma.activityLog.create({ data: { entityType: 'LEAD', entityId: old.id, action: 'lead.status_changed', metadata: { from: 'PROPOSAL_SENT', to: 'WON' }, createdAt: new Date(Date.now() - 90 * 86_400_000) } })

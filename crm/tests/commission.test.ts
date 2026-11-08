@@ -166,3 +166,13 @@ describe('commission on each payment, bonus only at the end', () => {
     expect(s).toMatchObject({ payable: 3_000, voided: 9_000 + 3_000 })
   })
 })
+
+describe('payments in another currency (final payment, uncapped commission)', () => {
+  it('stops commission at the price normally, but not on a final payment that lands a little over it', () => {
+    expect(paymentCommission(5_200, 10_000, 15_000, 0, 30)).toBe(1_500) // capped: only the last 5,000 of the price earns
+    expect(paymentCommission(5_200, 10_000, 15_000, 0, 30, false)).toBe(1_560) // final payment: 30% of the 5,200 actually received
+  })
+  it('still pays on a final payment that lands a little under the price', () => {
+    expect(paymentCommission(4_900, 10_000, 15_000, 0, 30, false)).toBe(1_470)
+  })
+})
