@@ -63,7 +63,7 @@ export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.tr
 /** The notice period is part of the agreement text the lawyer approves, not a setting: every agreement says 30 days. */
 export const NOTICE_DAYS = 30
 
-export const CONTRACT_VERSION = '2026-11-lawyer-v16'
+export const CONTRACT_VERSION = '2026-11-lawyer-v17'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -161,7 +161,8 @@ export function agreementSectionsHtml(d: ContractData): string {
 <h2><span class="n">7.</span>WHEN THE ENGAGEMENT ENDS AND PENDING DEALS</h2>
 <p class="clause">Either party may end this agreement with <b>${NOTICE_DAYS} days’ written notice</b> to the other party.</p>
 <p class="clause">After the engagement ends, the Sales Representative is still entitled to commission on every payment that cleared before the engagement ends. No commission accrues or is payable on payments the Company receives after the date it ends, whatever earlier negotiations or discussions took place. This includes recurring maintenance payments. The bonus is earned only on those payments, in proportion to each.</p>
-<p class="clause">The Company may end this agreement immediately, by written notice, if the Sales Representative materially breaches it, including by breaching confidentiality, diverting a lead or client, or misleading a client or the Company, or acts dishonestly. In that case, commission is earned only on payments that cleared before the notice, and no bonus is earned.</p>
+<p class="clause">If the Sales Representative breaches this agreement in a way that can be fixed, including by misleading a client or the Company, the Company first gives written notice describing the problem, and the Sales Representative has <b>14 days</b> from that notice to fix it. If it is not fixed within the 14 days, the Company may end this agreement by written notice. Commission is earned on every payment that cleared before the engagement ends.</p>
+<p class="clause">The Company may end this agreement immediately, by written notice and without the 14 days, only for a breach that cannot be fixed: breaching confidentiality, diverting a lead or client, or dishonesty or fraud. In that case, commission is earned only on payments that cleared before the notice, and no further bonus is earned.</p>
 <h2><span class="n">8.</span>GOVERNING LAW AND DISPUTE RESOLUTION</h2>
 <p class="clause">This agreement is governed by, and enforced in accordance with, the laws of <b>${esc(t.jurisdiction.trim())}</b>. Any dispute under this agreement is resolved exclusively by the competent courts of the Jerusalem District, Israel, and by no other court or arbitration. The Company may also ask the competent court for an urgent injunction to protect its confidential information and clients under Section 6.</p>
 <p class="clause">The commission terms, payment terms and dispute terms apply in the same way whatever country the client is in, and whichever law governs the client’s own agreement.</p>`
