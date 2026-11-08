@@ -302,6 +302,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
       ['Website', lead.website ? <a key="w" href={/^https?:\/\//.test(lead.website) ? lead.website : `https://${lead.website}`} target="_blank" rel="noreferrer" className="break-all underline-offset-4 hover:underline">{lead.website.replace(/^https?:\/\//, '')}</a> : null],
       ['Owner', lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : 'Unassigned'],
       ['Sourced by', isAdmin && lead.sourcedBy ? `${lead.sourcedBy.name ?? lead.sourcedBy.email}: the lead stays theirs and can’t be reassigned` : null],
+      ['Locked', isAdmin && !lead.sourcedBy && lead.assignedTo && (lead.status === 'SIGNED' || lead.status === 'WON') ? `${lead.assignedTo.name ?? lead.assignedTo.email} closed this deal: it stays theirs and can’t be reassigned` : null],
       ['Budget', lead.budget],
       ['Quoted price', isAdmin && lead.quotedPrice != null ? `₪${formatMoney(lead.quotedPrice)}` : null],
       ['Lost reason', lead.status === 'LOST' ? lead.lostReason : null],

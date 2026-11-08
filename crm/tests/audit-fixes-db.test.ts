@@ -125,6 +125,9 @@ d('audit fixes', async () => {
 
   it('11. reassigning a won deal needs a commission decision', async () => {
     const l = await won('c@x.com')
+    // A closed deal stays with the rep who closed it, so this commission-decision flow only applies once both have left
+    expect((await leadActions.assignLead(l.id, bo)).ok).toBe(false)
+    await prisma.allowedUser.updateMany({ data: { terminatedAt: new Date() } })
     expect((await leadActions.assignLead(l.id, bo)).ok).toBe(false) // no decision yet
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: l.id } })).assignedToId).toBe(ann)
 
@@ -225,6 +228,10 @@ d('audit fixes', async () => {
     expect((await leadActions.autoAssignLead(mine.id)).ok).toBe(false)
     const given = await prisma.lead.create({ data: { email: 'given@x.com', assignedToId: ann, status: 'NEW' } })
     expect((await leadActions.assignLead(given.id, bo)).ok).toBe(true)
+    // ...until the client signs: from then on it stays with the rep who closed it
+    await prisma.lead.update({ where: { id: given.id }, data: { status: 'SIGNED' } })
+    expect((await leadActions.assignLead(given.id, ann)).ok).toBe(false)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: given.id } })).assignedToId).toBe(bo)
   })
 
   it('the team page counts a win by when it was won, not when the lead was last edited', async () => {
