@@ -179,6 +179,18 @@
 .xh__cl--quiet img{height:22px;filter:grayscale(1) brightness(0);opacity:.45}
 @media (max-width:560px){.xh__cl--quiet{margin-top:36px}.xh__cl--quiet img{height:12px}}
 </style>
+<style>
+/* Client logos slide on a loop so more fit; hovering stops them, reduced motion keeps them still */
+.xh__cl .xh__cl-mq{display:flex;min-width:0;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent);mask-image:linear-gradient(90deg,transparent,#000 7%,#000 93%,transparent)}
+.xh__cl .xh__cl-mq ul{flex:none;display:flex;flex-wrap:nowrap;justify-content:flex-start;align-items:center;gap:56px;padding-right:56px;animation:xclmq 38s linear infinite}
+.xh__cl .xh__cl-mq li{flex:none;display:flex;align-items:center}
+.xh__cl .xh__cl-mq img{max-width:none}
+.xh__cl .xh__cl-mq:hover ul{animation-play-state:paused}
+.xh__cl--quiet img.xh__cl-mc{height:38px}
+@keyframes xclmq{to{transform:translateX(-100%)}}
+@media (max-width:560px){.xh__cl .xh__cl-mq ul{gap:32px;padding-right:32px;animation-duration:30s}.xh__cl--quiet img.xh__cl-mc{height:21px}}
+@media (prefers-reduced-motion:reduce){.xh__cl .xh__cl-mq ul{animation:none;flex-wrap:wrap;flex:1;gap:20px 40px}.xh__cl .xh__cl-mq ul[aria-hidden]{display:none}.xh__cl .xh__cl-mq{-webkit-mask-image:none;mask-image:none}}
+</style>
 
 <style>
 /* Problem: the lead that never got a reply */
@@ -262,7 +274,7 @@ dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);}
       
     </figure>
   </div>
-  <div class="w xh__cl xh__cl--quiet"><p>Trusted by businesses in Israel and the US</p><ul><li><img src="/site/img/gabai.png" alt="Gabai Real Estate"></li><li><img src="/site/img/wine-and-grind.png" alt="Wine & Grind"></li><li><img src="/site/img/cryotherapy.png" alt="Cryotherapy Rejuvenate"></li><li><img src="/site/img/almalinks.png" alt="Almalinks"></li><li><img src="/site/img/callmap.png" alt="Callmap"></li><li><img class="xh__cl-tall" src="/site/img/melons-logistics.png" alt="Melons Logistics"></li></ul></div>
+  <div class="w xh__cl xh__cl--quiet"><p>Trusted by businesses in Israel and the US</p><div class="xh__cl-mq"><ul><li><img src="/site/img/gabai.png" alt="Gabai Real Estate"></li><li><img src="/site/img/wine-and-grind.png" alt="Wine & Grind"></li><li><img src="/site/img/cryotherapy.png" alt="Cryotherapy Rejuvenate"></li><li><img src="/site/img/almalinks.png" alt="Almalinks"></li><li><img src="/site/img/callmap.png" alt="Callmap"></li><li><img class="xh__cl-tall" src="/site/img/melons-logistics.png" alt="Melons Logistics"></li><li><img class="xh__cl-mc" src="/site/img/michael-cutler.png" alt="Michael Cutler Company"></li></ul><ul aria-hidden="true"><li><img src="/site/img/gabai.png" alt=""></li><li><img src="/site/img/wine-and-grind.png" alt=""></li><li><img src="/site/img/cryotherapy.png" alt=""></li><li><img src="/site/img/almalinks.png" alt=""></li><li><img src="/site/img/callmap.png" alt=""></li><li><img class="xh__cl-tall" src="/site/img/melons-logistics.png" alt=""></li><li><img class="xh__cl-mc" src="/site/img/michael-cutler.png" alt=""></li></ul></div></div>
 </section>
 
 <section id="problem" class="sc xp">
