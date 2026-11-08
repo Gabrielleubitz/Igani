@@ -8,6 +8,9 @@ import { prisma } from '@/lib/prisma'
 export const runtime = 'nodejs'
 export const maxDuration = 300
 
+/** The file's own extension, so OpenAI reads the right format (m4a stays m4a). */
+const safeName = (name: string): string => `call.${(name.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'm4a'}`
+
 /**
  * An admin adds a past call (such as a training call) by uploading its audio. The call is added to the chosen person's calls and
  * reviewed like a live one. The audio is not stored: only the transcript and the review are saved.
@@ -43,8 +46,13 @@ export async function POST(req: Request): Promise<NextResponse> {
     },
     select: { id: true },
   })
-  const result = await analyzeUploadedCall(call.id, file)
+  const result = await analyzeUploadedCall(call.id, file, safeName(file.name))
   await logActivity({ entityType: 'USER', entityId: person.id, actorId: user.id, action: 'call.uploaded', metadata: { callId: call.id, result } })
-  if (result === 'none') return NextResponse.json({ error: 'Call reviews are not set up.' }, { status: 503 })
-  return NextResponse.json({ ok: result === 'ready', id: call.id, ...(result === 'failed' ? { error: 'The call was added but the review failed. Open it to retry.' } : {}) })
+  if (result !== 'ready') {
+    // The audio is not kept, so a failed review can't be retried: remove the empty call and say why, so the same file can be uploaded again.
+    const why = (await prisma.call.findUnique({ where: { id: call.id }, select: { analysisError: true } }))?.analysisError
+    await prisma.call.delete({ where: { id: call.id } }).catch(() => undefined)
+    return NextResponse.json({ error: `The review failed${why ? `: ${why}` : ''} Nothing was added; try the upload again.` }, { status: result === 'none' ? 503 : 502 })
+  }
+  return NextResponse.json({ ok: true, id: call.id })
 }

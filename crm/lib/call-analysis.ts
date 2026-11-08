@@ -261,9 +261,10 @@ Write in the review language the request names (English unless it says otherwise
 Hebrew, English or switch between them mid-sentence: understand both equally and judge the rep the same way in either language
 (Hebrew phone etiquette is more direct; do not mark that as rude). Never invent facts. No markdown, no em dashes.`
 
-async function transcribe(audio: Blob, key: string): Promise<{ text: string; segments: { start: number; end: number; text: string }[] }> {
+async function transcribe(audio: Blob, key: string, fileName = 'call.mp3'): Promise<{ text: string; segments: { start: number; end: number; text: string }[] }> {
   const form = new FormData()
-  form.append('file', audio, 'call.mp3')
+  // OpenAI reads the format from the file name, so an uploaded m4a must not be sent as .mp3
+  form.append('file', audio, fileName)
   form.append('model', process.env.OPENAI_TRANSCRIBE_MODEL || 'whisper-1')
   form.append('response_format', 'verbose_json')
   form.append('timestamp_granularities[]', 'segment')
@@ -279,7 +280,7 @@ async function transcribe(audio: Blob, key: string): Promise<{ text: string; seg
   if (!res.ok) {
     const reason = await openAiReason(res)
     console.error('[call-analysis] transcription refused', res.status, reason)
-    throw new Error(res.status === 429 ? 'OpenAI is busy or out of credit.' : `Transcription failed (${res.status}).`)
+    throw new Error(res.status === 429 ? 'OpenAI is busy or out of credit.' : `Transcription failed (${res.status})${res.status === 400 && reason ? `: ${String(reason).slice(0, 160)}` : ''}.`)
   }
   const body = (await res.json()) as { text?: string; segments?: { start: number; end: number; text: string }[] }
   const segments = (body.segments ?? []).map((s) => ({ start: Math.max(0, s.start), end: Math.max(0, s.end), text: s.text.trim() })).filter((s) => s.text)
@@ -406,7 +407,7 @@ export async function analyzeCall(callId: string, opts: { force?: boolean; ignor
  * transcription, speaker split, review and tone check. The audio is not kept; only the transcript and the review are saved.
  * It skips the 60-second minimum, like an admin's "Review anyway".
  */
-export async function analyzeUploadedCall(callId: string, audio: Blob): Promise<'ready' | 'failed' | 'none'> {
+export async function analyzeUploadedCall(callId: string, audio: Blob, fileName = 'call.m4a'): Promise<'ready' | 'failed' | 'none'> {
   const key = process.env.OPENAI_API_KEY
   if (!key) return 'none'
   const fail = async (error: string): Promise<'failed'> => {
@@ -415,7 +416,7 @@ export async function analyzeUploadedCall(callId: string, audio: Blob): Promise<
   }
   try {
     await prisma.call.update({ where: { id: callId }, data: { analysisStatus: 'processing', analyzedAt: new Date(), analysisAttempts: { increment: 1 } } })
-    const { segments } = await transcribe(audio, key)
+    const { segments } = await transcribe(audio, key, fileName)
     if (segments.length < 2) return await fail('Nothing was said on the recording.')
     const last = segments[segments.length - 1]
     const seconds = Math.max(1, Math.round(last?.end ?? 0))
