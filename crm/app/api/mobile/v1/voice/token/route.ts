@@ -18,7 +18,8 @@ export async function GET(req: Request): Promise<Response> {
   const c = twilioConfig()
   if (!c) return fail('Calling is not set up yet.', 503)
   const line = await prisma.phoneLine.findUnique({ where: { userId: user.id } })
-  if (!line?.active) return fail('You don’t have a phone line yet. Ask an admin.', 403)
+  // admins without a line still get a token, to listen in on calls (placing calls still needs a line: see the TwiML webhook)
+  if (!line?.active && user.role !== 'ADMIN') return fail('You don’t have a phone line yet. Ask an admin.', 403)
   const credential = iosPushCredential(new URL(req.url).searchParams.get('sandbox') === '1')
-  return json({ demo: false, token: voiceToken(c, user.id, 3600, credential ?? undefined), identity: identityFor(user.id), ttlSec: 3600, line: formatPhone(line.number), push: Boolean(credential) })
+  return json({ demo: false, token: voiceToken(c, user.id, 3600, credential ?? undefined), identity: identityFor(user.id), ttlSec: 3600, line: line?.active ? formatPhone(line.number) : null, push: Boolean(credential) })
 }

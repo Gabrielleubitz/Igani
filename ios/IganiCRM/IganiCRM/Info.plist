@@ -31,6 +31,9 @@
 	<key>UIUserInterfaceStyle</key><string>Dark</string>
 	<key>NSCameraUsageDescription</key><string>Igani Meet uses your camera so people in the call can see you.</string>
 	<key>NSMicrophoneUsageDescription</key><string>Igani CRM uses your microphone for phone calls and Igani Meet, so people can hear you.</string>
+	<key>NSContactsUsageDescription</key><string>So you can call people saved on this iPhone through your Igani line, and see their names when they call. Your contacts stay on your phone.</string>
+	<key>NSUserActivityTypes</key>
+	<array><string>INStartCallIntent</string><string>INSendMessageIntent</string></array>
 	<key>UIBackgroundModes</key>
 	<array><string>audio</string><string>voip</string><string>remote-notification</string></array>
 	<key>NSAppTransportSecurity</key>

@@ -126,6 +126,7 @@ struct ProfileSheet: View {
                     .listRowBackground(Color.clear)
                 }
                 Section("Account") {
+                    NavigationLink { NotificationSettingsView() } label: { Label("Notifications", systemImage: "bell.badge") }
                     LabeledContent("Time zone", value: session.me?.timeZone ?? "")
                     NavigationLink("Settings on the web") { WebScreen(path: "/admin/settings", title: "Settings") }
                 }
@@ -138,7 +139,7 @@ struct ProfileSheet: View {
                 .listRowBackground(Theme.card)
                 #endif
                 Section {
-                    Button("Sign out", role: .destructive) { dismiss(); session.signOut() }
+                    Button("Sign out", role: .destructive) { dismiss(); Task { await PushCenter.shared.unregister(); session.signOut() } }
                 }
                 .listRowBackground(Theme.card)
             }

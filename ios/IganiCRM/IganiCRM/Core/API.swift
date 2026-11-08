@@ -47,6 +47,10 @@ struct APIError: LocalizedError {
         try await send(path, method: "POST", query: [], body: try JSONSerialization.data(withJSONObject: body), authenticated: authenticated)
     }
 
+    func delete<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
+        try await send(path, method: "DELETE", query: query, body: nil, authenticated: true)
+    }
+
     /// Runs one of the website's own server actions by name (POST /api/mobile/v1/do/<name>): same checks as on the web.
     /// Pass NSNull() for a missing argument.
     func act<T: Decodable>(_ name: String, _ args: Any...) async throws -> T? {

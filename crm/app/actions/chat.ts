@@ -3,8 +3,9 @@
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { avatarPath } from '@/lib/avatar'
-import { CHAT_EMOJI, CHAT_MAX, canSeeChannel, channelSlug, chatTeam, chatUnreadFor, dmKeyFor, ensureGeneral, type ChatPerson } from '@/lib/chat'
+import { CHAT_EMOJI, CHAT_MAX, canSeeChannel, mentionsIn, channelSlug, chatTeam, chatUnreadFor, dmKeyFor, ensureGeneral, type ChatPerson } from '@/lib/chat'
 import { prisma } from '@/lib/prisma'
+import { photoUrl, pushLater } from '@/lib/push'
 import { toActionError, type ActionResult } from './result'
 
 const id = z.string().regex(/^[a-z0-9]{20,40}$/i)
@@ -239,6 +240,7 @@ export async function chatSend(input: z.input<typeof sendInput>): Promise<Action
       await tx.chatMember.upsert({ where: { channelId_userId: { channelId, userId: user.id } }, create: { channelId, userId: user.id, lastReadAt: now }, update: { lastReadAt: now } })
       return m
     })
+    notifyChat(channel, user.id, body)
     return { ok: true, data: { id: msg.id, at: msg.createdAt.toISOString() } }
   } catch (err) {
     return toActionError(err)
@@ -455,4 +457,27 @@ export async function chatPulse(): Promise<ActionResult<ChatPulse>> {
   } catch (err) {
     return toActionError(err)
   }
+}
+
+/** Push: direct messages to the other person, and @mentions to whoever was mentioned (if they can see the channel). */
+function notifyChat(channel: { id: string; kind: 'CHANNEL' | 'DM'; name: string; private: boolean }, senderId: string, body: string): void {
+  void (async () => {
+    const members = (await prisma.chatMember.findMany({ where: { channelId: channel.id }, select: { userId: true } })).map((m) => m.userId)
+    const mentioned = mentionsIn(body)
+    const to = (channel.kind === 'DM' ? members : mentioned.filter((u) => !channel.private || members.includes(u))).filter((u) => u !== senderId)
+    if (!to.length) return
+    pushLater(to, 'chat', async () => {
+      const people = await userMap([senderId, ...mentioned])
+      const from = people.get(senderId)
+      const text = body.replace(/<@([a-z0-9]{20,40})>/gi, (_, id: string) => `@${people.get(id)?.name ?? 'someone'}`)
+      return {
+        title: from?.name ?? 'Team chat',
+        ...(channel.kind === 'CHANNEL' ? { subtitle: `#${channel.name}` } : {}),
+        body: text,
+        thread: `chat-${channel.id}`,
+        category: 'CHAT',
+        data: { type: 'chat', channelId: channel.id, channel: channel.kind === 'DM' ? null : channel.name, dm: channel.kind === 'DM', senderId, senderName: from?.name ?? null, senderPhoto: photoUrl(from?.photo) },
+      }
+    })
+  })().catch(() => undefined)
 }

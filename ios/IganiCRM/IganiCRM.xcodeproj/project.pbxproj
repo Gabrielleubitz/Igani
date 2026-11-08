@@ -15,7 +15,9 @@
 		3477A4EAADF6785EFF2B3E07 /* igani-ring.wav in Resources */ = {isa = PBXBuildFile; fileRef = 66B487E85B8AB8F2761FE7FE /* igani-ring.wav */; };
 		3A605B987D820B3760D355DA /* MeetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E61B2A7D8C4BFA63DDA05974 /* MeetView.swift */; };
 		3DC1B48D9081FB9CAFAC7608 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94EEEC73D5773D0379A11131 /* Session.swift */; };
+		43577F0A3D9A9408853EDCE2 /* PhoneContacts.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6D30B0F5F87BC95E4857ADB /* PhoneContacts.swift */; };
 		47EED45D468556E8BD16D742 /* Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3ED34ECD1E29AC583984C9F /* Config.swift */; };
+		4D27A3A5C105F7C08FEAC804 /* Push.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2C926AD09EE93973E53B28 /* Push.swift */; };
 		56D176A75BDA53A26E3EC3FB /* Phone.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78991C25C1C3E2A8CD0CDAE3 /* Phone.swift */; };
 		5B8E8FF6F84D160EB966BEE2 /* LeadsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C8A7F5693162BF97C2C016B /* LeadsView.swift */; };
 		5DA30FDF705266D1AF8009CC /* WebScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A09F2722C2EBCCDCC145D9A /* WebScreen.swift */; };
@@ -26,6 +28,7 @@
 		903553F55CDF9F2CA048171E /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = C886FB0077AACB35D5F5B797 /* API.swift */; };
 		9F69DDD51CE891C30BCD013F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9A0808D1539A54F0177473CB /* Assets.xcassets */; };
 		A15F5500AD6242CBEA201805 /* IganiMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AED7D151F6D1F06D1DD9E7 /* IganiMark.swift */; };
+		A57102B835AFE44967955AA5 /* Notifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE3C29A5B07DFDB2ACFAE79 /* Notifications.swift */; };
 		A865E362433AA2F8B8266648 /* MessagesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A53300417C06F0752FB2239 /* MessagesView.swift */; };
 		A9968F402EB4541879754B24 /* AdminScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3227A979AB1764CF5308A252 /* AdminScreens.swift */; };
 		AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A46A2AFA5181FA13B53711E /* CallScreen.swift */; };
@@ -41,11 +44,37 @@
 		DE059216019C407A68943D88 /* NativePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87093D6F5B926DB09EDCCB42 /* NativePage.swift */; };
 		E046274C63F15212E6E7B5B3 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C5E508DD140AA183506097D /* Models.swift */; };
 		E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B67AA1A6DF8D2B5DF06A32D0 /* LeadDetailView.swift */; };
+		E7AB6459D9DA89E496973EAC /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5157F41B1C1CE48AF1F4E939 /* NotificationService.swift */; };
 		E884A8FA7397014B026B73C3 /* ChatModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07E791ADFD67E35F28D4E05D /* ChatModels.swift */; };
 		EF3E8DFD3D3E16FA49E3E3A0 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57445395BE86C1E3CD6FF679 /* Theme.swift */; };
+		F9A064191E139D7BAFE8ED46 /* IganiNotify.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E003A2BE5EE0A7FEA635C92A /* IganiNotify.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		FB162594143CF3015BBB9A25 /* IganiCRMApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72830A72288F0694DCA02EBF /* IganiCRMApp.swift */; };
 		FEBAD04EC82C2D5E48BA7E15 /* KeypadFab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A576F7741A54254AA872E1 /* KeypadFab.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		32C0BE21206A8F2292BF2EED /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 3BB038FE6608CCC5D34676DB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C7C6D9BCDE15D2CA178C0EDF;
+			remoteInfo = IganiNotify;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		44259945295D016095363CA8 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F9A064191E139D7BAFE8ED46 /* IganiNotify.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		02DD255EAADE2743D3FD479B /* MeetingScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingScreens.swift; sourceTree = "<group>"; };
@@ -59,12 +88,14 @@
 		35005F07570C45CD38FD96E7 /* CallsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsView.swift; sourceTree = "<group>"; };
 		3C5E508DD140AA183506097D /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		508FFF27437A22EE664F4639 /* MoreView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreView.swift; sourceTree = "<group>"; };
+		5157F41B1C1CE48AF1F4E939 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		55F2A2D48A01191D24C44BF1 /* TwilioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TwilioEngine.swift; sourceTree = "<group>"; };
 		56B5B80BB1A7B2271F0FD834 /* IganiCRM.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = IganiCRM.entitlements; sourceTree = "<group>"; };
 		57445395BE86C1E3CD6FF679 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		5A46A2AFA5181FA13B53711E /* CallScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallScreen.swift; sourceTree = "<group>"; };
 		62FB06BBB5F9FB41E4C93F2A /* PhoneModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneModels.swift; sourceTree = "<group>"; };
 		66B487E85B8AB8F2761FE7FE /* igani-ring.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "igani-ring.wav"; sourceTree = "<group>"; };
+		6A8C9C7CD13CA0E92A988CAC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6AE97091850781D10E84C6BF /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		72830A72288F0694DCA02EBF /* IganiCRMApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IganiCRMApp.swift; sourceTree = "<group>"; };
 		7545C8F3138B87B3CC295E7E /* Pieces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pieces.swift; sourceTree = "<group>"; };
@@ -84,8 +115,12 @@
 		B67AA1A6DF8D2B5DF06A32D0 /* LeadDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadDetailView.swift; sourceTree = "<group>"; };
 		C3ED34ECD1E29AC583984C9F /* Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		C886FB0077AACB35D5F5B797 /* API.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = API.swift; sourceTree = "<group>"; };
+		CA2C926AD09EE93973E53B28 /* Push.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Push.swift; sourceTree = "<group>"; };
 		CAE3EC42F06AD6C3B4DD96AB /* SalesScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SalesScreens.swift; sourceTree = "<group>"; };
+		DFE3C29A5B07DFDB2ACFAE79 /* Notifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Notifications.swift; sourceTree = "<group>"; };
+		E003A2BE5EE0A7FEA635C92A /* IganiNotify.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = IganiNotify.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E61B2A7D8C4BFA63DDA05974 /* MeetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetView.swift; sourceTree = "<group>"; };
+		E6D30B0F5F87BC95E4857ADB /* PhoneContacts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneContacts.swift; sourceTree = "<group>"; };
 		ED0EEE2B860342C9F0D81F00 /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		F3B66F7004A02B060CBF3375 /* IganiCRM.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = IganiCRM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -107,11 +142,21 @@
 			children = (
 				6AE97091850781D10E84C6BF /* Components.swift */,
 				B3AED7D151F6D1F06D1DD9E7 /* IganiMark.swift */,
+				DFE3C29A5B07DFDB2ACFAE79 /* Notifications.swift */,
 				7545C8F3138B87B3CC295E7E /* Pieces.swift */,
 				A2B1073B3507AE26F08A1FBD /* Routes.swift */,
 				57445395BE86C1E3CD6FF679 /* Theme.swift */,
 			);
 			path = UI;
+			sourceTree = "<group>";
+		};
+		0FFCE16099666378084EB734 /* IganiNotify */ = {
+			isa = PBXGroup;
+			children = (
+				6A8C9C7CD13CA0E92A988CAC /* Info.plist */,
+				5157F41B1C1CE48AF1F4E939 /* NotificationService.swift */,
+			);
+			path = IganiNotify;
 			sourceTree = "<group>";
 		};
 		1646BA30EFB5B3B1B7EFBCE1 /* Features */ = {
@@ -146,6 +191,7 @@
 			isa = PBXGroup;
 			children = (
 				866DED0C2F58E745EA552319 /* IganiCRM */,
+				0FFCE16099666378084EB734 /* IganiNotify */,
 				F8284934A77ED75E27B27ED8 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -165,6 +211,7 @@
 				C3ED34ECD1E29AC583984C9F /* Config.swift */,
 				1BC87E63111A9D67CA81BF09 /* Keychain.swift */,
 				3C5E508DD140AA183506097D /* Models.swift */,
+				CA2C926AD09EE93973E53B28 /* Push.swift */,
 				94EEEC73D5773D0379A11131 /* Session.swift */,
 			);
 			path = Core;
@@ -210,6 +257,7 @@
 				21A576F7741A54254AA872E1 /* KeypadFab.swift */,
 				7A53300417C06F0752FB2239 /* MessagesView.swift */,
 				78991C25C1C3E2A8CD0CDAE3 /* Phone.swift */,
+				E6D30B0F5F87BC95E4857ADB /* PhoneContacts.swift */,
 				62FB06BBB5F9FB41E4C93F2A /* PhoneModels.swift */,
 				9E119EDECFFFB3927FA0FADA /* PhoneView.swift */,
 				55F2A2D48A01191D24C44BF1 /* TwilioEngine.swift */,
@@ -271,6 +319,7 @@
 			isa = PBXGroup;
 			children = (
 				F3B66F7004A02B060CBF3375 /* IganiCRM.app */,
+				E003A2BE5EE0A7FEA635C92A /* IganiNotify.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -310,10 +359,12 @@
 				8B24CC4C741B507DF47B1FBB /* Sources */,
 				21692383EFC19E7E2531AD21 /* Resources */,
 				2CA93C3F3457D9144EAAEB2F /* Frameworks */,
+				44259945295D016095363CA8 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				87AB7E333AC47A4C29F49E5E /* PBXTargetDependency */,
 			);
 			name = IganiCRM;
 			packageProductDependencies = (
@@ -322,6 +373,23 @@
 			productName = IganiCRM;
 			productReference = F3B66F7004A02B060CBF3375 /* IganiCRM.app */;
 			productType = "com.apple.product-type.application";
+		};
+		C7C6D9BCDE15D2CA178C0EDF /* IganiNotify */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 17A4298A5899A6B71176602C /* Build configuration list for PBXNativeTarget "IganiNotify" */;
+			buildPhases = (
+				99311795741CEFC0561338E5 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = IganiNotify;
+			packageProductDependencies = (
+			);
+			productName = IganiNotify;
+			productReference = E003A2BE5EE0A7FEA635C92A /* IganiNotify.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -333,6 +401,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					174CDC11BAAF7C981319738E = {
+						DevelopmentTeam = 8T65J68WA2;
+						ProvisioningStyle = Automatic;
+					};
+					C7C6D9BCDE15D2CA178C0EDF = {
 						DevelopmentTeam = 8T65J68WA2;
 						ProvisioningStyle = Automatic;
 					};
@@ -356,6 +428,7 @@
 			projectRoot = "";
 			targets = (
 				174CDC11BAAF7C981319738E /* IganiCRM */,
+				C7C6D9BCDE15D2CA178C0EDF /* IganiNotify */,
 			);
 		};
 /* End PBXProject section */
@@ -398,10 +471,13 @@
 				E046274C63F15212E6E7B5B3 /* Models.swift in Sources */,
 				B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */,
 				DE059216019C407A68943D88 /* NativePage.swift in Sources */,
+				A57102B835AFE44967955AA5 /* Notifications.swift in Sources */,
 				56D176A75BDA53A26E3EC3FB /* Phone.swift in Sources */,
+				43577F0A3D9A9408853EDCE2 /* PhoneContacts.swift in Sources */,
 				8EE2B4621F9F5156398A399B /* PhoneModels.swift in Sources */,
 				148CD474A078BDA83690A6B5 /* PhoneView.swift in Sources */,
 				B468571772913AD07DB6C968 /* Pieces.swift in Sources */,
+				4D27A3A5C105F7C08FEAC804 /* Push.swift in Sources */,
 				D69AD20D3A30005B9D249046 /* Routes.swift in Sources */,
 				AFC8C55A2B1B5F44E1323E54 /* SalesScreens.swift in Sources */,
 				3DC1B48D9081FB9CAFAC7608 /* Session.swift in Sources */,
@@ -415,7 +491,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		99311795741CEFC0561338E5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E7AB6459D9DA89E496973EAC /* NotificationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		87AB7E333AC47A4C29F49E5E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C7C6D9BCDE15D2CA178C0EDF /* IganiNotify */;
+			targetProxy = 32C0BE21206A8F2292BF2EED /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4365A1C1D606B5CCE1359724 /* Debug */ = {
@@ -439,6 +531,42 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
+		};
+		561D4AFF53C6F95F1C400BBF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = IganiNotify/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.igani.crm.notify;
+				PRODUCT_NAME = IganiNotify;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		62CBCC30EE83A7C34132A9BA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				INFOPLIST_FILE = IganiNotify/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.igani.crm.notify;
+				PRODUCT_NAME = IganiNotify;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		635DFD229397184ABB9519D2 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -595,6 +723,15 @@
 			buildConfigurations = (
 				4365A1C1D606B5CCE1359724 /* Debug */,
 				94BA998D99678D110852601F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		17A4298A5899A6B71176602C /* Build configuration list for PBXNativeTarget "IganiNotify" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				561D4AFF53C6F95F1C400BBF /* Debug */,
+				62CBCC30EE83A7C34132A9BA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

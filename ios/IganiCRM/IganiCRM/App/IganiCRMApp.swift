@@ -1,7 +1,9 @@
+import Intents
 import SwiftUI
 
 @main
 struct IganiCRMApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var session = Session()
     @State private var toasts = Toasts()
 
@@ -43,17 +45,45 @@ struct RootView: View {
             if session.phase == .signedIn {
                 KeypadFab()
                 PhoneLayer()
+                PushBannerOverlay()
             }
             ToastOverlay()
+        }
+        .sheet(item: $push.opened) { PushLinkSheet(link: $0) }
+        .sheet(isPresented: $askPush) { NotificationsPrompt() }
+        // tapping an Igani call in the iPhone's Recents (or "call with Igani" from Contacts) dials through the app
+        .onContinueUserActivity("INStartCallIntent") { activity in
+            guard let intent = activity.interaction?.intent as? INStartCallIntent, let handle = intent.contacts?.first?.personHandle?.value else { return }
+            Task { do { try await Phone.shared.call(handle, name: intent.contacts?.first?.displayName) } catch { toasts.show(error.localizedDescription, tone: .warn) } }
+        }
+        .onChange(of: scenePhase) { _, p in
+            if p == .active, session.phase == .signedIn { Task { await ChatBadge.shared.refresh(); await PushCenter.shared.refreshBadge() } }
         }
         .animation(.easeInOut(duration: 0.35), value: session.phase)
         .task { await session.start() }
         .onAppear { ToastCenter.shared = toasts }
         .onChange(of: session.phase) { _, p in
-            if p == .signedIn { Task { await Phone.shared.prepare() }; ChatBadge.shared.start() } else if p == .signedOut { Phone.shared.signedOut(); ChatBadge.shared.stop() }
+            if p == .signedIn {
+                Task { await Phone.shared.prepare() }
+                ChatBadge.shared.start()
+                Task { await PhoneContacts.shared.load() }
+                Task {
+                    await PushCenter.shared.refreshStatus()
+                    await PushCenter.shared.registerWithServer()
+                    // once, after the first sign-in: explain notifications, then iOS asks
+                    if PushCenter.shared.status == .notDetermined, !UserDefaults.standard.bool(forKey: "askedPush") {
+                        UserDefaults.standard.set(true, forKey: "askedPush")
+                        try? await Task.sleep(for: .seconds(1.2))
+                        askPush = true
+                    }
+                }
+            } else if p == .signedOut { Phone.shared.signedOut(); ChatBadge.shared.stop() }
         }
     }
     @Environment(Toasts.self) private var toasts
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var push = PushCenter.shared
+    @State private var askPush = false
 }
 
 /// The call on top of everything: full screen while it matters, a bar while you browse, and the wrap-up after.

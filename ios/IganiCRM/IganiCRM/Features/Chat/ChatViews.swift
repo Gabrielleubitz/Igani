@@ -237,8 +237,8 @@ struct ChatConversationView: View {
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: tick)
-        .onAppear { TabRouter.shared.chatOpen = true }
-        .onDisappear { TabRouter.shared.chatOpen = false }
+        .onAppear { TabRouter.shared.chatOpen = true; ChatScreenTracker.open = channelId }
+        .onDisappear { TabRouter.shared.chatOpen = false; if ChatScreenTracker.open == channelId { ChatScreenTracker.open = nil } }
         .task {
             await first()
             while !Task.isCancelled {

@@ -343,7 +343,7 @@ enum VoiceEvent {
     private func identify(callId: String, uuid: UUID) async {
         guard let who: IncomingCaller = try? await API.shared.act("lookupIncoming", callId) else { return }
         guard var a = active, a.id == uuid else { return }
-        let name = who.lead.flatMap { $0.name.hasPrefix("+") || $0.name == "Unnamed contact" ? nil : $0.name } ?? who.id?.title ?? who.display
+        let name = who.lead.flatMap { $0.name.hasPrefix("+") || $0.name == "Unnamed contact" ? nil : $0.name } ?? who.id?.title ?? PhoneContacts.shared.name(for: who.display) ?? who.display
         a.name = name
         a.number = who.display
         a.leadId = who.lead?.id

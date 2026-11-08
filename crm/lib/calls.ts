@@ -173,6 +173,8 @@ export async function createMissedCallTask(callId: string): Promise<void> {
   const { randomUUID } = await import('node:crypto')
   const who = call.lead ? leadName(call.lead) : formatPhone(call.fromNumber)
   const title = `Call back ${who} (missed call)`
+  const { pushLater } = await import('./push')
+  pushLater([call.userId], 'calls', { title: 'Missed call', body: `${who} called your Igani line.`, thread: 'calls', category: 'MISSED_CALL', collapseId: `missed-${call.id}`, data: { type: 'missed', number: call.fromNumber, name: call.lead ? who : null, leadId: call.lead?.id ?? null } })
   if (call.lead) {
     const { createAutoTask } = await import('./tasks')
     await createAutoTask({ leadId: call.lead.id, title, dueAt: new Date(), assigneeId: call.userId, priority: 'HIGH', auto: 'callback', callId })

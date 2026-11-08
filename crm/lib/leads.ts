@@ -209,6 +209,9 @@ export async function notifyLeadAssigned(leadId: string, repId: string): Promise
       prisma.user.findUnique({ where: { id: repId }, select: { email: true, name: true } }),
     ])
     if (!lead || !rep?.email) return
+    const { pushLater } = await import('./push')
+    const who = [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email || lead.phone || 'New lead'
+    pushLater([repId], 'leads', { title: 'New lead for you', body: [who, lead.company, lead.source ? `from ${lead.source.toLowerCase().replace(/_/g, ' ')}` : null].filter(Boolean).join(' · '), thread: 'leads', category: 'LEAD', data: { type: 'lead', leadId: lead.id, phone: lead.phone, name: who } })
     await sendLeadAssignedEmail(rep.email, {
       repName: rep.name ?? rep.email,
       leadName: [lead.firstName, lead.lastName].filter(Boolean).join(' ') || lead.email || lead.phone || 'New lead',

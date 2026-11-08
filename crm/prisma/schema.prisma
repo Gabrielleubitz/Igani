@@ -123,6 +123,7 @@ model User {
   phoneLine       PhoneLine?
   calls           Call[]
   chatMemberships ChatMember[]
+  pushDevices     PushDevice[]
   chatMessages    ChatMessage[]
   chatReactions   ChatReaction[]
   createdChannels ChatChannel[]   @relation("ChatChannelCreator")
@@ -1113,4 +1114,22 @@ model ChatReaction {
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([messageId, userId, emoji])
+}
+
+/// An iPhone that gets push notifications for this user (the app registers its APNs token after sign-in).
+model PushDevice {
+  id         String   @id @default(cuid())
+  userId     String
+  /// APNs device token (hex)
+  token      String   @unique
+  /// "sandbox" for development builds, "production" for TestFlight / App Store
+  env        String   @default("production")
+  /// which notifications this phone wants: { chat, texts, calls, leads } (missing = on)
+  prefs      Json?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

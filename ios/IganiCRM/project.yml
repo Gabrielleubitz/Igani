@@ -22,10 +22,13 @@ targets:
       - path: IganiCRM
     dependencies:
       - package: TwilioVoice
+      - target: IganiNotify
+        embed: true
     entitlements:
       path: IganiCRM/IganiCRM.entitlements
       properties:
         aps-environment: development
+        com.apple.developer.usernotifications.communication: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: co.igani.crm
@@ -37,3 +40,16 @@ targets:
         SUPPORTS_MACCATALYST: NO
         ENABLE_PREVIEWS: YES
         CODE_SIGN_STYLE: Automatic
+  IganiNotify:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: IganiNotify
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: co.igani.crm.notify
+        PRODUCT_NAME: IganiNotify
+        INFOPLIST_FILE: IganiNotify/Info.plist
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES

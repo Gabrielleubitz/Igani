@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The Phone tab: the keypad, recent calls, texts and call lists, from your own Igani number.
 struct PhoneView: View {
-    enum Pane: Hashable { case keypad, recents, messages, lists }
+    enum Pane: Hashable { case keypad, recents, contacts, messages, lists }
     @Environment(Session.self) private var session
     @State private var phone = Phone.shared
     @State private var pane: Pane = PhoneView.initialPane
@@ -15,13 +15,14 @@ struct PhoneView: View {
                 LineBadge(setup: phone.setup)
                     .padding(.horizontal, 16)
                     .padding(.top, 4)
-                GlassSegments(items: [(Pane.keypad, "Keypad", nil), (.recents, "Recent", nil), (.messages, "Texts", nil), (.lists, "Lists", nil)], selection: $pane, badge: { $0 == .messages ? unread : 0 })
+                GlassSegments(items: [(Pane.keypad, "Keypad", nil), (.recents, "Recent", nil), (.contacts, "Contacts", nil), (.messages, "Texts", nil), (.lists, "Lists", nil)], selection: $pane, badge: { $0 == .messages ? unread : 0 })
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                 Group {
                     switch pane {
                     case .keypad: KeypadPane()
                     case .recents: RecentsPane()
+                    case .contacts: ContactsPane()
                     case .messages: ThreadsPane(unread: $unread)
                     case .lists: CallListsPane()
                     }
@@ -65,6 +66,7 @@ struct PhoneView: View {
         #if DEBUG
         switch UserDefaults.standard.string(forKey: "phonePane") {
         case "recents": return .recents
+        case "contacts": return .contacts
         case "messages": return .messages
         case "lists": return .lists
         default: return .keypad
@@ -126,6 +128,8 @@ struct KeypadPane: View {
     @State private var busy = false
     @State private var lookup: Task<Void, Never>?
     @State private var tap = 0
+    /// the number's name in this iPhone's contacts, when the CRM doesn't know it
+    @State private var phoneName: String?
 
     private let keys: [(String, String)] = [("1", ""), ("2", "ABC"), ("3", "DEF"), ("4", "GHI"), ("5", "JKL"), ("6", "MNO"), ("7", "PQRS"), ("8", "TUV"), ("9", "WXYZ"), ("*", ""), ("0", "+"), ("#", "")]
 
@@ -235,6 +239,8 @@ struct KeypadPane: View {
             }
             .lineLimit(1)
             .transition(.opacity.combined(with: .move(edge: .bottom)))
+        } else if let phoneName, !number.isEmpty {
+            Label(phoneName, systemImage: "person.crop.circle").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent).lineLimit(1)
         } else if !number.isEmpty {
             Text(number.filter(\.isNumber).count >= 7 ? "Not in the CRM yet" : " ").font(.subheadline).foregroundStyle(Theme.muted)
         }
@@ -252,9 +258,14 @@ struct KeypadPane: View {
             async let id: CallerId? = digits.count >= 7 ? try? await API.shared.act("identifyCaller", n, ["lookup": digits.count >= 9]) : nil
             let (f, i) = await (found, id)
             guard !Task.isCancelled, n == number else { return }
+            // contacts saved on this iPhone join the CRM's matches (marked as from your phone)
+            let crm = (f ?? []).filter { $0.phone.filter(\.isNumber) != digits }
+            let mine = PhoneContacts.shared.matches(n).map { p, num in DialerContact(id: "phone-\(p.id)-\(num.value)", name: p.name, company: nil, phone: PhoneFmt.clean(num.value), display: "\(num.label.capitalized) · from your phone") }
+                .filter { m in !crm.contains { PhoneContacts.key($0.phone) == PhoneContacts.key(m.phone) } && PhoneContacts.key(m.phone) != PhoneContacts.key(digits) }
             withAnimation(.snappy) {
-                matches = (f ?? []).filter { $0.phone.filter(\.isNumber) != digits }
+                matches = Array((crm + mine).prefix(8))
                 who = i
+                phoneName = i?.title == nil ? PhoneContacts.shared.name(for: n) : nil
             }
         }
     }
@@ -263,7 +274,7 @@ struct KeypadPane: View {
         busy = true
         defer { busy = false }
         do {
-            try await Phone.shared.call(number, leadId: who?.lead?.id, name: who?.title)
+            try await Phone.shared.call(number, leadId: who?.lead?.id, name: who?.title ?? phoneName)
             number = ""
             who = nil
             matches = []
@@ -370,7 +381,7 @@ struct RecentRow: View {
         HStack(spacing: 12) {
             IconChip(icon: look.icon, tint: look.tint, size: 38)
             VStack(alignment: .leading, spacing: 3) {
-                Text(call.lead.map { $0.name == "Unnamed contact" ? call.otherDisplay : $0.name } ?? call.otherDisplay).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
+                Text(call.lead.flatMap { $0.name == "Unnamed contact" ? nil : $0.name } ?? PhoneContacts.shared.name(for: call.other) ?? call.otherDisplay).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
                 HStack(spacing: 6) {
                     Text(look.label).foregroundStyle(look.tint)
                     if let o = Outcome.label(call.outcome) { Text("· \(o)") }

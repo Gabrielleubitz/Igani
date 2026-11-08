@@ -9,8 +9,9 @@ import { BookingError } from './bookings'
 import { leadIdsForNumber } from './calls'
 import { callBlockedByOwner } from './call-status'
 import { canSeeLead } from './lead-access'
-import { dialProblem, toE164 } from './phone-numbers'
+import { dialProblem, formatPhone, toE164 } from './phone-numbers'
 import { prisma } from './prisma'
+import { pushLater } from './push'
 import { getSetting } from './settings'
 import { SMS_MAX, smsStatus, smsStatusAdvances } from './sms-core'
 import { dialerDemo, sendTwilioSms, twilioConfig, voiceUrl } from './twilio'
@@ -50,6 +51,18 @@ export async function recordIncomingSms(p: Record<string, string>): Promise<{ id
   try {
     const msg = await prisma.smsMessage.create({ data: { userId: line.user.id, leadId, direction: 'INBOUND', lineNumber: line.number, otherNumber: from, body, media, twilioSid: sid, status: 'received' } })
     if (leadId) await logActivity({ entityType: 'LEAD', entityId: leadId, actorId: null, action: 'sms.received', metadata: { messageId: msg.id, from, to: line.number, body: body.slice(0, 1000), media } })
+    pushLater([line.user.id], 'texts', async () => {
+      const lead = leadId ? await prisma.lead.findUnique({ where: { id: leadId }, select: { firstName: true, lastName: true, email: true, company: true } }) : null
+      const name = lead ? [lead.firstName, lead.lastName].filter(Boolean).join(' ') || null : null
+      return {
+        title: name ?? formatPhone(from),
+        ...(lead?.company ? { subtitle: lead.company } : {}),
+        body: body || (media ? '📎 Photo' : '(empty text)'),
+        thread: `sms-${from}`,
+        category: 'SMS',
+        data: { type: 'sms', number: from, name, leadId },
+      }
+    })
     return { id: msg.id }
   } catch (err) {
     // the same message delivered twice at once
