@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
-import { type CommissionTerms, bonusDue, dealTerms, parseTerms, paymentCommission } from '@/lib/commission'
+import { type CommissionTerms, bonusDue, bonusOf, dealTerms, parseTerms, paymentCommission } from '@/lib/commission'
 import { setQuotedPrice, snapshotWonCommission, termsForAssignee } from '@/lib/deals'
 import { lockedMessage, termsLockedBy } from '@/lib/commission-lock'
 import { prisma } from '@/lib/prisma'
@@ -148,7 +148,7 @@ export async function addLeadPayment(id: string, input: z.input<typeof paymentIn
       const limit = m.final ? Math.round(lead.quotedPrice * 1.25) : lead.quotedPrice
       if (paidBefore + m.amount > limit) throw new BookingError(`That is more than the price. ${Math.max(0, lead.quotedPrice - paidBefore).toLocaleString('en-US')} is still to be paid.`, 'INVALID_STATE')
       const rate = parseTerms((lead.commissionSnapshot as { terms?: unknown } | null)?.terms).baseRatePct
-      const commission = paymentCommission(m.amount, paidBefore, lead.quotedPrice, lead.excludedCosts ?? 0, rate, !m.final)
+      const commission = paymentCommission(m.amount, paidBefore, lead.quotedPrice, rate, bonusOf(lead.commissionSnapshot), !m.final)
       await tx.leadPayment.create({ data: { leadId: lid, amount: m.amount, receivedAt: date, commission, isFinal: !!m.final } })
       await syncFullyPaid(tx, lid)
       await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.payment_added', actorId: admin.id, metadata: { amount: m.amount, date: m.date, commission, final: !!m.final } }, tx)
@@ -302,28 +302,6 @@ export async function saveSalespersonTerms(userId: string, terms: CommissionTerm
   }
 }
 
-
-/** Hosting, taxes and out-of-pocket costs taken off the price before commission. Locked once the client's money is recorded, like the price. */
-export async function saveExcludedCosts(id: string, amount: number | null): Promise<ActionResult> {
-  try {
-    const admin = await requireUser(['ADMIN'])
-    const lid = leadId.parse(id)
-    const value = amount === null || amount === 0 ? null : money.parse(amount)
-    const cur = await prisma.lead.findUnique({ where: { id: lid }, select: { status: true, quotedPrice: true, excludedCosts: true, payments: { select: { id: true }, take: 1 } } })
-    if (!cur) throw new BookingError('Lead not found.', 'NOT_FOUND')
-    if (cur.payments.length) throw new BookingError('A client payment is already recorded, so the commission base can’t change. Remove the payments first.', 'INVALID_STATE')
-    if (value !== null && cur.quotedPrice !== null && value >= cur.quotedPrice) throw new BookingError('The excluded costs must be less than the price.', 'INVALID_STATE')
-    await prisma.$transaction(async (tx) => {
-      await tx.lead.update({ where: { id: lid }, data: { excludedCosts: value } })
-      await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.excluded_costs_changed', actorId: admin.id, metadata: { from: cur.excludedCosts, to: value } }, tx)
-      await snapshotWonCommission(lid, tx)
-    })
-    refresh(lid)
-    return { ok: true, data: undefined }
-  } catch (err) {
-    return toActionError(err)
-  }
-}
 
 /** The day a salesperson's agreement ended (null = still active). Only deals the client paid for before this day still pay commission. */
 export async function setSalespersonTermination(userId: string, date: string | null): Promise<ActionResult> {

@@ -2,7 +2,7 @@
  * Salesperson commission: ONE pure function the whole app uses (lead page, win dialog, snapshots, tests).
  * Money is whole shekels; percentages are plain numbers (30 = 30%).
  *
- *  - the base rate applies to EVERY payment the client makes (the price minus excluded costs, whatever its size)
+ *  - the base rate applies to EVERY payment the client makes, on the gross amount (no costs are taken off)
  *  - bonus (paid only at the very end, once the whole price has been paid):
  *      bonusPerIncrement × floor((price − threshold) / incrementSize), and nothing for a partial increment
  *
@@ -28,7 +28,7 @@ export const DEFAULT_COMMISSION_TERMS: CommissionTerms = {
 
 export interface CommissionBreakdown {
   amount: number
-  /** The part of the deal the base rate applies to (the price minus excluded costs) */
+  /** The part of the deal the base rate applies to (the whole price) */
   baseAmount: number
   baseCommission: number
   completedIncrements: number
@@ -42,12 +42,13 @@ const whole = (n: number): number => Math.round(n)
 const num = (v: unknown, fallback: number): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback)
 
 /**
- * `excludedCosts` (third-party hosting, taxes, out-of-pocket) come off the price first: the agreement pays on the
+ * Commission is on the gross price. `excludedCosts` is accepted for old callers and ignored (no costs are deducted).
  * contract price collected excluding them. The breakdown only mentions them when there are some.
  */
 export function calculateCommission(dealAmount: number, terms: CommissionTerms = DEFAULT_COMMISSION_TERMS, excludedCosts = 0): CommissionBreakdown {
-  const excluded = Math.max(0, whole(num(excludedCosts, 0)))
-  const amount = Math.max(0, whole(num(dealAmount, 0)) - excluded)
+  // Commission is on the gross payment: costs are no longer taken off (the argument is kept for old callers and ignored).
+  void excludedCosts
+  const amount = Math.max(0, whole(num(dealAmount, 0)))
   const rate = Math.max(0, terms.baseRatePct) / 100
   const baseAmount = amount
   const baseCommission = baseAmount * rate
@@ -55,18 +56,22 @@ export function calculateCommission(dealAmount: number, terms: CommissionTerms =
   const bonusTotal = completedIncrements * Math.max(0, terms.bonusPerIncrement)
   // A commission can never exceed the deal itself, and always fits the database column (Int4).
   const total = Math.min(whole(baseCommission + bonusTotal), amount, 2_000_000_000)
-  return { amount, baseAmount, baseCommission: whole(baseCommission), completedIncrements, bonusTotal: whole(bonusTotal), total, ...(excluded > 0 ? { excludedCosts: excluded } : {}) }
+  return { amount, baseAmount, baseCommission: whole(baseCommission), completedIncrements, bonusTotal: whole(bonusTotal), total }
 }
 
 /**
- * The commission on ONE payment: the base rate applied to that payment's commissionable share (excluded costs are spread over the
- * payments in proportion). It is the difference between the commission on everything paid after it and before it, rounded once, so
+ * The commission on ONE payment: the base rate on the gross payment, plus the bonus share for that payment (the bonus is earned in
+ * proportion to the part of the price paid). It is the difference between the commission on everything paid after it and before it, rounded once, so
  * the payments always add up to exactly the commission on the full price. Overpayment above the price earns nothing extra.
  */
-export function paymentCommission(amount: number, paidBefore: number, price: number, excludedCosts: number, ratePct: number, capAtPrice = true): number {
+export function paymentCommission(amount: number, paidBefore: number, price: number, ratePct: number, bonusTotal = 0, capAtPrice = true): number {
   if (!(price > 0) || !(amount > 0)) return 0
-  const share = (price - Math.min(Math.max(0, excludedCosts), price)) / price
-  const upTo = (paid: number): number => Math.round((Math.max(0, ratePct) / 100) * share * (capAtPrice ? Math.min(Math.max(0, paid), price) : Math.max(0, paid)))
+  const bonus = Math.max(0, bonusTotal)
+  const upTo = (paid: number): number => {
+    const p = Math.max(0, paid)
+    // Gross: the rate applies to the whole payment. The bonus is earned in proportion to the share of the price paid.
+    return Math.round((Math.max(0, ratePct) / 100) * (capAtPrice ? Math.min(p, price) : p)) + Math.round((bonus * Math.min(p, price)) / price)
+  }
   return upTo(paidBefore + amount) - upTo(paidBefore)
 }
 
@@ -159,8 +164,6 @@ function commissionStatusByPayment(c: { bonus?: number; payments: PaymentLine[] 
     else payable += amount
   }
   for (const p of c.payments) settle(p.commission, p.receivedAt, p.commissionPaidAt, p.refundedAt)
-  // The bonus only exists once the whole price has been paid
-  if (c.finalPaymentReceivedAt) settle(c.bonus ?? 0, c.finalPaymentReceivedAt, c.finalPaidAt, null)
   const pending = Math.max(0, total - paid - payable - voided)
   return { total, paid, payable, pending, ...(voided > 0 ? { voided } : {}), ...(clawback > 0 ? { clawback } : {}) }
 }

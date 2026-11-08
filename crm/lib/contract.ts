@@ -39,7 +39,7 @@ export function parseContractDoc(json: unknown): ContractDoc | null {
 
 /**
  * Igani's standard positions (from the signed contract template, contractV1). The AI adapts these to each offer;
- * it must keep the legal substance (ownership on full payment, confidentiality, liability cap, Israeli law).
+ * it must keep the legal substance (non-refundable payments, ownership on full payment, confidentiality, liability cap, Israeli law).
  */
 export const IGANI_STANDARD_TERMS = `Igani standard terms (keep the substance; adapt wording and details to the offer):
 1. Parties: Igani (the developer/provider) and the client. Effective on signature.
@@ -48,6 +48,8 @@ export const IGANI_STANDARD_TERMS = `Igani standard terms (keep the substance; a
 3. Fees and payment: one-time fees per Schedule A. A down-payment invoice is issued after signing; work starts when it is paid.
    The balance is invoiced per the milestones/phases. Recurring fees (monthly/yearly) in Schedule A start at launch and
    continue until cancelled with 30 days' written notice. Amounts exclude VAT where applicable. Late payment may pause work.
+   All payments are final and non-refundable, including the down-payment and any payment for work already started or
+   delivered; a client who stops or cancels still pays for work done.
 4. Timeline: the estimated timeline and phases from the offer; it depends on the client providing content, access,
    feedback and decisions on time. Delays on the client's side move the timeline.
 5. Client responsibilities: provide content, brand assets, accounts/access to third-party services, timely feedback, and

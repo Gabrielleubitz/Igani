@@ -164,27 +164,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
           </div>
         </div>
       ))}
-      {bonus > 0 ? (
-        <div className="space-y-1.5 rounded-md bg-muted/40 p-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span>Bonus (paid only once the whole price is paid)</span>
-            <span className="tabular-nums">{formatIls(bonus)}</span>
-          </div>
-          {!m.finalPaymentReceivedAt ? (
-            <p className="text-xs text-muted-foreground">Not payable yet: {formatIls(Math.max(0, dealPrice - paidSoFar))} of the price is still to be paid.</p>
-          ) : m.finalPaidAt ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-emerald-400">Bonus paid out on {day(m.finalPaidAt)}</span>
-              <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setBonusPaid(p.leadId, null), 'Undone.')}>Undo</Button>
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-amber-300">Payable now: {formatIls(bonus)}</span>
-              <Button size="sm" disabled={pending} onClick={() => run(() => setBonusPaid(p.leadId, payDate), 'Bonus marked as paid out.')}>Mark bonus paid</Button>
-            </div>
-          )}
-        </div>
-      ) : null}
+      {bonus > 0 ? <p className="text-xs text-muted-foreground">The {formatIls(bonus)} bonus is earned with each payment, in proportion to the part of the price paid (it is already inside each payment’s commission).</p> : null}
       {!m.finalPaymentReceivedAt ? (
         <div className="flex flex-wrap items-end gap-2 border-t pt-3">
           <label className="space-y-1 text-xs text-muted-foreground">

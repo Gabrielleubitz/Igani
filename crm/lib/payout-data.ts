@@ -1,5 +1,4 @@
 import 'server-only'
-import { bonusOf } from './commission'
 import type { PayoutRow } from './payouts'
 import { prisma } from './prisma'
 
@@ -20,7 +19,7 @@ export async function latestTermsByEmail(emails: string[]): Promise<Map<string, 
 }
 
 /**
- * The rows the Payouts page groups: one per client payment (its commission), plus one for the bonus once the whole price is paid.
+ * The rows the Payouts page groups: one per client payment (its commission, which includes that payment's share of the bonus).
  * Commissions cancelled by the agreement ending are left out.
  */
 export async function loadPayoutRows(): Promise<PayoutRow[]> {
@@ -51,10 +50,6 @@ export async function loadPayoutRows(): Promise<PayoutRow[]> {
     for (const p of l.payments) {
       if (p.commission <= 0 || cancelled(p.receivedAt, p.commissionPaidAt)) continue
       rows.push({ ...common, paymentId: p.id, label: 'Payment', amount: p.commission, receivedAt: p.receivedAt, paidAt: p.commissionPaidAt, refundedAt: p.refundedAt ?? l.refundedAt })
-    }
-    const bonus = bonusOf(l.commissionSnapshot)
-    if (bonus > 0 && l.finalPaymentReceivedAt && !cancelled(l.finalPaymentReceivedAt, l.finalPaidAt)) {
-      rows.push({ ...common, paymentId: null, label: 'Bonus', amount: bonus, receivedAt: l.finalPaymentReceivedAt, paidAt: l.finalPaidAt, refundedAt: l.refundedAt })
     }
   }
   return rows

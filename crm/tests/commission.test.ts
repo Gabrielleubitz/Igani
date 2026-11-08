@@ -70,12 +70,9 @@ describe('commission status: nothing is payable before the client pays', () => {
 })
 
 describe('agreement rules: excluded costs, refunds, termination', () => {
-  it('takes excluded costs off the price before the tiers apply', () => {
-    // 20,000 price − 5,000 hosting/tax = 15,000 base → 30% = 4,500, no bonus
-    expect(calculateCommission(20_000, DEFAULT_COMMISSION_TERMS, 5_000)).toMatchObject({ amount: 15_000, total: 4_500, excludedCosts: 5_000 })
+  it('calculates on the gross price: excluded costs are ignored', () => {
+    expect(calculateCommission(20_000, DEFAULT_COMMISSION_TERMS, 5_000)).toMatchObject({ amount: 20_000, total: 7_000 })
     expect(calculateCommission(20_000).total).toBe(6_000 + 1_000)
-    expect(calculateCommission(20_000, DEFAULT_COMMISSION_TERMS, 99_999).total).toBe(0)
-    expect(calculateCommission(10_000, DEFAULT_COMMISSION_TERMS, -50).amount).toBe(10_000)
   })
   const d = (s: string): Date => new Date(s)
   const paid = { commissionTotal: 4_500, finalPaymentReceivedAt: d('2026-11-03'), finalPaidAt: d('2026-12-10') }
@@ -97,16 +94,16 @@ describe('agreement rules: excluded costs, refunds, termination', () => {
 
 import { bonusDue, bonusOf, paymentCommission } from '../lib/commission'
 
-describe('commission on each payment, bonus only at the end', () => {
+describe('commission on each payment, bonus pro rata', () => {
   it('pays 30% of each part: 50 upfront, then the final 50', () => {
-    expect(paymentCommission(5_000, 0, 10_000, 0, 30)).toBe(1_500)
-    expect(paymentCommission(5_000, 5_000, 10_000, 0, 30)).toBe(1_500)
+    expect(paymentCommission(5_000, 0, 10_000, 30)).toBe(1_500)
+    expect(paymentCommission(5_000, 5_000, 10_000, 30)).toBe(1_500)
   })
   it('pays 30% of every payment even above ₪15,000, and the payments add up to the whole', () => {
     const parts = [10_000, 10_000, 10_000]
     let paid = 0
     const each = parts.map((a) => {
-      const c = paymentCommission(a, paid, 30_000, 0, 30)
+      const c = paymentCommission(a, paid, 30_000, 30)
       paid += a
       return c
     })
@@ -115,21 +112,25 @@ describe('commission on each payment, bonus only at the end', () => {
     // ₪33.33 thirds: rounding never loses or invents a shekel
     let p2 = 0
     const third = [1_001, 1_001, 1_001].map((a) => {
-      const c = paymentCommission(a, p2, 3_003, 0, 30)
+      const c = paymentCommission(a, p2, 3_003, 30)
       p2 += a
       return c
     })
     expect(third.reduce((n, x) => n + x, 0)).toBe(Math.round(0.3 * 3_003))
   })
-  it('spreads excluded costs over the payments in proportion', () => {
-    // price 20,000 with 5,000 excluded: only 75% of each payment is commissionable
-    expect(paymentCommission(10_000, 0, 20_000, 5_000, 30)).toBe(2_250)
-    expect(paymentCommission(10_000, 10_000, 20_000, 5_000, 30)).toBe(2_250)
+  it('earns the bonus pro rata with each payment, and the payments add up to commission plus bonus', () => {
+    // price 25,000: 30% = 7,500 plus bonus 2,000. Half paid → half of each.
+    expect(paymentCommission(12_500, 0, 25_000, 30, 2_000)).toBe(3_750 + 1_000)
+    // 90% paid, 10% held back: 90% of the bonus is already earned
+    expect(paymentCommission(22_500, 0, 25_000, 30, 2_000)).toBe(6_750 + 1_800)
+    let paid = 0
+    const sum = [8_333, 8_333, 8_334].map((a) => { const c = paymentCommission(a, paid, 25_000, 30, 2_000); paid += a; return c }).reduce((n, x) => n + x, 0)
+    expect(sum).toBe(7_500 + 2_000)
   })
   it('earns nothing on money above the price, or on nonsense', () => {
-    expect(paymentCommission(5_000, 10_000, 10_000, 0, 30)).toBe(0)
-    expect(paymentCommission(0, 0, 10_000, 0, 30)).toBe(0)
-    expect(paymentCommission(5_000, 0, 0, 0, 30)).toBe(0)
+    expect(paymentCommission(5_000, 10_000, 10_000, 30)).toBe(0)
+    expect(paymentCommission(0, 0, 10_000, 30)).toBe(0)
+    expect(paymentCommission(5_000, 0, 0, 30)).toBe(0)
   })
   it('makes the bonus due only when the whole price is paid', () => {
     expect(bonusDue(29_999, 30_000)).toBe(false)
@@ -141,9 +142,9 @@ describe('commission on each payment, bonus only at the end', () => {
 
   const d = (s: string): Date => new Date(`${s}T00:00:00Z`)
   const pay = (commission: number, at: string, paid: string | null = null, refunded: string | null = null) => ({ commission, receivedAt: d(at), commissionPaidAt: paid ? d(paid) : null, refundedAt: refunded ? d(refunded) : null })
-  const base = { commissionTotal: 12_000, bonus: 3_000, finalPaymentReceivedAt: null as Date | null, finalPaidAt: null as Date | null }
+  const base = { commissionTotal: 12_000, bonus: 0, finalPaymentReceivedAt: null as Date | null, finalPaidAt: null as Date | null }
 
-  it('makes each payment payable as it arrives, with the rest pending and no bonus yet', () => {
+  it('makes each payment payable as it arrives, with the rest pending', () => {
     const s = commissionStatus({ ...base, payments: [pay(3_000, '2026-11-02')] })
     expect(s).toEqual({ total: 12_000, paid: 0, payable: 3_000, pending: 9_000 })
   })
@@ -151,28 +152,27 @@ describe('commission on each payment, bonus only at the end', () => {
     const s = commissionStatus({ ...base, payments: [pay(3_000, '2026-11-02', '2026-12-04'), pay(3_000, '2026-11-20')] })
     expect(s).toEqual({ total: 12_000, paid: 3_000, payable: 3_000, pending: 6_000 })
   })
-  it('adds the bonus as payable only when the price is fully paid, then as paid when it is paid out', () => {
-    const three = [pay(3_000, '2026-11-02', '2026-12-04'), pay(3_000, '2026-11-20', '2026-12-04'), pay(3_000, '2026-12-01')]
-    const done = { ...base, finalPaymentReceivedAt: d('2026-12-01') }
-    expect(commissionStatus({ ...done, payments: three })).toEqual({ total: 12_000, paid: 6_000, payable: 6_000, pending: 0 }) // 3,000 payment + 3,000 bonus
-    expect(commissionStatus({ ...done, finalPaidAt: d('2026-12-20'), payments: three.map((p) => ({ ...p, commissionPaidAt: d('2026-12-20') })) })).toEqual({ total: 12_000, paid: 12_000, payable: 0, pending: 0 })
+  it('shows everything paid once every payment is paid out', () => {
+    const three = [pay(4_000, '2026-11-02', '2026-12-04'), pay(4_000, '2026-11-20', '2026-12-04'), pay(4_000, '2026-12-01')]
+    expect(commissionStatus({ ...base, finalPaymentReceivedAt: d('2026-12-01'), payments: three })).toEqual({ total: 12_000, paid: 8_000, payable: 4_000, pending: 0 })
+    expect(commissionStatus({ ...base, payments: three.map((p) => ({ ...p, commissionPaidAt: d('2026-12-20') })) })).toEqual({ total: 12_000, paid: 12_000, payable: 0, pending: 0 })
   })
   it('cancels an unpaid refunded payment and flags a paid one for clawback', () => {
     expect(commissionStatus({ ...base, payments: [pay(3_000, '2026-11-02', null, '2026-11-10')] })).toMatchObject({ voided: 3_000, payable: 0 })
     expect(commissionStatus({ ...base, payments: [pay(3_000, '2026-11-02', '2026-12-04', '2026-12-10')] })).toMatchObject({ clawback: 3_000, paid: 3_000 })
   })
-  it('pays nothing on a payment received after the agreement ended, and no bonus either', () => {
+  it('pays nothing on a payment received after the agreement ended', () => {
     const s = commissionStatus({ ...base, terminatedAt: d('2026-11-30'), finalPaymentReceivedAt: d('2026-12-05'), payments: [pay(3_000, '2026-11-20'), pay(9_000, '2026-12-05')] })
-    expect(s).toMatchObject({ payable: 3_000, voided: 9_000 + 3_000 })
+    expect(s).toMatchObject({ payable: 3_000, voided: 9_000 })
   })
 })
 
 describe('payments in another currency (final payment, uncapped commission)', () => {
   it('stops commission at the price normally, but not on a final payment that lands a little over it', () => {
-    expect(paymentCommission(5_200, 10_000, 15_000, 0, 30)).toBe(1_500) // capped: only the last 5,000 of the price earns
-    expect(paymentCommission(5_200, 10_000, 15_000, 0, 30, false)).toBe(1_560) // final payment: 30% of the 5,200 actually received
+    expect(paymentCommission(5_200, 10_000, 15_000, 30)).toBe(1_500) // capped: only the last 5,000 of the price earns
+    expect(paymentCommission(5_200, 10_000, 15_000, 30, 0, false)).toBe(1_560) // final payment: 30% of the 5,200 actually received
   })
   it('still pays on a final payment that lands a little under the price', () => {
-    expect(paymentCommission(4_900, 10_000, 15_000, 0, 30, false)).toBe(1_470)
+    expect(paymentCommission(4_900, 10_000, 15_000, 30, 0, false)).toBe(1_470)
   })
 })
