@@ -33,7 +33,7 @@ export async function leadForOutgoingCall(to: string, user: Caller, prospectId?:
     // A number Google lists for a business starts out named after it; the rep adds the person's name after the call
     const label = await tx.phoneLabel.findUnique({ where: { number: to } })
     const lead = await tx.lead.create({
-      data: { phone: to, company: label?.company ?? null, website: label?.website ?? null, source: 'Dialer', sourceDetail: 'Called from the CRM', tags: ['cold-call'], status: 'NEW', assignedToId: user.role === 'MARKETING' ? null : user.id },
+      data: { phone: to, company: label?.company ?? null, website: label?.website ?? null, source: 'Dialer', sourceDetail: 'Called from the CRM', tags: ['cold-call'], status: 'NEW', sourcedById: user.role === 'SALES' ? user.id : null, assignedToId: user.role === 'MARKETING' ? null : user.id },
     })
     await logActivity({ entityType: 'LEAD', entityId: lead.id, actorId: user.id, action: 'lead.created', metadata: { source: 'Dialer', auto: 'call' } }, tx)
     return { id: lead.id, created: true }

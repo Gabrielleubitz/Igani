@@ -11,6 +11,7 @@ import { assignLeadManually, assignLeadRoundRobin, bulkUpdateLeadsTx, changeLead
 import { buildLeadWhere, parseLeadFilters, toCsv } from '@/lib/lead-query'
 import { assertCanMoveLead, assertCanSeeLead, assertCanSeeLeads, leadScope } from '@/lib/lead-access'
 import { applyCommissionChoice } from '@/lib/deals'
+import { leadReassignProblem } from '@/lib/lead-protection-db'
 import { prisma } from '@/lib/prisma'
 import { stageChangeProblem } from '@/lib/stage-rules'
 import { toActionError, type ActionResult } from './result'
@@ -63,6 +64,9 @@ export async function assignLead(leadId: string, assigneeId: string | null, comm
     }
     const choice = carriesCommission ? z.object({ mode: z.enum(['keep', 'recalculate', 'custom']), amount: z.number().int().min(0).max(1_000_000_000).optional() }).parse(commission) : null
     if (choice?.mode === 'custom' && choice.amount === undefined) throw new BookingError('Enter the commission amount.', 'INVALID_STATE')
+    // A lead a salesperson sourced themselves stays theirs
+    const protectedBy = await leadReassignProblem(id, to)
+    if (protectedBy) throw new BookingError(protectedBy, 'INVALID_STATE')
     await assignLeadManually(id, to, user.id)
     if (choice && choice.mode !== 'keep') await applyCommissionChoice(id, choice.mode, choice.amount, user.id)
     else if (choice) await logActivity({ entityType: 'LEAD', entityId: id, actorId: user.id, action: 'lead.commission_kept_on_reassign', metadata: { total: lead.commissionTotal } })
@@ -77,7 +81,13 @@ export async function assignLead(leadId: string, assigneeId: string | null, comm
 export async function autoAssignLead(leadId: string): Promise<ActionResult<{ assignedToId: string | null }>> {
   try {
     await requireUser(['ADMIN'])
-    const assignedToId = await assignLeadRoundRobin(z.string().cuid().parse(leadId), { force: true })
+    const autoId = z.string().cuid().parse(leadId)
+    const sourced = await prisma.lead.findUnique({ where: { id: autoId }, select: { sourcedById: true } })
+    if (sourced?.sourcedById) {
+      const why = await leadReassignProblem(autoId, null)
+      if (why) throw new BookingError(why, 'INVALID_STATE')
+    }
+    const assignedToId = await assignLeadRoundRobin(autoId, { force: true })
     if (!assignedToId) throw new BookingError('No active sales reps to assign to. Add one under Team, or pick an owner manually.', 'INVALID_STATE')
     revalidatePath('/sales', 'layout')
     return { ok: true, data: { assignedToId } }
@@ -191,7 +201,7 @@ export async function createLead(input: { email?: string; firstName?: string; la
     }
     const lead = await prisma.$transaction(async (tx) => {
       // Reps own what they add; admins/marketing leave it unassigned for round-robin or manual assignment.
-      const l = await tx.lead.create({ data: { ...data, email: data.email ?? null, source: data.source || 'Other', assignedToId: admin.role === 'SALES' ? admin.id : null } })
+      const l = await tx.lead.create({ data: { ...data, email: data.email ?? null, source: data.source || 'Other', assignedToId: admin.role === 'SALES' ? admin.id : null, sourcedById: admin.role === 'SALES' ? admin.id : null } })
       await logActivity({ entityType: 'LEAD', entityId: l.id, action: 'lead.created', actorId: admin.id, metadata: { source: l.source, sourceDetail: l.sourceDetail } }, tx)
       return l
     })
@@ -252,6 +262,12 @@ export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: 
     const ch = z.object({ assigneeId: z.string().cuid().nullable().optional(), status: z.nativeEnum(LeadStatus).optional() }).parse(change)
     if (ch.assigneeId !== undefined && admin.role !== 'ADMIN') throw new BookingError('Only admins can reassign contacts in bulk.', 'FORBIDDEN')
     if (ch.status) await assertCanSeeLeads(ids, admin, true)
+    if (ch.assigneeId !== undefined) {
+      for (const lid of ids) {
+        const why = await leadReassignProblem(lid, ch.assigneeId)
+        if (why) throw new BookingError(`${why} Take it out of the selection and try again.`, 'INVALID_STATE')
+      }
+    }
     const rows = await prisma.lead.findMany({ where: { id: { in: ids } }, select: { status: true, assignedToId: true, commissionTotal: true, finalPaymentReceivedAt: true, finalPaidAt: true, payments: { select: { id: true }, take: 1 } } })
     if (ch.assigneeId !== undefined && rows.some((r) => r.status === 'WON' && r.commissionTotal !== null && r.assignedToId !== ch.assigneeId)) {
       throw new BookingError('Some of these are won deals with a commission. Reassign those one at a time, from the lead, so you can decide what happens to the commission.', 'INVALID_STATE')

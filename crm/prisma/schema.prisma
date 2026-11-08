@@ -93,6 +93,7 @@ model AllowedUser {
 
 model User {
   contractSigner     ContractSigner?
+  sourcedLeads       Lead[]          @relation("LeadSourcer")
   videoAcks          VideoAck[]
   id                 String          @id @default(cuid())
   name               String?
@@ -221,10 +222,13 @@ model Lead {
   archived               Boolean        @default(false)
   tags                   String[]       @default([])
   assignedToId           String?
+  /// The salesperson who found this lead themselves (their own call list, dial or added contact). It stays theirs: it can't be reassigned while their agreement is active.
+  sourcedById            String?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
   assignedTo  User?          @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  sourcedBy   User?          @relation("LeadSourcer", fields: [sourcedById], references: [id], onDelete: SetNull)
   bookings    Booking[]
   notes       LeadNote[]
   emails      EmailMessage[]

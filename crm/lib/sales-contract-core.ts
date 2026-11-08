@@ -60,7 +60,7 @@ export function termsFromCompany(c: CompanySettings, agentAddress: string): Lega
 /** True when the one-time company details needed on every agreement are filled in. */
 export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.trim().length >= 2 && c.idNumber.trim().length >= 5 && c.address.trim().length >= 5
 
-export const CONTRACT_VERSION = '2026-11-lawyer-v10'
+export const CONTRACT_VERSION = '2026-11-lawyer-v11'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -128,7 +128,7 @@ export function agreementSectionsHtml(d: ContractData): string {
 <h2><span class="n">1.</span>APPOINTMENT AND SCOPE</h2>
 <p class="clause">${company} (the “Company”), engages ${name} (the “Sales Representative”) to solicit, introduce and secure clients for the Company’s web development, design and digital architecture services. The Sales Representative acts as an independent contractor and not as an employee, partner or legal representative of the Company.</p>
 <p class="clause">The Sales Representative is an independent freelancer, engaged by the Company for their services. The Company does not employ the Sales Representative, and nothing in this agreement creates an employment relationship, partnership or agency between them. The Sales Representative has no employee rights or benefits, works at their own times and in their own way without the Company’s supervision, uses their own equipment, and is solely responsible for their own taxes, VAT, social security, insurance and expenses.</p>
-<p class="clause">This agreement applies to every client the Sales Representative secures, wherever in the world that client is located or based. A client is the Sales Representative’s client under this agreement if, when that client signs, the client’s lead is assigned to the Sales Representative in the Company’s CRM. The Company’s CRM record decides this, and the Company may reassign a lead before the client signs.</p>
+<p class="clause">This agreement applies to every client the Sales Representative secures, wherever in the world that client is located or based. A client is the Sales Representative’s client under this agreement if, when that client signs, the client’s lead is assigned to the Sales Representative in the Company’s CRM. A lead the Sales Representative sourced, meaning one they found themselves or brought into the CRM through their own calls, contacts or referrals, stays assigned to them: the Company will not reassign it, and the Sales Representative earns commission on that client’s payments under this agreement. The Company’s CRM record of who sourced a lead decides this. The Company may still reassign a lead it gave the Sales Representative, before the client signs. If this agreement ends, leads that have not yet signed may be reassigned.</p>
 <p class="clause">The Sales Representative signs this agreement in the name of their registered business, whose name and registration number are written in the signature block below, and confirms that the business is duly registered under the law that applies to it.</p>
 <p class="clause">On request, the Sales Representative gives the Company a copy of their business registration certificate, and tells the Company promptly of any change to the business or its registration.</p>
 <h2><span class="n">2.</span>COMMISSION TRIGGER EVENT</h2>

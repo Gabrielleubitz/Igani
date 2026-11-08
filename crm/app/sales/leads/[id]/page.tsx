@@ -74,7 +74,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
   const isAdmin = user.role === 'ADMIN'
   const lead = await prisma.lead.findUnique({
     where: { id: params.id },
-    include: { assignedTo: { select: { name: true, email: true } }, payments: { orderBy: { createdAt: 'asc' } }, bookings: { orderBy: { startTime: 'desc' }, take: 20, include: { host: { select: { name: true } }, meeting: true } } },
+    include: { assignedTo: { select: { name: true, email: true } }, sourcedBy: { select: { name: true, email: true } }, payments: { orderBy: { createdAt: 'asc' } }, bookings: { orderBy: { startTime: 'desc' }, take: 20, include: { host: { select: { name: true } }, meeting: true } } },
   })
   if (!lead || !canSeeLead(user, lead)) notFound()
 
@@ -301,6 +301,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
       ['Company', lead.company],
       ['Website', lead.website ? <a key="w" href={/^https?:\/\//.test(lead.website) ? lead.website : `https://${lead.website}`} target="_blank" rel="noreferrer" className="break-all underline-offset-4 hover:underline">{lead.website.replace(/^https?:\/\//, '')}</a> : null],
       ['Owner', lead.assignedTo ? (lead.assignedTo.name ?? lead.assignedTo.email) : 'Unassigned'],
+      ['Sourced by', isAdmin && lead.sourcedBy ? `${lead.sourcedBy.name ?? lead.sourcedBy.email}: the lead stays theirs and can’t be reassigned` : null],
       ['Budget', lead.budget],
       ['Quoted price', isAdmin && lead.quotedPrice != null ? `₪${formatMoney(lead.quotedPrice)}` : null],
       ['Lost reason', lead.status === 'LOST' ? lead.lostReason : null],

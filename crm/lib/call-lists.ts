@@ -87,6 +87,7 @@ export async function convertProspect(
           tags: ['cold-call', ...(p.placeId ? ['google-places'] : [])],
           status: opts.status ?? 'CONTACTED',
           assignedToId: user.role === 'MARKETING' ? null : user.id,
+          sourcedById: user.role === 'SALES' ? user.id : null,
         },
       })
       leadId = lead.id

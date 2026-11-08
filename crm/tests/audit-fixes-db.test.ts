@@ -218,6 +218,15 @@ d('audit fixes', async () => {
     expect(rows.map((r) => r.commission)).toEqual([3_600, 3_870]) // 30% of what was actually received
   })
 
+  it('a lead the salesperson sourced stays theirs, while other leads can move', async () => {
+    const mine = await prisma.lead.create({ data: { email: 'sourced@x.com', assignedToId: ann, sourcedById: ann, status: 'NEW' } })
+    expect((await leadActions.assignLead(mine.id, bo)).ok).toBe(false)
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: mine.id } })).assignedToId).toBe(ann)
+    expect((await leadActions.autoAssignLead(mine.id)).ok).toBe(false)
+    const given = await prisma.lead.create({ data: { email: 'given@x.com', assignedToId: ann, status: 'NEW' } })
+    expect((await leadActions.assignLead(given.id, bo)).ok).toBe(true)
+  })
+
   it('the team page counts a win by when it was won, not when the lead was last edited', async () => {
     const old = await won('old@x.com')
     await prisma.activityLog.create({ data: { entityType: 'LEAD', entityId: old.id, action: 'lead.status_changed', metadata: { from: 'PROPOSAL_SENT', to: 'WON' }, createdAt: new Date(Date.now() - 90 * 86_400_000) } })
