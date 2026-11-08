@@ -6,11 +6,12 @@ import { appUrl } from './env'
 import { prisma } from './prisma'
 
 /**
- * Push notifications to the Igani CRM iPhone app, through Apple (APNs, token auth). Needs, in Vercel:
- *   APNS_KEY      the .p8 key's contents (Apple Developer → Keys → Apple Push Notifications service)
- *   APNS_KEY_ID   that key's 10-character id
- *   APNS_TEAM_ID  the Apple team (defaults to Igani's, 8T65J68WA2)
- * Without them nothing is sent and nothing breaks.
+ * Push notifications to the Igani CRM iPhone app, through Apple (APNs, token auth). Apple's keys can be limited to one
+ * environment, so there's one for each, in Vercel:
+ *   APNS_KEY / APNS_KEY_ID                  production (TestFlight and App Store builds)
+ *   APNS_KEY_SANDBOX / APNS_KEY_ID_SANDBOX  sandbox (development builds run from Xcode); falls back to the production key
+ *   APNS_TEAM_ID                            the Apple team (defaults to Igani's, 8T65J68WA2)
+ * A key's value is the .p8 file's contents. Without them nothing is sent and nothing breaks.
  */
 
 export type PushKind = 'chat' | 'texts' | 'calls' | 'leads'
@@ -36,25 +37,31 @@ export interface PushMessage {
 }
 
 const BUNDLE = 'co.igani.crm'
-let jwtCache: { token: string; at: number } | null = null
+type Env = 'production' | 'sandbox'
+type Cfg = { key: string; keyId: string; teamId: string }
+const jwtCache = new Map<string, { token: string; at: number }>()
 
-function config(): { key: string; keyId: string; teamId: string } | null {
-  const key = process.env.APNS_KEY?.trim().replace(/\\n/g, '\n')
-  const keyId = process.env.APNS_KEY_ID?.trim()
+function config(env: Env): Cfg | null {
+  const pick = (k: string): string | undefined => process.env[k]?.trim() || undefined
+  const sandbox = env === 'sandbox' && pick('APNS_KEY_SANDBOX') && pick('APNS_KEY_ID_SANDBOX')
+  const key = (sandbox ? pick('APNS_KEY_SANDBOX') : pick('APNS_KEY'))?.replace(/\\n/g, '\n')
+  const keyId = sandbox ? pick('APNS_KEY_ID_SANDBOX') : pick('APNS_KEY_ID')
   if (!key || !keyId) return null
-  return { key, keyId, teamId: process.env.APNS_TEAM_ID?.trim() || '8T65J68WA2' }
+  return { key, keyId, teamId: pick('APNS_TEAM_ID') || '8T65J68WA2' }
 }
 
-export const pushConfigured = (): boolean => config() !== null
+export const pushConfigured = (): boolean => config('production') !== null || config('sandbox') !== null
 
 /** Apple's provider token (ES256 JWT), reused for 50 minutes as Apple asks. */
-function providerToken(c: { key: string; keyId: string; teamId: string }): string {
-  if (jwtCache && Date.now() - jwtCache.at < 50 * 60_000) return jwtCache.token
+function providerToken(c: Cfg): string {
+  const cached = jwtCache.get(c.keyId)
+  if (cached && Date.now() - cached.at < 50 * 60_000) return cached.token
   const b64 = (v: object | Buffer): string => (Buffer.isBuffer(v) ? v : Buffer.from(JSON.stringify(v))).toString('base64url')
   const head = `${b64({ alg: 'ES256', kid: c.keyId })}.${b64({ iss: c.teamId, iat: Math.floor(Date.now() / 1000) })}`
   const sig = sign('sha256', Buffer.from(head), { key: createPrivateKey(c.key), dsaEncoding: 'ieee-p1363' })
-  jwtCache = { token: `${head}.${b64(sig)}`, at: Date.now() }
-  return jwtCache.token
+  const token = `${head}.${b64(sig)}`
+  jwtCache.set(c.keyId, { token, at: Date.now() })
+  return token
 }
 
 /** Unread chat messages plus unread texts: the number on the app icon. */
@@ -92,19 +99,19 @@ function send(session: http2.ClientHttp2Session, token: string, jwt: string, pay
 
 /** Send one notification to every phone of these people that wants this kind. Never throws. */
 export async function pushTo(userIds: string[], kind: PushKind, msg: PushMessage, opts: { everyKind?: boolean } = {}): Promise<number> {
-  const c = config()
-  if (!c || !userIds.length) return 0
+  if (!pushConfigured() || !userIds.length) return 0
   let sent = 0
   try {
     const devices = await prisma.pushDevice.findMany({ where: { userId: { in: [...new Set(userIds)] } } })
     const wanted = devices.filter((d) => opts.everyKind || (d.prefs as Record<string, boolean> | null)?.[kind] !== false)
     if (!wanted.length) return 0
-    const jwt = providerToken(c)
     const badges = new Map<string, number>()
     for (const id of new Set(wanted.map((d) => d.userId))) badges.set(id, await badgeFor(id).catch(() => 0))
     for (const env of ['production', 'sandbox'] as const) {
       const group = wanted.filter((d) => (d.env === 'sandbox') === (env === 'sandbox'))
-      if (!group.length) continue
+      const c = config(env)
+      if (!group.length || !c) continue
+      const jwt = providerToken(c)
       const session = http2.connect(env === 'sandbox' ? 'https://api.sandbox.push.apple.com' : 'https://api.push.apple.com')
       session.on('error', () => undefined)
       const gone: string[] = []
