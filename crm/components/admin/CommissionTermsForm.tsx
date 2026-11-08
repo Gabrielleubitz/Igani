@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input'
 import { type CommissionTerms, DEFAULT_COMMISSION_TERMS, calculateCommission, formatIls } from '@/lib/commission'
 
 const FIELDS: { key: keyof CommissionTerms; label: string; hint: string }[] = [
-  { key: 'baseRatePct', label: 'Base rate %', hint: 'Share of the deal (up to the threshold)' },
-  { key: 'threshold', label: 'Threshold ₪', hint: 'Deals above this earn bonus increments' },
-  { key: 'incrementSize', label: 'Increment size ₪', hint: 'Each completed step above the threshold' },
-  { key: 'bonusPerIncrement', label: 'Bonus per increment ₪', hint: 'Earned per completed step' },
+  { key: 'baseRatePct', label: 'Base rate %', hint: 'Share of every payment the client makes' },
+  { key: 'threshold', label: 'Bonus starts above ₪', hint: 'A contract price above this earns bonus steps, paid at the end' },
+  { key: 'incrementSize', label: 'Step size ₪', hint: 'Each completed step above that price' },
+  { key: 'bonusPerIncrement', label: 'Bonus per step ₪', hint: 'Earned per completed step, only once the whole price is paid' },
 ]
 
 /** Admin-only: a salesperson's agreed commission terms. Changing them never touches deals that are already won. */

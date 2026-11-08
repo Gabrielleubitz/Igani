@@ -127,9 +127,12 @@ ${AGREEMENT_CSS}
 
 /** Keeps the signed agreement: who signed what wording, when, from where, with the signed PDF. */
 export async function saveAcceptance(i: SignInput, built: { pdf: Uint8Array; hash: string }): Promise<string> {
-  const row = await prisma.agreementAcceptance.create({
-    data: {
-      email: i.payload.data.email.trim().toLowerCase(),
+  const email = i.payload.data.email.trim().toLowerCase()
+  const f = i.payload.data.figures
+  const [row] = await prisma.$transaction([
+    prisma.agreementAcceptance.create({
+      data: {
+      email,
       version: CONTRACT_VERSION,
       sha256: built.hash,
       terms: asJson({ figures: i.payload.data.figures, terms: i.payload.data.terms, effectiveDate: i.payload.data.effectiveDate, representative: { businessName: i.business.name, businessNumber: i.business.number } }),
@@ -140,8 +143,14 @@ export async function saveAcceptance(i: SignInput, built: { pdf: Uint8Array; has
       userAgent: i.userAgent.slice(0, 300),
       pdf: Buffer.from(built.pdf),
       signedAt: i.signedAt,
-    },
-    select: { id: true },
-  })
+      },
+      select: { id: true },
+    }),
+    // The figures in the signed agreement become the salesperson's commission terms (and are locked from then on)
+    prisma.allowedUser.updateMany({
+      where: { email: { equals: email, mode: 'insensitive' } },
+      data: { commissionTerms: asJson({ baseRatePct: f.basePercent, threshold: f.threshold, incrementSize: f.increment, bonusPerIncrement: f.bonus }) },
+    }),
+  ])
   return row.id
 }

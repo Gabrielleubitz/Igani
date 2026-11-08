@@ -31,6 +31,7 @@ import { formatDateTime, formatMoney, leadName, statusLabel, timeAgo } from '@/l
 import { recipientLabel } from '@/lib/email-labels'
 import { canSeeLead } from '@/lib/lead-access'
 import { dealTerms, parseTerms, salespersonCommissionView, statusOf, type CommissionBreakdown, type CommissionTerms } from '@/lib/commission'
+import { termsLockedBy } from '@/lib/commission-lock'
 import { termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
@@ -386,6 +387,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
                 finalPaymentReceivedAt: lead.finalPaymentReceivedAt?.toISOString() ?? null,
                 finalPaidAt: lead.finalPaidAt?.toISOString() ?? null,
               }}
+              termsLocked={(await termsLockedBy(lead.assignedTo?.email)) !== null}
               payments={lead.payments.map((x) => ({ id: x.id, amount: x.amount, receivedAt: x.receivedAt.toISOString(), commission: x.commission, commissionPaidAt: x.commissionPaidAt?.toISOString() ?? null, refundedAt: x.refundedAt?.toISOString() ?? null }))}
             />
           ) : null}

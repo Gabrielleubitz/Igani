@@ -20,6 +20,8 @@ import { PersonContractForm } from '@/components/admin/PersonContractForm'
 import { CONTRACT_VERSION } from '@/lib/sales-contract-core'
 import { pendingLinkFor } from '@/lib/sales-contract'
 import { getSetting } from '@/lib/settings'
+import { termsLockedBy } from '@/lib/commission-lock'
+import { formatIls } from '@/lib/commission'
 import { WeekLineCard } from '@/components/calls/WeekLineCard'
 import { lessonLinksFor, loadRepWeek } from '@/lib/straight-line-week-data'
 
@@ -46,6 +48,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
           termsForAssignee(user.id),
         ])
       : null
+  const lockedTerms = user.role === 'SALES' ? await termsLockedBy(user.email) : null
   const [lineWeek, lessons] = await Promise.all([loadRepWeek(user.id).catch(() => null), lessonLinksFor(me)])
   const [stats, tasks, leads, meetings] = await Promise.all([
     loadRepStats(me).then((all) => all.find((r) => r.id === user.id) ?? null),
@@ -182,7 +185,21 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
             <CardTitle>Commission terms</CardTitle>
           </CardHeader>
           <CardContent>
+            {lockedTerms ? (
+              (() => {
+                const t = agreementData?.[3]
+                return t ? (
+                  <div className="space-y-2 text-sm">
+                    <p>
+                      <b>{t.baseRatePct}%</b> of every payment the client makes. Bonus of <b>{formatIls(t.bonusPerIncrement)}</b> for every <b>{formatIls(t.incrementSize)}</b> of the contract price above <b>{formatIls(t.threshold)}</b>, paid only once the whole price is paid.
+                    </p>
+                    <p className="text-muted-foreground">Locked by the agreement signed on {lockedTerms.signedAt.toLocaleDateString('en-GB')}. You can see these terms but not change them. To change them, send a new agreement below with the new figures.</p>
+                  </div>
+                ) : null
+              })()
+            ) : (
             <CommissionTermsForm userId={user.id} terms={await termsForAssignee(user.id)} usingDefaults={!(await prisma.allowedUser.findUnique({ where: { email: user.email ?? '' }, select: { commissionTerms: true } }))?.commissionTerms} />
+            )}
           </CardContent>
         </Card>
       ) : null}

@@ -8,6 +8,7 @@ import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
 import { type CommissionTerms, bonusDue, dealTerms, parseTerms, paymentCommission } from '@/lib/commission'
 import { setQuotedPrice, snapshotWonCommission, termsForAssignee } from '@/lib/deals'
+import { LOCKED_MESSAGE, termsLockedBy } from '@/lib/commission-lock'
 import { prisma } from '@/lib/prisma'
 import { toActionError, type ActionResult } from './result'
 
@@ -62,6 +63,11 @@ export async function saveCommissionOverrides(id: string, overrides: CommissionT
     const admin = await requireUser(['ADMIN'])
     const lid = leadId.parse(id)
     const value = overrides === null ? null : termsSchema.parse(overrides)
+    // A deal's terms follow the signed agreement: no per-deal changes once the salesperson has signed
+    if (value !== null) {
+      const owner = await prisma.lead.findUnique({ where: { id: lid }, select: { assignedTo: { select: { email: true } } } })
+      if (await termsLockedBy(owner?.assignedTo?.email)) throw new BookingError(LOCKED_MESSAGE, 'INVALID_STATE')
+    }
     await prisma.$transaction(async (tx) => {
       await tx.lead.update({ where: { id: lid }, data: { commissionOverrides: value === null ? Prisma.DbNull : { ...value } } })
       await logActivity({ entityType: 'LEAD', entityId: lid, action: 'lead.commission_overridden', actorId: admin.id, metadata: value ? { ...value } : { cleared: true } }, tx)
@@ -279,6 +285,7 @@ export async function saveSalespersonTerms(userId: string, terms: CommissionTerm
     const value = terms === null ? null : parseTerms(termsSchema.parse(terms))
     const user = await prisma.user.findUnique({ where: { id: uid }, select: { email: true } })
     if (!user?.email) throw new BookingError('Teammate not found.', 'NOT_FOUND')
+    if (await termsLockedBy(user.email)) throw new BookingError(LOCKED_MESSAGE, 'INVALID_STATE')
     await prisma.$transaction(async (tx) => {
       await tx.allowedUser.update({ where: { email: user.email! }, data: { commissionTerms: value === null ? Prisma.DbNull : { ...value } } })
       await logActivity({ entityType: 'USER', entityId: uid, action: 'user.commission_terms_changed', actorId: admin.id, metadata: value ? { ...value } : { reset: true } }, tx)

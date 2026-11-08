@@ -3,8 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/env', () => ({ env: () => ({ NEXT_PUBLIC_APP_URL: 'https://app.igani.co' }) }))
 const rows = new Map<string, { value: unknown; updatedAt: Date }>()
+const termUpdates: { where: unknown; data: { commissionTerms: unknown } }[] = []
 vi.mock('@/lib/prisma', () => ({
   prisma: {
+    agreementAcceptance: { create: async ({ data }: { data: Record<string, unknown> }) => ({ id: 'acc1', ...data }) },
+    allowedUser: { updateMany: async (args: { where: unknown; data: { commissionTerms: unknown } }) => (termUpdates.push(args), { count: 1 }) },
+    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
     siteSetting: {
       create: async ({ data }: { data: { key: string; value: unknown } }) => (rows.has(data.key) ? Promise.reject(new Error('dup')) : void rows.set(data.key, { value: data.value, updatedAt: new Date() })),
       findUnique: async ({ where }: { where: { key: string } }) => (rows.has(where.key) ? { key: where.key, ...rows.get(where.key)! } : null),
@@ -26,7 +30,7 @@ vi.mock('@/lib/prisma', () => ({
   },
 }))
 
-import { claimLink, createContractLink, listPendingLinks, pendingLinkFor, readContractLink, restoreLink } from '@/lib/sales-contract'
+import { claimLink, createContractLink, listPendingLinks, pendingLinkFor, readContractLink, restoreLink, saveAcceptance } from '@/lib/sales-contract'
 import { DEFAULT_FIGURES, type LegalTerms } from '@/lib/sales-contract-core'
 
 const TERMS: LegalTerms = { companyLegalName: 'Test Person', companyTradingAs: 'Test Brand', companyIdNumber: '123456789', companyAddress: '1 Test Street, Test City', agentAddress: '2 Rep Street, Rep City', payoutDays: 10, clawbackDays: 60, noticeDays: 30, jurisdiction: 'Test Jurisdiction' }
@@ -81,5 +85,16 @@ describe('one open contract per person', () => {
     expect(await pendingLinkFor('nobody@x.co')).toBeNull()
     const { url } = await createContractLink({ ...data, email: 'ariel@x.co' }, admin)
     expect((await pendingLinkFor('ARIEL@x.co'))?.url).toBe(url)
+  })
+})
+
+describe('signing locks in the commission terms from the contract', () => {
+  it('writes the signed figures as the salesperson’s terms', async () => {
+    termUpdates.length = 0
+    const payload = { id: 'abc123abc123', exp: 0, data: { ...data, email: 'Ariel@X.co', figures: { threshold: 20_000, basePercent: 25, bonus: 1_500, increment: 4_000 } }, admin }
+    const id = await saveAcceptance({ payload: { ...payload, admin: { ...admin, signedAt: '2026-11-05T10:00:00Z' } }, signerName: 'Ariel Tzadok', business: { name: 'Ariel Ltd', number: '515123456' }, signature: admin.signature, signedAt: new Date('2026-11-05T12:00:00Z'), ip: '1.2.3.4', userAgent: 'test' }, { pdf: new Uint8Array([1]), hash: 'h' })
+    expect(id).toBe('acc1')
+    expect(termUpdates).toHaveLength(1)
+    expect(termUpdates[0]).toMatchObject({ where: { email: { equals: 'ariel@x.co' } }, data: { commissionTerms: { baseRatePct: 25, threshold: 20_000, incrementSize: 4_000, bonusPerIncrement: 1_500 } } })
   })
 })

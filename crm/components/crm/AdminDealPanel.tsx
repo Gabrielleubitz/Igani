@@ -27,6 +27,8 @@ export interface DealPanelProps {
   snapshot: { terms: CommissionTerms; breakdown: CommissionBreakdown; at: string | null; overridden: boolean } | null
   /** The day the whole price was paid (the bonus becomes payable) and the day the bonus was paid out */
   payment: { finalPaymentReceivedAt: string | null; finalPaidAt: string | null }
+  /** The salesperson has signed their agreement: the terms are fixed, so this deal's terms can be seen but not changed */
+  termsLocked: boolean
   /** Every client payment, with the commission on it */
   payments: { id: string; amount: number; receivedAt: string; commission: number; commissionPaidAt: string | null; refundedAt: string | null }[]
 }
@@ -291,6 +293,11 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
               </>
             ) : null}
 
+            {p.termsLocked ? (
+              <p className="pt-1 text-xs text-muted-foreground">
+                Terms: {workingTerms.baseRatePct}% of every payment; bonus {formatIls(workingTerms.bonusPerIncrement)} per {formatIls(workingTerms.incrementSize)} above {formatIls(workingTerms.threshold)}, paid at the end. Locked by the agreement {p.salesperson ?? 'the salesperson'} signed, so they can’t be changed here.
+              </p>
+            ) : (
             <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)} className="pt-1">
               <summary className="cursor-pointer select-none text-xs font-medium text-primary hover:underline">Change the terms for this deal only{p.overridden ? ' (currently changed)' : ''}</summary>
               <div className="grid grid-cols-2 gap-2 pt-3">
@@ -321,6 +328,7 @@ export function AdminDealPanel(p: DealPanelProps): React.ReactElement {
               {termsProblem ? <p className="pt-2 text-xs text-red-400">{termsProblem}</p> : null}
               <p className="pt-2 text-xs text-muted-foreground">This never changes the salesperson’s saved terms.</p>
             </details>
+            )}
           </section>
         ) : null}
         {msg ? <p className={`text-xs ${msg.ok ? 'text-emerald-400' : 'text-red-400'}`}>{msg.text}</p> : null}
