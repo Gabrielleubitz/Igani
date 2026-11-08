@@ -1,4 +1,5 @@
 import 'server-only'
+import { SHORT_CALL_MESSAGE, callLength, tooShortToReview } from './call-review-rules'
 import { openAiReason } from './live-hints'
 import { CALL_LANG_LABEL, TRANSCRIBE_PROMPT, callLanguage, coachingLanguage, reviewLanguageRule } from './call-language'
 import type { Prisma } from '@prisma/client'
@@ -19,7 +20,7 @@ import { LESSON_INDEX_PROMPT, STRAIGHT_LINE_CHECKS, STRAIGHT_LINE_PLAYBOOK, snap
 
 const MAX_AUDIO_BYTES = 24 * 1024 * 1024 // OpenAI's upload limit is 25 MB
 const MAX_ATTEMPTS = 3
-const MIN_SECONDS = 15 // shorter recordings (voicemail beeps, wrong numbers) aren't worth coaching
+// Calls under a minute (voicemail beeps, wrong numbers, quick hang-ups) are not reviewed automatically: see lib/call-review-rules.ts
 
 export interface TranscriptLine {
   start: number
@@ -350,7 +351,7 @@ export async function analyseSegments(segments: { start: number; end: number; te
  * Analyses one call's recording. Safe to call repeatedly and from several places at once: it claims the call first
  * (pending → processing), gives up after a few failed attempts, and skips recordings too short or too long.
  */
-export async function analyzeCall(callId: string, opts: { force?: boolean } = {}): Promise<'ready' | 'skipped' | 'failed' | 'busy' | 'none'> {
+export async function analyzeCall(callId: string, opts: { force?: boolean; ignoreMinimum?: boolean } = {}): Promise<'ready' | 'skipped' | 'failed' | 'busy' | 'none'> {
   const key = process.env.OPENAI_API_KEY
   if (!key) return 'none'
   const recordingSid = await ensureRecordingSid(callId)
@@ -364,13 +365,14 @@ export async function analyzeCall(callId: string, opts: { force?: boolean } = {}
     data: { analysisStatus: 'processing', analyzedAt: new Date(), analysisAttempts: { increment: 1 }, analysisError: null },
   })
   if (!claim.count) return 'busy'
-  const call = await prisma.call.findUniqueOrThrow({ where: { id: callId }, select: { leadId: true, userId: true, recordingSec: true, direction: true, answeredAt: true } })
+  const call = await prisma.call.findUniqueOrThrow({ where: { id: callId }, select: { leadId: true, userId: true, recordingSec: true, durationSec: true, direction: true, answeredAt: true } })
   const fail = async (status: 'failed' | 'skipped', error: string): Promise<'failed' | 'skipped'> => {
     await prisma.call.update({ where: { id: callId }, data: { analysisStatus: status, analysisError: error.slice(0, 300), analyzedAt: new Date() } })
     return status
   }
   try {
-    if (call.recordingSec != null && call.recordingSec < MIN_SECONDS) return await fail('skipped', 'The recording is too short to analyse.')
+    // An admin reviewing a short call by hand (ignoreMinimum) skips this check
+    if (!opts.ignoreMinimum && tooShortToReview(callLength(call))) return await fail('skipped', SHORT_CALL_MESSAGE)
     const audioRes = await fetchRecordingAudio(recordingSid)
     if (!audioRes) return await fail('failed', 'Could not download the recording from Twilio.')
     const audio = await audioRes.blob()

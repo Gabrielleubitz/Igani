@@ -1,4 +1,5 @@
 import { STEPS, asAnalysis, asTranscript } from '@/lib/call-analysis'
+import { SHORT_CALL_MESSAGE, callLength, mayReviewByHand, tooShortToReview } from '@/lib/call-review-rules'
 import { relationToCall } from '@/lib/call-access-db'
 import { buildScore } from '@/lib/call-score'
 import { CALL_STATUS_LABEL } from '@/lib/call-ui'
@@ -46,7 +47,9 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     shared: relation === 'shared',
     recording: recorded ? appUrl(`/api/calls/${call.id}/recording`) : null,
     analysis: call.analysisStatus,
-    canAnalyze: recorded && (user.role === 'ADMIN' || call.userId === user.id),
+    // Calls under a minute are not reviewed automatically; the note tells the salesman why, and only an admin can review them by hand
+    analysisNote: call.analysisStatus === 'skipped' && tooShortToReview(callLength(call)) ? SHORT_CALL_MESSAGE : null,
+    canAnalyze: recorded && (user.role === 'ADMIN' || call.userId === user.id) && mayReviewByHand(user.role, callLength(call)),
     review: a
       ? {
           sales: a.isSalesCall,

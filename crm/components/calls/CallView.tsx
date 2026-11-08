@@ -165,7 +165,7 @@ export function ReanalyzeButton({ callId, label = 'Analyze again' }: { callId: s
         }
         className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground transition hover:text-foreground disabled:opacity-60"
       >
-        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : label === 'Analyze now' ? <Sparkles className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
+        {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : label === 'Analyze now' || label === 'Review anyway' ? <Sparkles className="h-3.5 w-3.5" /> : <RotateCcw className="h-3.5 w-3.5" />}
         {pending ? 'Analyzing… (up to a minute)' : label}
       </button>
       {msg ? <span className="text-xs text-rose-400">{msg}</span> : null}

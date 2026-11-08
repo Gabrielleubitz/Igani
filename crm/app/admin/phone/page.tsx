@@ -4,6 +4,8 @@ import { IncomingRoutingRow, PhoneLineRow, VoiceSettingsForm } from '@/component
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
+import { RATES, costsByMonth, rateUsd, usd, type CostCall } from '@/lib/call-costs'
+import { monthKey } from '@/lib/payouts'
 import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
 import { formatDateTime, leadName } from '@/lib/format'
 import { formatPhone } from '@/lib/phone-numbers'
@@ -38,6 +40,24 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
     prisma.call.findMany({ orderBy: { startedAt: 'desc' }, take: 25, include: { user: { select: { name: true, email: true } }, lead: { select: { id: true, firstName: true, lastName: true, email: true } } } }),
     prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { timeZone: true } }),
   ])
+  // Costs per month: the last six months of calls, priced with the estimate rates in lib/call-costs.ts
+  const since = new Date(Date.now() - 190 * 86_400_000)
+  const costRows = await prisma.call.findMany({
+    where: { simulated: false, startedAt: { gte: since } },
+    select: { userId: true, startedAt: true, direction: true, fromNumber: true, toNumber: true, durationSec: true, recordingSec: true, analysisStatus: true, user: { select: { name: true, email: true } } },
+  })
+  const costCalls: CostCall[] = costRows.map((c) => ({
+    userId: c.userId,
+    userName: c.user?.name ?? c.user?.email ?? 'Unknown',
+    month: monthKey(c.startedAt),
+    direction: c.direction,
+    otherNumber: c.direction === 'OUTBOUND' ? c.toNumber : c.fromNumber,
+    durationSec: c.durationSec,
+    recordingSec: c.recordingSec,
+    analysisStatus: c.analysisStatus,
+  }))
+  const costs = costsByMonth(costCalls, hints).slice(0, 6)
+  const monthLabel = (k: string): string => new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' }).format(new Date(`${k}-15T00:00:00Z`))
   const lineOf = new Map(lines.map((l) => [l.userId, l]))
   const ownerOf = new Map(lines.map((l) => [l.number, team.find((u) => u.id === l.userId)]))
   const savedRouting = new Set((await prisma.siteSetting.findMany({ where: { key: { startsWith: 'voice.routing:' } }, select: { key: true } })).map((r) => r.key.slice('voice.routing:'.length)))
@@ -88,6 +108,57 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
           {team.map((u) => (
             <PhoneLineRow key={u.id} userId={u.id} name={u.name ?? u.email ?? 'Teammate'} role={u.role ?? ''} current={lineOf.get(u.id)?.number ?? null} numbers={numbers} takenBy={takenBy} />
           ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Costs per month</CardTitle>
+          <p className="text-sm text-muted-foreground">An estimate in US dollars from the calls stored in the CRM. Check your Twilio and OpenAI bills for the real figures.</p>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          {costs.length === 0 ? <p className="text-muted-foreground">No calls yet.</p> : null}
+          {costs.map((m) => (
+            <div key={m.month} className="space-y-2">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h3 className="font-medium">{monthLabel(m.month)}</h3>
+                <span className="text-lg font-semibold tabular-nums">{usd(m.all.total)}</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[34rem] text-left text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr>
+                      <th className="py-1 pr-3 font-normal"> </th>
+                      <th className="py-1 pr-3 font-normal">Dials</th>
+                      <th className="py-1 pr-3 font-normal">Answered</th>
+                      <th className="py-1 pr-3 font-normal">Minutes</th>
+                      <th className="py-1 pr-3 font-normal">Phone</th>
+                      <th className="py-1 pr-3 font-normal">Recording</th>
+                      <th className="py-1 pr-3 font-normal">AI</th>
+                      <th className="py-1 font-normal">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="tabular-nums">
+                    {[{ name: 'Everyone', row: m.all, bold: true }, ...m.perPerson.map((p) => ({ name: p.name, row: p.row, bold: false }))].map((r) => (
+                      <tr key={r.name} className={r.bold ? 'border-t font-medium' : 'border-t border-border/50'}>
+                        <td className="py-1 pr-3">{r.name}</td>
+                        <td className="py-1 pr-3">{r.row.dials}</td>
+                        <td className="py-1 pr-3">{r.row.answered}</td>
+                        <td className="py-1 pr-3">{r.row.minutes}</td>
+                        <td className="py-1 pr-3">{usd(r.row.phone)}</td>
+                        <td className="py-1 pr-3">{usd(r.row.recording)}</td>
+                        <td className="py-1 pr-3">{usd(r.row.ai)}</td>
+                        <td className="py-1">{usd(r.row.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs text-muted-foreground">
+            Rates used, per minute: Israeli mobile {rateUsd(RATES.ilMobile)}, other Israeli numbers {rateUsd(RATES.ilOther)}, US {rateUsd(RATES.us)}, anywhere else about {rateUsd(RATES.otherCountry)}, plus {rateUsd(RATES.browserLeg)} for the browser line. Recording {rateUsd(RATES.recording)}. Each reviewed call: transcription {rateUsd(RATES.transcription)} a minute plus about {rateUsd(RATES.reviewPerCall)} for the review.{hints ? ` Live hints about ${rateUsd(RATES.liveHintsPerMinute)} a minute.` : ''} Only calls over 60 seconds are reviewed automatically. Minutes are rounded up per call.
+          </p>
         </CardContent>
       </Card>
 

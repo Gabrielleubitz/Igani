@@ -1,3 +1,4 @@
+import { SHORT_CALL_MESSAGE, callLength, mayReviewByHand, tooShortToReview } from '@/lib/call-review-rules'
 import { PhoneIncoming, PhoneOutgoing } from 'lucide-react'
 import { GradientChip, Tag, type Tone } from '@/components/ui/tone'
 import { ArrowLeft, CheckCircle2, CircleDashed, Crosshair, Download, MessageCircleQuestion, Target, TrendingUp, TriangleAlert, XCircle } from 'lucide-react'
@@ -57,6 +58,9 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
   // a player only when there is (or may be, if our callback was missed) a Twilio recording
   const recorded = Boolean(call.recordingSid) || (Boolean(call.twilioCallSid) && call.status === 'COMPLETED' && !call.simulated && (call.durationSec ?? 0) > 0)
   const working = call.analysisStatus === 'processing' || call.analysisStatus === 'pending'
+  // Calls under a minute are not reviewed automatically; only an admin can review them by hand
+  const shortCall = tooShortToReview(callLength(call))
+  const canReviewByHand = mayReviewByHand(user.role, callLength(call))
   const tone = a ? scoreTone(a.overallScore) : null
   // Lesson links in the Straight Line panel: episode number -> video (by its "01 -" title prefix), and whether this viewer has unlocked it
   const lessons: Record<number, { id: string; unlocked: boolean } | undefined> = {}
@@ -478,7 +482,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
                 <Card>
                   <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-base">Transcript</CardTitle>
-                    {isShared ? null : <ReanalyzeButton callId={call.id} />}
+                    {isShared || !canReviewByHand ? null : <ReanalyzeButton callId={call.id} />}
                   </CardHeader>
                   <CardContent>
                     <Transcript lines={lines} repName={rep} />
@@ -623,12 +627,14 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
                     : call.analysisStatus === 'failed'
                       ? `The analysis didn’t finish: ${call.analysisError ?? 'unknown error'}.`
                       : call.analysisStatus === 'skipped'
-                        ? (call.analysisError ?? 'This call wasn’t analyzed.')
+                        ? shortCall
+                          ? SHORT_CALL_MESSAGE
+                          : (call.analysisError ?? 'This call wasn’t analyzed.')
                         : recorded
                           ? 'This call hasn’t been analyzed yet.'
                           : 'No recording, so there’s nothing to analyze.'}
                 </span>
-                {working || isShared ? null : recorded ? <ReanalyzeButton callId={call.id} label="Analyze now" /> : null}
+                {working || isShared || !canReviewByHand ? null : recorded ? <ReanalyzeButton callId={call.id} label={shortCall ? 'Review anyway' : 'Analyze now'} /> : null}
               </CardContent>
             </Card>
           ) : (
