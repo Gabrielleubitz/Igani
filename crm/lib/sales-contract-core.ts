@@ -60,7 +60,10 @@ export function termsFromCompany(c: CompanySettings, agentAddress: string): Lega
 /** True when the one-time company details needed on every agreement are filled in. */
 export const companyIsComplete = (c: CompanySettings): boolean => c.legalName.trim().length >= 2 && c.idNumber.trim().length >= 5 && c.address.trim().length >= 5
 
-export const CONTRACT_VERSION = '2026-11-lawyer-v15'
+/** The notice period is part of the agreement text the lawyer approves, not a setting: every agreement says 30 days. */
+export const NOTICE_DAYS = 30
+
+export const CONTRACT_VERSION = '2026-11-lawyer-v16'
 
 export const DEFAULT_FIGURES: Figures = { threshold: 15000, basePercent: 30, bonus: 1000, increment: 5000 }
 
@@ -87,7 +90,6 @@ export function validate(d: ContractData): string | null {
   const days = (n: number, max: number): boolean => Number.isInteger(n) && n > 0 && n <= max
   if (!days(t.payoutDays, 90)) return 'Payout days must be a whole number of business days (1 to 90).'
   if (!days(t.clawbackDays, 730)) return 'The clawback window must be a whole number of days (1 to 730).'
-  if (!days(t.noticeDays, 365)) return 'Notice period must be a whole number of days (1 to 365).'
   if (!text(t.jurisdiction, 2, 160)) return 'Enter the governing jurisdiction.'
   return null
 }
@@ -157,7 +159,7 @@ export function agreementSectionsHtml(d: ContractData): string {
 <p class="clause">During this agreement and for 12 months after it ends, the Sales Representative will not, directly or indirectly, contact any client or lead of the Company about services that compete with the Company’s, take any such client or lead to their own business or to anyone else’s, or encourage any client or lead to stop working with the Company or to work with a competitor or with the Sales Representative instead. The Sales Representative will also not solicit any employee of the Company. This applies whether or not the Sales Representative sourced the client or lead.</p>
 <p class="clause">The Sales Representative may do other work. While engaged by the Company, the Sales Representative will not divert a lead or client to themselves or to another business, take any commission, fee or benefit from a third party on a deal they are working on for the Company, or sell services that compete with the Company’s to a client of the Company. The Sales Representative tells the Company promptly about any conflict of interest.</p>
 <h2><span class="n">7.</span>WHEN THE ENGAGEMENT ENDS AND PENDING DEALS</h2>
-<p class="clause">Either party may end this agreement with <b>${t.noticeDays} days’ written notice</b> to the other party.</p>
+<p class="clause">Either party may end this agreement with <b>${NOTICE_DAYS} days’ written notice</b> to the other party.</p>
 <p class="clause">After the engagement ends, the Sales Representative is still entitled to commission on every payment that cleared before the engagement ends. No commission accrues or is payable on payments the Company receives after the date it ends, whatever earlier negotiations or discussions took place. This includes recurring maintenance payments. The bonus is earned only on those payments, in proportion to each.</p>
 <p class="clause">The Company may end this agreement immediately, by written notice, if the Sales Representative materially breaches it, including by breaching confidentiality, diverting a lead or client, or misleading a client or the Company, or acts dishonestly. In that case, commission is earned only on payments that cleared before the notice, and no bonus is earned.</p>
 <h2><span class="n">8.</span>GOVERNING LAW AND DISPUTE RESOLUTION</h2>

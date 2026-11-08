@@ -23,7 +23,7 @@ export function CompanyDetailsCard({ company }: { company: CompanySettings }): R
       <Input value={c[key]} onChange={(e) => setC({ ...c, [key]: e.target.value })} placeholder={placeholder} />
     </label>
   )
-  const days = (key: 'payoutDays' | 'clawbackDays' | 'noticeDays', label: string, suffix: string): React.ReactElement => (
+  const days = (key: 'payoutDays' | 'clawbackDays', label: string, suffix: string): React.ReactElement => (
     <label className="block space-y-1 text-sm">
       <span className="font-medium">{label}</span>
       <div className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export function CompanyDetailsCard({ company }: { company: CompanySettings }): R
               , {company.address}, registered no. {company.idNumber}
             </p>
             <p className="text-muted-foreground">
-              {company.jurisdiction} · payout {company.payoutDays} business days after month end · clawback window {company.clawbackDays} days · {company.noticeDays} days’ notice
+              {company.jurisdiction} · payout {company.payoutDays} business days after month end · clawback window {company.clawbackDays} days
             </p>
           </div>
         ) : (
@@ -81,7 +81,6 @@ export function CompanyDetailsCard({ company }: { company: CompanySettings }): R
               {txt('jurisdiction', 'Governing jurisdiction', 'Israel')}
               {days('payoutDays', 'Payout after month end', 'business days')}
               {days('clawbackDays', 'Clawback window', 'days')}
-              {days('noticeDays', 'Termination notice', 'days')}
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={save} disabled={pending}>

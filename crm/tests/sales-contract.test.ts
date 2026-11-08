@@ -93,7 +93,8 @@ describe('commission wording', () => {
     expect(validate(data)).toBeNull()
     expect(validate({ ...data, terms: { ...TERMS, payoutDays: NaN } })).toMatch(/Payout days/)
     expect(validate({ ...data, terms: { ...TERMS, clawbackDays: 0 } })).toMatch(/clawback/)
-    expect(validate({ ...data, terms: { ...TERMS, noticeDays: 1.5 } })).toMatch(/notice/i)
+    // The notice period is fixed in the agreement: whatever an old link or saved setting holds, it says 30 days
+    expect(html({ ...data, terms: { ...TERMS, noticeDays: 7 } }, view)).toContain('30 days’ written notice')
     expect(validate({ ...data, terms: { ...TERMS, jurisdiction: ' ' } })).toMatch(/jurisdiction/)
     expect(validate({ ...data, terms: { ...TERMS, companyLegalName: '' } })).toMatch(/legal name/)
     expect(validate({ ...data, terms: { ...TERMS, companyIdNumber: '' } })).toMatch(/number/)
