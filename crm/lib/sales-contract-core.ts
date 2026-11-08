@@ -220,7 +220,7 @@ export function agreementHtml(d: ContractData, v: AgreementView): string {
       ? `<div class="record"><div class="role" style="margin-bottom:6px">Signature record</div><table>
     <tr><td>Browser</td><td dir="ltr">${esc(v.record.browser)}</td></tr>
     <tr><td>Fingerprint (SHA-256)</td><td class="mono-hash" dir="ltr">${esc(v.record.sha256)}</td></tr>
-  </table><div class="note" style="margin-top:6px">This agreement was signed electronically by both parties. Electronic signatures bind the parties. A copy of the signed agreement is kept in the Company’s records.</div></div>`
+  </table><div class="note" style="margin-top:6px">This agreement was signed electronically by both parties. Electronic signatures bind the parties. Each party keeps the signed copy that was emailed to it.</div></div>`
       : ''
   }
 </div>`

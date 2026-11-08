@@ -92,7 +92,7 @@ describe('signing locks in the commission terms from the contract', () => {
   it('writes the signed figures as the salesperson’s terms', async () => {
     termUpdates.length = 0
     const payload = { id: 'abc123abc123', exp: 0, data: { ...data, email: 'Ariel@X.co', figures: { threshold: 20_000, basePercent: 25, bonus: 1_500, increment: 4_000 } }, admin }
-    const id = await saveAcceptance({ payload: { ...payload, admin: { ...admin, signedAt: '2026-11-05T10:00:00Z' } }, signerName: 'Ariel Tzadok', business: { name: 'Ariel Ltd', number: '515123456' }, signature: admin.signature, signedAt: new Date('2026-11-05T12:00:00Z'), ip: '1.2.3.4', userAgent: 'test' }, { pdf: new Uint8Array([1]), hash: 'h' })
+    const id = await saveAcceptance({ payload: { ...payload, admin: { ...admin, signedAt: '2026-11-05T10:00:00Z' } }, signerName: 'Ariel Tzadok', business: { name: 'Ariel Ltd', number: '515123456' }, signature: admin.signature, signedAt: new Date('2026-11-05T12:00:00Z'), ip: '1.2.3.4', userAgent: 'test' }, { hash: 'h' })
     expect(id).toBe('acc1')
     expect(termUpdates).toHaveLength(1)
     expect(termUpdates[0]).toMatchObject({ where: { email: { equals: 'ariel@x.co' } }, data: { commissionTerms: { baseRatePct: 25, threshold: 20_000, incrementSize: 4_000, bonusPerIncrement: 1_500 } } })

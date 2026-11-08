@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { sendSalesContractSignedEmail } from '@/lib/email'
-import { buildSignedContractPdf, claimLink, readContractLink, restoreLink, saveAcceptance } from '@/lib/sales-contract'
+import { buildSignedContractPdf, claimLink, readContractLink, restoreLink, saveAcceptance, undoAcceptance } from '@/lib/sales-contract'
 import { formatDate, namesMatch } from '@/lib/sales-contract-core'
 import { REASON_TEXT, clientIp, limited } from '@/lib/sales-contract-http'
 import { MAX_SIGNATURE_CHARS, PNG_DATA_URL } from '@/lib/sales-contract-token'
@@ -20,7 +20,7 @@ const Body = z.object({
 
 /**
  * The representative signs. The dual-signed PDF is built in memory and emailed to them and to the admin who made the link;
- * the signed copy is stored as an AgreementAcceptance (who, which wording, when, IP, SHA-256, PDF) and the link is deleted so it cannot be signed twice.
+ * only a small record is kept (an AgreementAcceptance: who, which wording, when, IP, SHA-256, the figures: no PDF), and the link is deleted so it cannot be signed twice.
  */
 export async function POST(req: Request): Promise<NextResponse> {
   const ip = clientIp(req)
@@ -49,7 +49,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   // Claim the link before sending, so two tabs cannot both succeed; give it back if the emails fail
   if (!(await claimLink(payload.id))) return NextResponse.json({ error: REASON_TEXT.invalid }, { status: 409 })
 
-  // Keep the signed agreement; if that fails, give the link back so nothing is lost
+  // Keep the small signing record; if that fails, give the link back so nothing is lost
   try {
     await saveAcceptance(signInput, built)
   } catch (err) {
@@ -62,15 +62,21 @@ export async function POST(req: Request): Promise<NextResponse> {
   const common = { repName: payload.data.name, adminName: payload.admin.name, effectiveDate: formatDate(payload.data.effectiveDate), signedAt: when }
   const filename = `Igani-Sales-Commission-Agreement-${payload.data.name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'Representative'}.pdf`
   const attachment = { filename, content: Buffer.from(built.pdf) }
-  const results = await Promise.allSettled([
-    sendSalesContractSignedEmail(payload.data.email, { ...common, audience: 'rep' }, attachment),
-    sendSalesContractSignedEmail(payload.admin.email, { ...common, audience: 'admin' }, attachment),
-  ])
-  if (results.every((x) => x.status === 'rejected')) {
-    console.error('[sales-contract] both emails failed', results)
+  // The signed PDF is not stored anywhere: the emails are the only copies. Igani's copy must go out, or the signing is undone and the link given back.
+  try {
+    await sendSalesContractSignedEmail(payload.admin.email, { ...common, audience: 'admin' }, attachment)
+  } catch (err) {
+    console.error('[sales-contract] the Igani copy could not be emailed', err)
+    await undoAcceptance(payload.data.email, signedAt)
     await restoreLink(payload)
     return NextResponse.json({ error: 'We could not email the signed agreement. Please try again.' }, { status: 502 })
   }
-  results.forEach((x) => x.status === 'rejected' && console.error('[sales-contract] one email failed', x.reason))
-  return NextResponse.json({ ok: true, emailed: { rep: results[0].status === 'fulfilled', admin: results[1].status === 'fulfilled' } })
+  let repEmailed = true
+  try {
+    await sendSalesContractSignedEmail(payload.data.email, { ...common, audience: 'rep' }, attachment)
+  } catch (err) {
+    repEmailed = false
+    console.error('[sales-contract] the representative copy could not be emailed', err)
+  }
+  return NextResponse.json({ ok: true, emailed: { rep: repEmailed, admin: true } })
 }

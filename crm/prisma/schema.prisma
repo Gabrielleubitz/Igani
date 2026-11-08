@@ -926,7 +926,7 @@ model MeetInvite {
   @@unique([roomId, email])
 }
 
-/// One signed commission agreement. Kept as the record of what the representative agreed to, and when.
+/// The record that a commission agreement was signed (who, which wording, when, from where, the figures). The signed PDF itself is NOT stored: it is emailed to both parties.
 model AgreementAcceptance {
   id         String   @id @default(cuid())
   /// The representative's email as written in the agreement (matches User / AllowedUser by email)
@@ -942,8 +942,6 @@ model AgreementAcceptance {
   adminEmail String
   ip         String
   userAgent  String
-  /// The signed PDF with both signatures. Always select columns explicitly in lists.
-  pdf        Bytes
   signedAt   DateTime
   createdAt  DateTime @default(now())
 

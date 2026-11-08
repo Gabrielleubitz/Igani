@@ -22,6 +22,7 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
   const [agree, setAgree] = useState(false)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
+  const [repMissed, setRepMissed] = useState(false)
 
   useEffect(() => {
     fetch('/api/public/sales-contract/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code }) })
@@ -43,10 +44,11 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
     setBusy(true)
     try {
       const r = await fetch('/api/public/sales-contract/sign', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name, businessName: businessName.trim(), businessNumber: businessNumber.trim(), signature: sig, agree: true }) })
-      const j = (await r.json()) as { error?: string }
+      const j = (await r.json()) as { error?: string; emailed?: { rep?: boolean } }
       if (!r.ok) setError(j.error ?? 'Something went wrong.')
       else {
         setDone(true)
+        if ((j as { emailed?: { rep?: boolean } }).emailed?.rep === false) setRepMissed(true)
       }
     } catch {
       setError('Network error. Please try again.')
@@ -79,7 +81,7 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
       <div className="rounded-2xl bg-white p-10 text-center shadow-[0_20px_60px_-30px_rgba(15,23,42,.35)]">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-2xl text-emerald-600">✓</div>
         <h1 className="mt-4 text-2xl font-bold">Thank you, it&apos;s signed</h1>
-        <p className="mx-auto mt-2 max-w-md text-slate-600">The signed agreement was emailed to you and to Igani. Please keep that email. Igani also keeps a signed copy.</p>
+        <p className="mx-auto mt-2 max-w-md text-slate-600">{repMissed ? 'The agreement is signed, but we could not email your copy. Igani has it and will send it to you.' : 'The signed agreement was emailed to you and to Igani. Please keep that email: the signed PDF is not stored on our website.'}</p>
       </div>,
     )
   if (!pv)
@@ -120,7 +122,7 @@ export function CommissionSign({ code }: { code: string }): React.ReactElement {
           <button type="button" onClick={() => void submit()} disabled={busy || !namesMatch(name, pv.repName) || !businessName.trim() || !businessNumber.trim() || !sig || !agree} className="w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 sm:w-auto">
             {busy ? 'Signing…' : 'Sign and submit'}
           </button>
-          <p className="text-xs text-slate-500">After you sign, the final PDF is emailed to you and to Igani, and Igani keeps a signed copy.</p>
+          <p className="text-xs text-slate-500">After you sign, the final PDF is emailed to you and to Igani. It is not stored on our website, so keep your copy.</p>
         </div>
       </section>
     </div>,

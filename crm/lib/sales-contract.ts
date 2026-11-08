@@ -126,7 +126,7 @@ ${AGREEMENT_CSS}
 }
 
 /** Keeps the signed agreement: who signed what wording, when, from where, with the signed PDF. */
-export async function saveAcceptance(i: SignInput, built: { pdf: Uint8Array; hash: string }): Promise<string> {
+export async function saveAcceptance(i: SignInput, built: { hash: string }): Promise<string> {
   const email = i.payload.data.email.trim().toLowerCase()
   const f = i.payload.data.figures
   const [row] = await prisma.$transaction([
@@ -141,7 +141,6 @@ export async function saveAcceptance(i: SignInput, built: { pdf: Uint8Array; has
       adminEmail: i.payload.admin.email,
       ip: i.ip,
       userAgent: i.userAgent.slice(0, 300),
-      pdf: Buffer.from(built.pdf),
       signedAt: i.signedAt,
       },
       select: { id: true },
@@ -153,4 +152,9 @@ export async function saveAcceptance(i: SignInput, built: { pdf: Uint8Array; has
     }),
   ])
   return row.id
+}
+
+/** Removes the record just made, when the signing has to be undone (the emails could not be sent). */
+export async function undoAcceptance(email: string, signedAt: Date): Promise<void> {
+  await prisma.agreementAcceptance.deleteMany({ where: { email: email.trim().toLowerCase(), signedAt } }).catch(() => undefined)
 }

@@ -31,7 +31,7 @@ export default async function SalesContractsPage(): Promise<React.ReactElement> 
   const signers = admins.map((a) => ({ userId: a.id, name: a.contractSigner?.name || a.name || a.email || 'Admin', title: a.contractSigner?.title ?? '', signature: a.contractSigner?.signature ?? '' }))
   return (
     <div className="space-y-5">
-      <PageIntro title="Contract setup" hint="Set up the company details and the signatures once. Each salesperson's agreement is sent from their own page, so one person's contract never replaces another's." />
+      <PageIntro title="Contract setup" hint="Set up the company details and the signatures once. Each salesperson's agreement is sent from their own page, so one person's contract never replaces another's. Signed PDFs are emailed to you and to them and are not stored here." />
       <CompanyDetailsCard company={company} />
       <Card>
         <CardHeader>

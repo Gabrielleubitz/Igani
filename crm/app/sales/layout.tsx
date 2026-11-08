@@ -13,7 +13,7 @@ export default async function Layout({ children }: { children: ReactNode }): Pro
     <AppShell user={user}>
       {resign ? (
         <div role="status" className="mb-4 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          <strong>Your commission agreement needs signing.</strong> We updated it. Your admin will send you a link to sign the new one. Once signed, you will find the signed copy under <Link href="/sales/documents" className="underline">Documents</Link>.
+          <strong>Your commission agreement needs signing.</strong> We updated it. Your admin will send you a link to sign the new one. Once signed, the signed copy is emailed to you; keep that email.
         </div>
       ) : null}
       {children}

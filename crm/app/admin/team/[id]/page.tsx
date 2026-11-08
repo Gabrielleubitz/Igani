@@ -218,8 +218,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
           <CardContent className="space-y-4 text-sm">
             {signed[0]?.version === CONTRACT_VERSION ? (
               <p>
-                <span className="text-emerald-400">Signed the current agreement</span> on {signed[0].signedAt.toLocaleDateString('en-GB')} ·{' '}
-                <a className="underline" href={`/api/agreements/signed/${signed[0].id}`}>Download the signed PDF</a>
+                <span className="text-emerald-400">Signed the current agreement</span> on {signed[0].signedAt.toLocaleDateString('en-GB')}. The signed PDF was emailed to you and to them; it is not stored in the CRM.
               </p>
             ) : (
               <p className="text-amber-300">

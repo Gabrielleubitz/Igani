@@ -14,7 +14,7 @@ export default async function DocumentsPage(): Promise<React.ReactElement> {
   const signed = user.email ? await prisma.agreementAcceptance.findMany({ where: { email: user.email.toLowerCase() }, orderBy: { signedAt: 'desc' }, select: { id: true, version: true, signedAt: true } }) : []
   return (
     <div className="space-y-5">
-      <PageIntro title="Documents" hint="The agreements we have with you. Download any of them whenever you need." />
+      <PageIntro title="Documents" hint="The agreements we have with you. The signed commission agreement was emailed to you when you signed: keep that email." />
       {signed.length ? (
         <Card>
           <CardContent className="divide-y p-0">
@@ -24,7 +24,7 @@ export default async function DocumentsPage(): Promise<React.ReactElement> {
                   <div className="font-medium">Commission agreement (signed)</div>
                   <div className="text-xs text-muted-foreground">Signed {a.signedAt.toLocaleDateString('en-GB')}</div>
                 </div>
-                <a href={`/api/agreements/signed/${a.id}`} className="rounded-md border px-3 py-1.5 text-sm hover:bg-muted">Download</a>
+                <span className="text-xs text-muted-foreground">Emailed to you</span>
               </div>
             ))}
           </CardContent>
