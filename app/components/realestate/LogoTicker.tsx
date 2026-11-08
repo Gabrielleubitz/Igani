@@ -17,6 +17,7 @@ export const CLIENT_LOGOS: Logo[] = [
   { id: 'go-jungle', name: 'Go Jungle', h: 28 },
   { id: 'melons-logistics', name: 'Melons Logistics', h: 46 },
   { id: 'michael-cutler', name: 'Michael Cutler Company', h: 44 },
+  { id: 'velo', name: 'Velo', h: 28 },
 ]
 
 /** Sliding strip of client logos, like a stock ticker. Pauses on hover; still when reduced motion is on. */
