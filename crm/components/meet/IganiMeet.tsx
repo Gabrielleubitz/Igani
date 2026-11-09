@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, BellOff, CalendarClock, Check, ChevronDown, CircleDot, Copy, EllipsisVertical, Hand, Info, LayoutGrid, Link2, Loader2, LogOut, Mail, Maximize, MessageSquare, Mic, MicOff, Minimize, MonitorUp, PhoneOff, PictureInPicture2, Pin, RotateCcw, Send, Settings2, ShieldCheck, Signal, SignalLow, SignalMedium, Smile, Sparkles, UserPlus, UserX, Users, Video, VideoOff, Volume1, Volume2, X, Wand2, AudioLines, FlipHorizontal2 } from 'lucide-react'
+import { AudioLines, Bell, BellOff, CalendarClock, Check, ChevronDown, ChevronUp, CircleDot, Copy, Ellipsis, EllipsisVertical, FlipHorizontal2, Hand, Info, LayoutGrid, Link2, Loader2, LockKeyhole, LogOut, Mail, Maximize, MessageSquare, MessageSquareText, Mic, MicOff, Minimize, MonitorUp, Phone, PhoneOff, PictureInPicture2, Pin, RotateCcw, Send, Settings2, ShieldCheck, Signal, SignalLow, SignalMedium, Smile, Sparkles, UserPlus, UserX, Users, Video, VideoOff, Volume1, Volume2, Wand2, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { createPortal } from 'react-dom'
 import { addMeetInvites, joinMeet, meetRoomInvites, removeMeetInvite, resendMeetInvite, type InCallInvite } from '@/app/actions/meet'
@@ -8,6 +8,7 @@ import type { MeetConfig } from '@/lib/meet'
 import { isStaleDeployError, markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
 import { MeetLoader } from './MeetLoader'
+import { MeetMark } from './MeetMark'
 import { netLevel, readNet, type NetLevel } from './net'
 import { useMeetPaths } from './paths'
 import { playCue, setSoundOutput, setSoundsMuted, unlockSounds } from './sounds'
@@ -77,7 +78,7 @@ function report(code: string, token: string | null, kind: string, data: Record<s
   }
 }
 
-const BG = '#0e1626'
+const BG = '#131314'
 
 /* Remembered between calls on this device: name (guests), mic/camera on or off, and chosen devices. */
 interface Prefs {
@@ -342,7 +343,7 @@ export function IganiMeet(p: IganiMeetProps): React.ReactElement {
         {/* the bar above the video: title, recording, who's here and Add people (kept off the video so nothing covers a camera) */}
         <div ref={setTopSlot} className="relative z-20 flex h-12 shrink-0 items-center gap-3 px-3 pt-[env(safe-area-inset-top)] empty:hidden sm:h-14 sm:px-5" />
         <div className="flex min-h-0 flex-1 gap-3 px-2 sm:px-4">
-          <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl bg-[#0b1220]">
+          <div className="relative min-w-0 flex-1 overflow-hidden">
             <div ref={stage} className="absolute inset-0" />
             <div ref={setSlot} className="pointer-events-none absolute inset-0" />
           </div>
@@ -480,7 +481,7 @@ export function PeopleRings({ people, max = 4, size = 'md', onClick }: { people:
       {shown.map((x, i) => (
         <span key={x.id} className="group relative transition-transform duration-200 hover:z-50 hover:-translate-y-1" style={{ zIndex: shown.length - i }}>
           <span className={cn('block rounded-full p-[2px] transition-shadow duration-300', x.speaking ? 'bg-gradient-to-br from-emerald-300 to-emerald-500 shadow-[0_0_0_4px_rgba(52,211,153,0.22)]' : 'bg-gradient-to-br from-[#6aa6ff] to-[#2f5fd0]')}>
-            <span className="block rounded-full ring-2 ring-[#060a14]">
+            <span className="block rounded-full ring-2 ring-[#0b0b0c]">
               <Avatar name={x.name} src={x.avatar} className={dim} />
             </span>
           </span>
@@ -491,7 +492,7 @@ export function PeopleRings({ people, max = 4, size = 'md', onClick }: { people:
       ))}
       {extra > 0 ? (
         <span className="relative rounded-full bg-white/10 p-[2px]" style={{ zIndex: 0 }}>
-          <span className={cn('flex items-center justify-center rounded-full bg-[#111a2e] font-semibold text-white/80 ring-2 ring-[#060a14]', dim)}>+{extra}</span>
+          <span className={cn('flex items-center justify-center rounded-full bg-[#111a2e] font-semibold text-white/80 ring-2 ring-[#0b0b0c]', dim)}>+{extra}</span>
         </span>
       ) : null}
     </Tag>
@@ -778,7 +779,7 @@ function Check2({ ok, label }: { ok: boolean; label: string }): React.ReactEleme
 
 /* ── In the call: Google Meet's layout (stage, floating rings, bottom bar, side panels) in Igani's colours ── */
 
-function CtrlButton({ onClick, label, icon, off = false, active = false, badge, dot = false, className, disabled, wide = false }: { onClick: () => void; label: string; icon: React.ReactElement; off?: boolean; active?: boolean; badge?: number; dot?: boolean; className?: string; disabled?: boolean; wide?: boolean }): React.ReactElement {
+function CtrlButton({ onClick, label, icon, off = false, active = false, badge, dot = false, className, disabled, narrow = false }: { onClick: () => void; label: string; icon: React.ReactElement; off?: boolean; active?: boolean; badge?: number; dot?: boolean; className?: string; disabled?: boolean; narrow?: boolean }): React.ReactElement {
   return (
     <button
       type="button"
@@ -788,24 +789,98 @@ function CtrlButton({ onClick, label, icon, off = false, active = false, badge, 
       disabled={disabled}
       aria-pressed={active || undefined}
       className={cn(
-        'relative flex h-11 shrink-0 items-center justify-center rounded-full transition-colors duration-150 active:scale-95 disabled:opacity-50 [&_svg]:h-5 [&_svg]:w-5',
-        wide ? 'w-14' : 'w-11',
-        off ? 'bg-[#ea4335] text-white hover:bg-[#d93a2d]' : active ? 'bg-[#a8c7fa] text-[#062e6f] hover:bg-[#b9d2fb]' : 'bg-[#2b3546] text-[#e3e8f0] hover:bg-[#364256]',
+        'relative flex h-11 shrink-0 items-center justify-center rounded-full transition-colors duration-150 active:scale-95 disabled:opacity-50 sm:h-14 [&_svg]:h-[22px] [&_svg]:w-[22px] sm:[&_svg]:h-6 sm:[&_svg]:w-6',
+        narrow ? 'w-9 sm:w-11' : 'w-11 sm:w-14',
+        off ? 'bg-[#dc362e] text-white hover:bg-[#e5463e]' : active ? 'bg-[#a8c7fa] text-[#062e6f] hover:bg-[#b9d2fb]' : 'bg-[#333537] text-[#e3e3e3] hover:bg-[#3c3e41]',
         className,
       )}
     >
       {icon}
       {badge ? <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#a8c7fa] px-1 text-[10px] font-bold text-[#062e6f]">{badge}</span> : null}
-      {dot ? <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#a8c7fa] ring-2 ring-[#0e1626]" /> : null}
+      {dot ? <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#a8c7fa] ring-2 ring-[#1e1f20]" /> : null}
     </button>
+  )
+}
+
+/** Mic and camera: the toggle with a small device menu on its left, in one pill (like Meet). */
+function SplitControl({ button, open, onMenu, menuLabel, menuIcon, children }: { button: React.ReactElement; open: boolean; onMenu: () => void; menuLabel: string; menuIcon: React.ReactElement; children: React.ReactNode }): React.ReactElement {
+  return (
+    <div className="relative flex items-center rounded-full sm:bg-[#28292a]">
+      <button type="button" onClick={onMenu} aria-label={menuLabel} title={menuLabel} aria-expanded={open} className={cn('hidden h-14 w-10 items-center justify-center rounded-l-full pl-1 text-[#e3e3e3] transition hover:bg-white/5 sm:flex [&_svg]:h-5 [&_svg]:w-5', open && 'text-[#a8c7fa]')}>
+        {menuIcon}
+      </button>
+      {button}
+      {open ? children : null}
+    </div>
+  )
+}
+
+/** Quick device switch above the mic / camera: pick a microphone and speaker, or a camera. */
+function DevicePopover({ api, kind, onClose, onMore }: { api: JitsiApi; kind: 'audio' | 'video'; onClose: () => void; onMore: () => void }): React.ReactElement {
+  const [lists, setLists] = useState<DeviceLists>(NO_DEVICES)
+  const [cur, setCur] = useState({ mic: '', cam: '', spk: '' })
+  useEffect(() => {
+    let live = true
+    void Promise.all([api.getAvailableDevices(), api.getCurrentDevices()])
+      .then(([l, c]) => {
+        if (!live) return
+        setLists({ audioInput: l.audioInput ?? [], audioOutput: l.audioOutput ?? [], videoInput: l.videoInput ?? [] })
+        setCur({ mic: c.audioInput?.deviceId ?? '', cam: c.videoInput?.deviceId ?? '', spk: c.audioOutput?.deviceId ?? '' })
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [api])
+  const pick = (k: 'mic' | 'cam' | 'spk', d: DeviceInfo): void => {
+    if (k === 'mic') api.setAudioInputDevice(d.label, d.deviceId)
+    else if (k === 'cam') api.setVideoInputDevice(d.label, d.deviceId)
+    else {
+      api.setAudioOutputDevice(d.label, d.deviceId)
+      setSoundOutput(d.deviceId)
+    }
+    setCur((c) => ({ ...c, [k]: d.deviceId }))
+    writePrefs(k === 'mic' ? { micId: d.deviceId } : k === 'cam' ? { camId: d.deviceId } : { spkId: d.deviceId })
+  }
+  const group = (title: string, icon: React.ReactElement, k: 'mic' | 'cam' | 'spk', list: DeviceInfo[]): React.ReactElement => (
+    <div className="py-1">
+      <p className="flex items-center gap-2 px-4 pb-1 pt-2 text-xs font-medium text-[#a8c7fa] [&>svg]:h-4 [&>svg]:w-4">
+        {icon} {title}
+      </p>
+      {list.length ? (
+        list.map((d) => (
+          <MenuItem key={d.deviceId} icon={cur[k] === d.deviceId ? <Check /> : <span />} onClick={() => pick(k, d)}>
+            <span className="line-clamp-1">{d.label || 'Default'}</span>
+          </MenuItem>
+        ))
+      ) : (
+        <p className="px-4 py-2 text-sm text-[#9aa0a6]">Nothing found</p>
+      )}
+    </div>
+  )
+  return (
+    <Popover onClose={onClose} className="left-0 w-80 py-1">
+      {kind === 'audio' ? (
+        <>
+          {group('Microphone', <Mic />, 'mic', lists.audioInput)}
+          {lists.audioOutput.length ? group('Speakers', <Volume2 />, 'spk', lists.audioOutput) : null}
+        </>
+      ) : (
+        group('Camera', <Video />, 'cam', lists.videoInput)
+      )}
+      <div className="my-1 h-px bg-white/10" />
+      <MenuItem icon={<Settings2 />} onClick={onMore}>
+        {kind === 'audio' ? 'More audio settings' : 'Backgrounds and video settings'}
+      </MenuItem>
+    </Popover>
   )
 }
 
 function SideIcon({ onClick, label, icon, active, badge, dot }: { onClick: () => void; label: string; icon: React.ReactElement; active: boolean; badge?: number; dot?: boolean }): React.ReactElement {
   return (
-    <button type="button" onClick={onClick} aria-label={label} title={label} aria-pressed={active} className={cn('relative flex h-11 w-11 items-center justify-center rounded-full transition-colors [&_svg]:h-5 [&_svg]:w-5', active ? 'bg-[#a8c7fa]/20 text-[#a8c7fa]' : 'text-[#c4cbd6] hover:bg-white/10')}>
+    <button type="button" onClick={onClick} aria-label={label} title={label} aria-pressed={active} className={cn('relative flex h-12 w-12 items-center justify-center rounded-full transition-colors [&_svg]:h-6 [&_svg]:w-6', active ? 'bg-[#a8c7fa]/20 text-[#a8c7fa]' : 'text-[#e3e3e3] hover:bg-white/10')}>
       {icon}
-      {badge ? <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#2b3546] px-1 text-[10px] font-semibold text-white ring-2 ring-[#0e1626]">{badge}</span> : null}
+      {badge ? <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#333537] px-1 text-[10px] font-semibold text-white ring-2 ring-[#1e1f20]">{badge}</span> : null}
       {dot ? <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#a8c7fa]" /> : null}
     </button>
   )
@@ -832,7 +907,7 @@ interface Flying {
   left: number
 }
 type Side = 'details' | 'people' | 'chat' | 'host'
-type Menu = 'more' | 'reactions' | 'leave' | 'layout' | null
+type Menu = 'more' | 'reactions' | 'leave' | 'layout' | 'mic' | 'cam' | null
 type Layout = 'auto' | 'tiled' | 'spotlight' | 'sidebar'
 
 const REACTIONS = ['💖', '👍', '🎉', '👏', '😂', '😮', '😢', '🤔']
@@ -967,6 +1042,8 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
       joinedCb.current()
       playCue('ready')
       if (me.avatar) api.executeCommand('avatarUrl', me.avatar)
+      // like Meet: everyone in equal tiles side by side to start with
+      api.executeCommand('setTileView', true)
       if (blur !== 'none') void applyBackground(api, blur)
       const prefs = readPrefs()
       if (prefs.noise) api.executeCommand('setNoiseSuppressionEnabled', true)
@@ -1347,7 +1424,7 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
   const chooseLayout = (l: Layout): void => {
     setLayout(l)
     setMenu(null)
-    api.executeCommand('setTileView', l === 'tiled')
+    api.executeCommand('setTileView', l === 'tiled' || l === 'auto')
     // spotlight hides the strip of small tiles, sidebar keeps it
     if ((l === 'spotlight') === filmstrip) api.executeCommand('toggleFilmStrip')
   }
@@ -1364,12 +1441,12 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
 
   const overlay = (
     <>
-      <div className={cn('absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0e1626] transition-opacity duration-500', joinedAt ? 'pointer-events-none opacity-0' : 'opacity-100')}>
+      <div className={cn('absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#131314] transition-opacity duration-500', joinedAt ? 'pointer-events-none opacity-0' : 'opacity-100')}>
         {joinedAt ? null : <MeetLoader steps={['Connecting securely', 'Setting up your camera and mic', `Joining ${title}`]} />}
       </div>
       {alone ? (
         <div className="absolute inset-x-0 top-16 flex justify-center px-4">
-          <span className="meet-pop rounded-full bg-[#0e1626]/85 px-4 py-2 text-center text-sm text-[#e3e8f0] ring-1 ring-white/10 backdrop-blur">You’re the only one here</span>
+          <span className="meet-pop rounded-full bg-[#131314]/85 px-4 py-2 text-center text-sm text-[#e3e8f0] ring-1 ring-white/10 backdrop-blur">You’re the only one here</span>
         </div>
       ) : null}
       {flying.map((f) => (
@@ -1397,12 +1474,19 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
   const top = (
     <>
       <div className="flex min-w-0 items-center gap-2.5">
+        <span className="hidden shrink-0 text-lg tabular-nums text-[#e3e3e3] sm:inline">{hhmm(now)}</span>
+        <span className="hidden h-5 w-px shrink-0 bg-white/30 sm:inline" aria-hidden />
+        <span className="truncate text-[17px] text-[#e3e3e3] sm:text-lg" title={title}>
+          {title}
+        </span>
+        <button type="button" onClick={() => openSide('details')} aria-label="Meeting details" title="Meeting details" className="-ml-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[#c4c7c5] transition hover:bg-white/10">
+          <Info className="h-5 w-5" />
+        </button>
         {rec.on ? (
           <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-[#3c1d1b] px-3 py-1.5 text-xs font-medium text-white" title="This call is being recorded">
             <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-[#ea4335]" /> REC{rec.since ? ` ${clock(Math.max(0, Math.floor((now - rec.since) / 1000)))}` : ''}
           </span>
         ) : null}
-        <span className="truncate text-[15px] font-medium text-[#e3e8f0] lg:hidden">{title}</span>
         {ptt ? (
           <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-400/15 px-2.5 py-1 text-xs font-medium text-emerald-300">
             <Mic className="h-3.5 w-3.5" /> Talking (hold Space)
@@ -1423,10 +1507,18 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
         ) : null}
       </div>
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
-        {joinedAt ? <PeopleRings people={ring} max={4} size="sm" onClick={() => openSide('people')} /> : null}
+        {joinedAt ? (
+          <button type="button" onClick={() => openSide('people')} aria-label={`People (${count})`} title="People" className="flex h-10 items-center gap-2 rounded-full bg-[#1e1f20] pl-3 pr-3.5 transition hover:bg-[#28292a] sm:h-12 sm:gap-2.5 sm:pl-2 sm:pr-4">
+            <span className="hidden sm:block">
+              <PeopleRings people={ring} max={3} size="sm" />
+            </span>
+            <Users className="h-[18px] w-[18px] text-[#c4c7c5] sm:hidden" />
+            <span className="text-[15px] font-medium tabular-nums text-[#e3e3e3]">{count}</span>
+          </button>
+        ) : null}
         {roomId ? (
-          <button type="button" onClick={addPeople} title="Add people" aria-label="Add people" className="flex h-9 items-center gap-2 rounded-full bg-[#a8c7fa]/10 px-2.5 text-sm font-medium text-[#a8c7fa] ring-1 ring-[#a8c7fa]/25 transition hover:bg-[#a8c7fa]/20 sm:px-3.5">
-            <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">Add people</span>
+          <button type="button" onClick={addPeople} title="Add people" aria-label="Add people" className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#8db6f7] to-[#4f7fdc] text-white shadow-lg shadow-[#4f7fdc]/25 transition hover:brightness-110">
+            <UserPlus className="h-5 w-5" />
           </button>
         ) : null}
       </div>
@@ -1434,7 +1526,7 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
   )
 
   const panel = side ? (
-    <aside className="meet-pop flex h-full min-h-0 flex-col overflow-hidden bg-[#1a2333] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-[#e3e8f0] md:rounded-2xl md:pb-0 md:pt-0">
+    <aside className="meet-pop flex h-full min-h-0 flex-col overflow-hidden bg-[#1e1f20] pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] text-[#e3e8f0] md:rounded-2xl md:pb-0 md:pt-0">
       <div className="flex items-center justify-between px-5 pb-2 pt-4">
         <h2 className="text-lg">{side === 'details' ? 'Meeting details' : side === 'people' ? 'People' : side === 'chat' ? 'In-call messages' : 'Host controls'}</h2>
         <button type="button" onClick={() => setSide(null)} aria-label="Close" className="rounded-full p-2 text-[#c4cbd6] hover:bg-white/10">
@@ -1476,23 +1568,39 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
           </Popover>
         </div>
       ) : null}
-      <footer className="relative grid min-h-20 shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 pb-[env(safe-area-inset-bottom)] sm:px-5">
-        <div className="hidden min-w-0 items-center gap-3 text-[15px] text-[#e3e8f0] lg:flex">
-          <span className="tabular-nums">{hhmm(now)}</span>
-          <span className="h-4 w-px bg-white/25" />
-          <span className="truncate" title={title}>
-            {title}
-          </span>
+      <footer className="relative grid min-h-[88px] shrink-0 grid-cols-[1fr_auto_1fr] items-center gap-2 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 sm:px-5">
+        {/* left: the Igani mark, opens the meeting's details */}
+        <div className="hidden items-center lg:flex">
+          <button type="button" onClick={() => openSide('details')} aria-label="Meeting details" title="Meeting details" className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1e1f20] transition hover:bg-[#28292a]">
+            <MeetMark className="h-7 w-7" slot="#1e1f20" />
+          </button>
         </div>
-        <div className="col-start-2 flex items-center gap-2 sm:gap-2.5">
-          <CtrlButton onClick={cmd('toggleAudio')} off={!mic} label={mic ? 'Turn off microphone (ctrl + d)' : 'Turn on microphone (ctrl + d)'} icon={mic ? <Mic /> : <MicOff />} />
-          <CtrlButton onClick={cmd('toggleVideo')} off={!cam} label={cam ? 'Turn off camera (ctrl + e)' : 'Turn on camera (ctrl + e)'} icon={cam ? <Video /> : <VideoOff />} />
-          <CtrlButton onClick={() => setMenu(menu === 'reactions' ? null : 'reactions')} active={menu === 'reactions'} label="Send a reaction" icon={<Smile />} className="hidden sm:flex" />
+        {/* centre: the controls, on one raised bar */}
+        <div className="col-start-2 flex items-center gap-1.5 rounded-[32px] bg-[#1e1f20] p-1.5 sm:gap-3 sm:p-3">
+          <SplitControl
+            open={menu === 'mic'}
+            onMenu={() => setMenu(menu === 'mic' ? null : 'mic')}
+            menuLabel="Audio settings"
+            menuIcon={<Ellipsis />}
+            button={<CtrlButton onClick={cmd('toggleAudio')} off={!mic} label={mic ? 'Turn off microphone (ctrl + d)' : 'Turn on microphone (ctrl + d)'} icon={mic ? <Mic /> : <MicOff />} />}
+          >
+            <DevicePopover api={api} kind="audio" onClose={closeMenu} onMore={() => (setMenu(null), setSettingsOpen(true))} />
+          </SplitControl>
+          <SplitControl
+            open={menu === 'cam'}
+            onMenu={() => setMenu(menu === 'cam' ? null : 'cam')}
+            menuLabel="Video settings"
+            menuIcon={<ChevronUp />}
+            button={<CtrlButton onClick={cmd('toggleVideo')} off={!cam} label={cam ? 'Turn off camera (ctrl + e)' : 'Turn on camera (ctrl + e)'} icon={cam ? <Video /> : <VideoOff />} />}
+          >
+            <DevicePopover api={api} kind="video" onClose={closeMenu} onMore={() => (setMenu(null), setSettingsOpen(true))} />
+          </SplitControl>
           {canShare ? <CtrlButton onClick={cmd('toggleShareScreen')} active={sharing} label={sharing ? 'Stop presenting' : 'Present now'} icon={<MonitorUp />} className="hidden sm:flex" /> : null}
-          <CtrlButton onClick={cmd('toggleRaiseHand')} active={myHand} label={myHand ? 'Lower hand' : 'Raise hand'} icon={<Hand />} />
+          <CtrlButton onClick={() => setMenu(menu === 'reactions' ? null : 'reactions')} active={menu === 'reactions'} label="Send a reaction" icon={<Smile />} className="hidden sm:flex" />
           {canRecord ? <CtrlButton onClick={toggleRecording} disabled={rec.pending} active={rec.on} label={rec.on ? 'Stop recording' : rec.pending ? 'Starting recording…' : 'Record the call'} icon={rec.pending ? <Loader2 className="animate-spin" /> : <CircleDot className={rec.on ? '' : 'text-[#f28b82]'} />} className="hidden sm:flex" /> : null}
+          <CtrlButton onClick={cmd('toggleRaiseHand')} active={myHand} label={myHand ? 'Lower hand' : 'Raise hand'} icon={<Hand />} />
           <div className="relative">
-            <CtrlButton onClick={() => setMenu(menu === 'more' || menu === 'layout' ? null : 'more')} active={menu === 'more' || menu === 'layout'} label="More options" icon={<EllipsisVertical />} dot={unread > 0} className={unread > 0 ? 'md:[&>span:last-child]:hidden' : undefined} />
+            <CtrlButton narrow onClick={() => setMenu(menu === 'more' || menu === 'layout' ? null : 'more')} active={menu === 'more' || menu === 'layout'} label="More options" icon={<EllipsisVertical />} dot={unread > 0} className={unread > 0 ? 'md:[&>span:last-child]:hidden' : undefined} />
             {menu === 'more' ? (
               <Popover onClose={closeMenu} className="left-1/2 w-64 -translate-x-1/2 py-2">
                 <MenuItem icon={<LayoutGrid />} onClick={() => setMenu('layout')}>
@@ -1521,7 +1629,7 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
                     {rec.on ? 'Stop recording' : 'Record the call'}
                   </MenuItem>
                 ) : null}
-                <MenuItem icon={<Info />} onClick={() => openSide('details')} className="md:hidden">
+                <MenuItem icon={<Info />} onClick={() => openSide('details')} className="lg:hidden">
                   Meeting details
                 </MenuItem>
                 <MenuItem icon={<Users />} onClick={() => openSide('people')} className="md:hidden">
@@ -1566,7 +1674,15 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
             ) : null}
           </div>
           <div className="relative">
-            <CtrlButton wide off onClick={() => (mod && count > 1 ? setMenu(menu === 'leave' ? null : 'leave') : hangup())} label="Leave call" icon={<PhoneOff />} />
+            <button
+              type="button"
+              onClick={() => (mod && count > 1 ? setMenu(menu === 'leave' ? null : 'leave') : hangup())}
+              aria-label="Leave call"
+              title="Leave call"
+              className="flex h-11 w-16 items-center justify-center rounded-full bg-[#dc362e] text-white transition-colors hover:bg-[#e5463e] active:scale-95 sm:h-14 sm:w-[84px]"
+            >
+              <Phone className="h-6 w-6 rotate-[135deg] fill-current" />
+            </button>
             {menu === 'leave' ? (
               <Popover onClose={closeMenu} className="right-0 w-64 py-2">
                 <MenuItem icon={<LogOut />} onClick={() => hangup()}>
@@ -1579,11 +1695,13 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
             ) : null}
           </div>
         </div>
-        <div className="col-start-3 hidden items-center justify-end gap-1 md:flex">
-          <SideIcon onClick={() => openSide('details')} active={side === 'details'} label="Meeting details" icon={<Info />} />
-          <SideIcon onClick={() => openSide('people')} active={side === 'people'} label="People" icon={<Users />} badge={count} />
-          <SideIcon onClick={() => openSide('chat')} active={side === 'chat'} label="Chat with everyone" icon={<MessageSquare />} dot={unread > 0} />
-          {mod ? <SideIcon onClick={() => openSide('host')} active={side === 'host'} label="Host controls" icon={<ShieldCheck />} /> : null}
+        {/* right: chat, people, host controls */}
+        <div className="col-start-3 hidden justify-end md:flex">
+          <div className="flex items-center gap-1 rounded-[32px] bg-[#1e1f20] p-1.5">
+            <SideIcon onClick={() => openSide('chat')} active={side === 'chat'} label="Chat with everyone" icon={<MessageSquareText />} dot={unread > 0} />
+            <SideIcon onClick={() => openSide('people')} active={side === 'people'} label="People" icon={<Users />} badge={count} />
+            {mod ? <SideIcon onClick={() => openSide('host')} active={side === 'host'} label="Host controls" icon={<LockKeyhole />} /> : null}
+          </div>
         </div>
       </footer>
     </>
@@ -1609,7 +1727,7 @@ function Popover({ children, onClose, className }: { children: React.ReactNode; 
     return () => window.removeEventListener('pointerdown', onDown)
   }, [onClose])
   return (
-    <div ref={ref} className={cn('meet-pop absolute bottom-[calc(100%+12px)] z-30 rounded-xl bg-[#232d3f] shadow-2xl shadow-black/60 ring-1 ring-white/10', className)}>
+    <div ref={ref} className={cn('meet-pop absolute bottom-[calc(100%+12px)] z-30 rounded-xl bg-[#28292a] shadow-2xl shadow-black/60 ring-1 ring-white/10', className)}>
       {children}
     </div>
   )
@@ -1697,7 +1815,7 @@ function PeoplePanel({ api, ring, hands, moderator, muted, myId, roomId, inviteF
                   <EllipsisVertical className="h-4 w-4" />
                 </button>
                 {open === x.id ? (
-                  <div className="meet-pop absolute right-0 top-full z-20 mt-1 w-60 rounded-xl bg-[#232d3f] py-1.5 shadow-2xl ring-1 ring-white/10">
+                  <div className="meet-pop absolute right-0 top-full z-20 mt-1 w-60 rounded-xl bg-[#28292a] py-1.5 shadow-2xl ring-1 ring-white/10">
                     <MenuItem icon={<Pin />} onClick={() => (setOpen(null), api.executeCommand('pinParticipant', x.id))}>
                       Pin for me
                     </MenuItem>
@@ -1791,7 +1909,7 @@ function ChatPanel({ people, messages, onSend }: { people: Person[]; messages: C
         {people.length ? (
           <label className="mb-2 flex items-center gap-2 px-2 text-xs text-[#9aa4b2]">
             Send to
-            <select value={target} onChange={(e) => setTo(e.target.value)} className="min-w-0 flex-1 rounded-full border border-white/15 bg-[#1a2333] px-3 py-1.5 text-base text-[#e3e8f0] outline-none focus:border-[#a8c7fa] sm:text-xs">
+            <select value={target} onChange={(e) => setTo(e.target.value)} className="min-w-0 flex-1 rounded-full border border-white/15 bg-[#1e1f20] px-3 py-1.5 text-base text-[#e3e8f0] outline-none focus:border-[#a8c7fa] sm:text-xs">
               <option value="">Everyone</option>
               {people.map((x) => (
                 <option key={x.id} value={x.id}>
@@ -1934,7 +2052,7 @@ function SettingsDialog({ api, onClose }: { api: JitsiApi; onClose: () => void }
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label="Settings" className="meet-pop w-full max-w-md rounded-2xl bg-[#1a2333] p-6 text-[#e3e8f0] shadow-2xl ring-1 ring-white/10">
+      <div role="dialog" aria-modal="true" aria-label="Settings" className="meet-pop w-full max-w-md rounded-2xl bg-[#1e1f20] p-6 text-[#e3e8f0] shadow-2xl ring-1 ring-white/10">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-xl">Settings</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-full p-2 text-[#c4cbd6] hover:bg-white/10">
@@ -2005,7 +2123,7 @@ function SettingsDialog({ api, onClose }: { api: JitsiApi; onClose: () => void }
                   // eslint-disable-next-line @next/next/no-img-element -- tiny static thumbnail
                   <img src={`/meet/backgrounds/${b.key}-thumb.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover" />
                 ) : (
-                  <span className={cn('absolute inset-0 bg-gradient-to-br from-[#2b3a55] to-[#1a2333]', b.key === 'slight-blur' && 'backdrop-blur-sm', b.key === 'blur' && 'backdrop-blur')} />
+                  <span className={cn('absolute inset-0 bg-gradient-to-br from-[#2b3a55] to-[#1e1f20]', b.key === 'slight-blur' && 'backdrop-blur-sm', b.key === 'blur' && 'backdrop-blur')} />
                 )}
                 <span className={cn('relative rounded-full px-2 py-0.5 font-medium', isImageBg(b.key) ? 'bg-black/45 text-white' : 'text-[#e3e8f0]')}>{b.key === 'none' ? 'No effect' : b.label.replace('Igani ', '') + (isImageBg(b.key) ? '' : ' blur')}</span>
                 {on ? <Check className="absolute right-1.5 top-1.5 h-3.5 w-3.5 rounded-full bg-[#a8c7fa] p-0.5 text-[#062e6f]" /> : null}
@@ -2051,7 +2169,8 @@ function Notice({ title, body, action, secondary, spinner = false }: { title: st
 }
 
 /** The page for a link that can't be used (unknown, ended, or no invite): same Igani Meet look, no room details. */
-IganiMeet.Closed = function Closed({ title, body }: { title: string; body: string }): React.ReactElement {
+/** A link that can't be joined (ended, invalid, no invite). Its own export: a property on a client component doesn't reach server pages. */
+export function MeetClosed({ title, body }: { title: string; body: string }): React.ReactElement {
   return (
     <div className="dark fixed inset-0 flex flex-col text-white" style={{ background: BG }}>
       <Notice title={title} body={body} />
@@ -2128,7 +2247,7 @@ function InviteBox({ roomId, focus, teammates, onChange }: { roomId: string; foc
         </button>
       </form>
       {matches.length ? (
-        <ul className="mt-2 overflow-hidden rounded-xl bg-[#232d3f] ring-1 ring-white/10">
+        <ul className="mt-2 overflow-hidden rounded-xl bg-[#28292a] ring-1 ring-white/10">
           {matches.map((t) => (
             <li key={t.id}>
               <button type="button" disabled={pending} onClick={() => send({ userIds: [t.id] }, t.name)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.06]">

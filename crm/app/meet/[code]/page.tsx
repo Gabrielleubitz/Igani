@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { IganiMeet } from '@/components/meet/IganiMeet'
+import { IganiMeet, MeetClosed } from '@/components/meet/IganiMeet'
 import { currentUserOrNull } from '@/lib/auth'
 import { avatarPath } from '@/lib/avatar'
 import { meetScriptUrl } from '@/lib/meet'
@@ -30,7 +30,7 @@ export default async function MeetPage(props: { params: Promise<{ code: string }
   const allowed = Boolean(room && !room.endedAt && (invite || manages || invitedUser))
   if (!room || !allowed) {
     return (
-      <IganiMeet.Closed
+      <MeetClosed
         title={!room ? 'This call link isn’t valid' : room.endedAt ? 'This call has ended' : 'You need an invite to join'}
         body={!room ? 'Check the link in your invite, or ask the person who invited you for a new one.' : room.endedAt ? 'The host ended this call. Ask them for a new link if you need to talk.' : 'Open the personal link from your invite email to join this call.'}
       />
