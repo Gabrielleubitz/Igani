@@ -33,6 +33,22 @@ const analysis = {
   moments: [{ at: 42.4, clientSaid: 'It sounds expensive', repSaid: 'It is what it is', better: 'Let me show you what it saves you each month', why: 'Reframes price as value.' }],
 }
 
+/** what the profile pass "heard": a company, a booked time and a next step (no website, so no site check) */
+const intel = {
+  person: { firstName: 'דנה', lastName: 'כהן', role: 'בעלים', email: null, otherPhone: null },
+  company: { name: 'Dana Design', industry: null, location: null, size: null, website: null, socials: [] },
+  site: { platform: 'WordPress', notes: null },
+  needs: ['חנות אונליין'],
+  pains: [],
+  budget: null,
+  timeline: null,
+  decisionMaker: null,
+  competitors: [],
+  meeting: { booked: true, when: '2026-11-10T15:00', durationMin: 30, kind: 'video', topic: null, quote: 'מחר בשלוש' },
+  actionItems: [{ text: 'לשלוח הצעת מחיר', owner: 'rep', due: null, kind: 'send' }],
+  facts: [],
+}
+
 const d = testDb ? describe : describe.skip
 
 d('call analysis', async () => {
@@ -50,9 +66,10 @@ d('call analysis', async () => {
       if (String(url).includes('/audio/transcriptions'))
         return Response.json({ text: 'שלום דנה', segments: [{ start: 0, end: 4, text: 'שלום דנה, מדבר גבריאל מאיגני' }, { start: 4, end: 9, text: 'היי, כן, חיכיתי' }, { start: 40, end: 45, text: 'It sounds expensive' }] })
       if (String(url).includes('/chat/completions')) {
-        // pass 1 labels speakers, pass 2 analyses
+        // pass 1 labels speakers, pass 2 analyses, pass 3 reads the client's facts for the lead profile
         const req = JSON.parse(String((init as RequestInit | undefined)?.body ?? '{}')) as { response_format?: { json_schema?: { name?: string } } }
-        const content = req.response_format?.json_schema?.name === 'speakers' ? { speakers: ['rep', 'client', 'client'] } : analysis
+        const name = req.response_format?.json_schema?.name
+        const content = name === 'speakers' ? { speakers: ['rep', 'client', 'client'] } : name === 'lead_intel' ? intel : analysis
         return Response.json({ choices: [{ message: { content: JSON.stringify(content) } }] })
       }
       return new Response('unexpected', { status: 500 })
@@ -94,7 +111,15 @@ d('call analysis', async () => {
     expect(await prisma.activityLog.count({ where: { entityId: leadId, action: 'call.analyzed' } })).toBe(1)
     // a second run (cron, webhook retry) does nothing
     expect(await analyzeCall(call.id)).toBe('busy')
-    expect(openaiCalls).toBe(3) // transcription + speakers + analysis
+    expect(openaiCalls).toBe(4) // transcription + speakers + analysis + lead profile
+    // the profile: the empty company is filled, the existing first name is kept, the booked time and next step are there
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } })
+    expect(lead.company).toBe('Dana Design')
+    expect(lead.firstName).toBe('Dana')
+    const profile = lead.profile as { meetings: { when: string }[]; actionItems: { text: string; status: string }[]; fields: Record<string, { value: string }> }
+    expect(profile.meetings[0]?.when).toBe('2026-11-10T15:00')
+    expect(profile.actionItems[0]).toMatchObject({ text: 'לשלוח הצעת מחיר', status: 'open' })
+    expect(profile.fields.platform?.value).toBe('WordPress')
   })
 
   it('skips recordings too short to coach, and gives up after three failed attempts', async () => {
