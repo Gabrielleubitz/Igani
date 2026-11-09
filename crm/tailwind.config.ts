@@ -28,7 +28,22 @@ const config: Config = {
         'collapsible-up': { from: { height: 'var(--radix-collapsible-content-height)' }, to: { height: '0' } },
       },
       animation: { 'collapsible-down': 'collapsible-down 0.2s ease-out', 'collapsible-up': 'collapsible-up 0.2s ease-out' },
-      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+      borderRadius: { xl: 'calc(var(--radius) + 4px)', lg: 'var(--radius)', md: 'calc(var(--radius) - 4px)', sm: 'calc(var(--radius) - 6px)' },
+      fontFamily: {
+        sans: ['var(--font-sans)', '"DM Sans"', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+        mono: ['var(--font-mono)', '"DM Mono"', 'ui-monospace', 'Menlo', 'monospace'],
+      },
+      boxShadow: {
+        // the landing page's three elevations
+        xs: 'var(--sh-1)',
+        sm: 'var(--sh-1)',
+        DEFAULT: 'var(--sh-1)',
+        md: 'var(--sh-2)',
+        lg: 'var(--sh-2)',
+        xl: 'var(--sh-3)',
+        '2xl': 'var(--sh-3)',
+      },
+      transitionTimingFunction: { out: 'cubic-bezier(0.19, 1, 0.22, 1)' },
     },
   },
   plugins: [

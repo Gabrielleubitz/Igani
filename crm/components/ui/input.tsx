@@ -5,7 +5,7 @@ export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttribute
   <input
     ref={ref}
     className={cn(
-      'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
+      'flex h-10 w-full rounded-sm border border-input bg-card shadow-[inset_0_1px_1px_rgba(18,21,28,0.03)] transition-[border-color,box-shadow] px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15 disabled:opacity-50',
       className,
     )}
     {...props}
@@ -18,7 +18,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, React.TextareaHTML
     <textarea
       ref={ref}
       className={cn(
-        'flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'flex min-h-[80px] w-full rounded-sm border border-input bg-card shadow-[inset_0_1px_1px_rgba(18,21,28,0.03)] transition-[border-color,box-shadow] px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15',
         className,
       )}
       {...props}
@@ -31,7 +31,7 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
   <select
     ref={ref}
     className={cn(
-      'flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+      'flex h-10 w-full rounded-sm border border-input bg-card shadow-[inset_0_1px_1px_rgba(18,21,28,0.03)] transition-[border-color,box-shadow] px-3 text-sm focus-visible:outline-none focus-visible:border-primary focus-visible:ring-4 focus-visible:ring-primary/15',
       className,
     )}
     {...props}
@@ -40,5 +40,5 @@ export const Select = React.forwardRef<HTMLSelectElement, React.SelectHTMLAttrib
 Select.displayName = 'Select'
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>): React.ReactElement {
-  return <label className={cn('text-sm font-medium leading-none', className)} {...props} />
+  return <label className={cn('text-[13px] font-medium leading-none text-foreground/90', className)} {...props} />
 }

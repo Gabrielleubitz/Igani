@@ -13,28 +13,35 @@
     }
   }
   :root {
-    /* Igani brand: ink #002040, surface #204060, accent #4080E0 */
-    --background: 210 100% 6%;
-    --foreground: 0 0% 96%;
-    --card: 210 70% 10%;
-    --card-foreground: 0 0% 96%;
-    --primary: 216 74% 58%;
+    /*
+     * The igani.co landing page's system (public/site/home4.css): DM Sans, cool white and paper surfaces, hairline rules,
+     * Igani blue #1f55b5 for actions (about a tenth of the screen), 14 px cards with soft layered shadows.
+     * Dark mode is the same system on the landing page's deep navy.
+     */
+    --radius: 0.875rem;
+    --background: 220 55% 8%;
+    --foreground: 216 40% 95%;
+    --card: 221 45% 12%;
+    --card-foreground: 216 40% 95%;
+    --primary: 218 76% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 50% 18%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 210 45% 15%;
-    --muted-foreground: 215 20% 68%;
-    --accent: 216 60% 70%;
-    --success: 152 55% 42%;
+    --secondary: 220 40% 17%;
+    --secondary-foreground: 216 40% 95%;
+    --muted: 220 42% 15%;
+    --muted-foreground: 218 18% 65%;
+    --accent: 218 83% 76%;
+    --success: 152 55% 45%;
     --warning: 38 92% 55%;
-    --destructive: 0 63% 48%;
+    --destructive: 2 72% 55%;
     --destructive-foreground: 0 0% 98%;
-    --border: 210 40% 20%;
-    --input: 210 40% 24%;
-    --ring: 216 74% 58%;
-    --radius: 0.5rem;
-    --popover: 210 70% 12%;
-    --popover-foreground: 0 0% 96%;
+    --border: 220 34% 19%;
+    --input: 220 30% 25%;
+    --ring: 218 76% 60%;
+    --popover: 221 45% 13%;
+    --popover-foreground: 216 40% 95%;
+    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.22);
+    --sh-2: 0 2px 4px rgba(0, 0, 0, 0.3), 0 14px 30px -12px rgba(0, 0, 0, 0.6);
+    --sh-3: 0 4px 8px rgba(0, 0, 0, 0.32), 0 32px 64px -24px rgba(0, 0, 0, 0.7);
     /* event-calendar palette (the component is written for Tailwind 4 theme vars) */
     --color-primary: hsl(var(--primary));
     --color-border: hsl(var(--border));
@@ -42,47 +49,64 @@
     --color-rose-500: #f43f5e; --color-cyan-500: #06b6d4; --color-indigo-500: #6366f1; --color-orange-500: #f97316;
     --color-pink-500: #ec4899; --color-teal-500: #14b8a6;
   }
-  /* Light mode (the switch next to your profile): same brand, on white */
+  /* Light mode (the default, like igani.co): paper canvas, white cards, ink text, Igani blue */
   html.light {
     color-scheme: light;
-    --background: 210 40% 97%;
-    --foreground: 210 65% 11%;
+    --background: 216 30% 97%;
+    --foreground: 222 22% 9%;
     --card: 0 0% 100%;
-    --card-foreground: 210 65% 11%;
-    --primary: 216 74% 50%;
+    --card-foreground: 222 22% 9%;
+    --primary: 218 71% 42%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 93%;
-    --secondary-foreground: 210 65% 14%;
-    --muted: 210 35% 94%;
-    --muted-foreground: 215 20% 38%;
-    --accent: 216 70% 42%;
-    --border: 214 30% 86%;
-    --input: 214 30% 80%;
-    --ring: 216 74% 50%;
+    --secondary: 217 70% 95%;
+    --secondary-foreground: 219 74% 30%;
+    --muted: 216 28% 95%;
+    --muted-foreground: 222 12% 43%;
+    --accent: 219 74% 35%;
+    --success: 148 73% 28%;
+    --warning: 32 90% 44%;
+    --destructive: 3 71% 41%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 24% 91%;
+    --input: 218 23% 85%;
+    --ring: 218 71% 42%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 65% 11%;
+    --popover-foreground: 222 22% 9%;
+    --sh-1: 0 1px 2px rgba(18, 21, 28, 0.06), 0 1px 3px rgba(18, 21, 28, 0.05);
+    --sh-2: 0 2px 4px rgba(18, 21, 28, 0.05), 0 12px 28px -12px rgba(18, 21, 28, 0.18);
+    --sh-3: 0 4px 8px rgba(18, 21, 28, 0.06), 0 32px 64px -24px rgba(18, 21, 28, 0.28);
   }
   /* Anything marked .dark inside light mode (the phone) keeps the dark palette */
   html.light .dark {
     color-scheme: dark;
-    --background: 210 100% 6%;
-    --foreground: 0 0% 96%;
-    --card: 210 70% 10%;
-    --card-foreground: 0 0% 96%;
-    --primary: 216 74% 58%;
-    --secondary: 210 50% 18%;
-    --secondary-foreground: 0 0% 96%;
-    --muted: 210 45% 15%;
-    --muted-foreground: 215 20% 68%;
-    --accent: 216 60% 70%;
-    --border: 210 40% 20%;
-    --input: 210 40% 24%;
-    --ring: 216 74% 58%;
-    --popover: 210 70% 12%;
-    --popover-foreground: 0 0% 96%;
+    --background: 220 55% 8%;
+    --foreground: 216 40% 95%;
+    --card: 221 45% 12%;
+    --card-foreground: 216 40% 95%;
+    --primary: 218 76% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 40% 17%;
+    --secondary-foreground: 216 40% 95%;
+    --muted: 220 42% 15%;
+    --muted-foreground: 218 18% 65%;
+    --accent: 218 83% 76%;
+    --success: 152 55% 45%;
+    --warning: 38 92% 55%;
+    --destructive: 2 72% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 34% 19%;
+    --input: 220 30% 25%;
+    --ring: 218 76% 60%;
+    --popover: 221 45% 13%;
+    --popover-foreground: 216 40% 95%;
+    --sh-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.22);
+    --sh-2: 0 2px 4px rgba(0, 0, 0, 0.3), 0 14px 30px -12px rgba(0, 0, 0, 0.6);
+    --sh-3: 0 4px 8px rgba(0, 0, 0, 0.32), 0 32px 64px -24px rgba(0, 0, 0, 0.7);
   }
   * { @apply border-border; }
-  body { @apply bg-background text-foreground antialiased; }
+  body { @apply bg-background text-foreground antialiased; font-feature-settings: 'ss01' on; text-rendering: optimizeLegibility; }
+  h1, h2, h3 { letter-spacing: -0.022em; }
+  h1 { font-weight: 600; }
   :focus-visible { @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background; }
   html { scroll-behavior: smooth; }
   @media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
@@ -157,4 +181,27 @@ html.theme-switching *, html.theme-switching *::before, html.theme-switching *::
 }
 .meet-fly {
   animation: meet-fly 4s ease-out forwards;
+}
+
+/* The landing page's small mono labels ("TRUSTED BY…", section kickers) */
+@layer components {
+  .eyebrow { font-family: var(--font-mono), 'DM Mono', ui-monospace, monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--muted-foreground)); }
+  /* a card that lifts a little on hover, like the landing page's tiles */
+  .lift { transition: transform 180ms cubic-bezier(0.19, 1, 0.22, 1), box-shadow 180ms; }
+  .lift:hover { transform: translateY(-1px); box-shadow: var(--sh-2); }
+}
+
+/*
+ * Light mode, the landing page's surfaces: page-level panels written for the dark theme as see-through cards
+ * (bg-card/40…/90) become solid white tiles with the landing page's soft shadow, so every page reads as white cards on paper.
+ */
+html.light :is(.bg-card\/30, .bg-card\/40, .bg-card\/50, .bg-card\/60, .bg-card\/70, .bg-card\/80, .bg-card\/90, .bg-card\/95):not(.dark, .dark *) {
+  background-color: hsl(var(--card));
+}
+html.light :is(div, section, article, aside, li, a, details, form).border:is(.bg-card, .bg-card\/40, .bg-card\/50, .bg-card\/60, .bg-card\/70, .bg-card\/80):is(.rounded-lg, .rounded-xl, .rounded-2xl, .rounded-3xl):not([class*='shadow']):not(.dark, .dark *) {
+  box-shadow: var(--sh-1);
+}
+/* tables and lists: the landing page's hairline rules */
+html.light :is(.divide-y) > :not([hidden]) ~ :not([hidden]):not(.dark *) {
+  border-color: hsl(var(--border));
 }

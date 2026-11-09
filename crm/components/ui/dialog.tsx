@@ -19,12 +19,12 @@ export function Dialog({ open, onClose, title, description, children, className 
       onClick={(e) => {
         if (e.target === ref.current) onClose()
       }}
-      className={cn('w-[min(92vw,30rem)] rounded-xl border bg-card p-0 text-card-foreground shadow-2xl backdrop:bg-black/60 backdrop:backdrop-blur-sm', className)}
+      className={cn('w-[min(92vw,30rem)] rounded-[22px] border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-[#0c1730]/45 backdrop:backdrop-blur-sm', className)}
     >
       {open ? (
         <div className="space-y-4 p-6">
           <div>
-            <h2 className="text-lg font-semibold">{title}</h2>
+            <h2 className="text-xl font-semibold tracking-[-0.022em]">{title}</h2>
             {description ? <p className="mt-1 text-sm text-muted-foreground">{description}</p> : null}
           </div>
           {children}

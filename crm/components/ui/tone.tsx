@@ -63,11 +63,10 @@ export function IconChip({ tone, children, size = 'md', className }: { tone: Ton
 
 /** The gradient badge beside a page title. */
 export function GradientChip({ tone, children, className }: { tone: Tone; children: React.ReactNode; className?: string }): React.ReactElement {
+  // The landing page's quiet icon square: a soft tint of the page's color with a hairline ring
   return (
-    <span aria-hidden className={cn('relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-lg ring-1 ring-white/15 [&_svg]:h-5 [&_svg]:w-5 [&_svg]:drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]', GRADIENT[tone], className)}>
-      {/* a soft highlight on the top edge */}
-      <span className="pointer-events-none absolute inset-x-1 top-0.5 h-1/2 rounded-t-[10px] bg-gradient-to-b from-white/25 to-transparent" />
-      <span className="relative">{children}</span>
+    <span aria-hidden className={cn('relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ring-1 [&_svg]:h-5 [&_svg]:w-5', TINT[tone], className)}>
+      {children}
     </span>
   )
 }
@@ -87,14 +86,14 @@ export function StatTile({ icon, tone, label, value, sub, tag, href, muted, clas
         <IconChip tone={muted ? 'slate' : tone} size="sm">
           {icon}
         </IconChip>
-        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{label}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-muted-foreground">{label}</span>
         {tag ? <span className="hidden shrink-0 sm:inline-flex">{tag}</span> : null}
       </div>
-      <div className={cn('mt-3 text-2xl font-semibold leading-none tracking-tight tabular-nums', muted && 'text-muted-foreground')}>{value}</div>
+      <div className={cn('mt-3 text-[28px] font-semibold leading-none tracking-[-0.03em] tabular-nums', muted && 'text-muted-foreground')}>{value}</div>
       {sub ? <p className="mt-2 truncate text-xs text-muted-foreground">{sub}</p> : null}
     </>
   )
-  const cls = cn('group flex min-w-0 flex-col rounded-2xl border bg-card/60 p-4 shadow-[0_1px_0_rgba(255,255,255,0.03)_inset] transition', href && 'hover:border-primary/40 hover:bg-card', muted && 'opacity-70', className)
+  const cls = cn('group flex min-w-0 flex-col rounded-lg border border-border/80 bg-card p-4 shadow-sm transition-[transform,box-shadow,border-color] duration-200 ease-out', href && 'hover:-translate-y-px hover:border-primary/30 hover:shadow-md', muted && 'opacity-70', className)
   return href ? (
     <Link href={href} className={cls}>
       {body}

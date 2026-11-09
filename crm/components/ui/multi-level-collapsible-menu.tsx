@@ -59,7 +59,7 @@ function MenuItem({ node, level, active, expanded }: { node: MenuNode; level: nu
     return (
       <Collapsible open={open} onOpenChange={setOpen} className="group/collapsible">
         <CollapsibleTrigger asChild>
-          <button type="button" style={pad} className={cn(itemVariants({ size: 'xs' }), 'group/item cursor-pointer py-2 text-muted-foreground hover:bg-muted hover:text-foreground', hasActive && 'text-foreground')}>
+          <button type="button" style={pad} className={cn(itemVariants({ size: 'xs' }), 'group/item cursor-pointer rounded-sm py-2 text-foreground/75 hover:bg-muted hover:text-foreground', hasActive && 'text-foreground')}>
             {node.icon ? (
               <ItemMedia variant="icon">
                 <span aria-hidden className="size-4 [&>svg]:size-4">
@@ -67,7 +67,7 @@ function MenuItem({ node, level, active, expanded }: { node: MenuNode; level: nu
                 </span>
               </ItemMedia>
             ) : null}
-            <ItemTitle className={cn('text-sm', hasActive && 'font-semibold')}>{node.label}</ItemTitle>
+            <ItemTitle className={cn('text-sm font-medium', hasActive && 'font-semibold')}>{node.label}</ItemTitle>
             {!open ? <Badge count={badgeOf(node)} /> : null}
             <ChevronRightIcon aria-hidden className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/collapsible:rotate-90" />
           </button>
@@ -89,14 +89,14 @@ function MenuItem({ node, level, active, expanded }: { node: MenuNode; level: nu
       href={node.href ?? '#'}
       aria-current={isActive ? 'page' : undefined}
       style={pad}
-      className={cn(itemVariants({ size: 'xs' }), 'group/item py-2', isActive ? 'bg-primary/15 font-medium text-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}
+      className={cn(itemVariants({ size: 'xs' }), 'group/item rounded-sm py-2', isActive ? 'bg-primary/10 font-semibold text-primary' : 'font-medium text-foreground/75 hover:bg-muted hover:text-foreground')}
     >
       <ItemMedia variant="icon">
         <span aria-hidden className={cn('size-4 [&>svg]:size-4', isActive && 'text-primary')}>
           {node.icon}
         </span>
       </ItemMedia>
-      <ItemTitle className="text-sm">{node.label}</ItemTitle>
+      <ItemTitle className="text-sm font-[inherit]">{node.label}</ItemTitle>
       <Badge count={node.badge ?? 0} />
     </Link>
   )

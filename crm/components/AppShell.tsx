@@ -61,13 +61,13 @@ export async function AppShell({ user, children }: { user: SessionUser; children
       <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-primary focus:px-3 focus:py-2 focus:text-primary-foreground">
         Skip to content
       </a>
-      <aside className="relative border-b bg-card/40 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
+      <aside className="relative border-b bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:flex-1 lg:flex-col lg:items-stretch lg:justify-start lg:gap-5 lg:overflow-y-auto lg:px-4 lg:py-5">
           <Link href="/" aria-label="Igani CRM home" className="flex items-center gap-2">
             {/* the wordmark that reads on the current theme */}
             <Logo height={32} className="hidden dark:block" />
             <Logo onLight height={32} className="dark:hidden" />
-            <span className="hidden rounded border border-primary/40 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-primary lg:inline">CRM</span>
+            <span className="eyebrow hidden rounded-sm border border-primary/30 px-1.5 py-px !text-[10px] !text-primary lg:inline">CRM</span>
           </Link>
           <div className="flex items-center gap-2 lg:hidden">
             <ThemeToggle />

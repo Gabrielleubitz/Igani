@@ -73,15 +73,15 @@ export function PageIntro({ title, hint, className = '', icon, tone }: { title: 
   const Icon = icon ?? known?.icon
   const t = tone ?? known?.tone ?? 'blue'
   return (
-    <div className={`flex items-start gap-3.5 ${className}`}>
+    <div className={`flex items-start gap-4 ${className}`}>
       {Icon ? (
         <GradientChip tone={t} className="mt-0.5">
           <Icon />
         </GradientChip>
       ) : null}
       <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
+        <h1 className="text-[28px] font-semibold leading-[1.1] tracking-[-0.03em] sm:text-[32px]">{title}</h1>
+        <p className="mt-1.5 max-w-[68ch] text-[15px] leading-relaxed text-muted-foreground">{hint}</p>
       </div>
     </div>
   )

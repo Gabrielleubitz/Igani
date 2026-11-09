@@ -66,40 +66,11 @@ const ICONS: Record<string, LucideIcon> = {
 /** A menu entry as the server sends it: icons are names (mapped to lucide icons here), folders have children. */
 export type NavNode = { id: string; label: string; icon?: string; href?: string; badge?: number; children?: NavNode[] }
 
-/** Each entry's icon color (the same palette as the page badges). Settings stays neutral. */
-const ICON_COLOR: Record<string, string> = {
-  today: 'text-amber-400',
-  contacts: 'text-[#6aa6ff]',
-  board: 'text-indigo-400',
-  tasks: 'text-emerald-400',
-  meetings: 'text-violet-400',
-  reports: 'text-sky-400',
-  invite: 'text-pink-400',
-  hours: 'text-orange-400',
-  documents: 'text-cyan-400',
-  marketing: 'text-pink-400',
-  tests: 'text-orange-400',
-  meet: 'text-sky-300',
-  overview: 'text-[#6aa6ff]',
-  bookings: 'text-violet-400',
-  pages: 'text-cyan-400',
-  team: 'text-indigo-400',
-  performance: 'text-emerald-400',
-  audit: 'text-sky-400',
-  offers: 'text-amber-400',
-  videos: 'text-rose-400',
-  teamMeetings: 'text-violet-400',
-  website: 'text-cyan-400',
-  phone: 'text-emerald-400',
-  calls: 'text-emerald-400',
-  callLists: 'text-teal-400',
-  chat: 'text-fuchsia-400',
-}
 
 function toMenu(nodes: NavNode[]): MenuNode[] {
   return nodes.map((n) => {
     const Icon = n.icon ? ICONS[n.icon] : undefined
-    return { id: n.id, label: n.label, href: n.href, badge: n.badge, icon: Icon ? <Icon aria-hidden className={n.icon ? ICON_COLOR[n.icon] : undefined} /> : undefined, children: n.children ? toMenu(n.children) : undefined }
+    return { id: n.id, label: n.label, href: n.href, badge: n.badge, icon: Icon ? <Icon aria-hidden /> : undefined, children: n.children ? toMenu(n.children) : undefined }
   })
 }
 
@@ -120,7 +91,7 @@ export function MobileMenu({ nodes }: { nodes: NavNode[] }): React.ReactElement 
         aria-expanded={open}
         aria-controls="mobile-menu"
         onClick={() => setOpen((o) => !o)}
-        className="inline-flex h-10 items-center gap-2 rounded-md border px-3 text-sm font-medium hover:bg-muted"
+        className="inline-flex h-10 items-center gap-2 rounded-sm border bg-card px-3 text-sm font-medium shadow-sm hover:bg-muted"
       >
         <span aria-hidden>{open ? '✕' : '☰'}</span> Menu
       </button>
@@ -155,7 +126,7 @@ export function GlobalSearch(): React.ReactElement {
         id="global-search"
         name="q"
         placeholder="Search leads…"
-        className="h-9 w-full rounded-md border border-input bg-background/60 pl-3 pr-8 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-10 w-full rounded-sm border border-input bg-card pl-3 pr-8 text-sm shadow-[inset_0_1px_1px_rgba(18,21,28,0.03)] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/15"
       />
       <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border px-1 text-[10px] text-muted-foreground">/</kbd>
     </form>
