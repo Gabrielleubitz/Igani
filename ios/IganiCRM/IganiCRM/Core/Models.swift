@@ -89,6 +89,25 @@ struct LeadDetail: Decodable, Identifiable {
     var notes: [Note]
     let calls: [Call]
     var tasks: [Task]
+    /// what calls taught us about them (the AI profile); nil until a call has been reviewed
+    let profile: LeadProfileData?
+}
+
+/// The AI profile built from a lead's calls (lib/lead-intel.ts).
+struct LeadProfileData: Decodable, Hashable {
+    struct Sourced: Decodable, Hashable { let value: String; let callId: String }
+    struct Lists: Decodable, Hashable { let needs: [Sourced]; let pains: [Sourced]; let competitors: [Sourced] }
+    struct Fact: Decodable, Hashable { let label: String; let value: String; let quote: String? }
+    struct Meeting: Decodable, Hashable, Identifiable { let id: String; let when: String; let timeZone: String; let durationMin: Int; let kind: String; let topic: String?; let quote: String?; let entryId: String? }
+    struct Item: Decodable, Hashable, Identifiable { let id: String; let text: String; let owner: String; let due: String?; let kind: String; let status: String }
+    struct SiteCheck: Decodable, Hashable { let url: String; let platform: String; let version: String?; let kind: String; let opener: String? }
+    let calls: [String]
+    let fields: [String: Sourced]
+    let lists: Lists
+    let facts: [Fact]
+    let meetings: [Meeting]
+    let actionItems: [Item]
+    let siteCheck: SiteCheck?
 }
 
 struct TaskItem: Decodable, Identifiable, Hashable {

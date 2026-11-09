@@ -23,6 +23,7 @@
 		5DA30FDF705266D1AF8009CC /* WebScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A09F2722C2EBCCDCC145D9A /* WebScreen.swift */; };
 		612FD05791A039F05FF9FA4B /* CallsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35005F07570C45CD38FD96E7 /* CallsView.swift */; };
 		7D55DC8A3345C1A1841587F3 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BC87E63111A9D67CA81BF09 /* Keychain.swift */; };
+		84801D352964103FFE421731 /* LeadProfilePanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A188971CC7EA274CA73AFE7 /* LeadProfilePanel.swift */; };
 		8D9F984422276B937D82271F /* TodayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 253AAC50CF65AE0D44D0DC8B /* TodayView.swift */; };
 		8EE2B4621F9F5156398A399B /* PhoneModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62FB06BBB5F9FB41E4C93F2A /* PhoneModels.swift */; };
 		903553F55CDF9F2CA048171E /* API.swift in Sources */ = {isa = PBXBuildFile; fileRef = C886FB0077AACB35D5F5B797 /* API.swift */; };
@@ -107,6 +108,7 @@
 		8C8A7F5693162BF97C2C016B /* LeadsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadsView.swift; sourceTree = "<group>"; };
 		94EEEC73D5773D0379A11131 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		9A0808D1539A54F0177473CB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9A188971CC7EA274CA73AFE7 /* LeadProfilePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadProfilePanel.swift; sourceTree = "<group>"; };
 		9E119EDECFFFB3927FA0FADA /* PhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneView.swift; sourceTree = "<group>"; };
 		A11E4615C35E8176210721E9 /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
 		A2B1073B3507AE26F08A1FBD /* Routes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Routes.swift; sourceTree = "<group>"; };
@@ -336,6 +338,7 @@
 			isa = PBXGroup;
 			children = (
 				B67AA1A6DF8D2B5DF06A32D0 /* LeadDetailView.swift */,
+				9A188971CC7EA274CA73AFE7 /* LeadProfilePanel.swift */,
 				8C8A7F5693162BF97C2C016B /* LeadsView.swift */,
 			);
 			path = Leads;
@@ -463,6 +466,7 @@
 				7D55DC8A3345C1A1841587F3 /* Keychain.swift in Sources */,
 				FEBAD04EC82C2D5E48BA7E15 /* KeypadFab.swift in Sources */,
 				E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */,
+				84801D352964103FFE421731 /* LeadProfilePanel.swift in Sources */,
 				5B8E8FF6F84D160EB966BEE2 /* LeadsView.swift in Sources */,
 				108ECCAC5C6185D3971FBDEE /* LiveCallsSection.swift in Sources */,
 				3A605B987D820B3760D355DA /* MeetView.swift in Sources */,

@@ -90,6 +90,8 @@ struct LeadDetailView: View {
                 .card()
             }
 
+            if let p = l.profile { LeadProfilePanel(leadId: l.id, profile: p) { await load() } }
+
             // tasks
             VStack(alignment: .leading, spacing: 10) {
                 SectionTitle(title: "Tasks", trailing: "Add") { taskSheet = true }

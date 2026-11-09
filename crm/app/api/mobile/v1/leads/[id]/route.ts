@@ -3,6 +3,7 @@ import { assertCanSeeLead } from '@/lib/lead-access'
 import { fail, json, mobileUser } from '@/lib/mobile'
 import { prisma } from '@/lib/prisma'
 import { loadTasks } from '@/lib/tasks'
+import { readProfile } from '@/lib/lead-intel'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,7 +21,7 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
     prisma.lead.findUniqueOrThrow({
       where: { id },
       select: {
-        id: true, firstName: true, lastName: true, email: true, phone: true, company: true, website: true, message: true, source: true, sourceDetail: true, status: true, tags: true, createdAt: true, updatedAt: true,
+        id: true, firstName: true, lastName: true, email: true, phone: true, company: true, website: true, message: true, source: true, sourceDetail: true, status: true, tags: true, createdAt: true, updatedAt: true, profile: true,
         assignedTo: { select: { id: true, name: true } },
         notes: { orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, body: true, createdAt: true, author: { select: { name: true, email: true } } } },
         calls: { orderBy: { startedAt: 'desc' }, take: 10, select: { id: true, direction: true, status: true, startedAt: true, durationSec: true } },
@@ -51,6 +52,8 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
     counts: l._count,
     notes: l.notes.map((n) => ({ id: n.id, body: n.body, at: n.createdAt, author: n.author?.name ?? n.author?.email ?? null })),
     calls: l.calls,
+    // what calls taught us (the AI profile), with booked times and next steps
+    profile: user.role === 'MARKETING' ? null : readProfile(l.profile),
     tasks: tasks
       .sort((a, b) => Number(a.done) - Number(b.done) || (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity))
       .map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt, done: t.done, priority: t.priority, assignee: t.assigneeId ? (t.assigneeId === user.id ? 'You' : (nameOf.get(t.assigneeId) ?? null)) : null })),

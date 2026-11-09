@@ -287,7 +287,7 @@ async function transcribe(audio: Blob, key: string, fileName = 'call.mp3'): Prom
   return { text: body.text ?? segments.map((s) => s.text).join(' '), segments }
 }
 
-async function chat(key: string, system: string, user: string, name: string, schema: object, effort: 'low' | 'medium'): Promise<unknown> {
+export async function chat(key: string, system: string, user: string, name: string, schema: object, effort: 'low' | 'medium'): Promise<unknown> {
   const model = process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -394,6 +394,9 @@ export async function analyzeCall(callId: string, opts: { force?: boolean; ignor
     })
     if (call.leadId) {
       await logActivity({ entityType: 'LEAD', entityId: call.leadId, actorId: null, action: 'call.analyzed', metadata: { callId, summary: analysis.summary.slice(0, 600), outcome: analysis.outcome.label, nextStep: analysis.nextStep } })
+      // what the call taught us about the client: profile, empty fields, booked time, next steps (lib/lead-intel.ts)
+      const { enrichLeadFromCall } = await import('./lead-intel')
+      await enrichLeadFromCall(callId, transcript, analysis.reviewIn ?? 'en')
     }
     return 'ready'
   } catch (err) {
@@ -426,6 +429,9 @@ export async function analyzeUploadedCall(callId: string, audio: Blob, fileName 
       where: { id: callId },
       data: { transcript: transcript as unknown as Prisma.InputJsonValue, analysis: analysis as unknown as Prisma.InputJsonValue, analysisStatus: 'ready', analyzedAt: new Date(), analysisError: null, durationSec: seconds, recordingSec: seconds },
     })
+    // an uploaded call on a lead teaches us about the client too
+    const { enrichLeadFromCall } = await import('./lead-intel')
+    await enrichLeadFromCall(callId, transcript, analysis.reviewIn ?? 'en')
     return 'ready'
   } catch (err) {
     console.error('[call-analysis] upload review failed', callId, err instanceof Error ? err.message : err)

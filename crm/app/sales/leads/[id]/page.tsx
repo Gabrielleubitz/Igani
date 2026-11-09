@@ -21,6 +21,8 @@ import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } fro
 import { StagePill } from '@/components/crm/StagePill'
 import { AdminDealPanel, MyCommissionCard } from '@/components/crm/AdminDealPanel'
 import { LeadControls } from '@/components/LeadControls'
+import { LeadProfileCard } from '@/components/crm/LeadProfileCard'
+import { readProfile } from '@/lib/lead-intel'
 import { Badge } from '@/components/ui/badge'
 import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -67,6 +69,9 @@ const TOUCH: Record<string, string> = { call: 'Call', email: 'Email', meeting: '
 const HIDDEN = new Set(['task.reminded'])
 const MONEY_EVENTS = ['lead.price_changed', 'lead.commission_overridden', 'lead.commission_recalculated', 'lead.commission_payment', 'lead.source_type_changed'] as const
 
+// rebuilding a lead's profile reads several calls with AI
+export const maxDuration = 300
+
 export default async function LeadPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
   const params = await props.params;
   const user = await requireUser()
@@ -77,7 +82,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
   })
   if (!lead || !canSeeLead(user, lead)) notFound()
 
-  const [logs, people, me, threshold, myPage, emailRows, grants] = await Promise.all([
+  const [logs, people, me, threshold, myPage, emailRows, grants, leadCalls] = await Promise.all([
     prisma.activityLog.findMany({
       // Prices and commission are admin matters: those events never reach a salesperson's timeline.
       where: { entityType: 'LEAD', entityId: lead.id, ...(isAdmin ? {} : { action: { notIn: [...MONEY_EVENTS] } }) },
@@ -91,6 +96,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
     prisma.bookingPage.findFirst({ where: { active: true, hostId: user.id }, select: { slug: true } }),
     prisma.emailMessage.findMany({ where: { leadId: lead.id }, orderBy: { sentAt: 'desc' }, take: 100 }),
     googleGrants(user.id),
+    prisma.call.findMany({ where: { leadId: lead.id, simulated: false }, orderBy: { startedAt: 'desc' }, take: 50, select: { id: true, startedAt: true, analysisStatus: true } }),
   ])
   const gmailConnected = grants.gmail
   const tz = me.timeZone
@@ -372,6 +378,14 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
 
       <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
         <div className="space-y-6 lg:col-span-1">
+          {user.role !== 'MARKETING' ? (
+            <LeadProfileCard
+              leadId={lead.id}
+              profile={readProfile(lead.profile)}
+              reviewedCalls={leadCalls.filter((c) => c.analysisStatus === 'ready').length}
+              callDates={Object.fromEntries(leadCalls.map((c) => [c.id, new Intl.DateTimeFormat('en-GB', { timeZone: me.timeZone, day: 'numeric', month: 'short' }).format(c.startedAt)]))}
+            />
+          ) : null}
           {adminDeal ? (
             <AdminDealPanel
               key={`${lead.updatedAt.toISOString()}-${lead.commissionTotal ?? 0}`}

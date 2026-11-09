@@ -3,6 +3,7 @@ import * as bookings from '@/app/actions/bookings'
 import * as callLists from '@/app/actions/call-lists'
 import * as callShares from '@/app/actions/call-shares'
 import * as chat from '@/app/actions/chat'
+import * as leadIntel from '@/app/actions/lead-intel'
 import * as calls from '@/app/actions/calls'
 import * as deals from '@/app/actions/deals'
 import * as leads from '@/app/actions/leads'
@@ -18,7 +19,8 @@ import * as today from '@/app/sales/today/actions'
 import { fail, json, mobileUser } from '@/lib/mobile'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 60
+// rebuilding a lead profile reads several calls with AI
+export const maxDuration = 300
 
 type Action = (...args: never[]) => Promise<unknown>
 
@@ -36,6 +38,11 @@ const ACTIONS: Record<string, Action> = {
   saveCallWrapUp: calls.saveCallWrapUp,
   callProgress: calls.callProgress,
   liveCalls: calls.liveCalls,
+  // the AI profile on a lead
+  addProfileMeetingToCalendar: leadIntel.addProfileMeetingToCalendar,
+  profileItemToTask: leadIntel.profileItemToTask,
+  setProfileItem: leadIntel.setProfileItem,
+  rebuildLeadProfile: leadIntel.rebuildLeadProfile,
   // team chat
   chatOverview: chat.chatOverview,
   chatUnread: chat.chatUnread,
