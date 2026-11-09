@@ -8,4 +8,5 @@ export const OFFERS: Record<string, () => Promise<OfferDefinition>> = {
   cryo: () => import('./cryo/content').then((m) => m.default),
   'cryotherapy-rejuvenate': () => import('./cryotherapy-rejuvenate/content').then((m) => m.default),
   testing: () => import('./testing/content').then((m) => m.default),
+  yosef: () => import('./yosef/content').then((m) => m.default),
 }
