@@ -88,8 +88,8 @@ export async function removeObject(key: string): Promise<void> {
   await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
 }
 
-/** A short-lived (5 minutes) direct link to the file, issued only after the access check. */
-export async function playUrl(key: string, contentType: string): Promise<string> {
+/** A short-lived direct link to the file (5 minutes unless told otherwise), issued only after the access check. */
+export async function playUrl(key: string, contentType: string, expiresIn = 300): Promise<string> {
   const { s3, bucket } = r2()
-  return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key, ResponseContentType: contentType, ResponseContentDisposition: 'inline' }), { expiresIn: 300 })
+  return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key, ResponseContentType: contentType, ResponseContentDisposition: 'inline' }), { expiresIn })
 }

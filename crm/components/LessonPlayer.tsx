@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ConfidentialityGate } from '@/components/ConfidentialityGate'
+import { SecureVideo } from '@/components/SecureVideo'
 
 /**
  * A course lesson. Reaching the end (watching or scrubbing forward) tells the server, which unlocks the next video.
@@ -30,23 +31,7 @@ export function LessonPlayer({ id, title, completed, nextId, startAt = 0, confir
     <div className="space-y-3">
       <figure className="overflow-hidden rounded-2xl bg-slate-950 ring-1 ring-slate-900/10">
         <ConfidentialityGate videoId={id} enabled={confirm}>
-        <video
-          ref={ref}
-          src={`/api/public/videos/${id}/stream`}
-          controls
-          controlsList="nodownload noplaybackrate"
-          disablePictureInPicture
-          playsInline
-          preload="metadata"
-          aria-label={title}
-          className="aspect-video w-full bg-black"
-          onContextMenu={(e) => e.preventDefault()}
-          onLoadedMetadata={(e) => {
-            // A link from a call review opens the lesson at the minute that teaches the point
-            if (startAt > 0 && startAt < e.currentTarget.duration) e.currentTarget.currentTime = startAt
-          }}
-          onEnded={() => void finished()}
-        />
+        <SecureVideo id={id} title={title} startAt={startAt} videoRef={ref} className="aspect-video w-full bg-black" onEnded={() => void finished()} />
         </ConfidentialityGate>
         <figcaption className="bg-white px-4 py-2.5 text-sm font-medium text-slate-800">{title}</figcaption>
       </figure>
