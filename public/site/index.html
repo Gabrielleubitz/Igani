@@ -192,7 +192,7 @@
 @media (prefers-reduced-motion:reduce){.xh__cl .xh__cl-mq ul{animation:none;flex-wrap:wrap;flex:1;gap:20px 40px}.xh__cl .xh__cl-mq ul[aria-hidden]{display:none}.xh__cl .xh__cl-mq{-webkit-mask-image:none;mask-image:none}}
 </style>
 <style>
-/* Trustpilot rating under the "Trusted by" label, in the belt's own quiet type. To update: change data-score / data-count on .tp (and its aria-label) */
+/* Trustpilot rating under the "Trusted by" label, in the belt's own quiet type. To update: change data-score on .tp (and its aria-label) */
 .xh__cl--quiet{opacity:1}
 .xh__cl--quiet .xh__cl-mq{opacity:.55}
 .xh__cl-l{display:flex;flex-direction:column;align-items:flex-start;gap:14px}
@@ -258,6 +258,16 @@ document.addEventListener('DOMContentLoaded',function(){document.querySelectorAl
 .xh__c .bt::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;transform:skewX(-20deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:xhShine 5.5s ease-in-out 1.2s infinite}
 @keyframes xhShine{0%,72%{left:-60%}100%{left:130%}}
 .xh__c .hh__da{box-shadow:0 14px 28px -14px rgba(14,15,18,.55)}
+.hh__da .hh__m{display:none}
+/* Mobile only: the campaign button becomes a quiet text link, the benefits stack, and the hero spacing tightens */
+@media (max-width:560px){
+.xh__c{margin-top:16px;gap:4px}
+.xh__c .hh__da{min-height:40px;padding:0 4px;background:transparent;box-shadow:none;transform:none;color:var(--ink-3,#626a7c)}
+.xh__c .hh__da:hover{background:transparent;transform:none;text-decoration:underline;text-underline-offset:3px}
+.xh__c .hh__da .hh__d,.xh__c .hh__da svg{display:none}
+.xh__c .hh__da .hh__m{display:inline;font:500 15px/1.3 var(--sans,inherit);text-transform:none;letter-spacing:0;transform:none;padding:0;color:var(--ink-3,#626a7c)}
+.xh__pr{flex-direction:column;align-items:flex-start;flex-wrap:nowrap;gap:6px;margin:12px auto 0;width:max-content;max-width:100%;justify-content:flex-start}
+}
 @media (prefers-reduced-motion:reduce){.xh__c .bt::after{animation:none;display:none}}
 @media (max-width:560px){.xh::before{-webkit-mask:radial-gradient(90% 50% at 50% 25%,#000,transparent 75%);mask:radial-gradient(90% 50% at 50% 25%,#000,transparent 75%)}.xh__t::before{left:-10%;width:120%;top:-10%}}
 </style>
@@ -287,7 +297,7 @@ dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);}
   <div class="w xh__g">
     <div class="xh__t">
       <h1>One system for your website, <em>leads and sales</em></h1>
-            <div class="xh__c"><a class="bt bt--dark" href="#contact">Book a free demo</a><a class="hh__da" href="/dumb-ass" aria-label="Don't be a dumb ass: see the campaign"><span>Don't be a dumb ass</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div>
+            <div class="xh__c"><a class="bt bt--dark" href="#contact">Book a free demo</a><a class="hh__da" href="/dumb-ass" aria-label="Don't be a dumb ass: see the campaign"><span class="hh__d">Don't be a dumb ass</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span class="hh__m">Don't be a dumbass. See how it works &rarr;</span></a></div>
       <ul class="xh__pr" aria-label="What you get"><li>₪0 upfront</li><li>Live in 1–4 weeks</li><li>3 months of free fixes</li></ul>
     </div>
     <figure class="xh__m">
@@ -297,7 +307,7 @@ dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);}
       
     </figure>
   </div>
-  <div class="w xh__cl xh__cl--quiet"><div class="xh__cl-l"><p>Trusted by businesses in Israel and the US</p><a class="tp" href="https://www.trustpilot.com/review/igani.co" target="_blank" rel="noopener" data-score="4.1" data-count="5" aria-label="Rated 4.1 out of 5 on Trustpilot from 5 reviews"><span class="tp__row"><span class="tp__stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><b class="tp__score">4.1</b></span><span class="tp__meta"><span class="tp__n">5 reviews</span> on <span class="tp__brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.7 6.6 7.1.5-5.5 4.6 1.8 6.9L12 17.4l-6.1 3.8 1.8-6.9-5.5-4.6 7.1-.5z"/></svg>Trustpilot</span></span></a></div><div class="xh__cl-mq"><ul><li><img src="/site/img/gabai.png" alt="Gabai Real Estate"></li><li><img src="/site/img/wine-and-grind.png" alt="Wine & Grind"></li><li><img src="/site/img/cryotherapy.png" alt="Cryotherapy Rejuvenate"></li><li><img src="/site/img/almalinks.png" alt="Almalinks"></li><li><img src="/site/img/callmap.png" alt="Callmap"></li><li><img class="xh__cl-tall" src="/site/img/melons-logistics.png" alt="Melons Logistics"></li><li><img class="xh__cl-mc" src="/site/img/michael-cutler.png" alt="Michael Cutler Company"></li><li><img src="/site/img/velo.png" alt="Velo"></li></ul><ul aria-hidden="true"><li><img src="/site/img/gabai.png" alt=""></li><li><img src="/site/img/wine-and-grind.png" alt=""></li><li><img src="/site/img/cryotherapy.png" alt=""></li><li><img src="/site/img/almalinks.png" alt=""></li><li><img src="/site/img/callmap.png" alt=""></li><li><img class="xh__cl-tall" src="/site/img/melons-logistics.png" alt=""></li><li><img class="xh__cl-mc" src="/site/img/michael-cutler.png" alt=""></li><li><img src="/site/img/velo.png" alt=""></li></ul></div></div>
+  <div class="w xh__cl xh__cl--quiet"><div class="xh__cl-l"><p>Trusted by businesses in Israel and the US</p><a class="tp" href="https://www.trustpilot.com/review/igani.co" target="_blank" rel="noopener" data-score="4.1" aria-label="Rated 4.1 out of 5 on Trustpilot"><span class="tp__row"><span class="tp__stars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><b class="tp__score">4.1</b></span><span class="tp__meta">on <span class="tp__brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.7 6.6 7.1.5-5.5 4.6 1.8 6.9L12 17.4l-6.1 3.8 1.8-6.9-5.5-4.6 7.1-.5z"/></svg>Trustpilot</span></span></a></div><div class="xh__cl-mq"><ul><li><img src="/site/img/gabai.png" alt="Gabai Real Estate"></li><li><img src="/site/img/wine-and-grind.png" alt="Wine & Grind"></li><li><img src="/site/img/cryotherapy.png" alt="Cryotherapy Rejuvenate"></li><li><img src="/site/img/almalinks.png" alt="Almalinks"></li><li><img src="/site/img/callmap.png" alt="Callmap"></li><li><img class="xh__cl-tall" src="/site/img/melons-logistics.png" alt="Melons Logistics"></li><li><img class="xh__cl-mc" src="/site/img/michael-cutler.png" alt="Michael Cutler Company"></li><li><img src="/site/img/velo.png" alt="Velo"></li></ul><ul aria-hidden="true"><li><img src="/site/img/gabai.png" alt=""></li><li><img src="/site/img/wine-and-grind.png" alt=""></li><li><img src="/site/img/cryotherapy.png" alt=""></li><li><img src="/site/img/almalinks.png" alt=""></li><li><img src="/site/img/callmap.png" alt=""></li><li><img class="xh__cl-tall" src="/site/img/melons-logistics.png" alt=""></li><li><img class="xh__cl-mc" src="/site/img/michael-cutler.png" alt=""></li><li><img src="/site/img/velo.png" alt=""></li></ul></div></div>
 </section>
 
 <section id="problem" class="sc xp">
