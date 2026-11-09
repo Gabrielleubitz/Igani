@@ -1,6 +1,6 @@
 'use server'
 
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
@@ -10,7 +10,7 @@ import { parseContractDoc, type ContractDoc } from '@/lib/contract'
 import { draftContract } from '@/lib/contract-ai'
 import { contractFacts } from '@/lib/contract-data'
 import { prisma } from '@/lib/prisma'
-import { getSetting } from '@/lib/settings'
+import { signerSnapshot } from '@/lib/signatures'
 import { toActionError, type ActionResult } from './result'
 
 const Lang = z.enum(['he', 'en'])
@@ -67,19 +67,20 @@ export async function saveContract(input: { id: string; lang: 'he' | 'en'; doc: 
   }
 }
 
-/** Locks the text and signs it for Igani (signature from Settings). The client can sign from then on. */
-export async function approveContract(id: string): Promise<ActionResult> {
+/** Locks the text and signs it for Igani with the chosen saved signature (the default if none is picked). The client can sign from then on. */
+export async function approveContract(id: string, signatureId?: string | null): Promise<ActionResult> {
   try {
     const user = await requireUser(['ADMIN'])
     const offerId = z.string().cuid().parse(id)
     const o = await editable(offerId)
     const row = await prisma.offer.findUniqueOrThrow({ where: { id: offerId }, select: { contractDoc: true } })
     if (!parseContractDoc(row.contractDoc)) throw new BookingError('Draft the contract first.', 'INVALID_STATE')
-    const [signer, signature] = await Promise.all([getSetting('contract.signer'), getSetting('contract.signature')])
-    if (!signer.name || !signature) throw new BookingError("Add Igani's signer and signature in Settings → Contract signer first.", 'INVALID_STATE')
+    const signer = await signerSnapshot(signatureId ? z.string().min(3).max(40).parse(signatureId) : null)
+    if (!signer) throw new BookingError('Add a signature in Settings → Signatures first.', 'INVALID_STATE')
     await prisma.$transaction(async (tx) => {
-      await tx.offer.update({ where: { id: offerId }, data: { contractApprovedAt: new Date(), contractApprovedById: user.id } })
-      await logActivity({ entityType: 'LEAD', entityId: o.leadId, action: 'contract.approved', actorId: user.id, metadata: { offerId } }, tx)
+      // a copy of the signature: editing or deleting it in Settings later doesn't change this contract
+      await tx.offer.update({ where: { id: offerId }, data: { contractApprovedAt: new Date(), contractApprovedById: user.id, contractSigner: signer as unknown as Prisma.InputJsonValue } })
+      await logActivity({ entityType: 'LEAD', entityId: o.leadId, action: 'contract.approved', actorId: user.id, metadata: { offerId, signedAs: signer.title ? `${signer.name}, ${signer.title}` : signer.name } }, tx)
     })
     refresh(offerId)
     return { ok: true, data: undefined }
@@ -96,7 +97,7 @@ export async function reopenContract(id: string): Promise<ActionResult> {
     const o = await prisma.offer.findUnique({ where: { id: offerId }, select: { signedAt: true } })
     if (!o) throw new BookingError('Offer not found.', 'NOT_FOUND')
     if (o.signedAt) throw new BookingError('This offer is signed. Its contract can no longer change.', 'INVALID_STATE')
-    await prisma.offer.update({ where: { id: offerId }, data: { contractApprovedAt: null, contractApprovedById: null } })
+    await prisma.offer.update({ where: { id: offerId }, data: { contractApprovedAt: null, contractApprovedById: null, contractSigner: Prisma.DbNull } })
     await logActivity({ entityType: 'OFFER', entityId: offerId, action: 'contract.reopened', actorId: user.id })
     refresh(offerId)
     return { ok: true, data: undefined }

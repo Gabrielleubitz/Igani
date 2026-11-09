@@ -4,13 +4,13 @@ import { logActivity } from '@/lib/audit'
 import { downloadContract } from '@/lib/cloudinary'
 import { approvedContract, initials, renderContract } from '@/lib/contract-data'
 import { htmlToPdf } from '@/lib/pdf-render'
-import { getSetting } from '@/lib/settings'
 import { sendOfferSignedEmail } from '@/lib/email'
 import { appUrl, env } from '@/lib/env'
 import { formatModulePrice, formatPrice, normalizeSelection, parseModules, recurringTotals, selectionTotal } from '@/lib/offer-modules'
 import { SIGNABLE_LEAD_STAGES, publicOfferUrl } from '@/lib/offers'
 import { buildSignedPdf } from '@/lib/offer-sign'
 import { prisma } from '@/lib/prisma'
+import { readSnapshot, signerSnapshot } from '@/lib/signatures'
 import { createAutoTask } from '@/lib/tasks'
 
 export const runtime = 'nodejs'
@@ -75,7 +75,7 @@ export async function POST(req: Request, props: { params: Promise<{ slug: string
       // Contract built in the CRM: the client's details go straight into the signature boxes, Igani is already signed
       const signing = { name: body.name, title: body.title || null, email: body.email, phone: body.phone || null, signaturePng: body.signature, signedAt, ip }
       const html = await renderContract(offer, built, { status: 'signed', selected, signing })
-      const signer = await getSetting('contract.signer')
+      const signer = readSnapshot(offer.contractSigner) ?? (await signerSnapshot()) ?? { name: 'Igani' }
       pdf = await htmlToPdf(html, { footer: `${body.lang === 'he' ? 'ראשי תיבות' : 'Initials'}: ${initials(body.name)} · Igani ${initials(signer.name || 'Igani')} · ${offer.slug.toUpperCase()}` })
     } else pdf = await buildSignedPdf({
       contract: await downloadContract(offer.contractPublicId!),

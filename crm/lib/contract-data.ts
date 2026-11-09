@@ -1,4 +1,5 @@
 import 'server-only'
+import { readSnapshot, signerSnapshot } from './signatures'
 import { createHash } from 'node:crypto'
 import type { Offer } from '@prisma/client'
 import { parseContractDoc, type ContractDoc, type ContractLang } from './contract'
@@ -6,7 +7,6 @@ import { contractHtml, publicFileDataUrl, type ContractRenderInput } from './con
 import { PERIOD_LABEL, defaultSelection, formatModulePrice, formatPrice, normalizeSelection, parseModules, periodOf, recurringTotals, selectionTotal } from './offer-modules'
 import { liveOfferUrl, loadAssets, loadDefinition } from './offers'
 import type { TranscriptModules } from './offer-transcript-ai'
-import { getSetting } from './settings'
 
 type Lead = { firstName: string | null; lastName: string | null; email: string | null; phone: string | null; company: string | null }
 export type OfferWithLead = Offer & { lead: Lead }
@@ -42,7 +42,9 @@ export async function contractRenderInput(o: OfferWithLead, doc: ContractDoc, op
   const modules = parseModules(o.modules)
   const selected = normalizeSelection(modules, opts.selected ?? (o.selectedModules.length ? o.selectedModules : defaultSelection(modules)))
   const rec = recurringTotals(modules, selected, o.monthlyPrice)
-  const [signer, signature] = await Promise.all([getSetting('contract.signer'), getSetting('contract.signature')])
+  // who signed for Igani: the copy kept when it was approved, or (a draft) the default signature
+  const signer = readSnapshot(o.contractSigner) ?? (await signerSnapshot()) ?? { name: '', title: '', email: '', phone: '', image: '' }
+  const signature = signer.image
   const content = def?.content
   const clientCompany = o.lead.company || (content ? (lang === 'he' ? content.client.name.he : content.client.name.en) || null : null)
   const unit = (p: 'month' | 'year'): string => (lang === 'he' ? PERIOD_LABEL[p].short.he : PERIOD_LABEL[p].short.en)

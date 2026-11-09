@@ -10,6 +10,7 @@ import { requireUser } from '@/lib/auth'
 import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
 import { termsForAssignee } from '@/lib/deals'
 import { prisma } from '@/lib/prisma'
+import { listSignatures } from '@/lib/signatures'
 import { isOpenTask } from '@/lib/team-metrics'
 import { loadRepStats } from '@/lib/team-stats'
 import { tasksForUser } from '@/lib/tasks'
@@ -44,7 +45,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
     user.role === 'SALES' && user.email
       ? await Promise.all([
           pendingLinkFor(user.email),
-          prisma.user.findMany({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, email: true, contractSigner: { select: { name: true, title: true, signature: true } } } }),
+          listSignatures(),
           getSetting('contract.company'),
           termsForAssignee(user.id),
         ])
@@ -237,7 +238,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
                   key={agreementData[0]?.code ?? 'none'}
                   person={{ name: user.name ?? user.email ?? 'Salesperson', email: user.email ?? '' }}
                   initialFigures={{ threshold: agreementData[3].threshold, basePercent: agreementData[3].baseRatePct, bonus: agreementData[3].bonusPerIncrement, increment: agreementData[3].incrementSize }}
-                  signers={agreementData[1].map((a) => ({ userId: a.id, name: a.contractSigner?.name || a.name || a.email || 'Admin', title: a.contractSigner?.title ?? '', signature: a.contractSigner?.signature ?? '' }))}
+                  signers={agreementData[1].map((s) => ({ userId: s.id, label: s.label, name: s.name, title: s.title, signature: s.image }))}
                   meId={me.id}
                   adminEmail={me.email}
                   company={agreementData[2]}

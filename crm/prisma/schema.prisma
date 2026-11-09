@@ -608,6 +608,8 @@ model Offer {
   /// Approval locks the text and adds Igani's signature; the client can then sign
   contractApprovedAt   DateTime?
   contractApprovedById String?
+  /// Who signed for Igani when the contract was approved (a copy of the saved signature, so later edits don't change it)
+  contractSigner       Json?
   /// Module ids the client chose on the page (required ones are always in)
   selectedModules      String[]    @default([])
   signedAt             DateTime?
@@ -1138,4 +1140,22 @@ model PushDevice {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+/// A signature Igani can sign with (Settings → Signatures): sales contracts and offer contracts pick one.
+model Signature {
+  id          String    @id @default(cuid())
+  /// how it's listed ("Gabriel · CEO")
+  label       String
+  name        String
+  title       String    @default("")
+  email       String    @default("")
+  phone       String    @default("")
+  /// PNG data URL of the signature
+  image       String
+  isDefault   Boolean   @default(false)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  archivedAt  DateTime?
 }

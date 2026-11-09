@@ -77,7 +77,7 @@ export function PersonContractForm({
 
   function generate(): void {
     setError(null)
-    const err = validate(data) ?? (sig ? null : 'Pick who signs for the company. They need a saved signature (Sales contracts page).')
+    const err = validate(data) ?? (sig ? null : 'Pick a signature for the company (Settings → Signatures).')
     if (err) return setError(err)
     start(async () => {
       const res = await generateContractLink(data, signerId)
@@ -129,14 +129,14 @@ export function PersonContractForm({
         <span className="font-medium">Signs for the company</span>
         {ready.length === 0 ? (
           <span className="block text-amber-400">
-            No admin has a saved signature yet. Add one on the <Link className="underline" href="/admin/sales-contracts">contract setup page</Link>.
+            No saved signatures yet. Add one in <Link className="underline" href="/admin/settings#signatures">Settings → Signatures</Link>.
           </span>
         ) : (
           <select className="h-10 w-full rounded-md border border-input bg-background px-3" value={signerId} onChange={(e) => setSignerId(e.target.value)}>
             {ready.map((s) => (
               <option key={s.userId} value={s.userId}>
-                {s.name}
-                {s.title ? `, ${s.title}` : ''}
+                {s.label ?? s.name}
+                {!s.label && s.title ? `, ${s.title}` : ''}
               </option>
             ))}
           </select>

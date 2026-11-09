@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, CheckCircle2, ExternalLink, Loader2, Lock, Plus, Sp
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+import { SignaturePicker } from '@/components/admin/SignaturesCard'
 import { approveContract, draftContractWithAI, reopenContract, saveContract } from '@/app/actions/contracts'
 import { Button } from '@/components/ui/button'
 import { Input, Textarea } from '@/components/ui/input'
@@ -26,6 +27,7 @@ export function ContractEditor({
   approved,
   signed,
   signerReady,
+  signatures = [],
 }: {
   offerId: string
   initial: ContractDoc | null
@@ -33,6 +35,7 @@ export function ContractEditor({
   approved: boolean
   signed: boolean
   signerReady: boolean
+  signatures?: { id: string; label: string; name: string; title: string; image: string; isDefault: boolean }[]
 }): React.ReactElement {
   const router = useRouter()
   const [lang, setLang] = useState<Lang>(initialLang)
@@ -91,10 +94,12 @@ export function ContractEditor({
     })
   }
 
+  const [signatureId, setSignatureId] = useState(signatures.find((x) => x.isDefault)?.id ?? signatures[0]?.id ?? '')
+
   function approve(): void {
     const go = (): void =>
       start(async () => {
-        const res = await approveContract(offerId)
+        const res = await approveContract(offerId, signatureId || null)
         if (!res.ok) return setMsg({ ok: false, text: res.error })
         setMsg({ ok: true, text: 'Approved and signed for Igani. The client can sign it on the offer page.' })
         setVersion((v) => v + 1)
@@ -205,6 +210,12 @@ export function ContractEditor({
           </div>
         )}
 
+        {!locked && signatures.length > 1 ? (
+          <div className="space-y-2 rounded-lg border p-3">
+            <p className="text-sm font-medium">Sign for Igani with</p>
+            <SignaturePicker signatures={signatures} value={signatureId} onChange={setSignatureId} />
+          </div>
+        ) : null}
         <div className="sticky bottom-3 z-10 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card/95 p-3 backdrop-blur">
           {locked ? (
             !signed ? (
@@ -217,14 +228,14 @@ export function ContractEditor({
               <Button variant="outline" onClick={() => save()} disabled={!doc || !dirty || pending}>
                 Save
               </Button>
-              <Button onClick={approve} disabled={!doc || pending || !signerReady} title={signerReady ? 'Locks the text and adds Igani’s signature' : 'Add Igani’s signer and signature in Settings first'}>
+              <Button onClick={approve} disabled={!doc || pending || !signerReady} title={signerReady ? 'Locks the text and adds the chosen signature' : 'Add a signature in Settings → Signatures first'}>
                 <CheckCircle2 className="h-4 w-4" aria-hidden /> Approve & sign for Igani
               </Button>
             </>
           )}
           {!signerReady && !locked ? (
-            <Link href="/admin/settings#contract-signer" className="text-xs text-amber-400 underline-offset-2 hover:underline">
-              Set Igani&apos;s signature in Settings first
+            <Link href="/admin/settings#signatures" className="text-xs text-amber-400 underline-offset-2 hover:underline">
+              Add a signature in Settings → Signatures first
             </Link>
           ) : null}
           {msg ? <span className={`text-sm ${msg.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{msg.text}</span> : null}

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { CompanyDetailsCard } from '@/components/admin/CompanyDetailsCard'
-import { SignerPicker } from '@/components/admin/SignerPicker'
+import { listSignatures } from '@/lib/signatures'
 import { PageIntro } from '@/components/PageIntro'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
@@ -17,10 +17,10 @@ export const dynamic = 'force-dynamic'
  * so one person's contract never replaces another's. This page shows where everyone stands.
  */
 export default async function SalesContractsPage(): Promise<React.ReactElement> {
-  const user = await requireUser(['ADMIN'])
+  await requireUser(['ADMIN'])
   const company = await getSetting('contract.company')
   const [admins, reps, pending] = await Promise.all([
-    prisma.user.findMany({ where: { role: 'ADMIN' }, orderBy: { createdAt: 'asc' }, select: { id: true, name: true, email: true, contractSigner: { select: { name: true, title: true, signature: true } } } }),
+    listSignatures(),
     prisma.user.findMany({ where: { role: 'SALES' }, orderBy: { name: 'asc' }, select: { id: true, name: true, email: true } }),
     listPendingLinks(),
   ])
@@ -28,7 +28,6 @@ export default async function SalesContractsPage(): Promise<React.ReactElement> 
   const accepted = await prisma.agreementAcceptance.findMany({ where: { email: { in: emails } }, orderBy: { signedAt: 'desc' }, select: { email: true, version: true, signedAt: true } })
   const latest = new Map<string, { version: string; signedAt: Date }>()
   for (const a of accepted) if (!latest.has(a.email)) latest.set(a.email, a)
-  const signers = admins.map((a) => ({ userId: a.id, name: a.contractSigner?.name || a.name || a.email || 'Admin', title: a.contractSigner?.title ?? '', signature: a.contractSigner?.signature ?? '' }))
   return (
     <div className="space-y-5">
       <PageIntro title="Contract setup" hint="Set up the company details and the signatures once. Each salesperson's agreement is sent from their own page, so one person's contract never replaces another's. Signed PDFs are emailed to you and to them and are not stored here." />
@@ -38,7 +37,26 @@ export default async function SalesContractsPage(): Promise<React.ReactElement> 
           <CardTitle>Signatures</CardTitle>
         </CardHeader>
         <CardContent>
-          <SignerPicker signers={signers} meId={user.id} selectable={false} />
+          <p className="mb-3 text-sm text-muted-foreground">
+            Agreements are signed with a saved signature, picked when you send one. Add, edit or choose the default in{' '}
+            <Link href="/admin/settings#signatures" className="text-primary underline-offset-2 hover:underline">
+              Settings → Signatures
+            </Link>
+            .
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {admins.map((s) => (
+              <span key={s.id} className="flex items-center gap-2 rounded-lg border px-2 py-1 text-sm">
+                <span className="flex h-8 w-14 items-center justify-center rounded bg-white p-0.5">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- a data URL */}
+                  <img src={s.image} alt="" className="max-h-full max-w-full object-contain" />
+                </span>
+                {s.label}
+                {s.isDefault ? <span className="text-xs text-primary">default</span> : null}
+              </span>
+            ))}
+            {!admins.length ? <span className="text-sm text-amber-400">No signatures yet.</span> : null}
+          </div>
         </CardContent>
       </Card>
       <Card>

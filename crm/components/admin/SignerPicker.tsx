@@ -15,6 +15,8 @@ export interface SignerView {
   title: string
   /** PNG data URL, '' when this admin has not drawn one yet */
   signature: string
+  /** a saved signature's name in the list (Settings → Signatures) */
+  label?: string
 }
 
 /** Every admin who can sign for the company: pick who signs this contract, or edit anyone's signature. */
