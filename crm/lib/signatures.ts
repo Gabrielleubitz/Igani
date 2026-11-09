@@ -8,6 +8,8 @@ import { prisma } from './prisma'
 
 export interface SignatureView {
   id: string
+  /** the admin it belongs to (null for one whose admin was removed) */
+  userId: string | null
   label: string
   name: string
   title: string
@@ -26,17 +28,45 @@ export interface SignerSnapshot {
   image: string
 }
 
+/** A signature with its admin's current name and email (their profile wins over what was saved). */
+type Row = Awaited<ReturnType<typeof prisma.signature.findFirst>> & { user?: { name: string | null; email: string | null } | null }
+function live(r: NonNullable<Row>): { name: string; email: string } {
+  return { name: r.user?.name?.trim() || r.name, email: r.user?.email || r.email }
+}
+const labelOf = (name: string, title: string): string => (title ? `${name} · ${title}` : name)
+
 export async function listSignatures(): Promise<SignatureView[]> {
-  const rows = await prisma.signature.findMany({ where: { archivedAt: null }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }] })
-  return rows.map((r) => ({ id: r.id, label: r.label, name: r.name, title: r.title, email: r.email, phone: r.phone, image: r.image, isDefault: r.isDefault, updatedAt: r.updatedAt.toISOString() }))
+  const rows = await prisma.signature.findMany({ where: { archivedAt: null }, orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], include: { user: { select: { name: true, email: true } } } })
+  return rows.map((r) => {
+    const { name, email } = live(r)
+    return { id: r.id, userId: r.userId, label: labelOf(name, r.title), name, title: r.title, email, phone: r.phone, image: r.image, isDefault: r.isDefault, updatedAt: r.updatedAt.toISOString() }
+  })
+}
+
+export interface SignerAdmin {
+  id: string
+  name: string
+  email: string
+  /** their Igani line, suggested as the phone on the contract */
+  phone: string
+}
+
+/** The admins a signature can belong to (active admins on the access list). */
+export async function signatureAdmins(): Promise<SignerAdmin[]> {
+  const allowed = await prisma.allowedUser.findMany({ where: { role: 'ADMIN', active: true }, select: { email: true } })
+  const users = await prisma.user.findMany({ where: { email: { in: allowed.map((a) => a.email) } }, select: { id: true, name: true, email: true, phoneLine: { select: { number: true, active: true } } }, orderBy: { name: 'asc' } })
+  return users.map((u) => ({ id: u.id, name: u.name?.trim() || (u.email ?? '').split('@')[0] || 'Admin', email: u.email ?? '', phone: u.phoneLine?.active ? u.phoneLine.number : '' }))
 }
 
 /** The chosen signature (or the default when none is chosen) as a copy to keep on a contract. */
 export async function signerSnapshot(id?: string | null): Promise<SignerSnapshot | null> {
+  const include = { user: { select: { name: true, email: true } } }
   const row = id
-    ? await prisma.signature.findFirst({ where: { id, archivedAt: null } })
-    : ((await prisma.signature.findFirst({ where: { isDefault: true, archivedAt: null } })) ?? (await prisma.signature.findFirst({ where: { archivedAt: null }, orderBy: { createdAt: 'asc' } })))
-  return row ? { name: row.name, title: row.title, email: row.email, phone: row.phone, image: row.image } : null
+    ? await prisma.signature.findFirst({ where: { id, archivedAt: null }, include })
+    : ((await prisma.signature.findFirst({ where: { isDefault: true, archivedAt: null }, include })) ?? (await prisma.signature.findFirst({ where: { archivedAt: null }, orderBy: { createdAt: 'asc' }, include })))
+  if (!row) return null
+  const { name, email } = live(row)
+  return { name, title: row.title, email, phone: row.phone, image: row.image }
 }
 
 export function readSnapshot(v: unknown): SignerSnapshot | null {

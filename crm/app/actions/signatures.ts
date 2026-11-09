@@ -5,15 +5,15 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { signatureAdmins } from '@/lib/signatures'
 import { MAX_SIGNATURE_CHARS, PNG_DATA_URL } from '@/lib/sales-contract-token'
 import { toActionError, type ActionResult } from './result'
 
 const Input = z.object({
   id: z.string().min(3).max(40).optional(),
-  label: z.string().trim().max(80).optional(),
-  name: z.string().trim().min(2, 'Write the signer’s name.').max(120),
+  /** the admin who signs with it: name and email come from their profile */
+  userId: z.string().min(3).max(40, 'Choose the admin who signs.'),
   title: z.string().trim().max(120).default(''),
-  email: z.union([z.literal(''), z.string().trim().email('That email doesn’t look right.').max(254)]).default(''),
   phone: z.string().trim().max(40).default(''),
   image: z.string().max(MAX_SIGNATURE_CHARS, 'That image is too big. Use a smaller PNG.').regex(PNG_DATA_URL, 'Draw the signature (or upload a PNG) first.'),
   isDefault: z.boolean().optional(),
@@ -29,8 +29,10 @@ export async function saveSignature(input: z.input<typeof Input>): Promise<Actio
   try {
     const user = await requireUser(['ADMIN'])
     const v = Input.parse(input)
-    const label = v.label || (v.title ? `${v.name} · ${v.title}` : v.name)
-    const data = { label, name: v.name, title: v.title, email: v.email, phone: v.phone, image: v.image }
+    const admin = (await signatureAdmins()).find((a) => a.id === v.userId)
+    if (!admin) return { ok: false, error: 'Choose one of the admins: only admins can sign for Igani.' }
+    const label = v.title ? `${admin.name} · ${v.title}` : admin.name
+    const data = { userId: admin.id, label, name: admin.name, title: v.title, email: admin.email, phone: v.phone, image: v.image }
     const row = await prisma.$transaction(async (tx) => {
       const first = !(await tx.signature.count({ where: { archivedAt: null } }))
       const makeDefault = first || v.isDefault === true

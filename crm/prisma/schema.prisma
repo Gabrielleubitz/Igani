@@ -125,6 +125,7 @@ model User {
   phoneLine       PhoneLine?
   calls           Call[]
   chatMemberships ChatMember[]
+  signatures      Signature[]     @relation("UserSignatures")
   pushDevices     PushDevice[]
   chatMessages    ChatMessage[]
   chatReactions   ChatReaction[]
@@ -1145,6 +1146,9 @@ model PushDevice {
 /// A signature Igani can sign with (Settings → Signatures): sales contracts and offer contracts pick one.
 model Signature {
   id          String    @id @default(cuid())
+  /// the admin who signs with it: their name and email come from their profile
+  userId      String?
+  user        User?     @relation("UserSignatures", fields: [userId], references: [id], onDelete: SetNull)
   /// how it's listed ("Gabriel · CEO")
   label       String
   name        String
@@ -1158,4 +1162,6 @@ model Signature {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   archivedAt  DateTime?
+
+  @@index([userId])
 }

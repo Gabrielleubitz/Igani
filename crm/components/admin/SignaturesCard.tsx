@@ -8,11 +8,11 @@ import { SignaturePad } from '@/components/SignaturePad'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, Label } from '@/components/ui/input'
-import type { SignatureView } from '@/lib/signatures'
+import type { SignatureView, SignerAdmin } from '@/lib/signatures'
 import { cn } from '@/lib/utils'
 
-type Draft = { id?: string; label: string; name: string; title: string; email: string; phone: string; image: string; isDefault: boolean }
-const empty: Draft = { label: '', name: '', title: '', email: '', phone: '', image: '', isDefault: false }
+type Draft = { id?: string; userId: string; title: string; phone: string; image: string; isDefault: boolean }
+const empty: Draft = { userId: '', title: '', phone: '', image: '', isDefault: false }
 
 /** Any image → a PNG on transparent white-free background, trimmed and at most 900 px wide (keeps it small). */
 async function toPng(file: File): Promise<string> {
@@ -45,7 +45,7 @@ async function toPng(file: File): Promise<string> {
 }
 
 /** Settings → Signatures: the signatures Igani can sign with. Sales contracts and offer contracts pick one; one is the default. */
-export function SignaturesCard({ signatures }: { signatures: SignatureView[] }): React.ReactElement {
+export function SignaturesCard({ signatures, admins }: { signatures: SignatureView[]; admins: SignerAdmin[] }): React.ReactElement {
   const router = useRouter()
   const [draft, setDraft] = useState<Draft | null>(null)
   const [mode, setMode] = useState<'draw' | 'upload'>('draw')
@@ -56,7 +56,15 @@ export function SignaturesCard({ signatures }: { signatures: SignatureView[] }):
   const open = (s?: SignatureView): void => {
     setError(null)
     setMode(s ? 'upload' : 'draw')
-    setDraft(s ? { id: s.id, label: s.label, name: s.name, title: s.title, email: s.email, phone: s.phone, image: s.image, isDefault: s.isDefault } : { ...empty, isDefault: signatures.length === 0 })
+    setDraft(s ? { id: s.id, userId: s.userId ?? '', title: s.title, phone: s.phone, image: s.image, isDefault: s.isDefault } : { ...empty, isDefault: signatures.length === 0 })
+  }
+  const admin = draft ? admins.find((a) => a.id === draft.userId) : undefined
+  const pickAdmin = (id: string): void => {
+    if (!draft) return
+    const before = admins.find((a) => a.id === draft.userId)
+    const next = admins.find((a) => a.id === id)
+    // their Igani line, unless a different phone was typed
+    setDraft({ ...draft, userId: id, phone: !draft.phone || draft.phone === before?.phone ? (next?.phone ?? '') : draft.phone })
   }
   const act = (fn: () => Promise<{ ok: boolean; error?: string }>, done?: () => void): void =>
     start(async () => {
@@ -118,7 +126,7 @@ export function SignaturesCard({ signatures }: { signatures: SignatureView[] }):
       </div>
       {error && !draft ? <p className="text-sm text-rose-400">{error}</p> : null}
 
-      <Dialog open={draft !== null} onClose={() => setDraft(null)} title={draft?.id ? 'Edit signature' : 'Add a signature'} description="Who signs for Igani, and how it looks on the contract.">
+      <Dialog open={draft !== null} onClose={() => setDraft(null)} title={draft?.id ? 'Edit signature' : 'Add a signature'} description="Pick the admin who signs, then draw or upload their signature.">
         {draft ? (
           <form
             className="space-y-4"
@@ -128,29 +136,41 @@ export function SignaturesCard({ signatures }: { signatures: SignatureView[] }):
               act(() => saveSignature(draft), () => setDraft(null))
             }}
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="sg-name">Name (as signed)</Label>
-                <Input id="sg-name" className="mt-1" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required maxLength={120} />
+            <div>
+              <Label>Who signs</Label>
+              <div className="mt-1.5 grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Who signs">
+                {admins.map((a) => {
+                  const on = draft.userId === a.id
+                  return (
+                    <button key={a.id} type="button" role="radio" aria-checked={on} onClick={() => pickAdmin(a.id)} className={cn('flex items-center gap-2.5 rounded-lg border p-2 text-left transition-colors', on ? 'border-primary/70 bg-primary/10' : 'hover:bg-muted/50')}>
+                      <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold', on ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground')}>
+                        {a.name
+                          .split(/\s+/)
+                          .slice(0, 2)
+                          .map((w) => w[0]?.toUpperCase())
+                          .join('')}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium">{a.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{a.email}</span>
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
+              {!admins.length ? <p className="mt-1 text-sm text-amber-400">No admins yet: add one in Admin → Team access.</p> : null}
+              {admin ? <p className="mt-1.5 text-xs text-muted-foreground">Name and email on the contract come from {admin.name}&apos;s profile.</p> : null}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="sg-title">Title</Label>
                 <Input id="sg-title" className="mt-1" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="CEO" maxLength={120} />
               </div>
               <div>
-                <Label htmlFor="sg-email">Email (optional)</Label>
-                <Input id="sg-email" type="email" className="mt-1" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} maxLength={254} />
-              </div>
-              <div>
-                <Label htmlFor="sg-phone">Phone (optional)</Label>
-                <Input id="sg-phone" className="mt-1" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} maxLength={40} />
+                <Label htmlFor="sg-phone">Phone on the contract (optional)</Label>
+                <Input id="sg-phone" className="mt-1" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} placeholder={admin?.phone || ''} maxLength={40} />
               </div>
             </div>
-            <div>
-              <Label htmlFor="sg-label">Name in the list (optional)</Label>
-              <Input id="sg-label" className="mt-1" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder={draft.name ? (draft.title ? `${draft.name} · ${draft.title}` : draft.name) : 'e.g. Gabriel · CEO'} maxLength={80} />
-            </div>
-
             <div>
               <div className="mb-2 flex items-center justify-between">
                 <Label>Signature</Label>
@@ -208,7 +228,7 @@ export function SignaturesCard({ signatures }: { signatures: SignatureView[] }):
               <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending || !draft.name.trim() || !draft.image}>
+              <Button type="submit" disabled={pending || !draft.userId || !draft.image}>
                 {pending ? 'Saving…' : 'Save signature'}
               </Button>
             </div>
