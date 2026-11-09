@@ -16,6 +16,8 @@ export async function GET(req: Request, props: { params: Promise<{ messageId: st
   if (!msg || msg.deletedAt || msg.channel.archivedAt || !(await canSeeChannel(msg.channel, user.id))) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   const file = readFiles(msg.attachments)[Number(index)] as (ReturnType<typeof readFiles>[number] & { rt?: string; format?: string | null }) | undefined
   if (!file) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  const thumb = new URL(req.url).searchParams.get('size') === 'thumb'
-  return NextResponse.redirect(chatFileLink(file, { thumb }), { status: 302, headers: { 'cache-control': 'private, max-age=300' } })
+  const q = new URL(req.url).searchParams
+  // ?size=thumb a preview, ?view=1 shown in the viewer (PDFs and videos inline), ?download=1 saved under its name
+  const mode = q.get('size') === 'thumb' ? 'thumb' : q.get('download') ? 'download' : q.get('view') ? 'view' : undefined
+  return NextResponse.redirect(chatFileLink(file, { mode }), { status: 302, headers: { 'cache-control': 'private, max-age=300' } })
 }

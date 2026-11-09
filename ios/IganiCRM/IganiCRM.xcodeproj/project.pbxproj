@@ -38,6 +38,7 @@
 		B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508FFF27437A22EE664F4639 /* MoreView.swift */; };
 		B468571772913AD07DB6C968 /* Pieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7545C8F3138B87B3CC295E7E /* Pieces.swift */; };
 		B6EBB0C4CE28385959DF338E /* WrapUpSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF403E81F5FE24ABA583855A /* WrapUpSheet.swift */; };
+		BB5A3131C53435EF89466A46 /* ChatMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 655F63D8CF0E0F1D8B0E8288 /* ChatMedia.swift */; };
 		C7765FEE97A3F182CA106FC3 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E4615C35E8176210721E9 /* TasksView.swift */; };
 		CA1C86D23CC5675E81222C62 /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED0EEE2B860342C9F0D81F00 /* SignInView.swift */; };
 		CB3FA6D8F97C586EA343828E /* TwilioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55F2A2D48A01191D24C44BF1 /* TwilioEngine.swift */; };
@@ -95,6 +96,7 @@
 		57445395BE86C1E3CD6FF679 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		5A46A2AFA5181FA13B53711E /* CallScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallScreen.swift; sourceTree = "<group>"; };
 		62FB06BBB5F9FB41E4C93F2A /* PhoneModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneModels.swift; sourceTree = "<group>"; };
+		655F63D8CF0E0F1D8B0E8288 /* ChatMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatMedia.swift; sourceTree = "<group>"; };
 		66B487E85B8AB8F2761FE7FE /* igani-ring.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = "igani-ring.wav"; sourceTree = "<group>"; };
 		6A8C9C7CD13CA0E92A988CAC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		6AE97091850781D10E84C6BF /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
@@ -183,6 +185,7 @@
 		2B7E9FAB2A6E92D036139C45 /* Chat */ = {
 			isa = PBXGroup;
 			children = (
+				655F63D8CF0E0F1D8B0E8288 /* ChatMedia.swift */,
 				07E791ADFD67E35F28D4E05D /* ChatModels.swift */,
 				2CCF43D7548265E175098940 /* ChatViews.swift */,
 			);
@@ -457,6 +460,7 @@
 				A9968F402EB4541879754B24 /* AdminScreens.swift in Sources */,
 				AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */,
 				612FD05791A039F05FF9FA4B /* CallsView.swift in Sources */,
+				BB5A3131C53435EF89466A46 /* ChatMedia.swift in Sources */,
 				E884A8FA7397014B026B73C3 /* ChatModels.swift in Sources */,
 				07ACCDDC79461783819CE743 /* ChatViews.swift in Sources */,
 				0F5E97C818697F4EC33A30C5 /* Components.swift in Sources */,

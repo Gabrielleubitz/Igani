@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, FileText, Loader2, MessageSquareReply, Paperclip, Pencil, SendHorizontal, SmilePlus, Trash2, UserRound, X } from 'lucide-react'
+import { Download, Eye, FileText, Forward, Loader2, MessageSquareReply, Paperclip, Pencil, PlayCircle, SendHorizontal, SmilePlus, Trash2, UserRound, X } from 'lucide-react'
 import Link from 'next/link'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { chatEdit, chatTyping, chatUploadTicket, type ChatMessageRow } from '@/app/actions/chat'
@@ -140,33 +140,58 @@ export function toStored(text: string, people: ChatPerson[]): string {
 
 /* ---------- files and leads ---------- */
 
-function Files({ files }: { files: ChatMessageRow['files'] }): React.ReactElement | null {
+function Files({ files, onOpen }: { files: ChatMessageRow['files']; onOpen?: (index: number) => void }): React.ReactElement | null {
   if (!files.length) return null
-  const images = files.filter((f) => f.kind === 'image')
-  const docs = files.filter((f) => f.kind !== 'image')
+  const indexed = files.map((f, i) => ({ f, i }))
+  const images = indexed.filter(({ f }) => f.kind === 'image')
+  const docs = indexed.filter(({ f }) => f.kind !== 'image')
+  // opens the viewer when the page gives one; a plain link otherwise
+  const Open = ({ i, f, className, title, children }: { i: number; f: ChatMessageRow['files'][number]; className: string; title?: string; children: React.ReactNode }): React.ReactElement =>
+    onOpen ? (
+      <button type="button" onClick={() => onOpen(i)} className={cn('text-left', className)} title={title} aria-label={`Open ${f.name}`}>
+        {children}
+      </button>
+    ) : (
+      <a href={f.url} target="_blank" rel="noopener noreferrer" className={className} title={title}>
+        {children}
+      </a>
+    )
   return (
     <div className="mt-1.5 space-y-1.5">
-      {images.length ? (
-        <div className={cn('grid max-w-md gap-1.5', images.length > 1 && 'grid-cols-2')}>
-          {images.map((f) => (
-            <a key={f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="group/img block overflow-hidden rounded-lg border bg-muted/40" title={f.name}>
+      {files.some((f) => f.forwarded) ? (
+        <span className="flex items-center gap-1 text-[11px] italic text-muted-foreground">
+          <Forward className="h-3 w-3" /> Forwarded
+        </span>
+      ) : null}
+      {images.length === 1 ? (
+        <Open i={images[0]!.i} f={images[0]!.f} title={images[0]!.f.name} className="group/img block w-full max-w-md overflow-hidden rounded-lg border bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a private, signed file */}
+          <img src={images[0]!.f.thumb ?? images[0]!.f.url} alt={images[0]!.f.name} loading="lazy" className="block max-h-72 w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover/img:scale-[1.02]" style={images[0]!.f.width && images[0]!.f.height ? { aspectRatio: `${images[0]!.f.width} / ${images[0]!.f.height}` } : undefined} />
+        </Open>
+      ) : images.length ? (
+        // several photos: even square tiles, the 4th says how many more (like WhatsApp)
+        <div className="grid max-w-[22rem] grid-cols-2 gap-1">
+          {images.slice(0, 4).map(({ f, i }, n) => (
+            <Open key={f.url} i={i} f={f} title={f.name} className="group/img relative block aspect-square w-full overflow-hidden rounded-lg border bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary">
               {/* eslint-disable-next-line @next/next/no-img-element -- a private, signed file */}
-              <img src={f.thumb ?? f.url} alt={f.name} loading="lazy" className="max-h-72 w-full object-cover transition-transform duration-300 group-hover/img:scale-[1.02]" style={f.width && f.height && images.length === 1 ? { aspectRatio: `${f.width} / ${f.height}` } : undefined} />
-            </a>
+              <img src={f.thumb ?? f.url} alt={f.name} loading="lazy" className="absolute inset-0 h-full w-full cursor-zoom-in object-cover transition-transform duration-300 group-hover/img:scale-[1.03]" />
+              {n === 3 && images.length > 4 ? <span className="absolute inset-0 flex items-center justify-center bg-black/55 text-2xl font-semibold text-white">+{images.length - 4}</span> : null}
+            </Open>
           ))}
         </div>
       ) : null}
-      {docs.map((f) => (
-        <a key={f.url} href={f.url} target="_blank" rel="noopener noreferrer" className="flex max-w-sm items-center gap-3 rounded-lg border bg-card px-3 py-2 shadow-sm transition-colors hover:border-primary/40">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-            <FileText className="h-[18px] w-[18px]" />
-          </span>
+      {docs.map(({ f, i }) => (
+        <Open key={f.url} i={i} f={f} className="flex w-full max-w-sm items-center gap-3 rounded-lg border bg-card px-3 py-2 shadow-sm transition-colors hover:border-primary/40">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">{f.view === 'video' ? <PlayCircle className="h-[18px] w-[18px]" /> : <FileText className="h-[18px] w-[18px]" />}</span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium">{f.name}</span>
-            <span className="text-xs text-muted-foreground">{bytesLabel(f.bytes)}</span>
+            <span className="text-xs text-muted-foreground">
+              {bytesLabel(f.bytes)}
+              {f.view === 'pdf' ? ' · PDF' : f.view === 'video' ? ' · Video' : ''}
+            </span>
           </span>
-          <Download className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </a>
+          {f.view ? <Eye className="h-4 w-4 shrink-0 text-muted-foreground" /> : <Download className="h-4 w-4 shrink-0 text-muted-foreground" />}
+        </Open>
       ))}
     </div>
   )
@@ -205,6 +230,7 @@ export function Message({
   onEdited,
   highlight,
   editRequest,
+  onOpenFile,
 }: {
   m: Pending
   grouped: boolean
@@ -219,6 +245,8 @@ export function Message({
   highlight?: boolean
   /** a number that changes when the composer asks to edit this (Up arrow) */
   editRequest?: number
+  /** open a shared file in the viewer */
+  onOpenFile?: (m: ChatMessageRow, index: number) => void
 }): React.ReactElement {
   const [picking, setPicking] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -301,7 +329,7 @@ export function Message({
         ) : null}
         {m.edited && !editing ? <span className="text-[11px] text-muted-foreground"> (edited)</span> : null}
         {m.failed ? <span className="text-xs text-destructive">Not sent.</span> : null}
-        <Files files={m.files} />
+        <Files files={m.files} onOpen={onOpenFile && !m.pending ? (i) => onOpenFile(m, i) : undefined} />
         <LeadCards leads={m.leads} />
         {m.reactions.length ? (
           <div className="mt-1 flex flex-wrap gap-1">

@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, Archive, Bell, BellOff, Hash, Lock, LogOut, Messa
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { chatAddMembers, chatArchiveChannel, chatDelete, chatJoin, chatLeave, chatMarkRead, chatMessages, chatMute, chatOpenDm, chatOverview, chatReact, chatSearch, chatSend, type ChatChannelInfo, type ChatChannelRow, type ChatMessageRow, type ChatOverview, type ChatSearchHit } from '@/app/actions/chat'
 import { CHAT_UNREAD_EVENT } from '@/components/AppNav'
+import { MediaViewer, mediaIn } from '@/components/chat/MediaViewer'
 import { NewChannelDialog, PeopleDialog, TopicDialog } from '@/components/chat/ChatDialogs'
 import { Avatar, Composer, Message, dayLabel, toStored, type Emoji, type Pending, type UploadedFile } from '@/components/chat/ChatParts'
 import { Button } from '@/components/ui/button'
@@ -167,6 +168,7 @@ function MessageList({
   onReply,
   onDelete,
   onEdited,
+  onOpenFile,
 }: {
   messages: Pending[]
   meId: string
@@ -182,6 +184,7 @@ function MessageList({
   onReply?: (m: ChatMessageRow) => void
   onDelete: (m: ChatMessageRow) => void
   onEdited: (id: string, body: string) => void
+  onOpenFile?: (m: ChatMessageRow, index: number) => void
 }): React.ReactElement {
   const firstNew = newSince ? messages.findIndex((m) => m.at > newSince && (!newUntil || m.at <= newUntil) && m.userId !== meId && !m.pending) : -1
   return (
@@ -206,7 +209,7 @@ function MessageList({
                 <span className="ml-2 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">New</span>
               </div>
             ) : null}
-            <Message m={m} grouped={Boolean(grouped)} meId={meId} canDelete={m.userId === meId || isAdmin} people={people} onReact={onReact} onReply={onReply} onDelete={onDelete} onEdited={onEdited} highlight={highlight === m.id} editRequest={editReq?.id === m.id ? editReq.n : undefined} />
+            <Message m={m} grouped={Boolean(grouped)} meId={meId} canDelete={m.userId === meId || isAdmin} people={people} onReact={onReact} onReply={onReply} onDelete={onDelete} onEdited={onEdited} highlight={highlight === m.id} editRequest={editReq?.id === m.id ? editReq.n : undefined} onOpenFile={onOpenFile} />
           </li>
         )
       })}
@@ -244,6 +247,8 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
   const [highlight, setHighlight] = useState<string | null>(null)
   const [unseen, setUnseen] = useState(0)
   const [editReq, setEditReq] = useState<{ id: string; n: number } | null>(null)
+  /** the photo / file viewer: which list it pages through, and where it starts */
+  const [viewing, setViewing] = useState<{ scope: 'main' | 'thread'; messageId: string; index: number } | null>(null)
   const [threadEditReq, setThreadEditReq] = useState<{
     id: string
     n: number
@@ -655,6 +660,7 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
                   onReply={(m) => open(channelId, { thread: m.id })}
                   onDelete={remove(convo)}
                   onEdited={edited(convo)}
+                  onOpenFile={(m, index) => setViewing({ scope: 'main', messageId: m.id, index })}
                 />
                 {seen ? <p className="pr-3 pt-1 text-right text-[11px] text-muted-foreground">✓ Seen</p> : null}
               </div>
@@ -730,7 +736,7 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
           <div ref={threadScroller} className="flex-1 overflow-y-auto px-2 py-3">
             {thread.parent ? (
               <div className="border-b pb-3">
-                <Message m={thread.parent} grouped={false} meId={me.id} canDelete={thread.parent.userId === me.id || overview.isAdmin} people={peopleBy} onReact={react(thread)} onDelete={remove(thread)} onEdited={edited(thread)} />
+                <Message m={thread.parent} grouped={false} meId={me.id} canDelete={thread.parent.userId === me.id || overview.isAdmin} people={peopleBy} onReact={react(thread)} onDelete={remove(thread)} onEdited={edited(thread)} onOpenFile={(m, index) => setViewing({ scope: 'thread', messageId: m.id, index })} />
                 <p className="mt-2 px-2 text-xs text-muted-foreground">
                   {replies} {replies === 1 ? 'reply' : 'replies'}
                 </p>
@@ -738,7 +744,7 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
             ) : thread.loading ? (
               <p className="p-4 text-sm text-muted-foreground">Loading…</p>
             ) : null}
-            <MessageList messages={thread.messages} meId={me.id} isAdmin={overview.isAdmin} people={peopleBy} newSince={null} highlight={highlight} editReq={threadEditReq} onReact={react(thread)} onDelete={remove(thread)} onEdited={edited(thread)} />
+            <MessageList messages={thread.messages} meId={me.id} isAdmin={overview.isAdmin} people={peopleBy} newSince={null} highlight={highlight} editReq={threadEditReq} onReact={react(thread)} onDelete={remove(thread)} onEdited={edited(thread)} onOpenFile={(m, index) => setViewing({ scope: 'thread', messageId: m.id, index })} />
           </div>
           <Typing names={thread.typing} />
           {thread.error ? (
@@ -750,6 +756,25 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
         </section>
       ) : null}
 
+      {viewing && channelId
+        ? (() => {
+            const items = mediaIn(viewing.scope === 'thread' ? [...(thread.parent ? [thread.parent] : []), ...thread.messages] : convo.messages)
+            const start = items.findIndex((it) => it.m.id === viewing.messageId && it.index === viewing.index)
+            return (
+              <MediaViewer
+                key={`${viewing.scope}-${viewing.messageId}-${viewing.index}`}
+                items={items}
+                start={Math.max(start, 0)}
+                people={peopleBy}
+                meId={me.id}
+                conversations={overview.channels}
+                onClose={() => setViewing(null)}
+                onReply={viewing.scope === 'main' ? (m) => open(channelId, { thread: m.id }) : undefined}
+                onReact={(m, e) => void react(viewing.scope === 'thread' ? thread : convo)(m, e)}
+              />
+            )
+          })()
+        : null}
       <NewChannelDialog open={dialog === 'channel'} people={overview.people.filter((p) => p.id !== me.id)} onClose={() => setDialog(null)} onCreated={async (id) => (setDialog(null), await refreshList(), open(id))} />
       <PeopleDialog open={dialog === 'dm'} title="Message someone" people={overview.people} meId={me.id} onClose={() => setDialog(null)} onPick={(ids) => void openDm(ids[0]!)} />
       {info ? (

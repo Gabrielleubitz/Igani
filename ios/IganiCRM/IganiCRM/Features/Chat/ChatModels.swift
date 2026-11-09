@@ -113,6 +113,9 @@ struct ChatFile: Decodable, Hashable {
     let mime: String
     let width: Int?
     let height: Int?
+    /// what the viewer can show: "image", "video", "pdf", or nil (open / share only)
+    var view: String? = nil
+    var forwarded: Bool? = nil
     var isImage: Bool { kind == "image" }
     var size: String { ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file) }
 }

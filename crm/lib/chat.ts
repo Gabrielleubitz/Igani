@@ -127,6 +127,19 @@ export interface ChatFile {
   mime: string
   width?: number | null
   height?: number | null
+  /** Cloudinary resource type and format (stored at upload) */
+  rt?: string
+  format?: string | null
+  /** forwarded from another conversation */
+  fwd?: boolean
+}
+
+/** How the viewer can show a file: a picture, a video, a PDF page, or not at all (download only). */
+export function chatFileView(f: ChatFile): 'image' | 'video' | 'pdf' | null {
+  if (f.kind === 'image') return 'image'
+  if (f.rt === 'video') return 'video'
+  if (f.rt === 'image' && (f.format === 'pdf' || f.mime === 'application/pdf')) return 'pdf'
+  return null
 }
 
 export const CHAT_FILE_MAX = 20 * 1024 * 1024

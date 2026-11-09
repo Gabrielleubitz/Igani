@@ -64,6 +64,7 @@ const ACTIONS: Record<string, Action> = {
   chatSearch: chat.chatSearch,
   chatUploadTicket: chat.chatUploadTicket,
   chatFileUrl: chat.chatFileUrl,
+  chatForward: chat.chatForward,
   searchDialerContacts: calls.searchDialerContacts,
   recentCalls: calls.recentCalls,
   lookupIncoming: calls.lookupIncoming,

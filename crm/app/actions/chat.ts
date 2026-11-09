@@ -12,6 +12,7 @@ import {
   CHAT_MAX,
   ONLINE_MS,
   canSeeChannel,
+  chatFileView,
   channelSlug,
   chatFolder,
   chatTeam,
@@ -86,6 +87,11 @@ export interface ChatFileRow {
   /** opens (or downloads) the file; images also have a smaller preview */
   url: string
   thumb: string | null
+  /** what the viewer can show, and links for it */
+  view: 'image' | 'video' | 'pdf' | null
+  viewUrl: string
+  download: string
+  forwarded: boolean
 }
 
 export interface ChatLeadCard {
@@ -160,7 +166,8 @@ async function loadChannel(channelId: string, userId: string) {
   return channel
 }
 
-const fileUrl = (messageId: string, i: number, thumb = false): string => `/api/chat/files/${messageId}/${i}${thumb ? '?size=thumb' : ''}`
+const fileUrl = (messageId: string, i: number, mode: '' | 'thumb' | 'view' | 'download' = ''): string =>
+  `/api/chat/files/${messageId}/${i}${mode === 'thumb' ? '?size=thumb' : mode ? `?${mode}=1` : ''}`
 
 type DbMessage = Prisma.ChatMessageGetPayload<{ include: { reactions: true } }>
 
@@ -202,7 +209,7 @@ async function present(rows: DbMessage[], user: { id: string; role: 'ADMIN' | 'S
         .filter((r) => r.parentId === m.id && r.userId)
         .slice(0, 3)
         .map((r) => ({ name: people.get(r.userId!)?.name ?? 'Someone', photo: people.get(r.userId!)?.photo ?? null })),
-      files: files.map((f, i) => ({ kind: f.kind, name: f.name, bytes: f.bytes, mime: f.mime, width: f.width ?? null, height: f.height ?? null, url: fileUrl(m.id, i), thumb: f.kind === 'image' ? fileUrl(m.id, i, true) : null })),
+      files: files.map((f, i) => ({ kind: f.kind, name: f.name, bytes: f.bytes, mime: f.mime, width: f.width ?? null, height: f.height ?? null, url: fileUrl(m.id, i), thumb: f.kind === 'image' ? fileUrl(m.id, i, 'thumb') : null, view: chatFileView(f), viewUrl: fileUrl(m.id, i, 'view'), download: fileUrl(m.id, i, 'download'), forwarded: Boolean(f.fwd) })),
       leads: leadLinksIn(m.deletedAt ? '' : m.body)
         .map((l) => leadBy.get(l))
         .filter((l): l is ChatLeadCard => Boolean(l)),
@@ -496,7 +503,7 @@ export interface ChatUploadTicket {
 }
 
 /** A short-lived link to a file shared in chat (for the app, which can't send its sign-in to Cloudinary). */
-export async function chatFileUrl(messageId: string, index: number, thumb = false): Promise<ActionResult<{ url: string }>> {
+export async function chatFileUrl(messageId: string, index: number, mode: boolean | 'thumb' | 'view' | 'download' = false): Promise<ActionResult<{ url: string }>> {
   try {
     const user = await requireUser()
     const mid = id.parse(messageId)
@@ -505,7 +512,35 @@ export async function chatFileUrl(messageId: string, index: number, thumb = fals
     if (!msg || msg.deletedAt || msg.channel.archivedAt || !(await canSeeChannel(msg.channel, user.id))) return { ok: false, error: NOT_FOUND }
     const file = readFiles(msg.attachments)[i]
     if (!file || !cloudinaryConfigured()) return { ok: false, error: NOT_FOUND }
-    return { ok: true, data: { url: chatFileLink(file as Parameters<typeof chatFileLink>[0], { thumb }) } }
+    return { ok: true, data: { url: chatFileLink(file, { mode: mode === true ? 'thumb' : mode || undefined }) } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const forwardInput = z.object({ messageId: id, index: z.number().int().min(0).max(20), toChannelId: id })
+
+/** Forward one file to another conversation you can post in (like WhatsApp's forward). */
+export async function chatForward(input: z.input<typeof forwardInput>): Promise<ActionResult<{ id: string }>> {
+  try {
+    const user = await requireUser()
+    const { messageId, index, toChannelId } = forwardInput.parse(input)
+    const msg = await prisma.chatMessage.findUnique({ where: { id: messageId }, include: { channel: true } })
+    if (!msg || msg.deletedAt || msg.channel.archivedAt || !(await canSeeChannel(msg.channel, user.id))) return { ok: false, error: NOT_FOUND }
+    const file = readFiles(msg.attachments)[index]
+    if (!file) return { ok: false, error: NOT_FOUND }
+    const target = await loadChannel(toChannelId, user.id)
+    if (!target) return { ok: false, error: NOT_FOUND }
+    const now = new Date()
+    const copy = { ...file, fwd: true }
+    const m = await prisma.$transaction(async (tx) => {
+      const made = await tx.chatMessage.create({ data: { channelId: target.id, userId: user.id, body: '', createdAt: now, updatedAt: now, attachments: [copy] as unknown as Prisma.InputJsonValue } })
+      await tx.chatChannel.update({ where: { id: target.id }, data: { lastMessageAt: now } })
+      await tx.chatMember.upsert({ where: { channelId_userId: { channelId: target.id, userId: user.id } }, create: { channelId: target.id, userId: user.id, lastReadAt: now }, update: { lastReadAt: now } })
+      return made
+    })
+    notifyChat(target, user.id, `📎 ${file.name}`, null)
+    return { ok: true, data: { id: m.id } }
   } catch (err) {
     return toActionError(err)
   }

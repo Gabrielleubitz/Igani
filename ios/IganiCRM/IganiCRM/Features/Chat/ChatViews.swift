@@ -242,6 +242,7 @@ struct ChatConversationView: View {
     @State private var editing: ChatMessage?
     @State private var showInfo = false
     @State private var openThread: String?
+    @State private var viewing: ChatMediaStart?
     @State private var tick = 0
     @State private var lastTypingPing = Date.distantPast
     @State private var uploads: [ChatUpload] = []
@@ -308,6 +309,17 @@ struct ChatConversationView: View {
                 if parent?.id == m.id { parent?.body = stored; parent?.edited = true }
                 Task { try? await API.shared.run("chatEdit", ["messageId": m.id, "body": stored]) }
             }
+        }
+        .fullScreenCover(item: $viewing) { v in
+            let items = ChatMediaItem.all(in: (isThread ? [parent].compactMap { $0 } : []) + messages)
+            ChatMediaViewer(
+                items: items,
+                start: items.firstIndex { $0.message.id == v.messageId && $0.index == v.index } ?? 0,
+                meId: meId,
+                people: peopleBy,
+                onReply: isThread ? nil : { m in openThread = m.id },
+                onReact: { m, e in handle(.react(e), m) }
+            )
         }
         .navigationDestination(item: $openThread) { t in
             ChatConversationView(channelId: channelId, title: title, threadId: t)
@@ -683,6 +695,8 @@ struct ChatConversationView: View {
             UIPasteboard.general.string = ChatText.display(m.body, people: peopleBy)
         case .thread:
             openThread = m.id
+        case .openFile(let i):
+            viewing = ChatMediaStart(messageId: m.id, index: i, inThread: isThread)
         }
     }
 
@@ -780,7 +794,7 @@ extension ISO8601DateFormatter {
 // MARK: - One message
 
 struct ChatMessageView: View {
-    enum Action { case react(String), edit, delete, copy, thread }
+    enum Action { case react(String), edit, delete, copy, thread, openFile(Int) }
     let message: ChatMessage
     let grouped: Bool
     let meId: String
@@ -845,7 +859,7 @@ struct ChatMessageView: View {
     private var files: some View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(Array(message.files.enumerated()), id: \.offset) { i, f in
-                ChatFileView(messageId: message.id, index: i, file: f)
+                ChatFileView(messageId: message.id, index: i, file: f) { onAction(.openFile(i)) }
             }
         }
         .padding(.top, 2)
@@ -896,14 +910,13 @@ struct ChatFileView: View {
     let messageId: String
     let index: Int
     let file: ChatFile
-    @Environment(\.openURL) private var openURL
-    @Environment(Toasts.self) private var toasts
+    let onOpen: () -> Void
     @State private var thumb: URL?
 
     var body: some View {
         Group {
             if file.isImage {
-                Button { Task { await open() } } label: {
+                Button(action: onOpen) {
                     let ratio = CGFloat(file.width ?? 4) / CGFloat(max(file.height ?? 3, 1))
                     ZStack {
                         Theme.raised
@@ -920,7 +933,7 @@ struct ChatFileView: View {
                 .accessibilityLabel("Photo \(file.name)")
                 .task { if thumb == nil, !messageId.hasPrefix("tmp-") { thumb = await link(thumb: true) } }
             } else {
-                Button { Task { await open() } } label: {
+                Button(action: onOpen) {
                     HStack(spacing: 10) {
                         Image(systemName: file.mime.contains("pdf") ? "doc.richtext.fill" : "doc.fill").font(.title3).foregroundStyle(Theme.accent)
                             .frame(width: 38, height: 38).background(Theme.accent.opacity(0.14), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -929,7 +942,7 @@ struct ChatFileView: View {
                             Text(file.size).font(.caption).foregroundStyle(Theme.muted)
                         }
                         Spacer(minLength: 0)
-                        Image(systemName: "arrow.down.circle").foregroundStyle(Theme.muted)
+                        Image(systemName: file.view == nil ? "square.and.arrow.down" : "eye").foregroundStyle(Theme.muted)
                     }
                     .padding(8)
                     .frame(maxWidth: 280)
@@ -947,9 +960,6 @@ struct ChatFileView: View {
         return l.flatMap { URL(string: $0.url) }
     }
 
-    private func open() async {
-        if let u = await link(thumb: false) { openURL(u) } else { toasts.show("Couldn’t open that file.", tone: .warn) }
-    }
 }
 
 /// A lead linked in a message: tap to open it.

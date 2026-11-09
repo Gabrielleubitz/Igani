@@ -84,19 +84,22 @@ export async function deleteMeetRecording(publicId: string): Promise<void> {
 
 /**
  * Team chat files are private ("authenticated"): this signs a short-lived link for someone allowed to see them.
- * Images get a smaller preview when `thumb` is set; anything else downloads under its own name.
+ * - thumb: a smaller preview (images)
+ * - view: shown in the page's viewer (images full size; PDFs and videos inline)
+ * - download: saved under the file's own name
+ * With no mode, images open full size and anything else downloads.
  */
-export function chatFileLink(f: { publicId: string; rt?: string; format?: string | null; kind: 'image' | 'file'; name: string }, opts: { thumb?: boolean } = {}): string {
+export function chatFileLink(f: { publicId: string; rt?: string; format?: string | null; kind: 'image' | 'file'; name: string }, opts: { thumb?: boolean; mode?: 'thumb' | 'view' | 'download' } = {}): string {
+  const mode = opts.mode ?? (opts.thumb ? 'thumb' : undefined)
   const resourceType = (f.rt as 'image' | 'raw' | 'video' | undefined) ?? (f.kind === 'image' ? 'image' : 'raw')
-  if (f.kind === 'image' && resourceType === 'image') {
-    return client().url(f.publicId, {
-      resource_type: 'image',
-      type: 'authenticated',
-      sign_url: true,
-      secure: true,
-      ...(f.format ? { format: f.format } : {}),
-      ...(opts.thumb ? { transformation: [{ width: 640, height: 640, crop: 'limit', quality: 'auto', fetch_format: 'auto' }] } : {}),
-    })
+  const inlineable = resourceType === 'image' || resourceType === 'video'
+  const signed = (transformation?: Record<string, unknown>[]): string =>
+    client().url(f.publicId, { resource_type: resourceType, type: 'authenticated', sign_url: true, secure: true, ...(f.format ? { format: f.format } : {}), ...(transformation ? { transformation } : {}) })
+  if (mode === 'thumb' && f.kind === 'image' && resourceType === 'image') return signed([{ width: 640, height: 640, crop: 'limit', quality: 'auto', fetch_format: 'auto' }])
+  if (mode === 'download' && inlineable) {
+    const base = f.name.replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '_').slice(0, 80) || 'file'
+    return signed([{ flags: `attachment:${base}` }])
   }
+  if ((mode === 'view' || mode === undefined) && inlineable && (mode === 'view' || f.kind === 'image')) return signed()
   return client().utils.private_download_url(f.publicId, resourceType === 'raw' ? '' : (f.format ?? ''), { resource_type: resourceType, type: 'authenticated', attachment: true, expires_at: Math.floor(Date.now() / 1000) + 600 })
 }
