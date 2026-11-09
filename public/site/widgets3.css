@@ -46,10 +46,10 @@
 
 /* workflow */
 .ed3 .flowx { list-style: none; margin: 0; padding: 16px 18px 18px; display: grid; gap: 0; }
-.ed3 .flowx li { position: relative; display: grid; grid-template-columns: 54px 1fr; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid #e8e6df; border-radius: 6px; background: #fff; }
+.ed3 .flowx li { position: relative; display: grid; grid-template-columns: 74px 1fr; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid #e8e6df; border-radius: 6px; background: #fff; }
 .ed3 .flowx li + li { margin-top: 14px; }
-.ed3 .flowx li + li::before { content: ""; position: absolute; left: 38px; top: -15px; height: 14px; width: 1px; background: #cfcbc1; }
-.ed3 .flowx .k { font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--blue-ink); background: #e9effa; padding: 3px 6px; border-radius: 3px; text-align: center; }
+.ed3 .flowx li + li::before { content: ""; position: absolute; left: 49px; top: -15px; height: 14px; width: 1px; background: #cfcbc1; }
+.ed3 .flowx .k { font-size: 10px; font-weight: 600; letter-spacing: .06em; white-space: nowrap; text-transform: uppercase; color: var(--blue-ink); background: #e9effa; padding: 3px 6px; border-radius: 3px; text-align: center; }
 .ed3 .flowx .k--c { color: #8a5a00; background: #fbf1da; } .ed3 .flowx .k--w { color: var(--loss); background: #fbe9e7; }
 .ed3 .flowx b { font-weight: 500; }
 .ed3 .flowx li.hl { border-color: #e7b6b1; background: #fffafa; }
@@ -191,6 +191,6 @@
 @media (prefers-reduced-motion: reduce) { .ed3 .fp.is-on .flowx li { animation: none; } .ed3 .cr__bars em { transform: none; transition: none; } .ed3 .doc__sig path, .ed3 .db__c .line { stroke-dashoffset: 0 !important; animation: none !important; } .ed3 .hmx .h { animation: none; } }
 @media (max-width: 899px) {
   .ed3 .ig > div:nth-child(n+5) { display: none; } .ed3 .ig > div { padding: 12px 10px; }
-  .ed3 .flowx { padding: 12px 14px 14px; } .ed3 .flowx li { grid-template-columns: 46px 1fr; font-size: 12.5px; } .ed3 .ui--auto .ui__h small { display: none; }
+  .ed3 .flowx { padding: 12px 14px 14px; } .ed3 .flowx li { grid-template-columns: 66px 1fr; font-size: 12.5px; } .ed3 .flowx .k { padding: 3px 3px; letter-spacing: .03em; } .ed3 .flowx li + li::before { left: 43px; } .ed3 .ui--auto .ui__h small { display: none; }
   .ed3 .hmx__pg { height: 150px; }
 }
