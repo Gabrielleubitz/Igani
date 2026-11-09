@@ -1,3 +1,4 @@
+import { MIN_REVIEW_SECONDS } from '@/lib/call-review-rules'
 import { splitDue } from '@/components/crm/crm-utils'
 import { logActivity } from '@/lib/audit'
 import { cancelBooking, emailDataFor, teamMeetingIds } from '@/lib/bookings'
@@ -140,7 +141,7 @@ async function run(): Promise<Record<string, number>> {
       simulated: false,
       startedAt: { gt: new Date(Date.now() - 2 * 86_400_000), lt: new Date(Date.now() - 5 * 60_000) },
       analysisAttempts: { lt: 3 },
-      OR: [{ analysisStatus: { in: ['pending', 'failed'] } }, { analysisStatus: null, status: 'COMPLETED', durationSec: { gte: 15 } }],
+      OR: [{ analysisStatus: { in: ['pending', 'failed'] } }, { analysisStatus: null, status: 'COMPLETED', durationSec: { gte: MIN_REVIEW_SECONDS } }],
     },
     select: { id: true },
     orderBy: { startedAt: 'desc' },

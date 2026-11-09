@@ -58,7 +58,7 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
   // a player only when there is (or may be, if our callback was missed) a Twilio recording
   const recorded = Boolean(call.recordingSid) || (Boolean(call.twilioCallSid) && call.status === 'COMPLETED' && !call.simulated && (call.durationSec ?? 0) > 0)
   const working = call.analysisStatus === 'processing' || call.analysisStatus === 'pending'
-  // Calls under a minute are not reviewed automatically; only an admin can review them by hand
+  // Calls under two minutes are not reviewed automatically; only an admin can review them by hand
   const shortCall = tooShortToReview(callLength(call))
   const canReviewByHand = mayReviewByHand(user.role, callLength(call))
   const tone = a ? scoreTone(a.overallScore) : null

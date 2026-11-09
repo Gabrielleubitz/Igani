@@ -31,7 +31,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
       numbersError = err instanceof Error ? err.message.slice(0, 200) : 'Could not read numbers from Twilio.'
     }
   }
-  const [team, lines, record, hints, countries, calls, me, listenIn] = await Promise.all([
+  const [team, lines, record, hints, countries, calls, me, listenIn, reviewModel] = await Promise.all([
     prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true, role: true }, orderBy: { name: 'asc' } }),
     prisma.phoneLine.findMany({ select: { userId: true, number: true, active: true } }),
     getSetting('voice.record'),
@@ -40,6 +40,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
     prisma.call.findMany({ orderBy: { startedAt: 'desc' }, take: 25, include: { user: { select: { name: true, email: true } }, lead: { select: { id: true, firstName: true, lastName: true, email: true } } } }),
     prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { timeZone: true } }),
     getSetting('voice.listenIn'),
+    getSetting('calls.reviewModel'),
   ])
   // Costs per month: the last six months of calls, priced with the estimate rates in lib/call-costs.ts
   const since = new Date(Date.now() - 190 * 86_400_000)
@@ -193,7 +194,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
           <CardTitle className="text-base">Recording</CardTitle>
         </CardHeader>
         <CardContent>
-          <VoiceSettingsForm initial={{ record, hints, listenIn, countries }} />
+          <VoiceSettingsForm initial={{ record, hints, listenIn, countries, reviewModel }} />
         </CardContent>
       </Card>
 

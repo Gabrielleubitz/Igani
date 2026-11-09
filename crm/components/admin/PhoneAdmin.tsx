@@ -72,7 +72,7 @@ export function PhoneLineRow({ userId, name, role, current, numbers, takenBy }: 
 }
 
 /** Recording, and which countries can be called. */
-export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hints: boolean; listenIn: boolean; countries: DialCountry[] } }): React.ReactElement {
+export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hints: boolean; listenIn: boolean; countries: DialCountry[]; reviewModel: string } }): React.ReactElement {
   const router = useRouter()
   const [v, setV] = useState(initial)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -80,7 +80,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
   const save = (): void =>
     start(async () => {
       setMsg(null)
-      const r = await saveSettings({ 'voice.record': v.record, 'voice.hints': v.hints, 'voice.listenIn': v.listenIn, 'voice.countries': v.countries })
+      const r = await saveSettings({ 'voice.record': v.record, 'voice.hints': v.hints, 'voice.listenIn': v.listenIn, 'voice.countries': v.countries, 'calls.reviewModel': v.reviewModel.trim() })
       setMsg(r.ok ? { ok: true, text: 'Saved' } : { ok: false, text: r.error })
       if (r.ok) router.refresh()
     })
@@ -98,6 +98,13 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
         <span>
           <span className="font-medium">Live Straight Line hints</span>
           <span className="block text-xs text-muted-foreground">While a salesperson is on a call, short coaching hints appear on their screen. Their call audio is transcribed live by OpenAI and not stored by us. Each rep can switch it off for themselves.</span>
+        </span>
+      </label>
+      <label className="block space-y-1">
+        <span className="font-medium">Model for call reviews</span>
+        <Input value={v.reviewModel} onChange={(e) => setV({ ...v, reviewModel: e.target.value })} placeholder="Leave empty for the default (gpt-5.5)" className="max-w-sm" />
+        <span className="block text-xs text-muted-foreground">
+          The OpenAI model that writes each review. A cheaper model costs less per call. Try a few calls with “Review anyway” and compare before relying on it. Only connected calls of 2 minutes or more are reviewed automatically.
         </span>
       </label>
       <label id="listen-in" className="flex scroll-mt-24 items-start gap-3">

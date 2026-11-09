@@ -25,6 +25,8 @@ export const SETTING_SCHEMAS = {
   'voice.record': z.boolean(),
   /** Live Straight Line hints on the rep's screen during a call (needs the OpenAI key) */
   'voice.hints': z.boolean(),
+  /** The OpenAI model that writes call reviews (empty = the default: env var, then gpt-5.5). A cheaper one costs less per review */
+  'calls.reviewModel': z.string().trim().max(60).regex(/^[A-Za-z0-9._:-]*$/),
   'voice.countries': z.array(z.enum(['IL', 'US'])).min(1),
   /** Outgoing calls go through a Twilio conference room, so admins can listen in silently (lib/call-conference.ts) */
   'voice.listenIn': z.boolean(),
@@ -61,7 +63,8 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'notifications.weeklySummary': true,
   'website.tracking': { home: true, realestate: true },
   'voice.record': true,
-  'voice.hints': true,
+  'voice.hints': false,
+  'calls.reviewModel': '',
   'voice.countries': ['IL', 'US'],
   'voice.listenIn': false,
   'contract.signer': { name: '', title: '', email: '', phone: '' },

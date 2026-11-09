@@ -1,5 +1,6 @@
 import 'server-only'
-import { SHORT_CALL_MESSAGE, callLength, tooShortToReview } from './call-review-rules'
+import { NOT_CONNECTED_MESSAGE, SHORT_CALL_MESSAGE, callLength, notConnected, tooShortToReview } from './call-review-rules'
+import { getSetting } from './settings'
 import { openAiReason } from './live-hints'
 import { CALL_LANG_LABEL, TRANSCRIBE_PROMPT, callLanguage, coachingLanguage, reviewLanguageRule } from './call-language'
 import type { Prisma } from '@prisma/client'
@@ -287,8 +288,14 @@ async function transcribe(audio: Blob, key: string, fileName = 'call.mp3'): Prom
   return { text: body.text ?? segments.map((s) => s.text).join(' '), segments }
 }
 
-export async function chat(key: string, system: string, user: string, name: string, schema: object, effort: 'low' | 'medium'): Promise<unknown> {
-  const model = process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
+/** The model for call reviews: the one typed in Admin → Phone, else the env var, else the default. */
+export async function reviewModelName(): Promise<string> {
+  const set = await getSetting('calls.reviewModel').catch(() => '')
+  return set.trim() || process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
+}
+
+export async function chat(key: string, system: string, user: string, name: string, schema: object, effort: 'low' | 'medium', modelName?: string): Promise<unknown> {
+  const model = modelName || process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -325,7 +332,8 @@ export function scoreFromAnalysis(a: CallAnalysis): number {
 export async function analyseSegments(segments: { start: number; end: number; text: string }[], key: string, context = 'Outgoing call: the rep called the client.', opts: { audio?: Blob; durationSec?: number | null } = {}): Promise<{ speakers: ('rep' | 'client')[]; analysis: CallAnalysis }> {
   const numbered = segments.map((s, i) => `[${i}] (${mmss(s.start)}) ${s.text}`).join('\n')
   const voicemail = /^Voicemail/.test(context)
-  const sp = voicemail ? { speakers: segments.map(() => 'client') } : ((await chat(key, SPEAKER_PROMPT, `${context}\n${numbered}`, 'speakers', SPEAKER_SCHEMA, 'low')) as { speakers?: unknown })
+  const modelName = await reviewModelName()
+  const sp = voicemail ? { speakers: segments.map(() => 'client') } : ((await chat(key, SPEAKER_PROMPT, `${context}\n${numbered}`, 'speakers', SPEAKER_SCHEMA, 'low', modelName)) as { speakers?: unknown })
   const speakers = segments.map((_, i) => ((Array.isArray(sp.speakers) ? sp.speakers[i] : null) === 'client' ? 'client' : 'rep') as 'rep' | 'client')
   const lines: TranscriptSeg[] = segments.map((s, i) => ({ ...s, speaker: speakers[i]! }))
   const metrics = computeMetrics(lines)
@@ -339,7 +347,7 @@ export async function analyseSegments(segments: { start: number; end: number; te
   const delivery = voicemail ? null : deliveryMetrics(lines)
   // the voice is judged from the audio at the same time as the words are reviewed
   const [raw, tonality] = await Promise.all([
-    chat(key, PROMPT, `${context}\n${measured}${delivery ? `\nRep pace ${delivery.repWpm} words/min; filler words ${delivery.fillersPerMin}/min.` : ''}\nSpoken language (measured): ${CALL_LANG_LABEL[lang]}.\n${reviewLanguageRule(reviewIn, lang)}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium') as Promise<Record<string, unknown>>,
+    chat(key, PROMPT, `${context}\n${measured}${delivery ? `\nRep pace ${delivery.repWpm} words/min; filler words ${delivery.fillersPerMin}/min.` : ''}\nSpoken language (measured): ${CALL_LANG_LABEL[lang]}.\n${reviewLanguageRule(reviewIn, lang)}\n\nTranscript:\n${transcript}`, 'call_analysis', ANALYSIS_SCHEMA, 'medium', modelName) as Promise<Record<string, unknown>>,
     opts.audio && !voicemail ? judgeTonality(opts.audio, lines, { key, durationSec: opts.durationSec ?? null, reviewLanguage: reviewIn }) : Promise.resolve(null),
   ])
   const analysis = CallAnalysis.parse({ ...raw, v: 3, language: CALL_LANG_LABEL[lang], lang, reviewIn, talkRatioRep: metrics?.talkRatioRep ?? 50, questionsAsked: metrics?.repQuestions ?? 0, overallScore: 0, metrics: metrics ?? undefined, delivery, tonality })
@@ -366,12 +374,14 @@ export async function analyzeCall(callId: string, opts: { force?: boolean; ignor
     data: { analysisStatus: 'processing', analyzedAt: new Date(), analysisAttempts: { increment: 1 }, analysisError: null },
   })
   if (!claim.count) return 'busy'
-  const call = await prisma.call.findUniqueOrThrow({ where: { id: callId }, select: { leadId: true, userId: true, recordingSec: true, durationSec: true, direction: true, answeredAt: true } })
+  const call = await prisma.call.findUniqueOrThrow({ where: { id: callId }, select: { leadId: true, userId: true, recordingSec: true, durationSec: true, direction: true, answeredAt: true, status: true } })
   const fail = async (status: 'failed' | 'skipped', error: string): Promise<'failed' | 'skipped'> => {
     await prisma.call.update({ where: { id: callId }, data: { analysisStatus: status, analysisError: error.slice(0, 300), analyzedAt: new Date() } })
     return status
   }
   try {
+    // Nobody picked up: nothing to review, even by hand
+    if (notConnected(call)) return await fail('skipped', NOT_CONNECTED_MESSAGE)
     // An admin reviewing a short call by hand (ignoreMinimum) skips this check
     if (!opts.ignoreMinimum && tooShortToReview(callLength(call))) return await fail('skipped', SHORT_CALL_MESSAGE)
     const audioRes = await fetchRecordingAudio(recordingSid)

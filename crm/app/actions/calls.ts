@@ -378,8 +378,8 @@ export async function reanalyzeCall(callId: string): Promise<ActionResult<{ stat
     const id = z.string().cuid().parse(callId)
     const call = await prisma.call.findUnique({ where: { id }, select: { userId: true, analysisStatus: true, recordingSec: true, durationSec: true } })
     if (!call || (user.role !== 'ADMIN' && call.userId !== user.id)) throw new BookingError('Call not found.', 'NOT_FOUND')
-    // Calls under a minute are reviewed by an admin only, so the review cost stays under control
-    if (!mayReviewByHand(user.role, callLength(call))) throw new BookingError('This call was under 60 seconds, so it is not reviewed automatically. An admin can review it.', 'FORBIDDEN')
+    // Calls under two minutes are reviewed by an admin only, so the review cost stays under control
+    if (!mayReviewByHand(user.role, callLength(call))) throw new BookingError('This call was under 2 minutes, so it is not reviewed automatically. An admin can review it.', 'FORBIDDEN')
     if (call.analysisStatus === 'processing') return { ok: true, data: { status: 'processing' } }
     const status = await analyzeCall(id, { force: true, ignoreMinimum: user.role === 'ADMIN' })
     if (status === 'none') throw new BookingError('This call has no recording to analyse (or OpenAI isn’t set up).', 'INVALID_STATE')

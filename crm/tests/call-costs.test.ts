@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { RATES, costOf, costsByMonth, outboundRate, rateUsd, usd, type CostCall } from '../lib/call-costs'
-import { callLength, mayReviewByHand, MIN_REVIEW_SECONDS, SHORT_CALL_MESSAGE, tooShortToReview } from '../lib/call-review-rules'
+import { callLength, mayReviewByHand, MIN_REVIEW_SECONDS, NOT_CONNECTED_MESSAGE, notConnected, SHORT_CALL_MESSAGE, tooShortToReview } from '../lib/call-review-rules'
 
 const call = (o: Partial<CostCall>): CostCall => ({ userId: 'u1', userName: 'Ann', month: '2026-11', direction: 'OUTBOUND', otherNumber: '+972501234567', durationSec: 200, recordingSec: 200, analysisStatus: 'ready', ...o })
 
-describe('review only calls over a minute', () => {
-  it('treats under 60 seconds as short, and an unknown length as not short', () => {
-    expect(MIN_REVIEW_SECONDS).toBe(60)
-    expect(tooShortToReview(59)).toBe(true)
-    expect(tooShortToReview(60)).toBe(false)
+describe('review only connected calls of two minutes or more', () => {
+  it('treats under 2 minutes as short, and an unknown length as not short', () => {
+    expect(MIN_REVIEW_SECONDS).toBe(120)
+    expect(tooShortToReview(119)).toBe(true)
+    expect(tooShortToReview(120)).toBe(false)
     expect(tooShortToReview(null)).toBe(false)
-    expect(SHORT_CALL_MESSAGE).toContain('under 60 seconds')
+    expect(SHORT_CALL_MESSAGE).toContain('under 2 minutes')
     expect(SHORT_CALL_MESSAGE).toContain('An admin can review it manually')
   })
   it('judges by the recording length, or else the talk time', () => {
@@ -21,8 +21,19 @@ describe('review only calls over a minute', () => {
   it('lets only an admin review a short call by hand', () => {
     expect(mayReviewByHand('ADMIN', 20)).toBe(true)
     expect(mayReviewByHand('SALES', 20)).toBe(false)
+    expect(mayReviewByHand('SALES', 119)).toBe(false)
     expect(mayReviewByHand('SALES', 120)).toBe(true)
     expect(mayReviewByHand('SALES', null)).toBe(true)
+  })
+})
+
+describe('calls that never connected', () => {
+  it('have nothing to review', () => {
+    expect(notConnected({ answeredAt: null, durationSec: null })).toBe(true)
+    expect(notConnected({ answeredAt: null, durationSec: 0, recordingSec: 0 })).toBe(true)
+    expect(notConnected({ answeredAt: new Date(), durationSec: 0 })).toBe(false)
+    expect(notConnected({ answeredAt: null, durationSec: 45 })).toBe(false)
+    expect(NOT_CONNECTED_MESSAGE).toContain('did not connect')
   })
 })
 
