@@ -125,6 +125,7 @@ model User {
   phoneLine       PhoneLine?
   calls           Call[]
   chatMemberships ChatMember[]
+  chatPresence    ChatPresence?
   signatures      Signature[]     @relation("UserSignatures")
   pushDevices     PushDevice[]
   chatMessages    ChatMessage[]
@@ -1088,6 +1089,8 @@ model ChatMember {
   joinedAt   DateTime @default(now())
   /// everything before this is read
   lastReadAt DateTime @default(now())
+  /// no unread counts or notifications from this channel (mentions still come through)
+  muted      Boolean  @default(false)
 
   channel ChatChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1097,20 +1100,32 @@ model ChatMember {
 }
 
 model ChatMessage {
-  id        String    @id @default(cuid())
-  channelId String
+  id          String    @id @default(cuid())
+  channelId   String
   /// kept as empty if the teammate is deleted
-  userId    String?
-  body      String
-  createdAt DateTime  @default(now())
-  editedAt  DateTime?
-  deletedAt DateTime?
+  userId      String?
+  body        String
+  createdAt   DateTime  @default(now())
+  editedAt    DateTime?
+  deletedAt   DateTime?
+  /// anything that changes how it looks (edit, delete, reaction, a reply): what polling asks for
+  updatedAt   DateTime  @default(now())
+  /// a reply in a thread: the message it answers (threads are one level deep)
+  parentId    String?
+  replyCount  Int       @default(0)
+  lastReplyAt DateTime?
+  /// files and images: [{ publicId, kind: image|file, name, bytes, mime, width?, height? }] (Cloudinary, private)
+  attachments Json?
 
   channel   ChatChannel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
   user      User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parent    ChatMessage?   @relation("ChatThread", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   ChatMessage[]  @relation("ChatThread")
   reactions ChatReaction[]
 
   @@index([channelId, createdAt])
+  @@index([channelId, updatedAt])
+  @@index([parentId, createdAt])
 }
 
 model ChatReaction {
@@ -1164,4 +1179,15 @@ model Signature {
   archivedAt  DateTime?
 
   @@index([userId])
+}
+
+/// Who's around in team chat: last seen (online dot) and typing (where, when). One row per person.
+model ChatPresence {
+  userId          String    @id
+  seenAt          DateTime  @default(now())
+  typingChannelId String?
+  typingThreadId  String?
+  typingAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

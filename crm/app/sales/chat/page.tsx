@@ -7,7 +7,7 @@ export const metadata = { title: 'Team chat' }
 export const dynamic = 'force-dynamic'
 
 export default async function ChatPage(props: { searchParams: Promise<Record<string, string | undefined>> }): Promise<React.ReactElement> {
-  const { c, dm } = await props.searchParams
+  const { c, dm, t } = await props.searchParams
   // ?dm=<teammate id> opens the direct conversation with them (made the first time)
   const opened = dm ? await chatOpenDm(dm) : null
   const r = await chatOverview()
@@ -17,7 +17,7 @@ export default async function ChatPage(props: { searchParams: Promise<Record<str
   return (
     <div className="space-y-4">
       <PageIntro title="Team chat" hint="Talk with the team: channels for topics and clients, and direct messages." className="hidden sm:flex" />
-      <TeamChat initial={r.data} initialChannelId={linked} />
+      <TeamChat initial={r.data} initialChannelId={linked} initialThreadId={linked && t && /^[a-z0-9]{20,40}$/i.test(t) ? t : null} />
     </div>
   )
 }

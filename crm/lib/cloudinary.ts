@@ -81,3 +81,22 @@ export async function deleteMeetRecording(publicId: string): Promise<void> {
   if (!cloudinaryConfigured()) return
   await client().uploader.destroy(publicId, { resource_type: 'video', type: 'authenticated', invalidate: true })
 }
+
+/**
+ * Team chat files are private ("authenticated"): this signs a short-lived link for someone allowed to see them.
+ * Images get a smaller preview when `thumb` is set; anything else downloads under its own name.
+ */
+export function chatFileLink(f: { publicId: string; rt?: string; format?: string | null; kind: 'image' | 'file'; name: string }, opts: { thumb?: boolean } = {}): string {
+  const resourceType = (f.rt as 'image' | 'raw' | 'video' | undefined) ?? (f.kind === 'image' ? 'image' : 'raw')
+  if (f.kind === 'image' && resourceType === 'image') {
+    return client().url(f.publicId, {
+      resource_type: 'image',
+      type: 'authenticated',
+      sign_url: true,
+      secure: true,
+      ...(f.format ? { format: f.format } : {}),
+      ...(opts.thumb ? { transformation: [{ width: 640, height: 640, crop: 'limit', quality: 'auto', fetch_format: 'auto' }] } : {}),
+    })
+  }
+  return client().utils.private_download_url(f.publicId, resourceType === 'raw' ? '' : (f.format ?? ''), { resource_type: resourceType, type: 'authenticated', attachment: true, expires_at: Math.floor(Date.now() / 1000) + 600 })
+}

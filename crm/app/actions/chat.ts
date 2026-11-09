@@ -1,15 +1,45 @@
 'use server'
 
+import { createHash } from 'node:crypto'
+import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
+import { chatFileLink, cloudinaryConfigured } from '@/lib/cloudinary'
 import { avatarPath } from '@/lib/avatar'
-import { CHAT_EMOJI, CHAT_MAX, canSeeChannel, mentionsIn, channelSlug, chatTeam, chatUnreadFor, dmKeyFor, ensureGeneral, type ChatPerson } from '@/lib/chat'
+import {
+  CHAT_EMOJI,
+  CHAT_FILE_MAX,
+  CHAT_MAX,
+  ONLINE_MS,
+  canSeeChannel,
+  channelSlug,
+  chatFolder,
+  chatTeam,
+  chatUnreadByChannel,
+  chatUnreadFor,
+  dmKeyFor,
+  ensureGeneral,
+  leadLinksIn,
+  mentionsIn,
+  onlineIds,
+  readFiles,
+  setTyping,
+  stopTyping,
+  touchPresence,
+  typingIn,
+  type ChatFile,
+  type ChatPerson,
+} from '@/lib/chat'
+import { leadName } from '@/lib/format'
+import { canSeeLead } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
 import { photoUrl, pushLater } from '@/lib/push'
 import { toActionError, type ActionResult } from './result'
 
 const id = z.string().regex(/^[a-z0-9]{20,40}$/i)
 const NOT_FOUND = 'That conversation is gone or you are not in it.'
+/** polls ask for everything changed since their cursor, minus this much (a message saved while a poll ran is never missed) */
+const OVERLAP_MS = 3000
 
 export interface ChatChannelRow {
   id: string
@@ -19,19 +49,24 @@ export interface ChatChannelRow {
   topic: string | null
   private: boolean
   member: boolean
+  muted: boolean
   unread: number
   /** mentions of you, and every unread direct message */
   mentions: number
   lastMessageAt: string
   /** direct conversations: the other person */
-  dm: { id: string; photo: string | null; role: string } | null
+  dm: { id: string; photo: string | null; role: string; online: boolean } | null
 }
+
+export type ChatPersonLive = ChatPerson & { online: boolean }
 
 export interface ChatOverview {
   me: ChatPerson
   isAdmin: boolean
   channels: ChatChannelRow[]
-  people: ChatPerson[]
+  people: ChatPersonLive[]
+  /** files can be attached (Cloudinary is set up) */
+  files: boolean
 }
 
 export interface ChatReactionRow {
@@ -39,6 +74,26 @@ export interface ChatReactionRow {
   count: number
   mine: boolean
   names: string[]
+}
+
+export interface ChatFileRow {
+  kind: 'image' | 'file'
+  name: string
+  bytes: number
+  mime: string
+  width: number | null
+  height: number | null
+  /** opens (or downloads) the file; images also have a smaller preview */
+  url: string
+  thumb: string | null
+}
+
+export interface ChatLeadCard {
+  id: string
+  name: string
+  company: string | null
+  status: string
+  owner: string | null
 }
 
 export interface ChatMessageRow {
@@ -51,6 +106,15 @@ export interface ChatMessageRow {
   edited: boolean
   deleted: boolean
   reactions: ChatReactionRow[]
+  /** a reply in a thread: the message it answers */
+  parentId: string | null
+  replyCount: number
+  lastReplyAt: string | null
+  /** photos of the last few people who replied (thread summary) */
+  repliers: { name: string; photo: string | null }[]
+  files: ChatFileRow[]
+  /** leads linked in the message (only ones you may see) */
+  leads: ChatLeadCard[]
 }
 
 export interface ChatChannelInfo {
@@ -60,6 +124,7 @@ export interface ChatChannelInfo {
   topic: string | null
   private: boolean
   member: boolean
+  muted: boolean
   /** may rename, change the topic, add people and archive */
   canManage: boolean
   members: ChatPerson[]
@@ -67,14 +132,21 @@ export interface ChatChannelInfo {
 }
 
 export interface ChatPage {
-  channel: ChatChannelInfo
+  /** sent on the first page only (polls keep what they have) */
+  channel: ChatChannelInfo | null
   messages: ChatMessageRow[]
   /** older messages exist (load with before = the first message's time) */
   more: boolean
   /** pass back as `since` to get only what changed */
   cursor: string
-  /** everyone's read position, for "seen by" in direct conversations */
+  /** everyone's read position, for "Seen" in direct conversations */
   readBy: { userId: string; at: string }[]
+  /** your own read position when the page was opened: where "New messages" starts */
+  myLastReadAt: string | null
+  /** others typing here right now */
+  typing: string[]
+  /** thread view: the message the thread is about */
+  parent: ChatMessageRow | null
 }
 
 async function userMap(ids: string[]): Promise<Map<string, { name: string; photo: string | null }>> {
@@ -88,12 +160,64 @@ async function loadChannel(channelId: string, userId: string) {
   return channel
 }
 
-/** Your channels and conversations with unread counts, plus the team (for new conversations and mentions). */
+const fileUrl = (messageId: string, i: number, thumb = false): string => `/api/chat/files/${messageId}/${i}${thumb ? '?size=thumb' : ''}`
+
+type DbMessage = Prisma.ChatMessageGetPayload<{ include: { reactions: true } }>
+
+/** Messages as the screens draw them: names and photos, reactions, files, linked leads, thread summary. */
+async function present(rows: DbMessage[], user: { id: string; role: 'ADMIN' | 'SALES' | 'MARKETING' }): Promise<ChatMessageRow[]> {
+  const threadIds = rows.filter((m) => m.replyCount > 0).map((m) => m.id)
+  const recentReplies = threadIds.length
+    ? await prisma.$queryRaw<{ parentId: string; userId: string | null }[]>`
+        SELECT DISTINCT ON ("parentId", "userId") "parentId", "userId" FROM "ChatMessage"
+        WHERE "parentId" = ANY(${threadIds}) AND "deletedAt" IS NULL ORDER BY "parentId", "userId", "createdAt" DESC`
+    : []
+  const leadIds = [...new Set(rows.flatMap((m) => (m.deletedAt ? [] : leadLinksIn(m.body))))]
+  const leads = leadIds.length
+    ? await prisma.lead.findMany({ where: { id: { in: leadIds } }, select: { id: true, firstName: true, lastName: true, email: true, company: true, status: true, assignedToId: true, assignedTo: { select: { name: true, email: true } } } })
+    : []
+  const leadBy = new Map<string, ChatLeadCard>(leads.filter((l) => canSeeLead(user, l)).map((l) => [l.id, { id: l.id, name: leadName(l), company: l.company, status: String(l.status), owner: l.assignedTo ? (l.assignedTo.name ?? l.assignedTo.email) : null }]))
+  const people = await userMap([...rows.map((m) => m.userId ?? ''), ...rows.flatMap((m) => m.reactions.map((r) => r.userId)), ...recentReplies.map((r) => r.userId ?? '')].filter(Boolean))
+  return rows.map((m) => {
+    const who = m.userId ? people.get(m.userId) : null
+    const grouped = new Map<string, string[]>()
+    for (const r of m.reactions) grouped.set(r.emoji, [...(grouped.get(r.emoji) ?? []), r.userId])
+    const files = m.deletedAt ? [] : readFiles(m.attachments)
+    return {
+      id: m.id,
+      userId: m.userId,
+      name: who?.name ?? 'Former teammate',
+      photo: who?.photo ?? null,
+      body: m.deletedAt ? '' : m.body,
+      at: m.createdAt.toISOString(),
+      edited: Boolean(m.editedAt && !m.deletedAt),
+      deleted: Boolean(m.deletedAt),
+      reactions: [...grouped].map(([emoji, ids]) => ({ emoji, count: ids.length, mine: ids.includes(user.id), names: ids.map((i) => (i === user.id ? 'You' : (people.get(i)?.name ?? 'Someone'))) })),
+      parentId: m.parentId,
+      replyCount: m.replyCount,
+      lastReplyAt: m.lastReplyAt?.toISOString() ?? null,
+      repliers: recentReplies
+        .filter((r) => r.parentId === m.id && r.userId)
+        .slice(0, 3)
+        .map((r) => ({ name: people.get(r.userId!)?.name ?? 'Someone', photo: people.get(r.userId!)?.photo ?? null })),
+      files: files.map((f, i) => ({ kind: f.kind, name: f.name, bytes: f.bytes, mime: f.mime, width: f.width ?? null, height: f.height ?? null, url: fileUrl(m.id, i), thumb: f.kind === 'image' ? fileUrl(m.id, i, true) : null })),
+      leads: leadLinksIn(m.deletedAt ? '' : m.body)
+        .map((l) => leadBy.get(l))
+        .filter((l): l is ChatLeadCard => Boolean(l)),
+    }
+  })
+}
+
+/** Your channels and conversations with unread counts, plus the team (online or not) for new conversations and mentions. */
 export async function chatOverview(): Promise<ActionResult<ChatOverview>> {
   try {
     const user = await requireUser()
     await ensureGeneral()
-    const [people, channels, memberships, counts] = await Promise.all([
+    // #general is everyone's: you're in it from your first visit
+    const general = await prisma.chatChannel.findFirst({ where: { kind: 'CHANNEL', name: 'general', archivedAt: null }, select: { id: true } })
+    if (general) await prisma.chatMember.upsert({ where: { channelId_userId: { channelId: general.id, userId: user.id } }, create: { channelId: general.id, userId: user.id }, update: {} })
+    await touchPresence(user.id).catch(() => undefined)
+    const [team, channels, memberships, counts, online] = await Promise.all([
       chatTeam(),
       prisma.chatChannel.findMany({
         where: { archivedAt: null, OR: [{ kind: 'CHANNEL', private: false }, { members: { some: { userId: user.id } } }] },
@@ -101,31 +225,28 @@ export async function chatOverview(): Promise<ActionResult<ChatOverview>> {
         take: 300,
         include: { members: { select: { userId: true } } },
       }),
-      prisma.chatMember.findMany({ where: { userId: user.id }, select: { channelId: true } }),
-      prisma.$queryRaw<{ channelId: string; unread: number; mentions: number }[]>`
-        SELECT m."channelId", count(*)::int AS unread,
-               count(*) FILTER (WHERE strpos(m."body", ${`<@${user.id}>`}) > 0)::int AS mentions
-        FROM "ChatMessage" m
-        JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${user.id}
-        WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${user.id})
-        GROUP BY m."channelId"`,
+      prisma.chatMember.findMany({ where: { userId: user.id }, select: { channelId: true, muted: true } }),
+      chatUnreadByChannel(user.id),
+      onlineIds(),
     ])
-    const mine = new Set(memberships.map((m) => m.channelId))
-    const count = new Map(counts.map((c) => [c.channelId, c]))
+    const people: ChatPersonLive[] = team.map((p) => ({ ...p, online: online.has(p.id) }))
+    const mine = new Map(memberships.map((m) => [m.channelId, m]))
     const personBy = new Map(people.map((p) => [p.id, p]))
     const others = channels.filter((c) => c.kind === 'DM').map((c) => c.members.find((m) => m.userId !== user.id)?.userId ?? user.id)
     const extra = await userMap(others.filter((o) => !personBy.has(o)))
-    const me = personBy.get(user.id) ?? { id: user.id, name: user.name ?? user.email, role: user.role, photo: null }
+    const me = personBy.get(user.id) ?? { id: user.id, name: user.name ?? user.email, role: user.role, photo: null, online: true }
     const rows: ChatChannelRow[] = channels.map((c) => {
-      const n = count.get(c.id)
+      const n = counts.get(c.id)
+      const muted = mine.get(c.id)?.muted ?? false
       if (c.kind === 'DM') {
         const otherId = c.members.find((m) => m.userId !== user.id)?.userId ?? user.id
-        const other = personBy.get(otherId) ?? (extra.get(otherId) ? { id: otherId, ...extra.get(otherId)!, role: 'SALES' as const } : null)
-        return { id: c.id, kind: 'DM', name: otherId === user.id ? `${me.name} (you)` : (other?.name ?? 'Former teammate'), topic: null, private: true, member: true, unread: n?.unread ?? 0, mentions: n?.unread ?? 0, lastMessageAt: c.lastMessageAt.toISOString(), dm: { id: otherId, photo: other?.photo ?? null, role: other?.role ?? 'SALES' } }
+        const other = personBy.get(otherId) ?? (extra.get(otherId) ? { id: otherId, ...extra.get(otherId)!, role: 'SALES' as const, online: false } : null)
+        return { id: c.id, kind: 'DM', name: otherId === user.id ? `${me.name} (you)` : (other?.name ?? 'Former teammate'), topic: null, private: true, member: true, muted, unread: n?.unread ?? 0, mentions: n?.mentions ?? 0, lastMessageAt: c.lastMessageAt.toISOString(), dm: { id: otherId, photo: other?.photo ?? null, role: other?.role ?? 'SALES', online: otherId === user.id || (other?.online ?? false) } }
       }
-      return { id: c.id, kind: 'CHANNEL', name: c.name, topic: c.topic, private: c.private, member: mine.has(c.id), unread: n?.unread ?? 0, mentions: n?.mentions ?? 0, lastMessageAt: c.lastMessageAt.toISOString(), dm: null }
+      return { id: c.id, kind: 'CHANNEL', name: c.name, topic: c.topic, private: c.private, member: mine.has(c.id), muted, unread: n?.unread ?? 0, mentions: n?.mentions ?? 0, lastMessageAt: c.lastMessageAt.toISOString(), dm: null }
     })
-    return { ok: true, data: { me, isAdmin: user.role === 'ADMIN', channels: rows, people } }
+    const files = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
+    return { ok: true, data: { me, isAdmin: user.role === 'ADMIN', channels: rows, people, files } }
   } catch (err) {
     return toActionError(err)
   }
@@ -141,82 +262,75 @@ export async function chatUnread(): Promise<ActionResult<{ unread: number; menti
   }
 }
 
-const pageInput = z.object({ channelId: id, before: z.string().datetime().optional(), since: z.string().datetime().optional() })
+const pageInput = z.object({ channelId: id, threadId: id.optional().nullable(), before: z.string().datetime().optional(), since: z.string().datetime().optional() })
 
 /**
- * Messages in a channel, newest 60 (or the 60 before `before`). With `since`, only messages written, edited or deleted
- * after it (for polling), and the reactions of the latest messages.
+ * A channel's messages (newest 60, or the 60 before `before`), or one thread (its first message and every reply).
+ * With `since`: only what changed after it (new, edited, deleted, reacted to, replied to), plus who's typing.
  */
 export async function chatMessages(input: z.input<typeof pageInput>): Promise<ActionResult<ChatPage>> {
   try {
     const user = await requireUser()
-    const { channelId, before, since } = pageInput.parse(input)
+    const { channelId, threadId, before, since } = pageInput.parse(input)
     const channel = await loadChannel(channelId, user.id)
     if (!channel) return { ok: false, error: NOT_FOUND }
     const cursor = new Date().toISOString()
+    const changed = since ? new Date(new Date(since).getTime() - OVERLAP_MS) : null
     const take = 60
-    const changed = since ? new Date(since) : null
-    const rows = changed
-      ? await prisma.chatMessage.findMany({
-          where: { channelId, OR: [{ createdAt: { gt: changed } }, { editedAt: { gt: changed } }, { deletedAt: { gt: changed } }] },
-          orderBy: { createdAt: 'asc' },
-          take: 200,
-          include: { reactions: true },
-        })
-      : (
-          await prisma.chatMessage.findMany({
-            where: { channelId, ...(before ? { createdAt: { lt: new Date(before) } } : {}) },
-            orderBy: { createdAt: 'desc' },
-            take: take + 1,
-            include: { reactions: true },
-          })
-        ).reverse()
-    const more = !changed && rows.length > take
-    const list = more ? rows.slice(1) : rows
-    // polling: also refresh reactions on the latest messages (reacting doesn't change the message itself)
-    const recent = changed ? await prisma.chatMessage.findMany({ where: { channelId, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 40, include: { reactions: true } }) : []
-    const all = [...list, ...recent.filter((r) => !list.some((l) => l.id === r.id)).map((r) => ({ ...r, reactionsOnly: true }))]
-    const [members, people] = await Promise.all([prisma.chatMember.findMany({ where: { channelId }, select: { userId: true, lastReadAt: true } }), userMap([...all.map((m) => m.userId ?? ''), ...all.flatMap((m) => m.reactions.map((r) => r.userId))].filter(Boolean))])
+    let rows: DbMessage[]
+    let more = false
+    let parent: DbMessage | null = null
+    if (threadId) {
+      parent = await prisma.chatMessage.findFirst({ where: { id: threadId, channelId, parentId: null }, include: { reactions: true } })
+      if (!parent) return { ok: false, error: 'That thread is gone.' }
+      rows = await prisma.chatMessage.findMany({ where: { parentId: threadId, ...(changed ? { updatedAt: { gt: changed } } : {}) }, orderBy: { createdAt: 'asc' }, take: 300, include: { reactions: true } })
+      if (changed && parent.updatedAt <= changed) parent = null
+    } else if (changed) {
+      rows = await prisma.chatMessage.findMany({ where: { channelId, parentId: null, updatedAt: { gt: changed } }, orderBy: { createdAt: 'asc' }, take: 200, include: { reactions: true } })
+    } else {
+      const page = await prisma.chatMessage.findMany({ where: { channelId, parentId: null, ...(before ? { createdAt: { lt: new Date(before) } } : {}) }, orderBy: { createdAt: 'desc' }, take: take + 1, include: { reactions: true } })
+      more = page.length > take
+      rows = (more ? page.slice(0, take) : page).reverse()
+    }
+    const [members, typingIds, presented, parentRow] = await Promise.all([
+      prisma.chatMember.findMany({ where: { channelId }, select: { userId: true, lastReadAt: true, muted: true } }),
+      typingIn(channelId, threadId ?? null, user.id),
+      present(rows, user),
+      parent ? present([parent], user).then((p) => p[0] ?? null) : Promise.resolve(null),
+    ])
     const memberIds = members.map((m) => m.userId)
-    const team = await chatTeam()
-    const teamBy = new Map(team.map((p) => [p.id, p]))
-    const isMember = memberIds.includes(user.id)
-    const otherId = channel.kind === 'DM' ? (memberIds.find((m) => m !== user.id) ?? user.id) : null
-    const otherName = otherId ? (teamBy.get(otherId)?.name ?? (await userMap([otherId])).get(otherId)?.name ?? 'Former teammate') : ''
-    const messages: ChatMessageRow[] = all.map((m) => {
-      const who = m.userId ? people.get(m.userId) : null
-      const grouped = new Map<string, string[]>()
-      for (const r of m.reactions) grouped.set(r.emoji, [...(grouped.get(r.emoji) ?? []), r.userId])
-      return {
-        id: m.id,
-        userId: m.userId,
-        name: who?.name ?? 'Former teammate',
-        photo: who?.photo ?? null,
-        body: m.deletedAt ? '' : m.body,
-        at: m.createdAt.toISOString(),
-        edited: Boolean(m.editedAt && !m.deletedAt),
-        deleted: Boolean(m.deletedAt),
-        reactions: [...grouped].map(([emoji, ids]) => ({ emoji, count: ids.length, mine: ids.includes(user.id), names: ids.map((i) => (i === user.id ? 'You' : (people.get(i)?.name ?? 'Someone'))) })),
+    const mine = members.find((m) => m.userId === user.id)
+    let info: ChatChannelInfo | null = null
+    if (!changed && !before) {
+      const team = await chatTeam()
+      const teamBy = new Map(team.map((p) => [p.id, p]))
+      const otherId = channel.kind === 'DM' ? (memberIds.find((m) => m !== user.id) ?? user.id) : null
+      const otherName = otherId ? (teamBy.get(otherId)?.name ?? (await userMap([otherId])).get(otherId)?.name ?? 'Former teammate') : ''
+      info = {
+        id: channel.id,
+        kind: channel.kind,
+        name: channel.kind === 'DM' ? (otherId === user.id ? 'Notes to self' : otherName) : channel.name,
+        topic: channel.topic,
+        private: channel.private,
+        member: Boolean(mine) || channel.kind === 'DM',
+        muted: mine?.muted ?? false,
+        canManage: channel.kind === 'CHANNEL' && (user.role === 'ADMIN' || channel.createdById === user.id),
+        members: memberIds.map((m) => teamBy.get(m)).filter((p): p is ChatPerson => Boolean(p)),
+        createdAt: channel.createdAt.toISOString(),
       }
-    })
+    }
+    const typingPeople = typingIds.length ? await userMap(typingIds) : new Map<string, { name: string }>()
     return {
       ok: true,
       data: {
-        channel: {
-          id: channel.id,
-          kind: channel.kind,
-          name: channel.kind === 'DM' ? (otherId === user.id ? 'Notes to self' : otherName) : channel.name,
-          topic: channel.topic,
-          private: channel.private,
-          member: isMember || channel.kind === 'DM',
-          canManage: channel.kind === 'CHANNEL' && (user.role === 'ADMIN' || channel.createdById === user.id),
-          members: memberIds.map((m) => teamBy.get(m)).filter((p): p is ChatPerson => Boolean(p)),
-          createdAt: channel.createdAt.toISOString(),
-        },
-        messages,
+        channel: info,
+        messages: presented,
         more,
         cursor,
         readBy: members.filter((m) => m.userId !== user.id).map((m) => ({ userId: m.userId, at: m.lastReadAt.toISOString() })),
+        myLastReadAt: mine?.lastReadAt.toISOString() ?? null,
+        typing: typingIds.map((t) => typingPeople.get(t)?.name ?? 'Someone'),
+        parent: parentRow,
       },
     }
   } catch (err) {
@@ -224,23 +338,50 @@ export async function chatMessages(input: z.input<typeof pageInput>): Promise<Ac
   }
 }
 
-const sendInput = z.object({ channelId: id, body: z.string().trim().min(1, 'Write something first.').max(CHAT_MAX, `Keep it under ${CHAT_MAX} characters.`) })
+const fileInput = z.object({
+  publicId: z.string().min(3).max(300),
+  kind: z.enum(['image', 'file']),
+  resourceType: z.enum(['image', 'raw', 'video']).default('raw'),
+  format: z.string().max(20).optional().nullable(),
+  name: z.string().trim().min(1).max(200),
+  bytes: z.number().int().min(0).max(CHAT_FILE_MAX),
+  mime: z.string().max(120).default('application/octet-stream'),
+  width: z.number().int().positive().max(20000).optional().nullable(),
+  height: z.number().int().positive().max(20000).optional().nullable(),
+})
 
-/** Post a message (joining a public channel as you do) and mark the channel read. */
+const sendInput = z.object({
+  channelId: id,
+  body: z.string().trim().max(CHAT_MAX, `Keep it under ${CHAT_MAX} characters.`).default(''),
+  /** reply in this message's thread */
+  parentId: id.optional().nullable(),
+  files: z.array(fileInput).max(10).default([]),
+})
+
+/** Post a message (or a thread reply), with files if any. Joins a public channel as you post and marks it read. */
 export async function chatSend(input: z.input<typeof sendInput>): Promise<ActionResult<{ id: string; at: string }>> {
   try {
     const user = await requireUser()
-    const { channelId, body } = sendInput.parse(input)
+    const { channelId, body, parentId, files } = sendInput.parse(input)
+    if (!body && !files.length) return { ok: false, error: 'Write something first.' }
     const channel = await loadChannel(channelId, user.id)
     if (!channel) return { ok: false, error: NOT_FOUND }
+    // files must be ones uploaded for this channel (the upload ticket only allows its folder)
+    const folder = `${chatFolder(channelId)}/`
+    if (files.some((f) => !f.publicId.startsWith(folder))) return { ok: false, error: 'That file was not uploaded here.' }
+    const stored: (ChatFile & { rt: string; format: string | null })[] = files.map((f) => ({ publicId: f.publicId, kind: f.kind, name: f.name, bytes: f.bytes, mime: f.mime, width: f.width ?? null, height: f.height ?? null, rt: f.resourceType, format: f.format ?? null }))
     const now = new Date()
+    const parent = parentId ? await prisma.chatMessage.findFirst({ where: { id: parentId, channelId, parentId: null, deletedAt: null }, select: { id: true, userId: true } }) : null
+    if (parentId && !parent) return { ok: false, error: 'That thread is gone.' }
     const msg = await prisma.$transaction(async (tx) => {
-      const m = await tx.chatMessage.create({ data: { channelId, userId: user.id, body, createdAt: now } })
+      const m = await tx.chatMessage.create({ data: { channelId, userId: user.id, body, createdAt: now, updatedAt: now, parentId: parent?.id ?? null, attachments: stored.length ? (stored as unknown as Prisma.InputJsonValue) : undefined } })
+      if (parent) await tx.chatMessage.update({ where: { id: parent.id }, data: { replyCount: { increment: 1 }, lastReplyAt: now, updatedAt: now } })
       await tx.chatChannel.update({ where: { id: channelId }, data: { lastMessageAt: now } })
       await tx.chatMember.upsert({ where: { channelId_userId: { channelId, userId: user.id } }, create: { channelId, userId: user.id, lastReadAt: now }, update: { lastReadAt: now } })
       return m
     })
-    notifyChat(channel, user.id, body)
+    await stopTyping(user.id).catch(() => undefined)
+    notifyChat(channel, user.id, body || (files.length ? `📎 ${files.length === 1 ? files[0]!.name : `${files.length} files`}` : ''), parent ? { threadId: parent.id, starterId: parent.userId } : null)
     return { ok: true, data: { id: msg.id, at: msg.createdAt.toISOString() } }
   } catch (err) {
     return toActionError(err)
@@ -254,19 +395,21 @@ export async function chatEdit(input: z.input<typeof editInput>): Promise<Action
   try {
     const user = await requireUser()
     const { messageId, body } = editInput.parse(input)
-    const done = await prisma.chatMessage.updateMany({ where: { id: messageId, userId: user.id, deletedAt: null }, data: { body, editedAt: new Date() } })
+    const now = new Date()
+    const done = await prisma.chatMessage.updateMany({ where: { id: messageId, userId: user.id, deletedAt: null }, data: { body, editedAt: now, updatedAt: now } })
     return done.count ? { ok: true, data: undefined } : { ok: false, error: 'You can only edit your own messages.' }
   } catch (err) {
     return toActionError(err)
   }
 }
 
-/** Delete your own message (admins can delete anyone's). It shows as "message deleted". */
+/** Delete your own message (admins can delete anyone's). It shows as "message deleted"; its files go with it. */
 export async function chatDelete(messageId: string): Promise<ActionResult> {
   try {
     const user = await requireUser()
     const mid = id.parse(messageId)
-    const done = await prisma.chatMessage.updateMany({ where: { id: mid, deletedAt: null, ...(user.role === 'ADMIN' ? {} : { userId: user.id }) }, data: { deletedAt: new Date(), body: '' } })
+    const now = new Date()
+    const done = await prisma.chatMessage.updateMany({ where: { id: mid, deletedAt: null, ...(user.role === 'ADMIN' ? {} : { userId: user.id }) }, data: { deletedAt: now, updatedAt: now, body: '', attachments: undefined } })
     if (done.count) await prisma.chatReaction.deleteMany({ where: { messageId: mid } })
     return done.count ? { ok: true, data: undefined } : { ok: false, error: 'You can only delete your own messages.' }
   } catch (err) {
@@ -285,8 +428,11 @@ export async function chatReact(input: z.input<typeof reactInput>): Promise<Acti
     if (!msg || msg.deletedAt || msg.channel.archivedAt || !(await canSeeChannel(msg.channel, user.id))) return { ok: false, error: NOT_FOUND }
     const key = { messageId_userId_emoji: { messageId, userId: user.id, emoji } }
     const had = await prisma.chatReaction.findUnique({ where: key })
-    if (had) await prisma.chatReaction.delete({ where: key })
-    else await prisma.chatReaction.create({ data: { messageId, userId: user.id, emoji } })
+    await prisma.$transaction([
+      had ? prisma.chatReaction.delete({ where: key }) : prisma.chatReaction.create({ data: { messageId, userId: user.id, emoji } }),
+      // so everyone's next poll picks the reaction up
+      prisma.chatMessage.update({ where: { id: messageId }, data: { updatedAt: new Date() } }),
+    ])
     return { ok: true, data: { on: !had } }
   } catch (err) {
     return toActionError(err)
@@ -299,6 +445,117 @@ export async function chatMarkRead(channelId: string): Promise<ActionResult> {
     const user = await requireUser()
     await prisma.chatMember.updateMany({ where: { channelId: id.parse(channelId), userId: user.id }, data: { lastReadAt: new Date() } })
     return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** "…is typing" for a few seconds (the composer calls this while you type). */
+export async function chatTyping(channelId: string, threadId?: string | null): Promise<ActionResult> {
+  try {
+    const user = await requireUser()
+    const cid = id.parse(channelId)
+    await setTyping(user.id, cid, threadId ? id.parse(threadId) : null)
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** Mute a channel: no unread counts or notifications from it, except when someone @mentions you. */
+export async function chatMute(channelId: string, muted: boolean): Promise<ActionResult> {
+  try {
+    const user = await requireUser()
+    const cid = id.parse(channelId)
+    const ch = await loadChannel(cid, user.id)
+    if (!ch) return { ok: false, error: NOT_FOUND }
+    await prisma.chatMember.upsert({ where: { channelId_userId: { channelId: cid, userId: user.id } }, create: { channelId: cid, userId: user.id, muted: Boolean(muted) }, update: { muted: Boolean(muted) } })
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+export interface ChatUploadTicket {
+  url: string
+  fields: Record<string, string>
+  maxBytes: number
+}
+
+/** A short-lived link to a file shared in chat (for the app, which can't send its sign-in to Cloudinary). */
+export async function chatFileUrl(messageId: string, index: number, thumb = false): Promise<ActionResult<{ url: string }>> {
+  try {
+    const user = await requireUser()
+    const mid = id.parse(messageId)
+    const i = z.number().int().min(0).max(20).parse(index)
+    const msg = await prisma.chatMessage.findUnique({ where: { id: mid }, include: { channel: true } })
+    if (!msg || msg.deletedAt || msg.channel.archivedAt || !(await canSeeChannel(msg.channel, user.id))) return { ok: false, error: NOT_FOUND }
+    const file = readFiles(msg.attachments)[i]
+    if (!file || !cloudinaryConfigured()) return { ok: false, error: NOT_FOUND }
+    return { ok: true, data: { url: chatFileLink(file as Parameters<typeof chatFileLink>[0], { thumb }) } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/**
+ * Permission to upload one file to this channel's private folder, straight from the browser or the app to Cloudinary
+ * (nothing passes through our server). Files are private: they open only through the CRM, for people who can see the channel.
+ */
+export async function chatUploadTicket(channelId: string): Promise<ActionResult<ChatUploadTicket>> {
+  try {
+    const user = await requireUser()
+    const cid = id.parse(channelId)
+    if (!(await loadChannel(cid, user.id))) return { ok: false, error: NOT_FOUND }
+    const cloud = process.env.CLOUDINARY_CLOUD_NAME
+    const key = process.env.CLOUDINARY_API_KEY
+    const secret = process.env.CLOUDINARY_API_SECRET
+    if (!cloud || !key || !secret) return { ok: false, error: 'File sharing isn’t set up yet (Cloudinary keys in Vercel).' }
+    const params: Record<string, string> = { folder: chatFolder(cid), timestamp: String(Math.floor(Date.now() / 1000)), type: 'authenticated', use_filename: 'true', unique_filename: 'true' }
+    const toSign = Object.keys(params)
+      .sort()
+      .map((k) => `${k}=${params[k]}`)
+      .join('&')
+    const signature = createHash('sha1').update(toSign + secret).digest('hex')
+    return { ok: true, data: { url: `https://api.cloudinary.com/v1_1/${cloud}/auto/upload`, fields: { ...params, api_key: key, signature }, maxBytes: CHAT_FILE_MAX } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+export interface ChatSearchHit {
+  id: string
+  channelId: string
+  where: string
+  threadId: string | null
+  name: string
+  body: string
+  at: string
+}
+
+/** Search messages you can see (newest first). */
+export async function chatSearch(query: string): Promise<ActionResult<ChatSearchHit[]>> {
+  try {
+    const user = await requireUser()
+    const q = z.string().trim().min(2).max(100).parse(query)
+    const rows = await prisma.chatMessage.findMany({
+      where: {
+        deletedAt: null,
+        body: { contains: q, mode: 'insensitive' },
+        channel: { archivedAt: null, OR: [{ kind: 'CHANNEL', private: false }, { members: { some: { userId: user.id } } }] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 30,
+      include: { channel: { select: { kind: true, name: true, members: { select: { userId: true } } } } },
+    })
+    const people = await userMap([...rows.map((r) => r.userId ?? ''), ...rows.flatMap((r) => (r.channel.kind === 'DM' ? r.channel.members.map((m) => m.userId) : []))].filter(Boolean))
+    return {
+      ok: true,
+      data: rows.map((r) => {
+        const other = r.channel.kind === 'DM' ? r.channel.members.find((m) => m.userId !== user.id)?.userId : null
+        return { id: r.id, channelId: r.channelId, where: r.channel.kind === 'DM' ? (other ? (people.get(other)?.name ?? 'Direct message') : 'Notes to self') : `#${r.channel.name}`, threadId: r.parentId, name: r.userId ? (people.get(r.userId)?.name ?? 'Someone') : 'Someone', body: r.body.slice(0, 300), at: r.createdAt.toISOString() }
+      }),
+    }
   } catch (err) {
     return toActionError(err)
   }
@@ -395,13 +652,14 @@ export async function chatJoin(channelId: string): Promise<ActionResult> {
   }
 }
 
-/** Leave a channel (you can rejoin a public one; a private one needs someone to add you back). */
+/** Leave a channel (you can rejoin a public one; a private one needs someone to add you back). #general stays. */
 export async function chatLeave(channelId: string): Promise<ActionResult> {
   try {
     const user = await requireUser()
     const cid = id.parse(channelId)
-    const ch = await prisma.chatChannel.findUnique({ where: { id: cid }, select: { kind: true } })
+    const ch = await prisma.chatChannel.findUnique({ where: { id: cid }, select: { kind: true, name: true } })
     if (!ch || ch.kind !== 'CHANNEL') return { ok: false, error: NOT_FOUND }
+    if (ch.name === 'general') return { ok: false, error: 'Everyone stays in #general. Mute it if it’s too busy.' }
     await prisma.chatMember.deleteMany({ where: { channelId: cid, userId: user.id } })
     return { ok: true, data: undefined }
   } catch (err) {
@@ -431,7 +689,7 @@ export interface ChatPulse {
   unread: number
   mentions: number
   /** the newest unread direct message or mention of you */
-  latest: { id: string; channelId: string; where: string; from: string; photo: string | null; preview: string; at: string } | null
+  latest: { id: string; channelId: string; threadId: string | null; where: string; from: string; photo: string | null; preview: string; at: string } | null
 }
 
 /** For the notifier on every page: unread counts and the newest message that's for you. */
@@ -440,8 +698,8 @@ export async function chatPulse(): Promise<ActionResult<ChatPulse>> {
     const user = await requireUser()
     const counts = await chatUnreadFor(user.id)
     if (!counts.mentions) return { ok: true, data: { ...counts, latest: null } }
-    const [m] = await prisma.$queryRaw<{ id: string; channelId: string; userId: string | null; body: string; createdAt: Date; kind: 'CHANNEL' | 'DM'; name: string }[]>`
-      SELECT m."id", m."channelId", m."userId", m."body", m."createdAt", c."kind", c."name"
+    const [m] = await prisma.$queryRaw<{ id: string; channelId: string; parentId: string | null; userId: string | null; body: string; createdAt: Date; kind: 'CHANNEL' | 'DM'; name: string }[]>`
+      SELECT m."id", m."channelId", m."parentId", m."userId", m."body", m."createdAt", c."kind", c."name"
       FROM "ChatMessage" m
       JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${user.id}
       JOIN "ChatChannel" c ON c."id" = m."channelId" AND c."archivedAt" IS NULL
@@ -451,33 +709,49 @@ export async function chatPulse(): Promise<ActionResult<ChatPulse>> {
     if (!m) return { ok: true, data: { ...counts, latest: null } }
     const ids = [m.userId, ...[...m.body.matchAll(/<@([a-z0-9]{20,40})>/gi)].map((x) => x[1]!)].filter((x): x is string => Boolean(x))
     const people = await userMap(ids)
-    const preview = m.body.replace(/<@([a-z0-9]{20,40})>/gi, (_, id: string) => `@${people.get(id)?.name ?? 'someone'}`).slice(0, 140)
+    const preview = (m.body.replace(/<@([a-z0-9]{20,40})>/gi, (_, i: string) => `@${people.get(i)?.name ?? 'someone'}`) || '📎 A file').slice(0, 140)
     const who = m.userId ? people.get(m.userId) : null
-    return { ok: true, data: { ...counts, latest: { id: m.id, channelId: m.channelId, where: m.kind === 'DM' ? 'Direct message' : `#${m.name}`, from: who?.name ?? 'Someone', photo: who?.photo ?? null, preview, at: m.createdAt.toISOString() } } }
+    return { ok: true, data: { ...counts, latest: { id: m.id, channelId: m.channelId, threadId: m.parentId, where: m.kind === 'DM' ? 'Direct message' : `#${m.name}`, from: who?.name ?? 'Someone', photo: who?.photo ?? null, preview, at: m.createdAt.toISOString() } } }
   } catch (err) {
     return toActionError(err)
   }
 }
 
-/** Push: direct messages to the other person, and @mentions to whoever was mentioned (if they can see the channel). */
-function notifyChat(channel: { id: string; kind: 'CHANNEL' | 'DM'; name: string; private: boolean }, senderId: string, body: string): void {
+/**
+ * Push: direct messages to the other person, @mentions to whoever was mentioned (if they can see the channel), and
+ * thread replies to the people in that thread. Muted channels stay quiet unless you're mentioned.
+ */
+function notifyChat(channel: { id: string; kind: 'CHANNEL' | 'DM'; name: string; private: boolean }, senderId: string, body: string, thread: { threadId: string; starterId: string | null } | null): void {
   void (async () => {
-    const members = (await prisma.chatMember.findMany({ where: { channelId: channel.id }, select: { userId: true } })).map((m) => m.userId)
-    const mentioned = mentionsIn(body)
-    const to = (channel.kind === 'DM' ? members : mentioned.filter((u) => !channel.private || members.includes(u))).filter((u) => u !== senderId)
+    const members = await prisma.chatMember.findMany({ where: { channelId: channel.id }, select: { userId: true, muted: true } })
+    const memberIds = members.map((m) => m.userId)
+    const mutedIds = new Set(members.filter((m) => m.muted).map((m) => m.userId))
+    const mentioned = mentionsIn(body).filter((u) => !channel.private || memberIds.includes(u))
+    let threadPeople: string[] = []
+    if (thread) {
+      const repliers = await prisma.chatMessage.findMany({ where: { parentId: thread.threadId, userId: { not: null } }, select: { userId: true }, distinct: ['userId'] })
+      threadPeople = [thread.starterId, ...repliers.map((r) => r.userId)].filter((u): u is string => Boolean(u) && !mutedIds.has(u!))
+    }
+    const direct = channel.kind === 'DM' ? memberIds : []
+    const to = [...new Set([...direct, ...mentioned, ...threadPeople])].filter((u) => u !== senderId)
     if (!to.length) return
     pushLater(to, 'chat', async () => {
-      const people = await userMap([senderId, ...mentioned])
+      const people = await userMap([senderId, ...mentionsIn(body)])
       const from = people.get(senderId)
-      const text = body.replace(/<@([a-z0-9]{20,40})>/gi, (_, id: string) => `@${people.get(id)?.name ?? 'someone'}`)
+      const text = body.replace(/<@([a-z0-9]{20,40})>/gi, (_, i: string) => `@${people.get(i)?.name ?? 'someone'}`)
       return {
         title: from?.name ?? 'Team chat',
-        ...(channel.kind === 'CHANNEL' ? { subtitle: `#${channel.name}` } : {}),
+        ...(channel.kind === 'CHANNEL' ? { subtitle: thread ? `Thread in #${channel.name}` : `#${channel.name}` } : thread ? { subtitle: 'Thread' } : {}),
         body: text,
         thread: `chat-${channel.id}`,
         category: 'CHAT',
-        data: { type: 'chat', channelId: channel.id, channel: channel.kind === 'DM' ? null : channel.name, dm: channel.kind === 'DM', senderId, senderName: from?.name ?? null, senderPhoto: photoUrl(from?.photo) },
+        data: { type: 'chat', channelId: channel.id, threadId: thread?.threadId ?? null, channel: channel.kind === 'DM' ? null : channel.name, dm: channel.kind === 'DM', senderId, senderName: from?.name ?? null, senderPhoto: photoUrl(from?.photo) },
       }
     })
   })().catch(() => undefined)
+}
+
+// keeps the online window shared with the screens
+export async function chatOnlineWindowMs(): Promise<number> {
+  return ONLINE_MS
 }

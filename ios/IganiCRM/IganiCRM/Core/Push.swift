@@ -122,7 +122,10 @@ import UserNotifications
         switch action {
         case "REPLY":
             guard let channel = info["channelId"] as? String, let text, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-            try? await API.shared.run("chatSend", ["channelId": channel, "body": text])
+            var args: [String: Any] = ["channelId": channel, "body": text]
+            // a reply to a thread notification stays in that thread
+            if let thread = info["threadId"], thread.count >= 20 { args["parentId"] = thread }
+            try? await API.shared.run("chatSend", args)
         case "TEXT":
             guard let number = info["number"] as? String, let text, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
             try? await API.shared.run("sendText", ["to": number, "body": text])

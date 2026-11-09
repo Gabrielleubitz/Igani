@@ -55,14 +55,89 @@ export async function ensureGeneral(): Promise<void> {
 /** Mentioned user ids in a message body. */
 export const mentionsIn = (body: string): string[] => [...new Set([...body.matchAll(/<@([a-z0-9]{20,40})>/gi)].map((m) => m[1]!))]
 
-/** Unread messages in your channels and direct conversations; mentions = @you plus every unread direct message. */
+/**
+ * What counts as unread for a person: top-level messages in channels they're in (not muted), every direct message,
+ * and anything that @mentions them (thread replies and muted channels included). Their own messages never count.
+ */
 export async function chatUnreadFor(userId: string): Promise<{ unread: number; mentions: number }> {
+  const me = `<@${userId}>`
   const [row] = await prisma.$queryRaw<{ unread: number; mentions: number }[]>`
-    SELECT count(*)::int AS unread,
-           count(*) FILTER (WHERE c."kind" = 'DM' OR strpos(m."body", ${`<@${userId}>`}) > 0)::int AS mentions
+    SELECT count(*) FILTER (WHERE (m."parentId" IS NULL AND (NOT cm."muted" OR c."kind" = 'DM')) OR strpos(m."body", ${me}) > 0)::int AS unread,
+           count(*) FILTER (WHERE c."kind" = 'DM' OR strpos(m."body", ${me}) > 0)::int AS mentions
     FROM "ChatMessage" m
     JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${userId}
     JOIN "ChatChannel" c ON c."id" = m."channelId" AND c."archivedAt" IS NULL
     WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${userId})`
   return { unread: row?.unread ?? 0, mentions: row?.mentions ?? 0 }
 }
+
+/** Per channel: the same counts, for the list. */
+export async function chatUnreadByChannel(userId: string): Promise<Map<string, { unread: number; mentions: number }>> {
+  const me = `<@${userId}>`
+  const rows = await prisma.$queryRaw<{ channelId: string; unread: number; mentions: number }[]>`
+    SELECT m."channelId",
+           count(*) FILTER (WHERE (m."parentId" IS NULL AND (NOT cm."muted" OR c."kind" = 'DM')) OR strpos(m."body", ${me}) > 0)::int AS unread,
+           count(*) FILTER (WHERE strpos(m."body", ${me}) > 0 OR (c."kind" = 'DM' AND m."parentId" IS NULL))::int AS mentions
+    FROM "ChatMessage" m
+    JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${userId}
+    JOIN "ChatChannel" c ON c."id" = m."channelId"
+    WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${userId})
+    GROUP BY m."channelId"`
+  return new Map(rows.map((r) => [r.channelId, { unread: r.unread, mentions: r.mentions }]))
+}
+
+// ─── presence and typing ─────────────────────────────────────────────────────
+
+export const ONLINE_MS = 90_000
+const TYPING_MS = 6_000
+
+/** "I'm here" (the list polls every few seconds): at most one write a minute per person. */
+export async function touchPresence(userId: string): Promise<void> {
+  await prisma.$executeRaw`
+    INSERT INTO "ChatPresence" ("userId", "seenAt") VALUES (${userId}, now())
+    ON CONFLICT ("userId") DO UPDATE SET "seenAt" = now() WHERE "ChatPresence"."seenAt" < now() - interval '45 seconds'`
+}
+
+export async function onlineIds(): Promise<Set<string>> {
+  const rows = await prisma.chatPresence.findMany({ where: { seenAt: { gt: new Date(Date.now() - ONLINE_MS) } }, select: { userId: true } })
+  return new Set(rows.map((r) => r.userId))
+}
+
+export async function setTyping(userId: string, channelId: string, threadId: string | null): Promise<void> {
+  await prisma.chatPresence.upsert({ where: { userId }, create: { userId, seenAt: new Date(), typingChannelId: channelId, typingThreadId: threadId, typingAt: new Date() }, update: { seenAt: new Date(), typingChannelId: channelId, typingThreadId: threadId, typingAt: new Date() } })
+}
+
+/** Who else is typing here right now. */
+export async function typingIn(channelId: string, threadId: string | null, exceptUserId: string): Promise<string[]> {
+  const rows = await prisma.chatPresence.findMany({ where: { typingChannelId: channelId, typingThreadId: threadId, typingAt: { gt: new Date(Date.now() - TYPING_MS) }, userId: { not: exceptUserId } }, select: { userId: true } })
+  return rows.map((r) => r.userId)
+}
+
+export async function stopTyping(userId: string): Promise<void> {
+  await prisma.chatPresence.updateMany({ where: { userId }, data: { typingAt: null } })
+}
+
+// ─── files ────────────────────────────────────────────────────────────────────
+
+export interface ChatFile {
+  publicId: string
+  kind: 'image' | 'file'
+  name: string
+  bytes: number
+  mime: string
+  width?: number | null
+  height?: number | null
+}
+
+export const CHAT_FILE_MAX = 20 * 1024 * 1024
+export const chatFolder = (channelId: string): string => `igani/chat/${channelId}`
+
+export function readFiles(v: unknown): ChatFile[] {
+  if (!Array.isArray(v)) return []
+  return v.filter((f): f is ChatFile => !!f && typeof f === 'object' && typeof (f as ChatFile).publicId === 'string')
+}
+
+// ─── CRM links in messages ────────────────────────────────────────────────────
+
+/** Lead ids linked in a message (pasted CRM addresses). */
+export const leadLinksIn = (body: string): string[] => [...new Set([...body.matchAll(/\/sales\/leads\/([a-z0-9]{20,40})/gi)].map((m) => m[1]!))].slice(0, 3)

@@ -74,8 +74,21 @@ function toMenu(nodes: NavNode[]): MenuNode[] {
   })
 }
 
+/** Team chat's unread count, kept live by ChatPulse (it fires this event with the new count). */
+export const CHAT_UNREAD_EVENT = 'igani:chat-unread'
+
+function withBadge(nodes: NavNode[], id: string, badge: number): NavNode[] {
+  return nodes.map((n) => (n.id === id ? { ...n, badge } : n.children ? { ...n, children: withBadge(n.children, id, badge) } : n))
+}
+
 export function AppNav({ nodes, expanded = false }: { nodes: NavNode[]; expanded?: boolean }): React.ReactElement {
-  const menu = useMemo(() => toMenu(nodes), [nodes])
+  const [chat, setChat] = useState<number | null>(null)
+  useEffect(() => {
+    const on = (e: Event): void => setChat((e as CustomEvent<number>).detail)
+    window.addEventListener(CHAT_UNREAD_EVENT, on)
+    return () => window.removeEventListener(CHAT_UNREAD_EVENT, on)
+  }, [])
+  const menu = useMemo(() => toMenu(chat === null ? nodes : withBadge(nodes, 'chat', chat)), [nodes, chat])
   return <NavMenu nodes={menu} expanded={expanded} />
 }
 

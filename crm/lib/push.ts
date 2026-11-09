@@ -66,15 +66,9 @@ function providerToken(c: Cfg): string {
 
 /** Unread chat messages plus unread texts: the number on the app icon. */
 async function badgeFor(userId: string): Promise<number> {
-  const [chat, sms] = await Promise.all([
-    prisma.$queryRaw<{ n: number }[]>`
-      SELECT count(*)::int AS n FROM "ChatMessage" m
-      JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${userId}
-      JOIN "ChatChannel" c ON c."id" = m."channelId" AND c."archivedAt" IS NULL
-      WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${userId})`,
-    prisma.smsMessage.count({ where: { userId, direction: 'INBOUND', readAt: null } }).catch(() => 0),
-  ])
-  return (chat[0]?.n ?? 0) + sms
+  const { chatUnreadFor } = await import('./chat')
+  const [chat, sms] = await Promise.all([chatUnreadFor(userId).catch(() => ({ unread: 0 })), prisma.smsMessage.count({ where: { userId, direction: 'INBOUND', readAt: null } }).catch(() => 0)])
+  return chat.unread + sms
 }
 
 function send(session: http2.ClientHttp2Session, token: string, jwt: string, payload: string, collapseId?: string): Promise<number> {

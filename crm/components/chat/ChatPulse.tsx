@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { chatPulse, type ChatPulse as Pulse } from '@/app/actions/chat'
+import { CHAT_UNREAD_EVENT } from '@/components/AppNav'
 
 const SEEN_KEY = 'igani-chat-seen'
+const linkFor = (l: NonNullable<Pulse['latest']>): string => `/sales/chat?c=${l.channelId}${l.threadId ? `&t=${l.threadId}` : ''}`
 
 /**
  * On every CRM page: the tab title shows unread chat messages, and a direct message or @mention pops up a card (once
@@ -17,6 +19,7 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
   const [card, setCard] = useState<Pulse['latest']>(null)
   const unread = useRef(initialUnread)
   const base = useRef<string | null>(null)
+  const notified = useRef<string | null>(null)
 
   useEffect(() => {
     const title = (): void => {
@@ -25,10 +28,13 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
     }
     let stop = false
     const tick = async (): Promise<void> => {
-      if (document.hidden && unread.current > 0) return
+      // in the background, keep checking only when desktop alerts are on
+      const alerts = typeof Notification !== 'undefined' && Notification.permission === 'granted'
+      if (document.hidden && !alerts) return
       const r = await chatPulse()
       if (stop || !r.ok) return
       unread.current = r.data.unread
+      window.dispatchEvent(new CustomEvent(CHAT_UNREAD_EVENT, { detail: r.data.unread }))
       base.current = null
       title()
       const l = r.data.latest
@@ -38,7 +44,21 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
       } catch {
         /* storage blocked: show it anyway */
       }
-      if (l && l.id !== seen && !window.location.pathname.startsWith('/sales/chat')) setCard(l)
+      const onChat = window.location.pathname.startsWith('/sales/chat')
+      if (l && l.id !== seen && document.hidden && alerts && l.id !== notified.current) {
+        notified.current = l.id
+        try {
+          const n = new Notification(`${l.from} · ${l.where}`, { body: l.preview, tag: `igani-chat-${l.channelId}`, icon: l.photo ?? '/apple-touch-icon.png' })
+          n.onclick = () => {
+            window.focus()
+            window.location.href = linkFor(l)
+            n.close()
+          }
+        } catch {
+          /* some browsers only allow notifications from a service worker */
+        }
+      }
+      if (l && l.id !== seen && !onChat) setCard(l)
     }
     title()
     void tick()
@@ -68,7 +88,7 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
           {/* eslint-disable-next-line @next/next/no-img-element -- our cached avatar */}
           {card.photo ? <img src={card.photo} alt="" className="absolute inset-0 h-full w-full object-cover" referrerPolicy="no-referrer" /> : null}
         </span>
-        <Link href={`/sales/chat?c=${card.channelId}`} onClick={dismiss} className="min-w-0 flex-1">
+        <Link href={linkFor(card)} onClick={dismiss} className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold">
             {card.from} <span className="font-normal text-muted-foreground">· {card.where}</span>
           </div>
