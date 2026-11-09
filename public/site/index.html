@@ -262,7 +262,10 @@ document.addEventListener('DOMContentLoaded',function(){document.querySelectorAl
 /* Mobile only: the campaign button becomes a quiet text link, the benefits stack, and the hero spacing tightens */
 @media (max-width:560px){
 .xh h1{text-align:center}
-.igani-bricks{aspect-ratio:4/3}
+.xh{overflow-x:hidden;overflow-x:clip}
+.igani-bricks{aspect-ratio:8/5}
+.xh__g{gap:16px}
+.xh__cl{margin-top:20px;gap:12px}
 .xh__c{margin-top:16px;gap:4px}
 .xh__c .hh__da{min-height:40px;padding:0 4px;background:transparent;box-shadow:none;transform:none;color:var(--ink-3,#626a7c)}
 .xh__c .hh__da:hover{background:transparent;transform:none;text-decoration:underline;text-underline-offset:3px}
@@ -709,7 +712,7 @@ if(msg&&!msg.value)msg.value=(pr.length?"What's hurting us: "+pr.join(", ")+".\n
   function fit() {
     // on phones, zoom in so the bricks fill the wider, taller box
     const w = root.clientWidth, h = root.clientHeight, z = w < 600 ? 1.75 : 1, sc = w / 1920 * z;
-    const dy = window.matchMedia("(max-width:560px)").matches ? -0.0615 * w : 0; /* phones: the shorter frame is centred on the bricks */
+    const dy = window.matchMedia("(max-width:560px)").matches ? -0.021 * w : 0; /* phones: the short frame is centred on the bricks */
     stage.style.transform = "translate(" + ((w - 1920 * sc) / 2).toFixed(1) + "px," + ((h - 1080 * sc) / 2 + dy).toFixed(1) + "px) scale(" + sc.toFixed(4) + ")";
   }
   fit();
