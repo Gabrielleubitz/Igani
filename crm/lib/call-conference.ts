@@ -16,19 +16,23 @@ import { twilioClient, twilioConfig, voiceUrl } from './twilio'
 
 export const roomName = (callId: string): string => `igani-call-${callId}`
 
-/** The room just started (the rep is in it): ring the client into it, once. */
-export async function dialClientIntoRoom(callId: string, conferenceSid: string): Promise<void> {
+/**
+ * Ring the client into the call's room, once. Called as soon as the rep's app connects (Twilio only "starts" a room
+ * once a second person is in it, so we can't wait for that). The room is addressed by its name: whichever of the two
+ * arrives first creates it. The client joining starts it; the rep waits a moment and hears the real ringing.
+ */
+export async function dialClientIntoRoom(callId: string): Promise<void> {
   const c = twilioConfig()
   if (!c) return
-  // claim the room for this call exactly once (Twilio can repeat webhooks)
-  const claimed = await prisma.call.updateMany({ where: { id: callId, conference: true, conferenceSid: null }, data: { conferenceSid } })
+  // claim the dial exactly once (the TwiML request can be retried)
+  const claimed = await prisma.call.updateMany({ where: { id: callId, conference: true, conferenceSid: null, childCallSid: null }, data: { conferenceSid: 'dialing' } })
   if (!claimed.count) return
   const call = await prisma.call.findUnique({ where: { id: callId } })
   if (!call || FINAL_STATUSES.includes(call.status)) return
   const record = await getSetting('voice.record')
   try {
     const p = await twilioClient(c)
-      .conferences(conferenceSid)
+      .conferences(roomName(callId))
       .participants.create({
         from: call.fromNumber,
         to: call.toNumber,
@@ -41,20 +45,34 @@ export async function dialClientIntoRoom(callId: string, conferenceSid: string):
         statusCallback: voiceUrl('status', callId),
         statusCallbackMethod: 'POST',
         statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+        conferenceStatusCallback: voiceUrl('conference', callId),
+        conferenceStatusCallbackMethod: 'POST',
+        conferenceStatusCallbackEvent: ['end'],
         ...(record ? { record: true, recordingChannels: 'dual', recordingStatusCallback: voiceUrl('recording', callId), recordingStatusCallbackMethod: 'POST', recordingStatusCallbackEvent: ['completed', 'absent'] } : {}),
       })
+    await prisma.call.update({ where: { id: callId }, data: { conferenceSid: p.conferenceSid } })
     await advanceCall(callId, { status: 'INITIATED', childCallSid: p.callSid })
   } catch (err) {
     console.error('[conference] could not dial the client', err instanceof Error ? err.message : err)
+    await prisma.call.update({ where: { id: callId }, data: { conferenceSid: null } }).catch(() => undefined)
     await advanceCall(callId, { status: 'FAILED' })
-    await endRoom(conferenceSid)
+    await endRoomByName(callId)
   }
+}
+
+/** End a room we only know by name (dialing the client failed): the rep's leg ends with it. */
+export async function endRoomByName(callId: string): Promise<void> {
+  const c = twilioConfig()
+  if (!c) return
+  const rooms = await twilioClient(c).conferences.list({ friendlyName: roomName(callId), status: 'in-progress', limit: 1 }).catch(() => [])
+  const waiting = rooms.length ? rooms : await twilioClient(c).conferences.list({ friendlyName: roomName(callId), status: 'init', limit: 1 }).catch(() => [])
+  for (const r of waiting) await endRoom(r.sid)
 }
 
 /** End the room (and so the rep's leg). Used when the client's leg ends without ever joining (busy, no answer…). */
 export async function endRoom(conferenceSid: string | null | undefined): Promise<void> {
   const c = twilioConfig()
-  if (!c || !conferenceSid) return
+  if (!c || !conferenceSid || !conferenceSid.startsWith('CF')) return
   await twilioClient(c)
     .conferences(conferenceSid)
     .update({ status: 'completed' })
@@ -77,7 +95,7 @@ export async function roomEnded(callId: string): Promise<void> {
 /** An admin joins a live call's room: muted, no beep, and the room doesn't wait for or end with them. */
 export async function canListen(callId: string, userId: string): Promise<{ ok: true; call: { id: string; userId: string | null } } | { ok: false }> {
   const call = await prisma.call.findUnique({ where: { id: callId }, select: { id: true, userId: true, conference: true, conferenceSid: true, status: true } })
-  if (!call?.conference || !call.conferenceSid || FINAL_STATUSES.includes(call.status) || call.userId === userId) return { ok: false }
+  if (!call?.conference || !call.conferenceSid?.startsWith('CF') || FINAL_STATUSES.includes(call.status) || call.userId === userId) return { ok: false }
   // kept in the audit log: who listened to whose call
   await logActivity({ actorId: userId, entityType: 'USER', entityId: call.userId ?? userId, action: 'call.listened', metadata: { callId: call.id } }).catch(() => undefined)
   return { ok: true, call }

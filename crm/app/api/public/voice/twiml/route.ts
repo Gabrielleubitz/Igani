@@ -1,4 +1,5 @@
-import { canListen, roomName } from '@/lib/call-conference'
+import { after } from 'next/server'
+import { canListen, dialClientIntoRoom, roomName } from '@/lib/call-conference'
 import { FINAL_STATUSES, MAX_CALL_MIN, advanceCall } from '@/lib/calls'
 import { dialProblem } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
@@ -67,8 +68,9 @@ export async function POST(req: Request): Promise<Response> {
   }
   if (claim !== 'ok') return refuse()
 
-  // Listen-in calls: the rep joins a room; the conference webhook rings the client into it once the room starts
+  // Listen-in calls: the rep joins a room, and right after this answer we ring the client into the same room
   if (call.conference) {
+    after(() => dialClientIntoRoom(call.id))
     const r = twiml()
     r.dial({ timeLimit: MAX_CALL_MIN * 60, action: voiceUrl('dial-done', call.id), method: 'POST' }).conference(
       {
@@ -78,7 +80,7 @@ export async function POST(req: Request): Promise<Response> {
         waitUrl: '',
         statusCallback: voiceUrl('conference', call.id),
         statusCallbackMethod: 'POST',
-        statusCallbackEvent: ['start', 'end'],
+        statusCallbackEvent: ['end'],
       },
       roomName(call.id),
     )
