@@ -235,6 +235,7 @@ struct ChatConversationView: View {
     @State private var cursor: String?
     @State private var seenAt: Date?
     @State private var newSince: Date?
+    @State private var openedAt: Date?
     @State private var typing: [String] = []
     @State private var failed: String?
     @State private var draft = ""
@@ -339,7 +340,9 @@ struct ChatConversationView: View {
 
     // messages, grouped like Slack: name and photo once per run, day dividers, "New" where you left off
     private var messageList: some View {
-        let firstNew = newSince.flatMap { since in messages.first { $0.at > since && $0.userId != meId && !$0.pending }?.id }
+        // "New" marks what was unread when you opened it, not what arrives while you watch
+        let firstNew = newSince.flatMap { since in messages.first { $0.at > since && $0.at <= (openedAt ?? .distantFuture) && $0.userId != meId && !$0.pending }?.id }
+        let replies = messages.filter { !$0.deleted }.count
         return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 2) {
@@ -348,7 +351,7 @@ struct ChatConversationView: View {
                             handle(action, parent)
                         }
                         HStack {
-                            Text("\(messages.count) \(messages.count == 1 ? "reply" : "replies")").font(.caption.weight(.semibold)).foregroundStyle(Theme.muted)
+                            Text("\(replies) \(replies == 1 ? "reply" : "replies")").font(.caption.weight(.semibold)).foregroundStyle(Theme.muted)
                             Rectangle().fill(Theme.line).frame(height: 1)
                         }
                         .padding(.vertical, 8)
@@ -584,6 +587,7 @@ struct ChatConversationView: View {
             more = p.more
             if !isThread {
                 newSince = p.myLastReadAt
+                openedAt = Date()
                 try? await API.shared.run("chatMarkRead", channelId)
                 await ChatBadge.shared.refresh()
             }
@@ -642,8 +646,10 @@ struct ChatConversationView: View {
                 if !files.isEmpty || info?.member == false { await first() }
             }
         } catch {
-            if let i = messages.firstIndex(where: { $0.id == temp.id }) { messages[i].pending = false; messages[i].failed = true }
-            toasts.show(error.localizedDescription, tone: .warn)
+            // not sent: your text goes back in the box to try again
+            withAnimation(.snappy) { messages.removeAll { $0.id == temp.id } }
+            if draft.isEmpty { draft = text }
+            toasts.show("Not sent: \(error.localizedDescription)", tone: .warn)
         }
     }
 
@@ -799,6 +805,7 @@ struct ChatMessageView: View {
                 }
                 if message.deleted {
                     Text("This message was deleted.").font(.subheadline.italic()).foregroundStyle(Theme.muted)
+                    if !inThread && message.replyCount > 0 { threadSummary }
                 } else {
                     if !message.body.isEmpty {
                         Text(ChatText.attributed(message.body, people: people, me: meId))

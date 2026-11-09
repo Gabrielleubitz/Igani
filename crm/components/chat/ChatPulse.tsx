@@ -33,8 +33,9 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
       if (document.hidden && !alerts) return
       const r = await chatPulse()
       if (stop || !r.ok) return
-      unread.current = r.data.unread
-      window.dispatchEvent(new CustomEvent(CHAT_UNREAD_EVENT, { detail: r.data.unread }))
+      if (!window.location.pathname.startsWith('/sales/chat')) unread.current = r.data.unread
+      // on the chat page, the page itself keeps the count (it knows what you've just read)
+      if (!window.location.pathname.startsWith('/sales/chat')) window.dispatchEvent(new CustomEvent(CHAT_UNREAD_EVENT, { detail: r.data.unread }))
       base.current = null
       title()
       const l = r.data.latest
@@ -58,13 +59,22 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
           /* some browsers only allow notifications from a service worker */
         }
       }
-      if (l && l.id !== seen && !onChat) setCard(l)
+      // read somewhere else (the app, another tab): the card goes
+      setCard(l && l.id !== seen && !onChat ? l : null)
     }
+    // the chat page reports what you've read right away
+    const onCount = (e: Event): void => {
+      unread.current = (e as CustomEvent<number>).detail
+      base.current = null
+      title()
+    }
+    window.addEventListener(CHAT_UNREAD_EVENT, onCount)
     title()
     void tick()
     const t = window.setInterval(() => void tick(), 15000)
     return () => {
       stop = true
+      window.removeEventListener(CHAT_UNREAD_EVENT, onCount)
       window.clearInterval(t)
     }
   }, [path])

@@ -70,12 +70,17 @@ function Inline({ text, people, meId }: { text: string; people: Map<string, Chat
             </span>
           )
         }
-        if (/^https?:\/\//i.test(p))
+        if (/^https?:\/\//i.test(p)) {
+          const [, href = p, tail = ''] = p.match(/^(.*?)([.,;:!?)\]'"]*)$/) ?? []
           return (
-            <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="break-all text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary">
-              {p}
-            </a>
+            <span key={i}>
+              <a href={href} target="_blank" rel="noopener noreferrer" className="break-words text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary">
+                {href}
+              </a>
+              {tail}
+            </span>
           )
+        }
         if (/^`.+`$/.test(p))
           return (
             <code key={i} className="rounded bg-muted px-1.5 py-0.5 font-mono text-[0.86em]">
@@ -231,9 +236,16 @@ export function Message({
 
   if (m.deleted)
     return (
-      <div className={cn('flex gap-3 px-2 py-0.5', !grouped && 'mt-2')}>
+      <div id={`msg-${m.id}`} className={cn('flex gap-3 px-2 py-0.5', !grouped && 'mt-2')}>
         <span className="w-9 shrink-0" />
-        <span className="text-sm italic text-muted-foreground">This message was deleted.</span>
+        <span className="min-w-0">
+          <span className="text-sm italic text-muted-foreground">This message was deleted.</span>
+          {onReply && m.replyCount > 0 ? (
+            <button type="button" onClick={() => onReply(m)} className="ml-2 text-xs font-semibold text-primary hover:underline">
+              {m.replyCount} {m.replyCount === 1 ? 'reply' : 'replies'}
+            </button>
+          ) : null}
+        </span>
       </div>
     )
 

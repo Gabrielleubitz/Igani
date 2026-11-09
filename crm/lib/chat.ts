@@ -62,8 +62,8 @@ export const mentionsIn = (body: string): string[] => [...new Set([...body.match
 export async function chatUnreadFor(userId: string): Promise<{ unread: number; mentions: number }> {
   const me = `<@${userId}>`
   const [row] = await prisma.$queryRaw<{ unread: number; mentions: number }[]>`
-    SELECT count(*) FILTER (WHERE (m."parentId" IS NULL AND (NOT cm."muted" OR c."kind" = 'DM')) OR strpos(m."body", ${me}) > 0)::int AS unread,
-           count(*) FILTER (WHERE c."kind" = 'DM' OR strpos(m."body", ${me}) > 0)::int AS mentions
+    SELECT count(*) FILTER (WHERE (m."parentId" IS NULL AND NOT cm."muted") OR strpos(m."body", ${me}) > 0)::int AS unread,
+           count(*) FILTER (WHERE (c."kind" = 'DM' AND m."parentId" IS NULL AND NOT cm."muted") OR strpos(m."body", ${me}) > 0)::int AS mentions
     FROM "ChatMessage" m
     JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${userId}
     JOIN "ChatChannel" c ON c."id" = m."channelId" AND c."archivedAt" IS NULL
@@ -76,8 +76,8 @@ export async function chatUnreadByChannel(userId: string): Promise<Map<string, {
   const me = `<@${userId}>`
   const rows = await prisma.$queryRaw<{ channelId: string; unread: number; mentions: number }[]>`
     SELECT m."channelId",
-           count(*) FILTER (WHERE (m."parentId" IS NULL AND (NOT cm."muted" OR c."kind" = 'DM')) OR strpos(m."body", ${me}) > 0)::int AS unread,
-           count(*) FILTER (WHERE strpos(m."body", ${me}) > 0 OR (c."kind" = 'DM' AND m."parentId" IS NULL))::int AS mentions
+           count(*) FILTER (WHERE (m."parentId" IS NULL AND NOT cm."muted") OR strpos(m."body", ${me}) > 0)::int AS unread,
+           count(*) FILTER (WHERE (c."kind" = 'DM' AND m."parentId" IS NULL AND NOT cm."muted") OR strpos(m."body", ${me}) > 0)::int AS mentions
     FROM "ChatMessage" m
     JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${userId}
     JOIN "ChatChannel" c ON c."id" = m."channelId"

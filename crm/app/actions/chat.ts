@@ -1,7 +1,7 @@
 'use server'
 
 import { createHash } from 'node:crypto'
-import type { Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { chatFileLink, cloudinaryConfigured } from '@/lib/cloudinary'
@@ -169,8 +169,10 @@ async function present(rows: DbMessage[], user: { id: string; role: 'ADMIN' | 'S
   const threadIds = rows.filter((m) => m.replyCount > 0).map((m) => m.id)
   const recentReplies = threadIds.length
     ? await prisma.$queryRaw<{ parentId: string; userId: string | null }[]>`
-        SELECT DISTINCT ON ("parentId", "userId") "parentId", "userId" FROM "ChatMessage"
-        WHERE "parentId" = ANY(${threadIds}) AND "deletedAt" IS NULL ORDER BY "parentId", "userId", "createdAt" DESC`
+        SELECT "parentId", "userId" FROM (
+          SELECT DISTINCT ON ("parentId", "userId") "parentId", "userId", "createdAt" FROM "ChatMessage"
+          WHERE "parentId" = ANY(${threadIds}) AND "deletedAt" IS NULL ORDER BY "parentId", "userId", "createdAt" DESC
+        ) r ORDER BY "createdAt" DESC`
     : []
   const leadIds = [...new Set(rows.flatMap((m) => (m.deletedAt ? [] : leadLinksIn(m.body))))]
   const leads = leadIds.length
@@ -409,8 +411,19 @@ export async function chatDelete(messageId: string): Promise<ActionResult> {
     const user = await requireUser()
     const mid = id.parse(messageId)
     const now = new Date()
-    const done = await prisma.chatMessage.updateMany({ where: { id: mid, deletedAt: null, ...(user.role === 'ADMIN' ? {} : { userId: user.id }) }, data: { deletedAt: now, updatedAt: now, body: '', attachments: undefined } })
-    if (done.count) await prisma.chatReaction.deleteMany({ where: { messageId: mid } })
+    const done = await prisma.chatMessage.updateMany({ where: { id: mid, deletedAt: null, ...(user.role === 'ADMIN' ? {} : { userId: user.id }) }, data: { deletedAt: now, updatedAt: now, body: '', attachments: Prisma.DbNull } })
+    if (done.count) {
+      await prisma.chatReaction.deleteMany({ where: { messageId: mid } })
+      // a thread reply: the thread's count and "last reply" follow
+      const msg = await prisma.chatMessage.findUnique({ where: { id: mid }, select: { parentId: true } })
+      if (msg?.parentId) {
+        const [count, last] = await Promise.all([
+          prisma.chatMessage.count({ where: { parentId: msg.parentId, deletedAt: null } }),
+          prisma.chatMessage.findFirst({ where: { parentId: msg.parentId, deletedAt: null }, orderBy: { createdAt: 'desc' }, select: { createdAt: true } }),
+        ])
+        await prisma.chatMessage.update({ where: { id: msg.parentId }, data: { replyCount: count, lastReplyAt: last?.createdAt ?? null, updatedAt: now } })
+      }
+    }
     return done.count ? { ok: true, data: undefined } : { ok: false, error: 'You can only delete your own messages.' }
   } catch (err) {
     return toActionError(err)
@@ -704,7 +717,7 @@ export async function chatPulse(): Promise<ActionResult<ChatPulse>> {
       JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${user.id}
       JOIN "ChatChannel" c ON c."id" = m."channelId" AND c."archivedAt" IS NULL
       WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${user.id})
-        AND (c."kind" = 'DM' OR strpos(m."body", ${`<@${user.id}>`}) > 0)
+        AND ((c."kind" = 'DM' AND NOT cm."muted" AND m."parentId" IS NULL) OR strpos(m."body", ${`<@${user.id}>`}) > 0)
       ORDER BY m."createdAt" DESC LIMIT 1`
     if (!m) return { ok: true, data: { ...counts, latest: null } }
     const ids = [m.userId, ...[...m.body.matchAll(/<@([a-z0-9]{20,40})>/gi)].map((x) => x[1]!)].filter((x): x is string => Boolean(x))
@@ -732,7 +745,7 @@ function notifyChat(channel: { id: string; kind: 'CHANNEL' | 'DM'; name: string;
       const repliers = await prisma.chatMessage.findMany({ where: { parentId: thread.threadId, userId: { not: null } }, select: { userId: true }, distinct: ['userId'] })
       threadPeople = [thread.starterId, ...repliers.map((r) => r.userId)].filter((u): u is string => Boolean(u) && !mutedIds.has(u!))
     }
-    const direct = channel.kind === 'DM' ? memberIds : []
+    const direct = channel.kind === 'DM' ? memberIds.filter((u) => !mutedIds.has(u)) : []
     const to = [...new Set([...direct, ...mentioned, ...threadPeople])].filter((u) => u !== senderId)
     if (!to.length) return
     pushLater(to, 'chat', async () => {

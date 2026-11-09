@@ -2,26 +2,7 @@
 
 import { ArrowDown, ArrowLeft, Archive, Bell, BellOff, Hash, Lock, LogOut, MessageSquareReply, Plus, Search, UserPlus, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import {
-  chatAddMembers,
-  chatArchiveChannel,
-  chatDelete,
-  chatJoin,
-  chatLeave,
-  chatMarkRead,
-  chatMessages,
-  chatMute,
-  chatOpenDm,
-  chatOverview,
-  chatReact,
-  chatSearch,
-  chatSend,
-  type ChatChannelInfo,
-  type ChatChannelRow,
-  type ChatMessageRow,
-  type ChatOverview,
-  type ChatSearchHit,
-} from '@/app/actions/chat'
+import { chatAddMembers, chatArchiveChannel, chatDelete, chatJoin, chatLeave, chatMarkRead, chatMessages, chatMute, chatOpenDm, chatOverview, chatReact, chatSearch, chatSend, type ChatChannelInfo, type ChatChannelRow, type ChatMessageRow, type ChatOverview, type ChatSearchHit } from '@/app/actions/chat'
 import { CHAT_UNREAD_EVENT } from '@/components/AppNav'
 import { NewChannelDialog, PeopleDialog, TopicDialog } from '@/components/chat/ChatDialogs'
 import { Avatar, Composer, Message, dayLabel, toStored, type Emoji, type Pending, type UploadedFile } from '@/components/chat/ChatParts'
@@ -42,10 +23,16 @@ function useConversation(channelId: string | null, threadId: string | null, onNe
   const [more, setMore] = useState(false)
   const [readBy, setReadBy] = useState<{ userId: string; at: string }[]>([])
   const [myLastReadAt, setMyLastReadAt] = useState<string | null>(null)
+  /** when the page loaded: "New" marks what was unread then, not what arrives while you watch */
+  const [openedAt, setOpenedAt] = useState<string | null>(null)
   const [typing, setTyping] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const cursor = useRef<string | null>(null)
+  const shown = useRef<Pending[]>([])
+  useEffect(() => {
+    shown.current = messages
+  }, [messages])
   const newRef = useRef(onNew)
   useEffect(() => {
     newRef.current = onNew
@@ -59,6 +46,7 @@ function useConversation(channelId: string | null, threadId: string | null, onNe
     setError(null)
     setMessages([])
     setParent(null)
+    if (!threadId) setInfo(null)
     void chatMessages({ channelId, threadId }).then((r) => {
       if (stop) return
       setLoading(false)
@@ -69,29 +57,32 @@ function useConversation(channelId: string | null, threadId: string | null, onNe
       setMore(r.data.more)
       setReadBy(r.data.readBy)
       setMyLastReadAt(r.data.myLastReadAt)
+      setOpenedAt(r.data.cursor)
       setTyping(r.data.typing)
       cursor.current = r.data.cursor
       if (!threadId) void chatMarkRead(channelId)
     })
     const tick = async (): Promise<void> => {
       if (stop || document.hidden || !cursor.current) return
-      const r = await chatMessages({ channelId, threadId, since: cursor.current })
+      const r = await chatMessages({
+        channelId,
+        threadId,
+        since: cursor.current,
+      })
       if (stop || !r.ok) return
       cursor.current = r.data.cursor
       setReadBy(r.data.readBy)
       setTyping(r.data.typing)
       if (r.data.parent) setParent(r.data.parent)
       if (!r.data.messages.length) return
-      let fresh = false
+      // decide "new" against what's on screen now (a state updater runs later, so it can't tell us)
+      const fresh = r.data.messages.some((m) => !shown.current.some((x) => x.id === m.id))
       setMessages((list) => {
         const next = [...list]
         for (const m of r.data.messages) {
           const i = next.findIndex((x) => x.id === m.id)
           if (i >= 0) next[i] = m
-          else {
-            next.push(m)
-            fresh = true
-          }
+          else next.push(m)
         }
         return next.sort((a, b) => a.at.localeCompare(b.at))
       })
@@ -118,7 +109,23 @@ function useConversation(channelId: string | null, threadId: string | null, onNe
     setMore(r.data.more)
   }, [channelId, messages])
 
-  return { info, setInfo, messages, setMessages, parent, setParent, more, readBy, myLastReadAt, typing, error, setError, loading, loadOlder }
+  return {
+    info,
+    setInfo,
+    messages,
+    setMessages,
+    parent,
+    setParent,
+    more,
+    readBy,
+    myLastReadAt,
+    openedAt,
+    typing,
+    error,
+    setError,
+    loading,
+    loadOlder,
+  }
 }
 
 /* ---------- sidebar row ---------- */
@@ -140,11 +147,7 @@ function ChannelLink({ c, active, onOpen }: { c: ChatChannelRow; active: boolean
       {c.kind === 'DM' ? <Avatar name={c.name} photo={c.dm?.photo ?? null} size={20} online={c.dm?.online} /> : c.private ? <Lock className="h-[15px] w-[15px] shrink-0 opacity-70" aria-hidden /> : <Hash className="h-[15px] w-[15px] shrink-0 opacity-70" aria-hidden />}
       <span className="min-w-0 flex-1 truncate">{c.name}</span>
       {c.muted ? <BellOff className="h-3.5 w-3.5 shrink-0 opacity-60" aria-label="Muted" /> : null}
-      {c.mentions > 0 ? (
-        <span className="min-w-[20px] rounded-full bg-rose-500 px-1.5 text-center text-[11px] font-bold leading-5 text-white">{c.mentions}</span>
-      ) : c.unread > 0 && !c.muted ? (
-        <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-label={`${c.unread} unread`} />
-      ) : null}
+      {c.mentions > 0 ? <span className="min-w-[20px] rounded-full bg-rose-500 px-1.5 text-center text-[11px] font-bold leading-5 text-white">{c.mentions}</span> : c.unread > 0 && !c.muted ? <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-label={`${c.unread} unread`} /> : null}
     </button>
   )
 }
@@ -157,6 +160,7 @@ function MessageList({
   isAdmin,
   people,
   newSince,
+  newUntil = null,
   highlight,
   editReq,
   onReact,
@@ -168,8 +172,10 @@ function MessageList({
   meId: string
   isAdmin: boolean
   people: Map<string, ChatPerson>
-  /** messages from others after this are new */
+  /** messages from others after this are new… */
   newSince: string | null
+  /** …up to when the page opened */
+  newUntil?: string | null
   highlight: string | null
   editReq: { id: string; n: number } | null
   onReact: (m: ChatMessageRow, e: Emoji) => void
@@ -177,7 +183,7 @@ function MessageList({
   onDelete: (m: ChatMessageRow) => void
   onEdited: (id: string, body: string) => void
 }): React.ReactElement {
-  const firstNew = newSince ? messages.findIndex((m) => m.at > newSince && m.userId !== meId && !m.pending) : -1
+  const firstNew = newSince ? messages.findIndex((m) => m.at > newSince && (!newUntil || m.at <= newUntil) && m.userId !== meId && !m.pending) : -1
   return (
     <ol className="space-y-0.5">
       {messages.map((m, i) => {
@@ -228,7 +234,8 @@ function Typing({ names }: { names: string[] }): React.ReactElement {
 /* ---------- the page ---------- */
 
 export function TeamChat({ initial, initialChannelId, initialThreadId = null }: { initial: ChatOverview; initialChannelId: string | null; initialThreadId?: string | null }): React.ReactElement {
-  const [overview, setOverview] = useState(initial)
+  // a conversation opened from a link is read as it opens
+  const [overview, setOverview] = useState(() => ({ ...initial, channels: initial.channels.map((c) => (c.id === initialChannelId ? { ...c, unread: 0, mentions: 0 } : c)) }))
   const [channelId, setChannelId] = useState<string | null>(initialChannelId)
   const [threadId, setThreadId] = useState<string | null>(initialThreadId)
   const [filter, setFilter] = useState('')
@@ -237,7 +244,10 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
   const [highlight, setHighlight] = useState<string | null>(null)
   const [unseen, setUnseen] = useState(0)
   const [editReq, setEditReq] = useState<{ id: string; n: number } | null>(null)
-  const [threadEditReq, setThreadEditReq] = useState<{ id: string; n: number } | null>(null)
+  const [threadEditReq, setThreadEditReq] = useState<{
+    id: string
+    n: number
+  } | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const threadScroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
@@ -252,6 +262,7 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
   })
   const thread = useConversation(threadId ? channelId : null, threadId)
   const { info } = convo
+  const replies = thread.messages.filter((m) => !m.deleted).length
 
   useEffect(() => {
     openRef.current = channelId
@@ -264,7 +275,11 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
 
   const refreshList = useCallback(async () => {
     const r = await chatOverview()
-    if (r.ok) setOverview({ ...r.data, channels: r.data.channels.map((c) => (c.id === openRef.current ? { ...c, unread: 0, mentions: 0 } : c)) })
+    if (r.ok)
+      setOverview({
+        ...r.data,
+        channels: r.data.channels.map((c) => (c.id === openRef.current ? { ...c, unread: 0, mentions: 0 } : c)),
+      })
   }, [])
   useEffect(() => {
     const t = window.setInterval(() => void (!document.hidden && refreshList()), LIST_MS)
@@ -283,31 +298,51 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
     if (opts.thread) url.searchParams.set('t', opts.thread)
     else url.searchParams.delete('t')
     window.history.replaceState(null, '', url)
-    setOverview((o) => ({ ...o, channels: o.channels.map((c) => (c.id === id ? { ...c, unread: 0, mentions: 0 } : c)) }))
+    setOverview((o) => ({
+      ...o,
+      channels: o.channels.map((c) => (c.id === id ? { ...c, unread: 0, mentions: 0 } : c)),
+    }))
   }, [])
 
   useEffect(() => {
     const first = initialChannelId ?? initial.channels.find((c) => c.kind === 'CHANNEL' && c.name === 'general')?.id ?? initial.channels[0]?.id ?? null
     if (first && !initialChannelId && window.matchMedia('(min-width: 768px)').matches) open(first)
+    // a link straight to a conversation on a phone: bring the chat (and its message box) into view
+    if (initialChannelId && !window.matchMedia('(min-width: 640px)').matches) frame.current?.scrollIntoView({ block: 'start' })
   }, [initial.channels, initialChannelId, open])
 
-  // stay at the bottom while you're there; land on a highlighted message from search
+  // stay at the bottom while you're there; land on a highlighted message from search (once), keep your place when older ones load
+  const landed = useRef<string | null>(null)
+  const olderFrom = useRef<number | null>(null)
   useLayoutEffect(() => {
     const el = scroller.current
     if (!el) return
-    if (highlight) {
+    if (olderFrom.current != null) {
+      el.scrollTop += el.scrollHeight - olderFrom.current
+      olderFrom.current = null
+      return
+    }
+    if (highlight && landed.current !== highlight && !threadId) {
       const target = document.getElementById(`msg-${highlight}`)
       if (target) {
+        landed.current = highlight
         target.scrollIntoView({ block: 'center' })
+        window.setTimeout(() => setHighlight((h) => (h === highlight ? null : h)), 2500)
         return
       }
     }
     if (stick.current) el.scrollTop = el.scrollHeight
-  }, [convo.messages, channelId, highlight])
+  }, [convo.messages, channelId, highlight, threadId])
   useLayoutEffect(() => {
     const el = threadScroller.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [thread.messages, threadId])
+    if (!el) return
+    const target = highlight ? el.querySelector(`#msg-${highlight}`) : null
+    if (target && landed.current !== highlight) {
+      landed.current = highlight
+      target.scrollIntoView({ block: 'center' })
+      window.setTimeout(() => setHighlight((h) => (h === highlight ? null : h)), 2500)
+    } else if (!target) el.scrollTop = el.scrollHeight
+  }, [thread.messages, threadId, highlight])
 
   // message search (server side, two letters or more)
   useEffect(() => {
@@ -325,19 +360,39 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
     const body = toStored(text.trim(), overview.people)
     if (!body && !files.length) return false
     const target = parentId ? thread : convo
-    const temp: Pending = { id: `tmp-${Date.now()}`, userId: me.id, name: me.name, photo: me.photo, body, at: new Date().toISOString(), edited: false, deleted: false, reactions: [], pending: true, parentId, replyCount: 0, lastReplyAt: null, repliers: [], files: [], leads: [] }
+    const temp: Pending = {
+      id: `tmp-${Date.now()}`,
+      userId: me.id,
+      name: me.name,
+      photo: me.photo,
+      body,
+      at: new Date().toISOString(),
+      edited: false,
+      deleted: false,
+      reactions: [],
+      pending: true,
+      parentId,
+      replyCount: 0,
+      lastReplyAt: null,
+      repliers: [],
+      files: [],
+      leads: [],
+    }
     if (!parentId) stick.current = true
     target.setMessages((l) => [...l, temp])
     const r = await chatSend({ channelId, body, parentId, files })
     if (!r.ok) {
-      target.setMessages((l) => l.map((m) => (m.id === temp.id ? { ...m, pending: false, failed: true } : m)))
-      target.setError(r.error)
+      target.setMessages((l) => l.filter((m) => m.id !== temp.id))
+      target.setError(`Not sent: ${r.error}`)
       return false
     }
     target.setMessages((l) => (l.some((m) => m.id === r.data.id) ? l.filter((m) => m.id !== temp.id) : l.map((m) => (m.id === temp.id ? { ...m, id: r.data.id, at: r.data.at, pending: false } : m))))
     if (parentId) convo.setMessages((l) => l.map((m) => (m.id === parentId ? { ...m, replyCount: m.replyCount + 1, lastReplyAt: r.data.at } : m)))
     if (info && !info.member) convo.setInfo({ ...info, member: true })
-    setOverview((o) => ({ ...o, channels: o.channels.map((c) => (c.id === channelId ? { ...c, member: true, lastMessageAt: r.data.at } : c)) }))
+    setOverview((o) => ({
+      ...o,
+      channels: o.channels.map((c) => (c.id === channelId ? { ...c, member: true, lastMessageAt: r.data.at } : c)),
+    }))
     return true
   }
 
@@ -347,7 +402,20 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
       l.map((x) => {
         if (x.id !== m.id) return x
         const had = x.reactions.find((r) => r.emoji === emoji)
-        const reactions = had ? x.reactions.map((r) => (r.emoji === emoji ? { ...r, count: r.count + (r.mine ? -1 : 1), mine: !r.mine, names: r.mine ? r.names.filter((n) => n !== 'You') : [...r.names, 'You'] } : r)).filter((r) => r.count > 0) : [...x.reactions, { emoji, count: 1, mine: true, names: ['You'] }]
+        const reactions = had
+          ? x.reactions
+              .map((r) =>
+                r.emoji === emoji
+                  ? {
+                      ...r,
+                      count: r.count + (r.mine ? -1 : 1),
+                      mine: !r.mine,
+                      names: r.mine ? r.names.filter((n) => n !== 'You') : [...r.names, 'You'],
+                    }
+                  : r,
+              )
+              .filter((r) => r.count > 0)
+          : [...x.reactions, { emoji, count: 1, mine: true, names: ['You'] }]
         return { ...x, reactions }
       }),
     )
@@ -402,7 +470,19 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
               <div className="eyebrow mb-1 px-2.5">Messages</div>
               {hits.length ? (
                 hits.map((h) => (
-                  <button key={h.id} type="button" onClick={() => (h.threadId ? open(h.channelId, { thread: h.threadId, highlight: h.id }) : open(h.channelId, { highlight: h.id }))} className="block w-full rounded-sm px-2.5 py-2 text-left hover:bg-muted">
+                  <button
+                    key={h.id}
+                    type="button"
+                    onClick={() =>
+                      h.threadId
+                        ? open(h.channelId, {
+                            thread: h.threadId,
+                            highlight: h.id,
+                          })
+                        : open(h.channelId, { highlight: h.id })
+                    }
+                    className="block w-full rounded-sm px-2.5 py-2 text-left hover:bg-muted"
+                  >
                     <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
                       <span className="truncate font-semibold text-foreground">{h.name}</span>
                       <span className="shrink-0">{h.where}</span>
@@ -415,41 +495,45 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
               )}
             </section>
           ) : null}
-          <section>
-            <div className="mb-1 flex items-center justify-between px-2.5">
-              <h2 className="eyebrow">Channels</h2>
-              <button type="button" onClick={() => setDialog('channel')} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="New channel" title="New channel">
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-            {channels.filter(match).map((c) => (
-              <ChannelLink key={c.id} c={c} active={c.id === channelId} onOpen={() => open(c.id)} />
-            ))}
-            {browse.filter(match).length ? (
-              <>
-                <div className="mt-3 px-2.5 pb-1 text-[11px] text-muted-foreground">More channels to join</div>
-                {browse.filter(match).map((c) => (
-                  <ChannelLink key={c.id} c={c} active={c.id === channelId} onOpen={() => open(c.id)} />
-                ))}
-              </>
-            ) : null}
-          </section>
-          <section>
-            <div className="mb-1 flex items-center justify-between px-2.5">
-              <h2 className="eyebrow">Direct messages</h2>
-              <button type="button" onClick={() => setDialog('dm')} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Message someone" title="Message someone">
-                <Plus className="h-4 w-4" />
-              </button>
-            </div>
-            {dms.filter(match).map((c) => (
-              <ChannelLink key={c.id} c={c} active={c.id === channelId} onOpen={() => open(c.id)} />
-            ))}
-            {!dms.length ? (
-              <button type="button" onClick={() => setDialog('dm')} className="w-full rounded-sm px-2.5 py-1.5 text-left text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground">
-                Message a teammate…
-              </button>
-            ) : null}
-          </section>
+          {!needle || channels.some(match) || browse.some(match) ? (
+            <section>
+              <div className="mb-1 flex items-center justify-between px-2.5">
+                <h2 className="eyebrow">Channels</h2>
+                <button type="button" onClick={() => setDialog('channel')} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="New channel" title="New channel">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              {channels.filter(match).map((c) => (
+                <ChannelLink key={c.id} c={c} active={c.id === channelId} onOpen={() => open(c.id)} />
+              ))}
+              {browse.filter(match).length ? (
+                <>
+                  <div className="mt-3 px-2.5 pb-1 text-[11px] text-muted-foreground">More channels to join</div>
+                  {browse.filter(match).map((c) => (
+                    <ChannelLink key={c.id} c={c} active={c.id === channelId} onOpen={() => open(c.id)} />
+                  ))}
+                </>
+              ) : null}
+            </section>
+          ) : null}
+          {!needle || dms.some(match) ? (
+            <section>
+              <div className="mb-1 flex items-center justify-between px-2.5">
+                <h2 className="eyebrow">Direct messages</h2>
+                <button type="button" onClick={() => setDialog('dm')} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Message someone" title="Message someone">
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+              {dms.filter(match).map((c) => (
+                <ChannelLink key={c.id} c={c} active={c.id === channelId} onOpen={() => open(c.id)} />
+              ))}
+              {!dms.length ? (
+                <button type="button" onClick={() => setDialog('dm')} className="w-full rounded-sm px-2.5 py-1.5 text-left text-[13px] text-muted-foreground hover:bg-muted/60 hover:text-foreground">
+                  Message a teammate…
+                </button>
+              ) : null}
+            </section>
+          ) : null}
         </nav>
         <DesktopAlerts />
       </aside>
@@ -544,14 +628,34 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
               >
                 {convo.more ? (
                   <div className="mb-4 text-center">
-                    <Button variant="outline" size="sm" onClick={() => void convo.loadOlder()}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        olderFrom.current = scroller.current?.scrollHeight ?? null
+                        void convo.loadOlder()
+                      }}
+                    >
                       Load earlier messages
                     </Button>
                   </div>
                 ) : (
                   <Intro info={info} me={me} />
                 )}
-                <MessageList messages={convo.messages} meId={me.id} isAdmin={overview.isAdmin} people={peopleBy} newSince={convo.myLastReadAt} highlight={highlight} editReq={editReq} onReact={react(convo)} onReply={(m) => open(channelId, { thread: m.id })} onDelete={remove(convo)} onEdited={edited(convo)} />
+                <MessageList
+                  messages={convo.messages}
+                  meId={me.id}
+                  isAdmin={overview.isAdmin}
+                  people={peopleBy}
+                  newSince={convo.myLastReadAt}
+                  newUntil={convo.openedAt}
+                  highlight={highlight}
+                  editReq={editReq}
+                  onReact={react(convo)}
+                  onReply={(m) => open(channelId, { thread: m.id })}
+                  onDelete={remove(convo)}
+                  onEdited={edited(convo)}
+                />
                 {seen ? <p className="pr-3 pt-1 text-right text-[11px] text-muted-foreground">✓ Seen</p> : null}
               </div>
               {unseen > 0 ? (
@@ -560,7 +664,10 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
                   onClick={() => {
                     stick.current = true
                     setUnseen(0)
-                    scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' })
+                    scroller.current?.scrollTo({
+                      top: scroller.current.scrollHeight,
+                      behavior: 'smooth',
+                    })
                   }}
                   className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-lg transition-transform hover:-translate-y-px"
                 >
@@ -625,7 +732,7 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
               <div className="border-b pb-3">
                 <Message m={thread.parent} grouped={false} meId={me.id} canDelete={thread.parent.userId === me.id || overview.isAdmin} people={peopleBy} onReact={react(thread)} onDelete={remove(thread)} onEdited={edited(thread)} />
                 <p className="mt-2 px-2 text-xs text-muted-foreground">
-                  {thread.messages.length} {thread.messages.length === 1 ? 'reply' : 'replies'}
+                  {replies} {replies === 1 ? 'reply' : 'replies'}
                 </p>
               </div>
             ) : thread.loading ? (
@@ -655,7 +762,10 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
             meId={me.id}
             onClose={() => setDialog(null)}
             onPick={async (ids) => {
-              const r = await chatAddMembers({ channelId: info.id, userIds: ids })
+              const r = await chatAddMembers({
+                channelId: info.id,
+                userIds: ids,
+              })
               setDialog(null)
               if (!r.ok) convo.setError(r.error)
               else open(info.id)
@@ -679,11 +789,15 @@ function IconBtn({ label, onClick, children }: { label: string; onClick: () => v
 function Intro({ info, me }: { info: ChatChannelInfo; me: ChatPerson }): React.ReactElement {
   return (
     <div className="mb-6 px-2 pt-6">
-      <div className="mb-3">{info.kind === 'DM' ? <Avatar name={info.name} photo={info.members.find((m) => m.id !== me.id)?.photo ?? null} size={52} /> : <span className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px] bg-primary/10 text-primary">{info.private ? <Lock className="h-6 w-6" /> : <Hash className="h-6 w-6" />}</span>}</div>
+      <div className="mb-3">
+        {info.kind === 'DM' ? (
+          <Avatar name={info.name} photo={info.members.find((m) => m.id !== me.id)?.photo ?? null} size={52} />
+        ) : (
+          <span className="flex h-[52px] w-[52px] items-center justify-center rounded-[14px] bg-primary/10 text-primary">{info.private ? <Lock className="h-6 w-6" /> : <Hash className="h-6 w-6" />}</span>
+        )}
+      </div>
       <h2 className="text-[22px] font-semibold tracking-[-0.025em]">{info.kind === 'DM' ? info.name : `Welcome to #${info.name}`}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {info.kind === 'DM' ? `This is the start of your conversation with ${info.name}. Only the two of you can see it.` : info.private ? 'A private channel: only its members can see it.' : `The start of #${info.name}. Everyone on the team can read and join it.`}
-      </p>
+      <p className="mt-1 text-sm text-muted-foreground">{info.kind === 'DM' ? `This is the start of your conversation with ${info.name}. Only the two of you can see it.` : info.private ? 'A private channel: only its members can see it.' : `The start of #${info.name}. Everyone on the team can read and join it.`}</p>
     </div>
   )
 }
@@ -700,7 +814,12 @@ function DesktopAlerts(): React.ReactElement | null {
       {state === 'denied' ? (
         <p className="text-[11px] text-muted-foreground">Desktop alerts are blocked for this site in your browser settings.</p>
       ) : (
-        <button type="button" onClick={() => void Notification.requestPermission().then(setState)} title="Get a desktop alert for direct messages and @mentions while this tab is in the background" className="flex w-full items-center gap-2.5 rounded-sm border bg-card px-3 py-2 text-left text-xs font-medium shadow-sm transition-colors hover:border-primary/40">
+        <button
+          type="button"
+          onClick={() => void Notification.requestPermission().then(setState)}
+          title="Get a desktop alert for direct messages and @mentions while this tab is in the background"
+          className="flex w-full items-center gap-2.5 rounded-sm border bg-card px-3 py-2 text-left text-xs font-medium shadow-sm transition-colors hover:border-primary/40"
+        >
           <Bell className="h-4 w-4 shrink-0 text-primary" />
           <span className="min-w-0">
             Turn on desktop alerts
