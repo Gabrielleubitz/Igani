@@ -811,7 +811,7 @@ export function RealEstateDemo(): React.ReactElement {
       <section aria-label="The film" className="grid items-center gap-6 rounded-xl border bg-card p-4 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <video src="/demo/real-estate-hype.mp4" poster="/demo/real-estate-hype.jpg" controls playsInline preload="metadata" className="aspect-video w-full rounded-lg bg-black shadow-lg" />
         <div className="space-y-3">
-          <p className="eyebrow">The film · 2 min</p>
+          <p className="eyebrow">The film · 85 seconds</p>
           <h2 className="text-2xl font-semibold tracking-[-0.02em]">The lead you forgot, called back the morning his home hit the market</h2>
           <p className="text-sm text-muted-foreground">How AI turns a brokerage’s old calls, showings and “not right now”s into deals: matching cold leads to new listings, calling new leads in seconds, spotting buying signals, and writing every summary and task.</p>
           <a href="/demo/real-estate-hype.mp4" download className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
