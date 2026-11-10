@@ -9,6 +9,7 @@ struct LeadDetailView: View {
     @State private var savingNote = false
     @State private var stageSheet = false
     @State private var taskSheet = false
+    @State private var editSheet = false
     @State private var meetBusy = false
     @State private var meetURL: URL?
     @FocusState private var noteFocused: Bool
@@ -27,6 +28,10 @@ struct LeadDetailView: View {
         .refreshable { await load() }
         .toolbar {
             if let l = state.value {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Edit") { editSheet = true }
+                        .accessibilityLabel("Edit the contact’s details")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink(value: Route.web(path: "/sales/leads/\(l.id)", title: l.name)) { Image(systemName: "safari") }
                         .accessibilityLabel("Open the full lead page")
@@ -173,6 +178,7 @@ struct LeadDetailView: View {
         .padding(.bottom, 40)
         .sheet(isPresented: $stageSheet) { StageSheet(current: l.status) { s, reason in await setStage(s, reason) } }
         .sheet(isPresented: $taskSheet) { NewTaskSheet(leadId: l.id, leadName: l.name) { Task { await load() } } }
+        .sheet(isPresented: $editSheet) { EditLeadSheet(lead: l) { Task { await load() } } }
     }
 
     /// Calls the contact from the user's Igani number (logged on the contact, with a wrap-up after).
@@ -365,5 +371,97 @@ struct StageSheet: View {
         busy = s
         if let e = await save(s, reason) { error = e } else { dismiss() }
         busy = nil
+    }
+}
+
+
+/// Edit a contact's details (the web's "Edit details"): name, phone, email (admins only), company, website, budget, tags.
+struct EditLeadSheet: View {
+    let lead: LeadDetail
+    let onSaved: () -> Void
+    @Environment(\.dismiss) private var dismiss
+    @Environment(Toasts.self) private var toasts
+    @State private var first = ""
+    @State private var last = ""
+    @State private var phone = ""
+    @State private var email = ""
+    @State private var company = ""
+    @State private var website = ""
+    @State private var budget = ""
+    @State private var tags = ""
+    @State private var busy = false
+    private var isAdmin: Bool { API.shared.session?.me?.role == "ADMIN" }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Name") {
+                    TextField("First name", text: $first).textContentType(.givenName)
+                    TextField("Last name", text: $last).textContentType(.familyName)
+                }
+                .listRowBackground(Theme.card)
+                Section {
+                    TextField("Phone", text: $phone).keyboardType(.phonePad).textContentType(.telephoneNumber)
+                    TextField("Email", text: $email).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled().disabled(!isAdmin).foregroundStyle(isAdmin ? Theme.text : Theme.muted)
+                } header: {
+                    Text("Contact")
+                } footer: {
+                    if !isAdmin { Text("Only an admin can change the email address (it decides which emails are filed under this contact).") }
+                }
+                .listRowBackground(Theme.card)
+                Section("Business") {
+                    TextField("Company", text: $company)
+                    TextField("Website", text: $website).keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    TextField("Budget", text: $budget)
+                }
+                .listRowBackground(Theme.card)
+                Section {
+                    TextField("e.g. vip, referral", text: $tags).textInputAutocapitalization(.never)
+                } header: {
+                    Text("Tags")
+                } footer: {
+                    Text("Separate tags with commas.")
+                }
+                .listRowBackground(Theme.card)
+            }
+            .scrollContentBackground(.hidden)
+            .screenBackground()
+            .navigationTitle("Edit details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { Task { await save() } }.disabled(busy)
+                }
+            }
+            .onAppear {
+                first = lead.firstName ?? ""
+                last = lead.lastName ?? ""
+                phone = lead.phone ?? ""
+                email = lead.email ?? ""
+                company = lead.company ?? ""
+                website = lead.website ?? ""
+                budget = lead.budget ?? ""
+                tags = lead.tags.joined(separator: ", ")
+            }
+        }
+    }
+
+    private func save() async {
+        busy = true
+        defer { busy = false }
+        var input: [String: Any] = [
+            "firstName": first, "lastName": last, "phone": phone, "company": company, "website": website, "budget": budget,
+            "tags": tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty },
+        ]
+        if isAdmin { input["email"] = email }
+        do {
+            try await API.shared.run("updateLead", lead.id, input)
+            toasts.show("Saved", tone: .ok)
+            onSaved()
+            dismiss()
+        } catch {
+            toasts.show(error.localizedDescription, tone: .warn)
+        }
     }
 }

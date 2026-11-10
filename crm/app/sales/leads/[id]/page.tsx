@@ -7,7 +7,7 @@ import { CallLink } from '@/components/dialer/Dialer'
 import { formatPhone } from '@/lib/phone-numbers'
 import { notFound } from 'next/navigation'
 import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
-import { EditContactForm } from '@/components/crm/EditContactForm'
+import { EditLeadButton } from '@/components/crm/EditLeadButton'
 import { EmailComposer } from '@/components/crm/EmailComposer'
 import { EmailsPanel, type EmailView } from '@/components/crm/EmailsPanel'
 import { googleGrants } from '@/lib/google'
@@ -333,7 +333,10 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
               {lead.lastName?.[0]?.toUpperCase() ?? ''}
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold">{leadName(lead)}</h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="truncate text-2xl font-semibold">{leadName(lead)}</h1>
+                <EditLeadButton key={`h-${lead.updatedAt.toISOString()}`} name={leadName(lead)} leadId={lead.id} canEditEmail={isAdmin} initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }} />
+              </div>
               <p className="truncate text-sm text-muted-foreground">{[lead.company, lead.email ?? lead.phone].filter(Boolean).join(' · ')}</p>
             </div>
           </div>
@@ -409,8 +412,9 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
           {myCommission ? <MyCommissionCard {...myCommission} /> : null}
 
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-base">Details</CardTitle>
+              <EditLeadButton key={`c-${lead.updatedAt.toISOString()}`} variant="card" name={leadName(lead)} leadId={lead.id} canEditEmail={isAdmin} initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }} />
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
               {facts.map(([k, v]) => (
@@ -425,17 +429,6 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
                   <p className="max-h-60 overflow-auto whitespace-pre-wrap rounded-md border bg-background/40 p-3 text-muted-foreground">{lead.message}</p>
                 </div>
               ) : null}
-              <details className="group pt-2">
-                <summary className="cursor-pointer select-none text-sm font-medium text-primary hover:underline">Edit details</summary>
-                <div className="pt-3">
-                  <EditContactForm
-                    key={lead.updatedAt.toISOString()}
-                    leadId={lead.id}
-                    canEditEmail={isAdmin}
-                    initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }}
-                  />
-                </div>
-              </details>
             </CardContent>
           </Card>
 

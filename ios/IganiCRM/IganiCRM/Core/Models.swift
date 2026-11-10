@@ -74,10 +74,13 @@ struct LeadDetail: Decodable, Identifiable {
 
     let id: String
     let name: String
+    var firstName: String? = nil
+    var lastName: String? = nil
     let email: String?
     let phone: String?
     let company: String?
     let website: String?
+    var budget: String? = nil
     let message: String?
     let source: String
     let sourceDetail: String?

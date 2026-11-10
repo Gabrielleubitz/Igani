@@ -21,7 +21,7 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
     prisma.lead.findUniqueOrThrow({
       where: { id },
       select: {
-        id: true, firstName: true, lastName: true, email: true, phone: true, company: true, website: true, message: true, source: true, sourceDetail: true, status: true, tags: true, createdAt: true, updatedAt: true, profile: true,
+        id: true, firstName: true, lastName: true, email: true, phone: true, company: true, website: true, budget: true, message: true, source: true, sourceDetail: true, status: true, tags: true, createdAt: true, updatedAt: true, profile: true,
         assignedTo: { select: { id: true, name: true } },
         notes: { orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, body: true, createdAt: true, author: { select: { name: true, email: true } } } },
         calls: { orderBy: { startedAt: 'desc' }, take: 10, select: { id: true, direction: true, status: true, startedAt: true, durationSec: true } },
@@ -37,6 +37,7 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
     name: leadName(l),
     firstName: l.firstName,
     lastName: l.lastName,
+    budget: l.budget,
     email: l.email,
     phone: l.phone,
     company: l.company,

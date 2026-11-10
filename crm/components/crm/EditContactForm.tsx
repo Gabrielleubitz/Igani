@@ -9,6 +9,8 @@ import { Input } from '@/components/ui/input'
 
 interface Props {
   leadId: string
+  /** called after a successful save (the dialog closes) */
+  onSaved?: () => void
   /** The email decides whose mail is filed under the lead, so only admins can change it */
   canEditEmail?: boolean
   initial: {
@@ -30,7 +32,7 @@ function Field({ label, children, wide = false }: { label: string; children: Rea
 }
 
 /** Editable contact details for the contact page; open to every role that can see the contact. */
-export function EditContactForm({ leadId, initial, canEditEmail = false }: Props): React.ReactElement {
+export function EditContactForm({ leadId, initial, canEditEmail = false, onSaved }: Props): React.ReactElement {
   const router = useRouter()
   const [pending, start] = useTransition()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -56,6 +58,7 @@ export function EditContactForm({ leadId, initial, canEditEmail = false }: Props
           })
           setMsg(res.ok ? { ok: true, text: '✓ Saved.' } : { ok: false, text: res.error })
           router.refresh()
+          if (res.ok) onSaved?.()
         })
       }}
     >
