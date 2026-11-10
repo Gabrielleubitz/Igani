@@ -2,7 +2,7 @@ import { cookies } from 'next/headers'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import type { SessionUser } from '@/lib/auth'
-import { Logo } from '@/components/brand/Logo'
+import { CrmLogo } from '@/components/brand/CrmMark'
 import { TaskAlert } from '@/components/crm/TaskAlert'
 import { ChatPulse } from '@/components/chat/ChatPulse'
 import { avatarPath, isGooglePhoto } from '@/lib/avatar'
@@ -64,9 +64,8 @@ export async function AppShell({ user, children }: { user: SessionUser; children
       <aside className="relative border-b bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-64 lg:shrink-0 lg:flex-col lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between gap-3 px-4 py-3 lg:flex-1 lg:flex-col lg:items-stretch lg:justify-start lg:gap-5 lg:overflow-y-auto lg:px-4 lg:py-5">
           <Link href="/" aria-label="Igani CRM home" className="flex items-center gap-2">
-            {/* the wordmark that reads on the current theme */}
-            <Logo height={32} className="hidden dark:block" />
-            <Logo onLight height={32} className="dark:hidden" />
+            {/* the CRM's magnet mark and the wordmark that reads on the current theme */}
+            <CrmLogo height={30} />
             <span className="eyebrow hidden rounded-sm border border-primary/30 px-1.5 py-px !text-[10px] !text-primary lg:inline">CRM</span>
           </Link>
           <div className="flex items-center gap-2 lg:hidden">

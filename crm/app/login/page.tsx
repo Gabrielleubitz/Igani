@@ -1,5 +1,5 @@
 import { ShieldCheck } from 'lucide-react'
-import { Logo } from '@/components/brand/Logo'
+import { CrmLogo } from '@/components/brand/CrmMark'
 import { DevLogin } from '@/components/DevLogin'
 import { GoogleSignIn } from '@/components/GoogleSignIn'
 import { LoginBackdrop } from '@/components/LoginBackdrop'
@@ -29,7 +29,7 @@ export default async function LoginPage(
         {/* ── Form ── */}
         <section className="flex flex-col px-5 py-6 sm:px-10">
           <div className="self-start">
-            <Logo height={28} />
+            <CrmLogo height={28} onDark />
           </div>
           <div className="my-auto w-full max-w-[420px] py-12">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/5 px-3 py-1 text-xs font-medium text-slate-300 ring-1 ring-white/10">
