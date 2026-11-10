@@ -99,6 +99,7 @@ export const NAV: NavEntry[] = [
           { id: 'audit', label: 'Audit log', icon: 'audit', href: '/admin/audit', roles: ['ADMIN'] },
         ],
       },
+      { id: 'tests', label: 'Tests', icon: 'tests', href: '/admin/tests', roles: ['ADMIN'] },
       { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings', roles: ['ADMIN'] },
     ],
   },
