@@ -174,7 +174,7 @@ const offer: OfferDefinition = {
       },
       calling: {
         title: { he: 'חייגן וניתוח שיחות', en: 'Dialer and call analytics' },
-        summary: { he: 'שיחות מהדפדפן, הקלטה, תמלול, ציון לכל שיחה, טיפים בזמן אמת, ורשימות חיוג.', en: 'Browser calling, recording, transcription, a score for every call, live tips, and call lists.' },
+        summary: { he: 'שיחות מהדפדפן, הקלטה, תמלול, ציון לכל שיחה, ורשימות חיוג.', en: 'Browser calling, recording, transcription, a score for every call, and call lists.' },
       },
       messaging: {
         title: { he: 'אימייל, SMS ו-WhatsApp אוטומטיים', en: 'Automatic email, SMS and WhatsApp' },
@@ -191,6 +191,50 @@ const offer: OfferDefinition = {
       'capital-agent': {
         title: { he: 'סוכן הון', en: 'Capital agent' },
         summary: { he: 'מחפש מקורות הון זולים לחברה ומשווה אותם ל-SOFR ופריים. לא פונה לאף אחד בעצמו.', en: "Searches for cheap capital for the company and compares it with SOFR and prime. It never contacts anyone itself." },
+      },
+      tonality: {
+        title: { he: 'טונאליות', en: 'Tonality' },
+        summary: { he: 'ניתוח של איך הנציג נשמע, לא רק מה אמר: קצב, ביטחון, חום והפסקות, עם ציון לכל שיחה.', en: 'How the rep sounds, not just what they said: pace, confidence, warmth and pauses, scored on every call.' },
+      },
+      hebrew: {
+        title: { he: 'עברית', en: 'Hebrew' },
+        summary: { he: 'כל המערכת גם בעברית, מימין לשמאל, וכל נציג בוחר את השפה שלו.', en: 'The whole system in Hebrew too, right to left, with each team member choosing their language.' },
+      },
+      'script-gen': {
+        title: { he: 'מחולל תסריטים', en: 'Script generator' },
+        summary: { he: 'תסריט שיחה לכל מוצר הלוואה ולכל לווה, מבוסס על השיחות שהכי הצליחו אצלכם, עם תשובות להתנגדויות.', en: 'A call script for each loan product and each borrower, built from your best calls, with answers to objections.' },
+      },
+      'team-review': {
+        title: { he: 'סקירת צוות חודשית', en: 'Monthly team review' },
+        summary: { he: 'בתחילת כל חודש: דוח לכל נציג, מה השתפר, מה לא, השיחות הכי טובות ומה לתרגל.', en: 'At the start of each month, a report per rep: what improved, what didn\'t, their best calls, and what to practise.' },
+      },
+      'live-coach': {
+        title: { he: 'פידבק חי בזמן שיחה', en: 'Live feedback during calls' },
+        summary: { he: 'בזמן שהשיחה רצה, המערכת מקשיבה ומציגה לנציג מה לשאול, איך לענות להתנגדות, ומה עוד חסר בתיק.', en: "While the call runs, the system listens and shows the rep what to ask, how to answer an objection, and what's still missing from the file." },
+      },
+      practice: {
+        title: { he: 'שיחות תרגול עם לקוח AI', en: 'Practice calls with an AI client' },
+        summary: { he: 'נציג מתקשר ללווה מדומה, קולי, עם אופי והתנגדויות אמיתיים, ומקבל ציון ופידבק בסוף. מצוין לנציגים חדשים.', en: 'A rep calls a simulated borrower by voice, with a real personality and objections, and gets a score and feedback at the end. Great for new reps.' },
+      },
+      'own-platform': {
+        title: { he: 'על הפלטפורמה שלכם', en: 'On your own platform' },
+        summary: { he: 'המערכת רצה על החשבונות והשרתים שלכם, עם הקוד והנתונים בבעלותכם המלאה.', en: 'The system runs on your own accounts and servers, with the code and data fully yours.' },
+      },
+      'pocket-ai': {
+        title: { he: 'Pocket AI לאנשי מכירות', en: 'Pocket AI for salespeople' },
+        summary: { he: 'עוזר בוואטסאפ לכל נציג: ״מי הבא בתור?״, ״מה חסר בתיק של מרקוס?״, ״קבע לי שיחה חוזרת למחר״, בהודעה או בהקלטה קולית.', en: 'A WhatsApp assistant for each rep: "who\'s next?", "what\'s missing from Marcus\'s file?", "set a call back for tomorrow", by text or voice note.' },
+      },
+      landing: {
+        title: { he: 'דף נחיתה', en: 'Landing page' },
+        summary: { he: 'דף נחיתה לחברה עם טופס בקשה שנכנס ישר ל-CRM, כולל הסכמות, מעקב מקור ומוכן לקמפיינים.', en: 'A landing page for the company with an apply form that goes straight into the CRM, with consent, source tracking, and ready for ad campaigns.' },
+      },
+      usage: {
+        title: { he: 'שימוש דרכנו', en: 'Usage billed through us' },
+        summary: { he: 'אנחנו פותחים ומנהלים את החשבונות (Twilio, OpenAI, Resend, ImageKit), ואתם משלמים לנו את השימוש בעלות, בחשבונית אחת בחודש. בלי האפשרות הזו, החשבונות על שמכם ואתם משלמים לספקים ישירות.', en: "We open and run the accounts (Twilio, OpenAI, Resend, ImageKit) and you pay us the usage at cost, on one invoice a month. Without it, the accounts are in your name and you pay the providers directly." },
+        bullets: [
+          { he: 'השימוש עצמו בעלות, בלי תוספת', en: 'Usage itself at cost, no markup' },
+          { he: 'אפשר לעבור לחשבונות שלכם בכל רגע', en: 'Switch to your own accounts any time' },
+        ],
       },
       care: {
         title: { he: 'ליווי שוטף: אחסון ותחזוקה', en: 'Care: hosting and maintenance' },
@@ -210,6 +254,7 @@ const offer: OfferDefinition = {
       { question: { he: 'מה שם החברה והדומיין?', en: "What's the company name and domain?" }, impact: { he: 'מיתוג, אימייל ומספרים', en: 'Branding, email and phone numbers' }, due: { he: 'חודש 1', en: 'Month 1' } },
       { question: { he: 'באילו מדינות יש רישיון?', en: 'Which states are you licensed in?' }, impact: { he: 'הציון והטפסים', en: 'Score and forms' }, due: { he: 'חודש 1', en: 'Month 1' } },
       { question: { he: 'איזו לשכת אשראי או משווק?', en: 'Which credit bureau or reseller?' }, impact: { he: 'בדיקות אשראי', en: 'Credit checks' }, due: { he: 'חודש 2', en: 'Month 2' } },
+      { question: { he: 'שימוש דרכנו או על החשבונות שלכם?', en: 'Usage through us, or on your own accounts?' }, impact: { he: 'חיוב חודשי של Twilio, OpenAI ו-Resend', en: 'Monthly Twilio, OpenAI and Resend bills' }, due: { he: 'חודש 1', en: 'Month 1' } },
       { question: { he: 'מאילו ספקי לידים מתחילים?', en: 'Which lead vendors to start with?' }, impact: { he: 'מקורות לידים', en: 'Lead sources' }, due: { he: 'חודש 3', en: 'Month 3' } },
     ],
     about: {
