@@ -901,7 +901,7 @@ export function RealEstateDemo(): React.ReactElement {
 
       {/* the film */}
       <section aria-label="The film" className="grid items-center gap-6 rounded-xl border bg-card p-4 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
-        <video src="/demo/real-estate-hype.mp4" poster="/demo/real-estate-hype.jpg" controls playsInline preload="metadata" className="aspect-video w-full rounded-lg bg-black shadow-lg" />
+        <video src="/demo/real-estate-hype.mp4?v=2" poster="/demo/real-estate-hype.jpg?v=2" controls playsInline preload="metadata" className="aspect-video w-full rounded-lg bg-black shadow-lg" />
         <div className="space-y-3">
           <p className="eyebrow">The film · 85 seconds</p>
           <h2 className="text-2xl font-semibold tracking-[-0.02em]">The lead you forgot, called back the morning his home hit the market</h2>
