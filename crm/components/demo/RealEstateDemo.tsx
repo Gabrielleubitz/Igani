@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  ArrowDown,
   BadgeCheck,
   BarChart3,
   Bed,
@@ -27,6 +28,7 @@ import {
   MessageCircle,
   Mic,
   Minimize2,
+  MousePointerClick,
   Phone,
   Radio,
   Route,
@@ -51,7 +53,7 @@ import { cn } from '@/lib/utils'
 /* Everything here is made-up demo data for a fictional brokerage ("Demo Realty"), to show real-estate leaders what the CRM does. */
 
 const SECTIONS = [
-  { id: 'roles', label: 'Admin vs agent' },
+  { id: 'roles', label: 'CEO vs agent' },
   { id: 'recorder', label: 'In-person recorder' },
   { id: 'properties', label: 'Properties on calls' },
   { id: 'meetings', label: 'Private meetings' },
@@ -59,6 +61,15 @@ const SECTIONS = [
   { id: 'tasks', label: 'Summaries & tasks' },
   { id: 'more', label: 'Everything else' },
 ] as const
+
+const GLANCE = [
+  { id: 'roles', title: 'The CEO sees everything, agents see their own', line: 'Two views of one system: the whole office live, or one agent’s day.' },
+  { id: 'recorder', title: 'In-person meetings, recorded on the phone', line: 'Showings and valuations turn into notes and tasks by themselves.' },
+  { id: 'properties', title: 'Properties on every call, caught by AI', line: 'Which listings buyers ask about, and why they say no.' },
+  { id: 'meetings', title: 'Video meetings that coach the agent', line: 'Your own branded meeting link, scored after every call.' },
+  { id: 'listen', title: 'Listen in live and send notes', line: 'Coach during the call, without the client hearing.' },
+  { id: 'tasks', title: 'Summaries and tasks, handed out', line: 'Every meeting ends with a recap and work for the right people.' },
+]
 
 const KPIS: { label: string; value: number; prefix?: string; suffix?: string; decimals?: number; sub: string; tone: Tone; icon: React.ReactElement }[] = [
   { label: 'Deals closed this quarter', value: 38, sub: '+27% vs last quarter', tone: 'emerald', icon: <Handshake /> },
@@ -115,17 +126,45 @@ function CountUp({ value, decimals = 0, prefix = '', suffix = '' }: { value: num
   )
 }
 
-function Section({ id, n, title, pitch, tone, icon, children }: { id: string; n?: number; title: string; pitch: string; tone: Tone; icon: React.ReactElement; children: React.ReactNode }): React.ReactElement {
+/** The plain-language story of a feature: the problem today, what Igani does, what the office gets. */
+interface Story {
+  before: string
+  igani: string
+  result: { stat: string; label: string }
+}
+
+function Section({ id, n, title, pitch, tone, icon, story, tryIt, children }: { id: string; n?: number; title: string; pitch: string; tone: Tone; icon: React.ReactElement; story?: Story; tryIt?: string; children: React.ReactNode }): React.ReactElement {
   return (
     <section id={id} className="scroll-mt-24 space-y-5">
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-4">
         <GradientChip tone={tone}>{icon}</GradientChip>
         <div className="min-w-0">
-          {n ? <p className="eyebrow">Feature {n}</p> : null}
-          <h2 className="text-2xl font-semibold tracking-[-0.02em] sm:text-[28px]">{title}</h2>
-          <p className="mt-1 max-w-3xl text-[15px] text-muted-foreground">{pitch}</p>
+          {n ? <p className="eyebrow">Feature {n} of 6</p> : null}
+          <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.02em] sm:text-[32px]">{title}</h2>
+          <p className="mt-2 max-w-3xl text-base leading-relaxed text-muted-foreground sm:text-[17px]">{pitch}</p>
         </div>
       </div>
+      {story ? (
+        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+          <div className="rounded-lg border border-rose-500/20 bg-rose-500/[0.06] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-rose-600 dark:text-rose-300">Today, without Igani</p>
+            <p className="mt-1.5 text-[15px] leading-snug">{story.before}</p>
+          </div>
+          <div className="rounded-lg border border-primary/25 bg-primary/[0.06] p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">With Igani</p>
+            <p className="mt-1.5 text-[15px] leading-snug">{story.igani}</p>
+          </div>
+          <div className="flex min-w-[180px] flex-col justify-center rounded-lg border border-emerald-500/25 bg-emerald-500/[0.07] p-4 md:text-center">
+            <p className="text-3xl font-semibold tracking-tight text-emerald-600 dark:text-emerald-300">{story.result.stat}</p>
+            <p className="text-sm text-muted-foreground">{story.result.label}</p>
+          </div>
+        </div>
+      ) : null}
+      {tryIt ? (
+        <p className="flex items-center gap-2 text-sm font-medium text-primary">
+          <MousePointerClick className="h-4 w-4" /> Try it: {tryIt}
+        </p>
+      ) : null}
       {children}
     </section>
   )
@@ -179,10 +218,10 @@ function RolesDemo(): React.ReactElement {
       <Panel className="p-0 sm:p-0">
         <div className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 border-b px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <span>What they see</span>
-          <span className="flex w-20 items-center justify-center gap-1">
+          <span className="flex w-24 items-center justify-center gap-1">
             <Crown className="h-3.5 w-3.5" /> CEO
           </span>
-          <span className="flex w-20 items-center justify-center gap-1">
+          <span className="flex w-24 items-center justify-center gap-1">
             <UserRound className="h-3.5 w-3.5" /> Agent
           </span>
         </div>
@@ -191,8 +230,18 @@ function RolesDemo(): React.ReactElement {
             <li key={a.what} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-4 px-4 py-2.5 text-sm">
               <span>{a.what}</span>
               {[a.admin, a.agent].map((v, i) => (
-                <span key={i} className="flex w-20 justify-center text-xs">
-                  {v === true ? <Check className="h-4 w-4 text-emerald-500" /> : v === false ? <EyeOff className="h-4 w-4 text-muted-foreground/50" /> : <span className="rounded-full bg-muted px-2 py-0.5 text-center font-medium text-muted-foreground">{v}</span>}
+                <span key={i} className="flex w-24 justify-center text-[13px]">
+                  {v === true ? (
+                    <span className="flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                      <Check className="h-4 w-4" /> Yes
+                    </span>
+                  ) : v === false ? (
+                    <span className="flex items-center gap-1 text-muted-foreground/70">
+                      <EyeOff className="h-3.5 w-3.5" /> Hidden
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-center font-medium text-primary">{v}</span>
+                  )}
                 </span>
               ))}
             </li>
@@ -221,7 +270,7 @@ function RolesDemo(): React.ReactElement {
               ].map(([l, v, c]) => (
                 <div key={l} className="rounded-md border bg-muted/30 p-3">
                   <div className={cn('text-2xl font-semibold tabular-nums', c)}>{v}</div>
-                  <div className="text-xs text-muted-foreground">{l}</div>
+                  <div className="text-[13px] text-muted-foreground">{l}</div>
                 </div>
               ))}
             </div>
@@ -230,16 +279,16 @@ function RolesDemo(): React.ReactElement {
               <ul className="space-y-2">
                 {AGENTS.map((a, i) => (
                   <li key={a.name} className="grid grid-cols-[18px_auto_1fr_auto] items-center gap-3 text-sm">
-                    <span className="text-xs font-semibold text-muted-foreground">{i + 1}</span>
+                    <span className="text-[13px] font-semibold text-muted-foreground">{i + 1}</span>
                     <Avatar name={a.name} size={28} tone={a.tone} />
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{a.name}</span>
                       <Bar value={(a.gci / 412_000) * 100} className="mt-1 h-1.5" tone="bg-gradient-to-r from-sky-400 to-blue-600" />
                     </span>
-                    <span className="text-right text-xs">
+                    <span className="text-right text-[13px]">
                       <b className="block text-sm tabular-nums">{ils(a.gci)}</b>
                       <span className="text-muted-foreground">
-                        {a.deals} deals · AI {a.score}
+                        {a.deals} deals · call score {a.score}
                       </span>
                     </span>
                   </li>
@@ -260,7 +309,7 @@ function RolesDemo(): React.ReactElement {
               ].map(([l, v, c]) => (
                 <div key={l} className="rounded-md border bg-muted/30 p-3">
                   <div className={cn('text-2xl font-semibold tabular-nums', c)}>{v}</div>
-                  <div className="text-xs text-muted-foreground">{l}</div>
+                  <div className="text-[13px] text-muted-foreground">{l}</div>
                 </div>
               ))}
             </div>
@@ -272,10 +321,10 @@ function RolesDemo(): React.ReactElement {
                 ['16:15', 'Showing · 22 Arlozorov St', 'Avi & Lior · pre-approved ₪2.9M', 'sky'],
               ].map(([t, a, b, tone]) => (
                 <li key={a} className="flex gap-3 rounded-md border p-3">
-                  <span className="w-12 shrink-0 text-xs font-semibold tabular-nums text-muted-foreground">{t}</span>
+                  <span className="w-12 shrink-0 text-[13px] font-semibold tabular-nums text-muted-foreground">{t}</span>
                   <span className="min-w-0">
                     <span className="block font-medium">{a}</span>
-                    <span className="block text-xs text-muted-foreground">{b}</span>
+                    <span className="block text-[13px] text-muted-foreground">{b}</span>
                   </span>
                   <Tag tone={tone as Tone} className="ml-auto self-start">
                     {tone === 'sky' ? 'Showing' : tone === 'amber' ? 'Call' : 'Signing'}
@@ -283,7 +332,7 @@ function RolesDemo(): React.ReactElement {
                 </li>
               ))}
             </ul>
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+            <p className="flex items-center gap-2 text-[13px] text-muted-foreground">
               <EyeOff className="h-3.5 w-3.5" /> Agents never see other agents’ clients, numbers or commission.
             </p>
           </div>
@@ -318,9 +367,9 @@ function RecorderDemo(): React.ReactElement {
       {/* the phone */}
       <div className="mx-auto w-[280px] rounded-[44px] border-[10px] border-neutral-900 bg-neutral-950 p-4 text-white shadow-2xl">
         <div className="mx-auto mb-4 h-6 w-24 rounded-full bg-black" />
-        <p className="text-center text-[11px] uppercase tracking-[0.2em] text-white/50">Recording meeting</p>
+        <p className="text-center text-[13px] uppercase tracking-[0.2em] text-white/50">Recording meeting</p>
         <p className="mt-1 text-center text-sm font-semibold">Showing · 18 Ben Yehuda St</p>
-        <p className="text-center text-xs text-white/60">The Katz family · linked to their lead</p>
+        <p className="text-center text-[13px] text-white/60">The Katz family · linked to their lead</p>
         <div className="my-5 flex h-16 items-center justify-center gap-[3px]">
           {Array.from({ length: 34 }).map((_, i) => (
             <span key={i} className="w-[3px] animate-pulse rounded-full bg-gradient-to-t from-rose-500 to-orange-300" style={{ height: `${Math.round(18 + Math.abs(Math.sin(i * 1.7 + secs)) * 46)}px`, animationDelay: `${(i % 7) * 0.12}s` }} />
@@ -329,7 +378,7 @@ function RecorderDemo(): React.ReactElement {
         <p className="text-center font-mono text-2xl tabular-nums">
           {String(Math.floor(secs / 60)).padStart(2, '0')}:{String(secs % 60).padStart(2, '0')}
         </p>
-        <div className="mt-4 h-32 space-y-1.5 overflow-hidden text-[11px] leading-snug">
+        <div className="mt-4 h-32 space-y-1.5 overflow-hidden text-[13px] leading-snug">
           {RECORDING.slice(0, shown).map((l, i) => (
             <p key={i} className="animate-in fade-in slide-in-from-bottom-1">
               <b className={l.who === 'Noa' ? 'text-sky-300' : 'text-amber-200'}>{l.who}:</b> <span className="text-white/80">{l.text}</span>
@@ -383,7 +432,7 @@ function RecorderDemo(): React.ReactElement {
                     <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                     <span>
                       {a}
-                      <span className="block text-xs text-muted-foreground">{b}</span>
+                      <span className="block text-[13px] text-muted-foreground">{b}</span>
                     </span>
                   </li>
                 ))}
@@ -402,7 +451,7 @@ function RecorderDemo(): React.ReactElement {
                 {icon}
               </IconChip>
               <p className="mt-2 text-sm font-semibold">{a}</p>
-              <p className="text-xs text-muted-foreground">{b}</p>
+              <p className="text-[13px] text-muted-foreground">{b}</p>
             </Panel>
           ))}
         </div>
@@ -452,7 +501,7 @@ function PropertiesDemo(): React.ReactElement {
               </IconChip>
               <span className="min-w-0">
                 <span className="block font-medium">{a}</span>
-                <span className="block text-xs text-muted-foreground">{b}</span>
+                <span className="block text-[13px] text-muted-foreground">{b}</span>
               </span>
             </div>
           ))}
@@ -471,13 +520,13 @@ function PropertiesDemo(): React.ReactElement {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">{p.address}</span>
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-2 text-[13px] text-muted-foreground">
                   <Bed className="h-3.5 w-3.5" /> {p.spec}
                 </span>
               </span>
               <span className="text-right">
                 <b className="block tabular-nums">{ils(p.price)}</b>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[13px] text-muted-foreground">
                   {p.mentions} mentions · {p.buyers} matching buyers
                 </span>
               </span>
@@ -485,7 +534,7 @@ function PropertiesDemo(): React.ReactElement {
             </li>
           ))}
         </ul>
-        <p className="border-t px-4 py-3 text-xs text-muted-foreground">Each property links back to the exact moment in every call it came up, with who asked and what they objected to.</p>
+        <p className="border-t px-4 py-3 text-[13px] text-muted-foreground">Each property links back to the exact moment in every call it came up, with who asked and what they objected to.</p>
       </Panel>
     </div>
   )
@@ -505,7 +554,7 @@ function MeetingsDemo(): React.ReactElement {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <div className="flex flex-col overflow-hidden rounded-lg bg-[#131314] p-3 text-white shadow-lg">
-        <div className="mb-2 flex items-center justify-between text-xs text-white/70">
+        <div className="mb-2 flex items-center justify-between text-[13px] text-white/70">
           <span>14:02 | Valuation · 5 Weizmann St</span>
           <span className="flex items-center gap-1.5 rounded-full bg-rose-500/20 px-2 py-0.5 text-rose-200">
             <CircleDot className="h-3 w-3" /> Recording · AI notes on
@@ -524,7 +573,7 @@ function MeetingsDemo(): React.ReactElement {
                   .slice(0, 2)
                   .join('')}
               </span>
-              <span className="absolute bottom-2 left-3 text-xs font-medium">{n}</span>
+              <span className="absolute bottom-2 left-3 text-[13px] font-medium">{n}</span>
             </div>
           ))}
         </div>
@@ -538,14 +587,14 @@ function MeetingsDemo(): React.ReactElement {
             <Phone className="h-4 w-4 rotate-[135deg]" />
           </span>
         </div>
-        <p className="mt-3 text-center text-[11px] text-white/50">Private, branded video meetings. No Zoom or Google account needed for the client.</p>
+        <p className="mt-3 text-center text-[13px] text-white/50">Private, branded video meetings. No Zoom or Google account needed for the client.</p>
       </div>
       <Panel className="space-y-4">
         <div className="flex items-center gap-3">
           <Avatar name="Tamar Shapiro" size={40} tone="pink" />
           <div>
             <p className="font-semibold">Tamar’s meeting score</p>
-            <p className="text-xs text-muted-foreground">Valuation meeting · 38 min · seller signed an exclusive</p>
+            <p className="text-[13px] text-muted-foreground">Valuation meeting · 38 min · seller signed an exclusive</p>
           </div>
           <span className="ml-auto text-3xl font-semibold tabular-nums text-emerald-500">82</span>
         </div>
@@ -562,17 +611,17 @@ function MeetingsDemo(): React.ReactElement {
         </ul>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div className="rounded-md border p-3">
-            <p className="text-xs text-muted-foreground">Talk time (agent / client)</p>
+            <p className="text-[13px] text-muted-foreground">Talk time (agent / client)</p>
             <div className="mt-1.5 flex h-2 overflow-hidden rounded-full">
               <span className="bg-sky-500" style={{ width: '58%' }} />
               <span className="bg-amber-400" style={{ width: '42%' }} />
             </div>
-            <p className="mt-1 text-xs">58% / 42% · aim under 50%</p>
+            <p className="mt-1 text-[13px]">58% / 42% · aim under 50%</p>
           </div>
           <div className="rounded-md border p-3">
-            <p className="text-xs text-muted-foreground">Questions asked</p>
+            <p className="text-[13px] text-muted-foreground">Questions asked</p>
             <p className="text-lg font-semibold">11</p>
-            <p className="text-xs">2 about budget (aim 4+)</p>
+            <p className="text-[13px]">2 about budget (aim 4+)</p>
           </div>
         </div>
         <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">
@@ -614,7 +663,7 @@ function ListenDemo(): React.ReactElement {
                 <span className="block font-medium">
                   {c.agent} <span className="font-normal text-muted-foreground">↔ {c.who}</span>
                 </span>
-                <span className="block text-xs text-muted-foreground">
+                <span className="block text-[13px] text-muted-foreground">
                   {c.topic} · {c.mins} min
                 </span>
               </span>
@@ -625,7 +674,7 @@ function ListenDemo(): React.ReactElement {
           ))}
         </ul>
         <div className="rounded-md bg-muted/40 p-3">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Note to {LIVE[listening]!.agent.split(' ')[0]} (only they see it, the client hears nothing)</p>
+          <p className="mb-2 text-[13px] font-medium text-muted-foreground">Note to {LIVE[listening]!.agent.split(' ')[0]} (only they see it, the client hears nothing)</p>
           <div className="flex gap-2">
             <input value={note} onChange={(e) => setNote(e.target.value)} className="h-9 min-w-0 flex-1 rounded-md border bg-card px-3 text-sm outline-none focus:border-primary" aria-label="Note to the agent" />
             <Button size="sm" onClick={() => setSent(note)} disabled={!note.trim()}>
@@ -633,7 +682,7 @@ function ListenDemo(): React.ReactElement {
             </Button>
           </div>
         </div>
-        <ul className="grid grid-cols-3 gap-2 text-center text-xs text-muted-foreground">
+        <ul className="grid grid-cols-3 gap-2 text-center text-[13px] text-muted-foreground">
           <li className="rounded-md border p-2">
             <Eye className="mx-auto mb-1 h-4 w-4" /> Silent, they don’t know
           </li>
@@ -646,7 +695,7 @@ function ListenDemo(): React.ReactElement {
         </ul>
       </Panel>
       <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden rounded-lg border bg-gradient-to-br from-slate-100 to-slate-200 p-6 dark:from-slate-900 dark:to-slate-950">
-        <p className="absolute left-4 top-3 text-xs font-medium text-muted-foreground">What {LIVE[listening]!.agent.split(' ')[0]} sees, mid-call</p>
+        <p className="absolute left-4 top-3 text-[13px] font-medium text-muted-foreground">What {LIVE[listening]!.agent.split(' ')[0]} sees, mid-call</p>
         <div className="w-full max-w-xs rounded-2xl border bg-card p-4 shadow-xl">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600">
@@ -654,18 +703,18 @@ function ListenDemo(): React.ReactElement {
             </span>
             <div>
               <p className="text-sm font-semibold">{LIVE[listening]!.who}</p>
-              <p className="text-xs text-muted-foreground">On call · {LIVE[listening]!.mins}:12</p>
+              <p className="text-[13px] text-muted-foreground">On call · {LIVE[listening]!.mins}:12</p>
             </div>
           </div>
           {sent ? (
             <div className="mt-4 animate-in fade-in slide-in-from-bottom-2 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-              <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300">
+              <p className="mb-1 flex items-center gap-1.5 text-[13px] font-semibold text-amber-700 dark:text-amber-300">
                 <MessageCircle className="h-3.5 w-3.5" /> Note from your manager
               </p>
               {sent}
             </div>
           ) : (
-            <p className="mt-4 rounded-xl border border-dashed p-3 text-center text-xs text-muted-foreground">Send a note on the left to see it appear here</p>
+            <p className="mt-4 rounded-xl border border-dashed p-3 text-center text-[13px] text-muted-foreground">Send a note on the left to see it appear here</p>
           )}
         </div>
       </div>
@@ -691,12 +740,12 @@ function TasksDemo(): React.ReactElement {
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
           <p className="font-semibold">Meeting summary</p>
-          <span className="text-xs text-muted-foreground">· Valuation · 5 Weizmann St</span>
+          <span className="text-[13px] text-muted-foreground">· Valuation · 5 Weizmann St</span>
         </div>
         <p className="text-sm leading-relaxed">
           The Golans agreed to a <b>6-month exclusive at ₪4.9M</b> (they opened at ₪5.3M). They need to sell before buying in Herzliya, so <b>speed matters more than top price</b>. Concerns: the 2019 building violation and a tenant until March.
         </p>
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+        <div className="grid grid-cols-3 gap-2 text-center text-[13px]">
           <div className="rounded-md border p-2">
             <b className="block text-base">₪4.9M</b>Agreed price
           </div>
@@ -707,7 +756,7 @@ function TasksDemo(): React.ReactElement {
             <b className="block text-base">3</b>Buyers matched
           </div>
         </div>
-        <div className="rounded-md bg-emerald-500/10 p-3 text-xs">
+        <div className="rounded-md bg-emerald-500/10 p-3 text-[13px]">
           <p className="mb-1 flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-300">
             <MessageCircle className="h-3.5 w-3.5" /> WhatsApp recap sent to the client
           </p>
@@ -724,19 +773,24 @@ function TasksDemo(): React.ReactElement {
         <ul className="divide-y">
           {TASKS.map((t, i) => (
             <li key={t.task} className="flex items-center gap-3 px-4 py-3 text-sm">
-              <button type="button" onClick={() => setDone((d) => d.map((x, j) => (j === i ? !x : x)))} aria-label={done[i] ? 'Mark not done' : 'Mark done'} className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition', done[i] ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/40 hover:border-primary')}>
+              <button
+                type="button"
+                onClick={() => setDone((d) => d.map((x, j) => (j === i ? !x : x)))}
+                aria-label={done[i] ? 'Mark not done' : 'Mark done'}
+                className={cn('flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition', done[i] ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/40 hover:border-primary')}
+              >
                 {done[i] ? <Check className="h-3 w-3" /> : null}
               </button>
               <span className={cn('min-w-0 flex-1', done[i] && 'text-muted-foreground line-through')}>{t.task}</span>
               <span className="flex shrink-0 items-center gap-2">
                 <Avatar name={t.who} size={24} tone={t.tone} />
-                <span className="hidden w-28 truncate text-xs sm:block">{t.who}</span>
+                <span className="hidden w-28 truncate text-[13px] sm:block">{t.who}</span>
                 <Tag tone={t.due === 'Today' ? 'rose' : 'slate'}>{t.due}</Tag>
               </span>
             </li>
           ))}
         </ul>
-        <p className="border-t px-4 py-3 text-xs text-muted-foreground">Everyone gets their task with the meeting context attached. The CEO sees what’s late across the office.</p>
+        <p className="border-t px-4 py-3 text-[13px] text-muted-foreground">Everyone gets their task with the meeting context attached. The CEO sees what’s late across the office.</p>
       </Panel>
     </div>
   )
@@ -744,19 +798,19 @@ function TasksDemo(): React.ReactElement {
 
 /* ---------- 7. everything else they get ---------- */
 
-const MORE: { icon: React.ReactElement; title: string; body: string; stat: string; tone: Tone }[] = [
-  { icon: <Route />, title: 'Speed-to-lead routing', body: 'New leads from the portals, Facebook and signs go to the right agent by area, language and load, with a call in under a minute.', stat: '47s average first reply', tone: 'amber' },
-  { icon: <Target />, title: 'Buyer ↔ listing matching', body: 'Every buyer’s needs from their calls are matched to every listing, and agents get told when a new one fits.', stat: '89 buyers matched this week', tone: 'pink' },
-  { icon: <CalendarCheck />, title: 'Showing scheduler', body: 'Clients pick a slot online, the seller is notified, reminders go out by WhatsApp and SMS.', stat: '−63% no-shows', tone: 'sky' },
-  { icon: <MessageCircle />, title: 'WhatsApp and SMS from the CRM', body: 'Every message logged on the lead, templates for follow-ups, and replies land with the right agent.', stat: '3× reply rate vs email', tone: 'emerald' },
-  { icon: <FileSignature />, title: 'Exclusives and contracts', body: 'Exclusive agreements, brokerage orders and offers drafted from the meeting and signed on the phone.', stat: 'Signed in minutes, not days', tone: 'violet' },
-  { icon: <Wallet />, title: 'Commission tracking', body: 'Each deal’s fee, the split between agents and the office, and when it gets paid.', stat: '₪4.2M pipeline in view', tone: 'blue' },
-  { icon: <Landmark />, title: 'Mortgage and lawyer hand-off', body: 'Pass a client to the mortgage advisor or lawyer with the full context, and see where it stands.', stat: 'No deal stuck in limbo', tone: 'teal' },
-  { icon: <BarChart3 />, title: 'Seller reports, sent weekly', body: 'Owners get views, showings and feedback for their property automatically. Fewer “so what’s happening?” calls.', stat: '+41% exclusive renewals', tone: 'indigo' },
-  { icon: <Megaphone />, title: 'Lead-source ROI', body: 'What each portal, campaign and sign really brings in: leads, showings, deals and commission.', stat: 'Know where every ₪ goes', tone: 'orange' },
-  { icon: <BadgeCheck />, title: 'Coaching and training', body: 'A sales-training library, scored calls and a plan per agent based on what they actually miss.', stat: '+18 pts avg score in 60 days', tone: 'cyan' },
-  { icon: <Flame />, title: 'Lost-deal rescue', body: 'Leads gone quiet are spotted early and brought back with a ready-made message.', stat: '1 in 7 revived', tone: 'rose' },
-  { icon: <Scale />, title: 'Compliance and audit', body: 'Recordings, consent, who saw what and when. Ready for any dispute about who brought the client.', stat: 'Every action logged', tone: 'slate' },
+const MORE: { icon: React.ReactElement; title: string; body: string; stat: string; tone: Tone; group: 'win' | 'run' | 'clients' }[] = [
+  { icon: <Route />, title: 'Speed-to-lead routing', group: 'win', body: 'New leads from the portals, Facebook and signs go to the right agent by area, language and load, with a call in under a minute.', stat: '47s average first reply', tone: 'amber' },
+  { icon: <Target />, title: 'Buyer ↔ listing matching', group: 'win', body: 'Every buyer’s needs from their calls are matched to every listing, and agents get told when a new one fits.', stat: '89 buyers matched this week', tone: 'pink' },
+  { icon: <CalendarCheck />, title: 'Showing scheduler', group: 'clients', body: 'Clients pick a slot online, the seller is notified, reminders go out by WhatsApp and SMS.', stat: '−63% no-shows', tone: 'sky' },
+  { icon: <MessageCircle />, title: 'WhatsApp and SMS from the CRM', group: 'clients', body: 'Every message logged on the lead, templates for follow-ups, and replies land with the right agent.', stat: '3× reply rate vs email', tone: 'emerald' },
+  { icon: <FileSignature />, title: 'Exclusives and contracts', group: 'run', body: 'Exclusive agreements, brokerage orders and offers drafted from the meeting and signed on the phone.', stat: 'Signed in minutes, not days', tone: 'violet' },
+  { icon: <Wallet />, title: 'Commission tracking', group: 'run', body: 'Each deal’s fee, the split between agents and the office, and when it gets paid.', stat: '₪4.2M pipeline in view', tone: 'blue' },
+  { icon: <Landmark />, title: 'Mortgage and lawyer hand-off', group: 'clients', body: 'Pass a client to the mortgage advisor or lawyer with the full context, and see where it stands.', stat: 'No deal stuck in limbo', tone: 'teal' },
+  { icon: <BarChart3 />, title: 'Seller reports, sent weekly', group: 'clients', body: 'Owners get views, showings and feedback for their property automatically. Fewer “so what’s happening?” calls.', stat: '+41% exclusive renewals', tone: 'indigo' },
+  { icon: <Megaphone />, title: 'Lead-source ROI', group: 'win', body: 'What each portal, campaign and sign really brings in: leads, showings, deals and commission.', stat: 'Know where every ₪ goes', tone: 'orange' },
+  { icon: <BadgeCheck />, title: 'Coaching and training', group: 'run', body: 'A sales-training library, scored calls and a plan per agent based on what they actually miss.', stat: '+18 pts avg score in 60 days', tone: 'cyan' },
+  { icon: <Flame />, title: 'Lost-deal rescue', group: 'win', body: 'Leads gone quiet are spotted early and brought back with a ready-made message.', stat: '1 in 7 revived', tone: 'rose' },
+  { icon: <Scale />, title: 'Compliance and audit', group: 'run', body: 'Recordings, consent, who saw what and when. Ready for any dispute about who brought the client.', stat: 'Every action logged', tone: 'slate' },
 ]
 
 /* ---------- the page ---------- */
@@ -768,6 +822,20 @@ export function RealEstateDemo(): React.ReactElement {
     const on = (): void => setFull(Boolean(document.fullscreenElement))
     document.addEventListener('fullscreenchange', on)
     return () => document.removeEventListener('fullscreenchange', on)
+  }, [])
+  // which section is on screen, for the bar at the top
+  const [active, setActive] = useState<string | null>(null)
+  useEffect(() => {
+    const els = SECTIONS.map((x) => document.getElementById(x.id)).filter((x): x is HTMLElement => Boolean(x))
+    const io = new IntersectionObserver(
+      (entries) => {
+        const seen = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]
+        if (seen) setActive(seen.target.id)
+      },
+      { rootMargin: '-30% 0px -55% 0px' },
+    )
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
   }, [])
   const toggleFull = (): void => {
     if (document.fullscreenElement) void document.exitFullscreen()
@@ -795,17 +863,41 @@ export function RealEstateDemo(): React.ReactElement {
             <div key={k.label} className="rounded-lg border border-white/10 bg-white/[0.06] p-4 backdrop-blur">
               <div className="flex items-center gap-2 text-white/70 [&_svg]:h-4 [&_svg]:w-4">
                 {k.icon}
-                <span className="text-xs">{k.label}</span>
+                <span className="text-[13px]">{k.label}</span>
               </div>
               <div className="mt-2 text-2xl font-semibold sm:text-3xl">
                 <CountUp value={k.value} decimals={k.decimals} prefix={k.prefix} suffix={k.suffix} />
               </div>
-              <div className="mt-0.5 text-xs text-emerald-300/90">{k.sub}</div>
+              <div className="mt-0.5 text-[13px] text-emerald-300/90">{k.sub}</div>
             </div>
           ))}
         </div>
-        <p className="relative mt-4 text-[11px] text-white/45">Demo data for a fictional 12-agent brokerage.</p>
+        <p className="relative mt-4 text-[13px] text-white/45">Demo data for a fictional 12-agent brokerage.</p>
       </header>
+
+      {/* the six features at a glance */}
+      <section aria-labelledby="glance" className="space-y-4">
+        <div>
+          <p className="eyebrow">At a glance</p>
+          <h2 id="glance" className="text-[26px] font-semibold tracking-[-0.02em] sm:text-[32px]">
+            Six things that change how a brokerage works
+          </h2>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {GLANCE.map((g, i) => (
+            <a key={g.id} href={`#${g.id}`} className="group flex gap-4 rounded-lg border bg-card p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{i + 1}</span>
+              <span className="min-w-0">
+                <span className="block font-semibold leading-snug">{g.title}</span>
+                <span className="mt-1 block text-sm text-muted-foreground">{g.line}</span>
+                <span className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary">
+                  See how <ArrowDown className="h-3.5 w-3.5 transition-transform group-hover:translate-y-0.5" />
+                </span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
 
       {/* the film */}
       <section aria-label="The film" className="grid items-center gap-6 rounded-xl border bg-card p-4 shadow-sm sm:p-6 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
@@ -820,51 +912,122 @@ export function RealEstateDemo(): React.ReactElement {
         </div>
       </section>
 
-      {/* jump links */}
+      {/* jump links (the current section lights up) */}
       <nav aria-label="Demo sections" className="sticky top-2 z-20 -mx-1 flex gap-1.5 overflow-x-auto rounded-full border bg-card/90 p-1.5 shadow-sm backdrop-blur [scrollbar-width:none]">
         {SECTIONS.map((s, i) => (
-          <a key={s.id} href={`#${s.id}`} className="shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-muted hover:text-foreground">
-            {i < 6 ? <span className="mr-1.5 text-xs text-primary">{i + 1}</span> : null}
+          <a key={s.id} href={`#${s.id}`} aria-current={active === s.id ? 'true' : undefined} className={cn('shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition', active === s.id ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
+            {i < 6 ? <span className={cn('mr-1.5 text-[13px]', active === s.id ? 'text-primary-foreground/80' : 'text-primary')}>{i + 1}</span> : null}
             {s.label}
           </a>
         ))}
       </nav>
 
-      <Section id="roles" n={1} title="What the CEO sees vs what an agent sees" pitch="One system, two views. Leadership gets the whole office in real time; agents get a focused day and never see each other’s clients or numbers." tone="blue" icon={<Users />}>
+      <Section
+        id="roles"
+        n={1}
+        title="What the CEO sees vs what an agent sees"
+        pitch="One system, two views. Leadership gets the whole office in real time; agents get a focused day and never see each other’s clients or numbers."
+        tone="blue"
+        icon={<Users />}
+        story={{
+          before: 'You find out how the month went at the end of the month, and agents dig through everyone’s data to find their own.',
+          igani: 'The CEO sees every deal, call and agent live. Each agent opens a screen with only their day and their clients.',
+          result: { stat: 'Live', label: 'office numbers, no reports to chase' },
+        }}
+        tryIt="switch between the CEO view and the agent view"
+      >
         <RolesDemo />
       </Section>
 
-      <Section id="recorder" n={2} title="An app that records in-person meetings" pitch="Like Pocket AI, but inside the CRM. Agents tap record at a showing or valuation; the summary, the client’s needs and the next steps land on the right lead by themselves." tone="rose" icon={<Mic />}>
+      <Section
+        id="recorder"
+        n={2}
+        title="An app that records in-person meetings"
+        pitch="Like Pocket AI, but inside the CRM. Agents tap record at a showing or valuation; the summary, the client’s needs and the next steps land on the right lead by themselves."
+        tone="rose"
+        icon={<Mic />}
+        story={{ before: 'What a client says at a showing stays in the agent’s head, and half of it never reaches the CRM.', igani: 'The agent taps record on their phone. The summary, the client’s needs and the next steps land on the lead.', result: { stat: '40 sec', label: 'from goodbye to full notes' } }}
+      >
         <RecorderDemo />
       </Section>
 
-      <Section id="properties" n={3} title="Every property mentioned on a call, summarised" pitch="AI picks out the addresses, prices and reactions from every conversation, so you know which listings are hot, which buyers fit and where the objections are." tone="amber" icon={<MapPin />}>
+      <Section
+        id="properties"
+        n={3}
+        title="Every property mentioned on a call, caught"
+        pitch="AI picks out the addresses, prices and reactions from every conversation, so you know which listings are hot, which buyers fit and where the objections are."
+        tone="amber"
+        icon={<MapPin />}
+        story={{ before: 'Nobody knows which listings buyers keep asking about, or why they say no.', igani: 'AI pulls every address, price and reaction out of every call and meeting, and matches them to buyers.', result: { stat: '412', label: 'properties caught this week' } }}
+      >
         <PropertiesDemo />
       </Section>
 
-      <Section id="meetings" n={4} title="Private video meetings that coach the agent" pitch="Branded meetings like Google Meet, with no outside accounts. Each one is recorded, summarised and scored, so every agent learns from every meeting." tone="violet" icon={<Video />}>
+      <Section
+        id="meetings"
+        n={4}
+        title="Private video meetings that coach the agent"
+        pitch="Branded meetings like Google Meet, with no outside accounts. Each one is recorded, summarised and scored, so every agent learns from every meeting."
+        tone="violet"
+        icon={<Video />}
+        story={{ before: 'Meetings happen on Zoom, leave nothing behind, and nobody coaches them.', igani: 'Branded meetings on your own link, recorded, summarised and scored for the agent.', result: { stat: '+18 pts', label: 'average agent score in 60 days' } }}
+      >
         <MeetingsDemo />
       </Section>
 
-      <Section id="listen" n={5} title="Hop on a live call and pass notes" pitch="Managers listen in silently to any live call or meeting and send the agent a note in the moment. The client hears nothing." tone="emerald" icon={<Headphones />}>
+      <Section
+        id="listen"
+        n={5}
+        title="Listen in on live calls and coach in the moment"
+        pitch="Managers listen in silently to any live call or meeting and send the agent a note in the moment. The client hears nothing."
+        tone="emerald"
+        icon={<Headphones />}
+        story={{ before: 'A manager hears about a bad call after the client is gone.', igani: 'Listen in silently to any live call and send the agent a note while it still matters.', result: { stat: 'Live', label: 'coaching during the call' } }}
+        tryIt="pick a call, type a note and press Send"
+      >
         <ListenDemo />
       </Section>
 
-      <Section id="tasks" n={6} title="Meeting summaries and tasks handed out" pitch="When a meeting ends, the summary is written, the client gets a recap on WhatsApp, and every task goes to the right person with a due date." tone="sky" icon={<ListChecks />}>
+      <Section
+        id="tasks"
+        n={6}
+        title="Meeting summaries and tasks handed out"
+        pitch="When a meeting ends, the summary is written, the client gets a recap on WhatsApp, and every task goes to the right person with a due date."
+        tone="sky"
+        icon={<ListChecks />}
+        story={{ before: 'Follow-ups depend on the agent remembering, and clients wait days for a recap.', igani: 'Every meeting ends with a summary, a WhatsApp recap to the client and tasks for the right people.', result: { stat: '96%', label: 'follow-ups done on time' } }}
+        tryIt="tick tasks off the list"
+      >
         <TasksDemo />
       </Section>
 
       <Section id="more" title="And everything a brokerage runs on" pitch="The parts that turn a CRM into the office’s operating system." tone="slate" icon={<Building2 />}>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {MORE.map((f) => (
-            <Panel key={f.title} className="flex flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <IconChip tone={f.tone}>{f.icon}</IconChip>
-                <p className="font-semibold">{f.title}</p>
+        <div className="space-y-8">
+          {(
+            [
+              ['win', 'Win more deals', 'Turn more leads into showings and offers'],
+              ['clients', 'Keep clients and sellers happy', 'Fast answers and no surprises'],
+              ['run', 'Run the office', 'Money, paperwork and people'],
+            ] as const
+          ).map(([g, title, sub]) => (
+            <div key={g} className="space-y-3">
+              <div className="flex items-baseline gap-3">
+                <h3 className="text-lg font-semibold">{title}</h3>
+                <span className="text-sm text-muted-foreground">{sub}</span>
               </div>
-              <p className="flex-1 text-sm text-muted-foreground">{f.body}</p>
-              <p className="text-xs font-semibold text-primary">{f.stat}</p>
-            </Panel>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {MORE.filter((f) => f.group === g).map((f) => (
+                  <Panel key={f.title} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <IconChip tone={f.tone}>{f.icon}</IconChip>
+                      <p className="font-semibold leading-snug">{f.title}</p>
+                    </div>
+                    <p className="flex-1 text-sm text-muted-foreground">{f.body}</p>
+                    <p className="text-sm font-semibold text-primary">{f.stat}</p>
+                  </Panel>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </Section>
@@ -884,7 +1047,7 @@ export function RealEstateDemo(): React.ReactElement {
               <IconChip tone="emerald">{icon}</IconChip>
               <div>
                 <p className="text-sm font-semibold">{a}</p>
-                <p className="text-xs text-muted-foreground">{b}</p>
+                <p className="text-[13px] text-muted-foreground">{b}</p>
               </div>
             </div>
           ))}
