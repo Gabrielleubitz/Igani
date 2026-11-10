@@ -90,7 +90,9 @@ const WelcomeText: Screen = ({ lang }) => (
 const DocsReminder: Screen = ({ lang }) => (
   <div className="flex min-h-full flex-col bg-[#efeae2]">
     <div className="flex items-center gap-3 bg-[#075e54] px-4 py-3 text-white">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 text-xs font-semibold">LT</span>
+      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white">
+        <Image src={`${BASE}/logo.svg`} alt="" width={20} height={20} />
+      </span>
       <div>
         <div className="text-sm font-semibold">{tx(lang, 'צוות ההלוואות', 'Loan team')}</div>
         <div className="text-[10px] text-white/70">WhatsApp Business</div>

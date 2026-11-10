@@ -11,6 +11,7 @@ const offer: OfferDefinition = {
     defaultLang: 'he',
     client: {
       name: { he: 'יוסף · מערכת CRM להלוואות', en: 'Yosef · Lending CRM' },
+      logo: '/offers/yosef/logo.svg',
       accent: '#1f55b5',
     },
     hero: {
