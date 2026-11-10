@@ -714,7 +714,7 @@ function ListenDemo(): React.ReactElement {
               {sent}
             </div>
           ) : (
-            <p className="mt-4 rounded-xl border border-dashed p-3 text-center text-[13px] text-muted-foreground">Send a note on the left to see it appear here</p>
+            <p className="mt-4 rounded-xl border border-dashed p-3 text-center text-[13px] text-muted-foreground">Send a note and it appears here, on the agent’s screen</p>
           )}
         </div>
       </div>
