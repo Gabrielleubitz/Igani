@@ -77,34 +77,82 @@
 .sx-shot{margin:0}.sx-shot img{display:block;width:100%;height:auto;border-radius:14px;box-shadow:var(--sh-3,0 24px 48px -28px rgba(12,23,48,.45));border:1px solid var(--rule,#e3e7ee)}.sx-shot figcaption{margin-top:12px;font-size:13px;color:var(--ink-3,#626a7c)}
 .sx-shot--below{margin-top:32px}
 .sx-rep{display:none}
-.sx-cl{max-width:720px;margin:0 auto}
-.sx-tabs{display:flex;gap:6px;margin-bottom:16px}
+.sx-cl{max-width:1040px;margin:0 auto}
+.sx-tabs{display:flex;gap:6px;margin-bottom:14px}
 .sx-tabs button{appearance:none;cursor:pointer;padding:9px 14px;border-radius:999px;border:1px solid var(--rule-2,#d3d9e3);background:#fff;font:500 13.5px/1.2 var(--sans);color:var(--ink-2,#3a4152)}
 .sx-tabs button[aria-selected="true"]{background:var(--navy-x,#0c1730);border-color:var(--navy-x,#0c1730);color:#fff}
-.sx-pane[hidden]{display:none}.sx-pane{display:grid;gap:16px}
-.sx-pl{display:flex;align-items:center;gap:16px;padding:16px;border-radius:14px;background:#fff;border:1px solid var(--rule,#e3e7ee)}
-.sx-play{appearance:none;cursor:pointer;flex:none;width:56px;height:56px;border-radius:50%;border:0;background:var(--blue,#1f55b5);position:relative}
-.sx-play i{position:absolute;left:23px;top:18px;border-left:16px solid #fff;border-top:10px solid transparent;border-bottom:10px solid transparent}
-.sx-play.is-on i{left:19px;top:18px;width:18px;height:20px;border:0;border-left:5px solid #fff;border-right:5px solid #fff}
-.sx-bar{flex:1;min-width:0}
-.sx-trk{height:8px;border-radius:99px;background:#e3e7ee;cursor:pointer;position:relative;margin:8px 0 10px}.sx-trk span{display:block;height:100%;width:0;border-radius:99px;background:var(--blue,#1f55b5)}
-.sx-bar small{font:400 12.5px/1.3 var(--mono);color:var(--ink-3,#626a7c)}.sx-bar em{font-style:normal;font-family:var(--sans)}
-.sx-hints{display:grid;gap:10px;min-height:120px;align-content:start}
-.sx-empty{margin:0;padding:16px;border-radius:12px;border:1px dashed var(--rule-2,#d3d9e3);color:var(--ink-3,#626a7c);font-size:14.5px}
-.sx-h{padding:12px 16px;border-radius:12px;background:#fff;border:1px solid var(--rule,#e3e7ee);border-left:4px solid var(--blue,#1f55b5);animation:sxpop .35s ease-out}
-.sx-h--warn{border-left-color:#e0902a;background:#fffaf0}.sx-h--do{border-left-color:var(--blue,#1f55b5)}
-.sx-h small{display:block;font:600 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3,#626a7c);margin-bottom:6px}
-.sx-h p{margin:0;font-size:16px;line-height:1.4;font-weight:500}
-.sx-end{padding:12px 16px;border-radius:12px;background:var(--navy-x,#0c1730);color:#fff;animation:sxpop .35s ease-out}
-@keyframes sxpop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion:reduce){.sx-h,.sx-end{animation:none}}
-.sx-parts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.sx-parts div{display:grid;grid-template-columns:1fr auto;gap:6px 10px;padding:12px;border-radius:10px;background:#fff;border:1px solid var(--rule,#e3e7ee);align-items:center}
-.sx-parts small{font:500 12px/1 var(--sans);color:var(--ink-3,#626a7c)}.sx-parts b{font:600 16px/1 var(--sans)}
-.sx-parts i{grid-column:1/-1;height:6px;border-radius:9px;background:#e3e7ee;position:relative}.sx-parts i::after{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--w);border-radius:9px;background:var(--blue,#1f55b5)}
-.sx-ctl ul{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
-.sx-ctl li{padding:8px 12px;border-radius:999px;background:#fff;border:1px solid var(--rule-2,#d3d9e3);font-size:14px}.sx-ctl li b{margin-left:4px}.sx-ctl .no{color:var(--loss,#b3261e)}
-@media (max-width:520px){.sx-pl{padding:12px;gap:12px}.sx-parts{grid-template-columns:1fr 1fr}.sx-st b{font-size:18px}}
+.sx-pane[hidden]{display:none}
+.sx-app{border-radius:14px;background:#f6f8fb;box-shadow:0 24px 48px -28px rgba(12,23,48,.45),0 0 0 1px rgba(18,21,28,.08);overflow:hidden}
+.sx-top{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;background:#fff;border-bottom:1px solid var(--rule,#e3e7ee);font:600 14px/1 var(--sans)}
+.sx-top i{width:7px;height:7px;border-radius:50%;background:#d3d8e1;box-shadow:12px 0 0 #d3d8e1,24px 0 0 #d3d8e1;margin-right:26px}
+.sx-top span{font-weight:500;color:var(--ink-3,#626a7c)}
+.sx-top .rec{margin-left:auto;display:none;align-items:center;gap:6px;font:500 12.5px/1 var(--sans);color:#b3261e}.sx-top .rec::before{content:"";width:8px;height:8px;border-radius:50%;background:#d93025;animation:sxrec 1.2s infinite}
+.sx-live .sx-top .rec{display:inline-flex}
+@keyframes sxrec{50%{opacity:.25}}
+.sx-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:16px;padding:16px}
+.sx-box{padding:18px;border-radius:12px;background:#fff;border:1px solid var(--rule,#e3e7ee);display:grid;gap:14px;align-content:start}
+.sx-who{display:flex;align-items:center;gap:12px}
+.sx-who i{flex:none;width:44px;height:44px;border-radius:50%;background:var(--blue-tint,#e8effb);color:var(--blue,#1f55b5);display:grid;place-items:center;font:600 15px/1 var(--sans);font-style:normal}
+.sx-who b{display:block;font-size:16px}.sx-who small{color:var(--ink-3,#626a7c);font-size:13px}
+.sx-st2{margin-left:auto;text-align:right;font:500 13px/1.3 var(--mono);color:var(--ink-3,#626a7c)}.sx-st2 b{display:block;font:600 22px/1.1 var(--mono);color:var(--ink,#12151c)}
+.sx-callbtn{appearance:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;height:50px;border-radius:12px;border:0;background:#137a45;color:#fff;font:600 16px/1 var(--sans)}
+.sx-callbtn.is-end{background:#c62828}
+.sx-callbtn svg{width:20px;height:20px;fill:currentColor}
+.sx-callbtn:disabled{opacity:.7;cursor:default}
+.sx-ring2{display:none;align-items:center;gap:10px;color:var(--ink-3,#626a7c);font-size:14px}.sx-ring2.on{display:flex}
+.sx-ring2 i{width:10px;height:10px;border-radius:50%;background:#137a45;animation:sxrg 1s infinite}
+@keyframes sxrg{0%{box-shadow:0 0 0 0 rgba(19,122,69,.5)}100%{box-shadow:0 0 0 12px rgba(19,122,69,0)}}
+.sx-db{display:flex;align-items:flex-end;gap:1px;height:84px;cursor:pointer;position:relative;padding:0}
+.sx-db{overflow:hidden}.sx-db i{flex:1 1 0;min-width:0;border-radius:1px;background:#d6dce6;transition:background .15s;display:block}.sx-grid>*{min-width:0}
+.sx-db i.on{background:var(--blue,#1f55b5)}
+.sx-db i.red{background:#f0b4b0}.sx-db i.red.on{background:#d93025}
+.sx-db .ph{position:absolute;top:-4px;bottom:0;width:2px;background:var(--ink,#12151c);left:0;pointer-events:none;opacity:0}
+.sx-db-l{display:flex;justify-content:space-between;gap:10px;font:400 12px/1.3 var(--sans);color:var(--ink-3,#626a7c)}.sx-db-l b{display:inline-block;width:9px;height:9px;border-radius:2px;background:#d93025;margin-right:5px}
+.sx-coach h4{margin:0;display:flex;align-items:center;gap:8px;font:600 14px/1 var(--sans)}.sx-coach h4 i{width:8px;height:8px;border-radius:50%;background:#bcc4d2}.sx-live .sx-coach h4 i{background:#137a45;animation:sxrec 1.4s infinite}
+.sx-hint{min-height:132px;display:grid;align-content:center;gap:8px}
+.sx-hint .empty{margin:0;color:var(--ink-3,#626a7c);font-size:14.5px}
+.sx-hc{padding:16px 18px;border-radius:12px;border:1px solid var(--rule,#e3e7ee);border-left:5px solid var(--blue,#1f55b5);background:#f2f6fd;animation:sxpop .35s ease-out}
+.sx-hc.warn{border-left-color:#e0902a;background:#fff8ec}.sx-hc.good{border-left-color:#137a45;background:#f0f8f3}
+.sx-hc small{display:block;font:600 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3,#626a7c);margin-bottom:8px}
+.sx-hc p{margin:0;font:600 19px/1.3 var(--sans);letter-spacing:-.01em}
+.sx-prev{margin:0;font-size:12.5px;color:var(--ink-3,#626a7c)}
+@keyframes sxpop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sx-hc{animation:none}.sx-ring2 i,.sx-top .rec::before{animation:none}}
+.sx-r{padding:16px;display:grid;gap:14px}
+.sx-rc2{padding:18px;border-radius:12px;background:#fff;border:1px solid var(--rule,#e3e7ee);display:grid;gap:12px}
+.sx-rc2 h3{margin:0;font:600 17px/1.25 var(--sans)}.sx-rc2>p,.sx-rc2 .sub{margin:0;font-size:14.5px;line-height:1.5;color:var(--ink-2,#3a4152)}
+.sx-chips{display:flex;flex-wrap:wrap;gap:8px}.sx-chips span{padding:5px 10px;border-radius:999px;font:500 12.5px/1 var(--sans);background:#e8f4ec;color:#0e5a33}.sx-chips span.b{background:#e8effb;color:#17459a}.sx-chips span.p{background:#f0e9fb;color:#5a2f99}
+.sx-say{padding:14px 16px;border-radius:10px;background:#e8effb}.sx-say small{display:block;font:600 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;color:#17459a;margin-bottom:6px}.sx-say p{margin:0;font-size:15px;line-height:1.5}
+.sx-rows{display:grid;gap:14px}
+.sx-rw{display:grid;grid-template-columns:auto 1fr auto;gap:4px 12px;align-items:start}
+.sx-rw>i{width:30px;height:30px;border-radius:8px;background:#e8effb;display:grid;place-items:center;font:600 13px/1 var(--sans);font-style:normal;color:#17459a}
+.sx-rw b{font-size:15px}.sx-rw b small{font-weight:400;color:var(--ink-3,#626a7c);margin-left:6px}.sx-rw>strong{font:600 18px/1 var(--sans);color:#b3571a}
+.sx-rw p{grid-column:2/4;margin:0;font-size:13.5px;color:var(--ink-3,#626a7c)}
+.sx-rw u{grid-column:2/4;display:block;height:6px;border-radius:9px;background:#e3e7ee;text-decoration:none;position:relative}.sx-rw u::after{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--w);border-radius:9px;background:var(--c,#e0902a)}
+.sx-note2{display:flex;gap:10px;padding:12px 14px;border-radius:10px;font-size:14px;line-height:1.45}.sx-note2.r{background:#fdecea;color:#8a1c14;border:1px solid #f3c3be}.sx-note2.b{background:#e8effb;color:#17459a;border:1px solid #c6d6f3}
+.sx-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.sx-sk{padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.4;background:#fdecea}.sx-sk.m{background:#fdf1e0}
+.sx-sk b{display:block;font:600 15px/1.2 var(--sans);margin-bottom:6px;color:#b3261e}.sx-sk.m b{color:#a15a0b}
+.sx-ck{display:grid;gap:12px}.sx-ck div{display:grid;grid-template-columns:22px 1fr;gap:2px 10px}.sx-ck i{font-style:normal;font-weight:700;color:#d93025;grid-row:1/3}.sx-ck i.y{color:#137a45}
+.sx-ck b{font:500 14.5px/1.35 var(--sans)}.sx-ck p{margin:0;font-size:13px;color:var(--ink-3,#626a7c);line-height:1.4}
+.sx-dim{display:grid;grid-template-columns:1fr auto;gap:2px 12px;font-size:14px}.sx-dim small{grid-column:1/3;color:var(--ink-3,#626a7c);font-size:12.5px}.sx-dim span{font-weight:600}
+.sx-dim u{grid-column:1/3;display:flex;gap:4px;text-decoration:none}.sx-dim u s{flex:1;height:6px;border-radius:9px;background:#e3e7ee}.sx-dim u s.f{background:#e0902a}.sx-dim u s.l{background:#d93025}
+.sx-mv{border:1px solid var(--rule,#e3e7ee);border-radius:12px;padding:14px 16px;display:grid;gap:10px;background:#fff}
+.sx-mv header{display:flex;align-items:center;gap:10px}.sx-mv button.pl{appearance:none;cursor:pointer;border:1px solid var(--rule-2,#d3d9e3);background:#fff;border-radius:8px;padding:5px 9px;font:500 12.5px/1 var(--mono);color:var(--ink,#12151c)}.sx-mv button.pl:hover{border-color:var(--blue,#1f55b5)}
+.sx-mv header span{padding:3px 8px;border-radius:6px;background:#e8effb;color:#17459a;font:600 11px/1 var(--sans);letter-spacing:.05em}
+.sx-mv small{display:block;font:600 11px/1 var(--sans);letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.sx-mv .c small{color:#a15a0b}.sx-mv .r small{color:#b3261e}.sx-mv .t small{color:#137a45}
+.sx-mv p{margin:0;font-size:14.5px;line-height:1.45}.sx-mv .r p{text-decoration:line-through;color:var(--ink-3,#626a7c)}
+.sx-mv .t p{padding:12px 14px;border-radius:10px;background:#e8f4ec;border:1px solid #cfe6d9}
+.sx-mv .w{font-size:13px;color:var(--ink-3,#626a7c)}
+.sx-lt{display:flex;flex-wrap:wrap;gap:10px 22px;font-size:13.5px}.sx-lt b{font-weight:600}
+.sx-sc2{display:flex;gap:18px;align-items:center}
+.sx-fine{padding:18px 20px;border-radius:12px;background:#fff;border:1px solid var(--rule,#e3e7ee)}
+.sx-lg{width:100%;height:auto;display:block}
+.sx-lg text{font:500 11px var(--sans);fill:#626a7c}
+@media (max-width:860px){.sx-grid{grid-template-columns:1fr}.sx-cards{grid-template-columns:1fr}}
+@media (max-width:520px){.sx-grid{padding:10px}.sx-box{padding:14px}.sx-r{padding:10px}.sx-hc p{font-size:17px}.sx-who{flex-wrap:wrap}}
+
 
 @media (max-width:860px){.sx-rc,.sx-co{grid-template-columns:1fr}}
 @media (max-width:560px){.sx-ib th:nth-child(2),.sx-ib td:nth-child(2),.sx-ib th:nth-child(4),.sx-ib td:nth-child(4){display:none}.sx-ib td,.sx-ib th{padding-left:6px;padding-right:6px}.sx-st{grid-template-columns:1fr 1fr 1fr}.sx-st b{font-size:19px}.sx-tr li{grid-template-columns:38px 44px 1fr;padding:9px 10px;font-size:14px}.sx-tm th:nth-child(3),.sx-tm td:nth-child(3),.sx-tm th:nth-child(4),.sx-tm td:nth-child(4){display:none}}
@@ -285,60 +333,130 @@ dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);}
 <tr><td><b>Tal B.</b><small>Valuation</small></td><td>WhatsApp</td><td><span class="sx-pill">Follow up today</span></td><td>Ron</td><td></td></tr></tbody></table>
 <div class="sx-dial" data-sx-dial hidden><i></i><b data-sx-dtext>Calling Noa K.…</b><span>Recording on · Live coach on</span></div></div></div>
 <p class="sx-note">Example data.</p>
-<script>(()=>{const r=document.querySelector("[data-sx-ib]");if(!r)return;const b=r.querySelector("[data-sx-call]"),d=r.querySelector("[data-sx-dial]"),t=r.querySelector("[data-sx-dtext]");let h;b.addEventListener("click",()=>{d.hidden=false;t.textContent="Calling Noa K.…";b.textContent="Calling…";clearTimeout(h);h=setTimeout(()=>{t.textContent="Connected · 0:03";b.textContent="On the call";},1500);});})();</script></div></section><section class="pg-s pg-s--paper" id="real"><div class="w"><div class="pg-sh"><span class="sx-tag">Example · AI voices</span><h2>Hear the call. <em>Then see the review.</em></h2><p>Press play. While the call runs, the coach whispers to the rep, the way it does in the CRM. When the call ends, the review appears.</p></div>
+<script>(()=>{const r=document.querySelector("[data-sx-ib]");if(!r)return;const b=r.querySelector("[data-sx-call]"),d=r.querySelector("[data-sx-dial]"),t=r.querySelector("[data-sx-dtext]");let h;b.addEventListener("click",()=>{d.hidden=false;t.textContent="Calling Noa K.…";b.textContent="Calling…";clearTimeout(h);h=setTimeout(()=>{t.textContent="Connected · 0:03";b.textContent="On the call";},1500);});})();</script></div></section><section class="pg-s pg-s--paper" id="real"><div class="w"><div class="pg-sh"><span class="sx-tag">Example · AI voices</span><h2>Hear the call. <em>Then see the review.</em></h2><p>Press Call. The rep dials, the call connects, and the coach whispers advice while it runs. When the call ends, the review opens.</p></div>
 <div class="sx-cl" data-sx-cl>
 <audio data-sx-au src="/site/audio/sales-example-call.mp3" preload="none"></audio>
-<div class="sx-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-sx-tab="live">1 · Live coach</button><button type="button" role="tab" aria-selected="false" data-sx-tab="rev">2 · Review</button></div>
-<div class="sx-pane" data-sx-pane="live">
-<div class="sx-pl"><button type="button" class="sx-play" data-sx-play aria-label="Play the call"><i></i></button><div class="sx-bar"><div class="sx-trk" data-sx-trk role="slider" aria-label="Call position" aria-valuemin="0" aria-valuemax="64" aria-valuenow="0" tabindex="0"><span data-sx-fill></span></div><small><span data-sx-now>0:00</span> / 1:04 <em>· Recording on · Live coach on</em></small></div></div>
-<div class="sx-hints" data-sx-hints aria-live="polite"><p class="sx-empty" data-sx-empty>Press play. Advice for the rep shows up here, as the call goes.</p></div>
+<div class="sx-tabs" role="tablist"><button type="button" role="tab" aria-selected="true" data-sx-tab="live">1 · The call</button><button type="button" role="tab" aria-selected="false" data-sx-tab="rev">2 · The review</button></div>
+<div class="sx-pane" data-sx-pane="live"><div class="sx-app" data-sx-app>
+<div class="sx-top"><i></i>Igani <span>· Dialer</span><b class="rec">Recording</b></div>
+<div class="sx-grid">
+<div class="sx-box">
+<div class="sx-who"><i>WL</i><div><b>Website lead</b><small>Cold call · +972 50 000 0000</small></div><div class="sx-st2"><b data-sx-clock>0:00</b><span data-sx-state>Ready</span></div></div>
+<button type="button" class="sx-callbtn" data-sx-btn><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.300.2 2.500.6 3.600.1.300 0 .700-.2 1l-2.300 2.200z"/></svg><span data-sx-btnt>Call</span></button>
+<div class="sx-ring2" data-sx-ringing><i></i><span data-sx-rtext>Calling…</span></div>
+<div class="sx-db" data-sx-db role="slider" aria-label="Call loudness. Red marks where the call slipped" aria-valuemin="0" aria-valuemax="64" aria-valuenow="0" tabindex="0"><b class="ph" data-sx-ph></b></div>
+<div class="sx-db-l"><span>Call loudness</span><span><b></b>Where the call slipped</span></div>
 </div>
-<div class="sx-pane" data-sx-pane="rev" hidden>
-<div class="sx-sum"><div class="sx-ring" style="--p:33"><span><b>33</b><small>of 100</small></span></div><div><b>Opened with a scare, not a question.</b><p>They got a yes to two minutes, but the rep talked for 35 seconds without asking anything, and leaned on a claim the client couldn’t check.</p></div></div>
-<div class="sx-parts"><div><small>Sales skills</small><i style="--w:25%"></i><b>25</b></div><div><small>Tonality</small><i style="--w:48%"></i><b>48</b></div><div><small>Conversation</small><i style="--w:46%"></i><b>46</b></div><div><small>Result</small><i style="--w:19%"></i><b>19</b></div></div>
-<div class="sx-ctl"><span class="sx-lbl">Control of the call</span><ul><li>Opening <b>2/5</b></li><li>Discovery <b>1/5</b></li><li>Staying in control <b>2/5</b></li><li>Honesty <b class="no">Not met</b></li></ul></div>
-<div class="sx-st"><div><small>Rep talked</small><b>80%</b><span>aim for 35–55%</span></div><div><small>Questions</small><b>4</b><span>in 1:04</span></div><div><small>Next step</small><b>None yet</b><span>book it before the demo</span></div></div>
-<div><span class="sx-lbl">Key moments <em>tap one to hear it</em></span><div class="sx-ch" data-sx-ch style="margin-top:10px"></div></div>
-<div class="sx-ba" data-sx-ba aria-live="polite"></div>
+<div class="sx-box sx-coach sx-live-x"><h4><i></i>Call coach <span style="font-weight:400;color:var(--ink-3,#626a7c)" data-sx-listen>· waiting for the call</span></h4>
+<div class="sx-hint" data-sx-hint aria-live="polite"><p class="empty">Advice for the rep appears here, one tip at a time, only when it’s useful.</p></div></div>
+</div></div></div>
+<div class="sx-pane" data-sx-pane="rev" hidden><div class="sx-app">
+<div class="sx-top"><i></i>Igani <span>· Calls · Review</span></div>
+<div class="sx-r">
+<div class="sx-rc2"><div class="sx-chips"><span>Answered</span><span class="b">Talk time 1:04</span><span class="p">Outbound prospecting call</span></div>
+<div class="sx-sc2"><div class="sx-ring" style="--p:32"><span><b>32</b><small>of 100</small></span></div><div><h3>Permission to continue, but not yet qualified</h3><p class="sub">Next step: none agreed.</p></div></div>
+<h3>Summary</h3><p>The rep made an outbound call and asked for one minute to talk about the client’s website. The client agreed and asked what the rep wanted to discuss. The rep identified that the site was built on WordPress, then delivered a 37-second warning about hacks, privacy and credit cards without first qualifying the client’s situation. The client agreed to hear two more minutes, but no discovery, business need, decision process or specific next step was established.</p>
+<div class="sx-say"><small>The coach says</small><p>The rep got onto the line with a clear reason and micro-permission, then left it by pitching a fear-based WordPress warning before gathering intelligence or building trust.</p></div></div>
+<div class="sx-rc2"><h3>How this score was built</h3><div class="sx-rows">
+<div class="sx-rw"><i>S</i><b>Sales skills <small>40% of the score</small></b><strong>15</strong><u style="--w:15%;--c:#d93025"></u><p>Strongest: rapport (3/5). Weakest: discovery (gathering intelligence) (1/5).</p></div>
+<div class="sx-rw"><i>T</i><b>Tonality <small>25% of the score</small></b><strong>52</strong><u style="--w:52%"></u><p>Heard on the recording: best on composure (3/5), weakest on energy (2/5).</p></div>
+<div class="sx-rw"><i>C</i><b>Conversation <small>15% of the score</small></b><strong>57</strong><u style="--w:57%"></u><p>Biggest gap: you talked 80% (aim for 38–62% on this kind of call).</p></div>
+<div class="sx-rw"><i>R</i><b>Result <small>20% of the score</small></b><strong>23</strong><u style="--w:23%;--c:#d93025"></u><p>No next step was agreed.</p></div></div>
+<div class="sx-note2 r">Capped at 55: the call crossed into pressure or wasn’t fully honest. A sale won that way costs more than it brings.</div>
+<div class="sx-note2 b">Biggest lift next call: sales skills. Bringing it to 90 would add about 30 points.</div></div>
+<div class="sx-rc2"><h3>The call on the line</h3><p class="sub">The coach’s read of the transcript. On the line <b>38%</b> of the call. Readiness peaked at <b>3/10</b> and never reached the action threshold.</p>
+<svg class="sx-lg" viewBox="0 0 640 300" role="img" aria-label="The call drifted off the line from about 0:24 and never reached the action threshold"><rect x="215" y="14" width="415" height="170" fill="#fdecea"/><text x="222" y="28">off the line 0:24 – 1:03</text>
+<g stroke="#9aa3b5" stroke-dasharray="3 4"><line x1="10" y1="44" x2="630" y2="44"/><line x1="10" y1="104" x2="630" y2="104" stroke="#3a4152" stroke-dasharray="none"/><line x1="10" y1="164" x2="630" y2="164"/></g><text x="12" y="40">upper</text><text x="12" y="100">line</text><text x="12" y="160">lower</text>
+<path d="M20 112 C60 98 100 118 140 104 S200 96 236 80 S330 52 400 40 S540 30 626 28" fill="none" stroke="#1f55b5" stroke-width="2.5"/>
+<g><circle cx="60" cy="104" r="6" fill="#e0902a"/><circle cx="180" cy="104" r="6" fill="#d93025"/><circle cx="222" cy="104" r="6" fill="#3a4152"/><circle cx="262" cy="104" r="6" fill="#d93025"/><circle cx="360" cy="104" r="6" fill="#9aa3b5"/><circle cx="460" cy="104" r="6" fill="#9aa3b5"/><circle cx="560" cy="104" r="6" fill="#3a4152"/></g>
+<g font-size="10"><text x="40" y="204">Shaky · 0:03</text><text x="158" y="204">Slipped · 0:21</text><text x="206" y="222">Skipped</text><text x="240" y="204">Slipped · 0:26</text><text x="332" y="222">Not reached</text><text x="432" y="204">Not reached</text><text x="548" y="222">Skipped</text></g>
+<text x="12" y="252" dy="0">How ready the prospect is to buy (0 to 10)</text><path d="M10 286 L120 286 C150 270 180 262 215 268 S300 282 400 284 L630 286 Z" fill="#cfdcf5"/><line x1="10" y1="236" x2="630" y2="236" stroke="#e0902a" stroke-dasharray="5 4"/><text x="12" y="230">action threshold</text></svg></div>
+<div class="sx-rc2"><h3>Control of the call</h3><div class="sx-cards">
+<div class="sx-sk m"><b>Rapport 3/5</b>Clear micro-permission: “If you have just one minute, I’d like to talk about your website,” but no name, company or authority frame.</div>
+<div class="sx-sk"><b>Questions 1/5</b>Only 2 questions were asked and the key one was not about the client’s business: “have you seen the news lately?”</div>
+<div class="sx-sk"><b>Control 2/5</b>The rep stayed on the website topic, but control became a 37-second monologue instead of a guided conversation.</div>
+<div class="sx-sk"><b>Trust 1/5</b>No tailored solution, no Igani credibility and no personal trust case were built; the pitch was mostly “This is real.”</div>
+<div class="sx-sk"><b>Closing 1/5</b>The only ask was permission to explain for two minutes, not a sale or a specific next step: “I’d like to explain what I would like to do.”</div></div>
+<div class="sx-ck">
+<div><i>✗</i><b>Opened with a clear, confident reason for the call</b><p>The rep opened with “Hey, how are you?” and never introduced himself or Igani before discussing the website.</p></div>
+<div><i class="y">✓</i><b>Kept the call moving toward a close, no long off-topic chat</b><p>“If you have just one minute, I’d like to talk about your website.”</p></div>
+<div><i>✗</i><b>Qualified need, interest and ability to pay before presenting</b><p>The rep pitched the WordPress hack risk before asking what the site does, whether it collects leads or whether the client has a problem.</p></div>
+<div><i>✗</i><b>Asked big-picture questions first, then specifics</b><p>The first topic question was “have you seen the news lately?” rather than a big-picture question about the client’s website and business.</p></div>
+<div><i>✗</i><b>Let the prospect talk and held back benefits at first</b><p>The rep unloaded the main warning immediately: “Any company that is on WordPress, their leads are not private.”</p></div>
+<div><i>✗</i><b>Bridged with “based on what you told me, this fits” before presenting</b><p>There was no bridge, because the rep had not gathered client facts.</p></div>
+<div><i class="y">✓</i><b>Kept the presentation short and tied to their words</b><p>The pitch was short, with the longest rep monologue measured at 37 seconds.</p></div>
+<div><i>✗</i><b>Built confidence in the solution, the rep and the company</b><p>The client heard a risk claim, but no reason to love the solution, trust the rep or trust Igani.</p></div>
+<div><i>✗</i><b>Asked for the next step calmly and specifically</b><p>“If you have just two minutes, I’d like to explain” was a micro-permission, not a calm close after a tailored presentation.</p></div>
+<div><i>✗</i><b>Stayed honest and did not pressure</b><p>The absolute claim “Any company that is on WordPress, their leads are not private” is too broad and pressure-heavy without evidence from this client’s site.</p></div></div></div>
+<div class="sx-rc2"><h3>Tonality <small style="font:500 12px var(--sans);color:#0e5a33;background:#e8f4ec;border-radius:999px;padding:4px 9px;margin-left:8px">Client warmed up</small></h3>
+<p>The rep sounded fairly steady and composed, but the tone lacked energy and variety, making the delivery feel flat and less engaging.</p>
+<div class="sx-rows">
+<div class="sx-dim"><b>Certainty</b><span>3/5</span><u><s class="f"></s><s class="f"></s><s class="f"></s><s></s><s></s></u><small>Sounds sure: statements land down, no hedging or apologetic tone</small></div>
+<div class="sx-dim"><b>Energy</b><span>2/5</span><u><s class="l"></s><s class="l"></s><s></s><s></s><s></s></u><small>Upbeat and alive, especially in the first seconds</small></div>
+<div class="sx-dim"><b>Care</b><span>3/5</span><u><s class="f"></s><s class="f"></s><s class="f"></s><s></s><s></s></u><small>Warm and sincere, sounds like they care about the client, not salesy</small></div>
+<div class="sx-dim"><b>Pace and pauses</b><span>3/5</span><u><s class="f"></s><s class="f"></s><s class="f"></s><s></s><s></s></u><small>Not rushed, pauses after questions, matches the client</small></div>
+<div class="sx-dim"><b>Variety</b><span>2/5</span><u><s class="l"></s><s class="l"></s><s></s><s></s><s></s></u><small>Not monotone: rises, drops and emphasis on the words that matter</small></div>
+<div class="sx-dim"><b>Composure</b><span>3/5</span><u><s class="f"></s><s class="f"></s><s class="f"></s><s></s><s></s></u><small>Calm, reasonable tone under objections and when asking for commitment</small></div></div>
+<div class="sx-lt"><span>Pace <b>178 words/min</b> (comfortable: 125–175)</span><span>Filler words <b>1.2/min</b> (mostly “basically”)</span></div>
+<div class="sx-ck">
+<div><i class="y">▸</i><b>0:09 · The rep’s tone was neutral and lacked enthusiasm when introducing the topic.</b><p>Try: Add a bit more energy and emphasis when introducing the purpose of the call to grab attention.</p></div>
+<div><i class="y">▸</i><b>0:21 · The rep’s voice trailed off and sounded uncertain when asking if the client had seen the news.</b><p>Try: Deliver the question with more confidence and a steady tone to avoid sounding unsure.</p></div>
+<div><i class="y">▸</i><b>0:53 · The rep’s tone became repetitive and monotone while explaining the security risks.</b><p>Try: Use more vocal variety and emphasize key points to keep the client engaged and highlight the urgency.</p></div></div></div>
+<div class="sx-rc2"><h3>Where you left the line</h3><p class="sub">The moments the coach would have handled differently. Tap a time to hear it.</p>
+<div class="sx-mv"><header><button type="button" class="pl" data-sx-seek="17">▶ 0:18</button><span>QUESTIONS</span></header><div class="c"><small>Client said</small><p>What do you want to talk about the website?</p></div><div class="r"><small>Rep said</small><p>Well, I see that your website’s built on WordPress. And I don’t know if you, have you seen the news lately?</p></div><div class="t"><small>Try instead</small><p>“I noticed the site is on WordPress. Before I assume anything, what does the site mainly do for you today, leads, bookings, payments, or just information?”</p></div><p class="w">This was the right moment to gather intelligence and qualify fit instead of steering the client into a generic news hook.</p></div>
+<div class="sx-mv"><header><button type="button" class="pl" data-sx-seek="38">▶ 0:39</button><span>ETHICS</span></header><div class="c"><small>Client said</small><p>No.</p></div><div class="r"><small>Rep said</small><p>Any company that is on WordPress, their leads are not private. Their credit cards on the website are not private. Anything on the website is not private.</p></div><div class="t"><small>Try instead</small><p>“There have been some WordPress-related security concerns, usually depending on plugins and updates. I’m not saying your site is definitely exposed, but if you collect leads or payments, it’s worth checking. Do you collect customer details through the site?”</p></div><p class="w">The absolute claim is pressure-heavy and weakens trust; control of the call requires authority with honesty, not fear.</p></div>
+<div class="sx-mv"><header><button type="button" class="pl" data-sx-seek="56">▶ 0:56</button><span>CLOSING</span></header><div class="r"><small>Rep said</small><p>If you have just two minutes, I’d like to explain what I would like to do. And I believe that’s to your benefit.</p></div><div class="t"><small>Try instead</small><p>“If it turns out you’re collecting leads or payments and the setup is exposed, I can show you the safest options. First, can I ask two quick questions so I don’t waste your time?”</p></div><p class="w">The rep asked to present before qualifying; a stronger close keeps the line by earning the right to explain through the client’s answers.</p></div></div>
+<div class="sx-rc2"><h3>Do this next call</h3>
+<div class="sx-mv"><b>Intelligence: big-picture to specific questions</b><p>The biggest win is to stop pitching before qualifying. On this call the client was open, but the rep used the opening to talk 80% of the time instead of finding pain, impact and urgency in the client’s words.</p><div class="sx-say"><small>Say this</small><p>“The reason I’m calling is I noticed the site is on WordPress. Before I assume anything, can I ask two quick questions so I can point you the right way? What does the website mainly need to do for you today, bring in leads, take payments, bookings, or something else?”</p></div><p class="w"><b>Drill:</b> Practice a 20-second opener followed by three questions. Record yourself and do not allow any explanation longer than 15 seconds until the prospect has answered what the site does, what is not working and whether leads or payments matter.</p></div>
+<div class="sx-mv"><b>Trust, with ethical authority</b><p>The client needs to trust the solution, the rep and Igani at the same time. Absolute scare lines create resistance; a sharp expert uses careful language, earns trust and then explains risk in the client’s context.</p><div class="sx-say"><small>Say this</small><p>“I’m not saying your site is definitely exposed. What I am saying is WordPress sites can become vulnerable depending on plugins, updates and forms. If you’re collecting leads or payments, it’s worth a quick check. Are you taking any customer details through the site right now?”</p></div><p class="w"><b>Drill:</b> Replace every absolute claim with a careful expert claim plus a question. Use “some”, “can”, “depending on” and “worth checking” until you have evidence from the client.</p></div></div>
+<div class="sx-rc2"><h3>Ask next time</h3><div class="sx-ck">
+<div><i class="y">?</i><b>“What does the website mainly do for you today, leads, bookings, payments, or just information?”</b></div>
+<div><i class="y">?</i><b>“What are you happy with on the current WordPress site, and what would you change if you could?”</b></div>
+<div><i class="y">?</i><b>“Are you collecting any customer details or payments through forms on the site?”</b></div>
+<div><i class="y">?</i><b>“Has security, speed, maintenance or plugin updates been a headache for you at all?”</b></div>
+<div><i class="y">?</i><b>“If there was a real issue with the site, who besides you would need to be involved in deciding what to do?”</b></div></div></div>
+<div class="sx-rc2"><h3>What went well</h3><div class="sx-ck">
+<div><i class="y">✓</i><b>Opening, first four seconds</b><p>The best moment was the reasonable micro-permission, “If you have just one minute, I’d like to talk about your website.” That kept the call alive and got a clear yes.</p></div>
+<div><i class="y">✓</i><b>Control of the call</b><p>When the client asked, “What do you want to talk about the website?”, the rep answered directly by naming the platform he saw.</p></div></div></div>
+<p style="margin:0"><button type="button" class="sx-tabs-b" data-sx-replay style="appearance:none;cursor:pointer;border:1px solid var(--rule-2,#d3d9e3);background:#fff;border-radius:999px;padding:10px 16px;font:500 14px var(--sans)">↺ Play the call again</button></p>
+</div></div></div>
 </div>
-</div>
-<p class="sx-note">Both voices are AI-generated. The review is an example of what the CRM produces, for the first minute of a cold call.</p>
+<p class="sx-note">Both voices are AI-generated. The review is what the CRM produced for this call: the first minute of a cold call. The live advice was written to the same coaching rules.</p>
 <script>(()=>{const root=document.querySelector("[data-sx-cl]");if(!root)return;
-const $=(q)=>root.querySelector(q),au=$("[data-sx-au]"),play=$("[data-sx-play]"),trk=$("[data-sx-trk]"),fill=$("[data-sx-fill]"),now=$("[data-sx-now]"),box=$("[data-sx-hints]"),empty=$("[data-sx-empty]");
+const $=(q)=>root.querySelector(q),au=$("[data-sx-au]"),btn=$("[data-sx-btn]"),bt=$("[data-sx-btnt]"),ring=$("[data-sx-ringing]"),rt=$("[data-sx-rtext]"),clock=$("[data-sx-clock]"),state=$("[data-sx-state]"),db=$("[data-sx-db]"),ph=$("[data-sx-ph]"),hint=$("[data-sx-hint]"),listen=$("[data-sx-listen]"),app=$("[data-sx-app]");
 const D=64.4,f=(s)=>Math.floor(s/60)+":"+String(Math.floor(s%60)).padStart(2,"0");
-const H=[[10.5,"warn","Opening","Say why you’re calling. “Your website” is too vague."],[19,"warn","Discovery","Don’t open with a scare. Ask what the site does for them."],[25.2,"do","Discovery","They stayed. Ask one big-picture question."],[33,"warn","Control","You’re telling, not asking. Pause and ask something."],[38,"warn","Honesty","They can’t check that. Don’t state it as fact."],[52,"warn","Control","Fear isn’t a reason to buy. Tie it to their goal."],[63.9,"do","Close","A yes. Name the next step and the time."]];
-const M=[[8,"bad","The vague opening","“If you have just one minute, I’d like to talk about your website.”","“I’m calling because I build websites for real-estate agencies. Can I ask you two quick questions?”","The client hears no reason to stay on the line. A clear reason earns the first minute."],[18,"bad","A scare, not a question","“I see that your website’s built on WordPress. Have you seen the news lately?”","“How many enquiries does your website bring in today?”","Start with them, not with a problem you found."],[26,"bad","35 seconds of telling","“Banks and governments have gotten off WordPress… your leads are not private.”","Stop after one sentence. “What happens today when a lead fills in your form?”","Control of the call means steering with questions. The client said “no” and the rep kept talking."],[50,"bad","“This is real”","“You can look us up right now. This is real.”","“I’d rather show you than tell you. Can I take two minutes?”","A claim the client can’t check weakens trust. Say only what you can show."],[63.5,"ok","They said yes","","","They agreed to two minutes. That’s a win, even though it came from the pitch, not from a question. The next move is to name the step and ask for a time."]];
-let shown=0,tab="live";
-function card(h){const d=document.createElement("div");d.className="sx-h sx-h--"+h[1];d.innerHTML="<small></small><p></p>";d.firstChild.textContent=f(h[0])+" · "+h[2];d.lastChild.textContent=h[3];return d;}
-function sync(t){let n=0;while(n<H.length&&H[n][0]<=t)n++;if(n<shown){box.querySelectorAll(".sx-h").forEach((e)=>e.remove());shown=0;}
- for(;shown<n;shown++){box.insertBefore(card(H[shown]),box.firstChild);}
- empty.hidden=shown>0||t>0;if(t>0&&!shown)empty.hidden=true;
- const p=Math.min(1,t/D);fill.style.width=p*100+"%";now.textContent=f(t);trk.setAttribute("aria-valuenow",Math.round(t));}
-play.addEventListener("click",()=>{if(au.paused){if(au.ended||au.currentTime>=D-.1)au.currentTime=0;au.play();}else au.pause();});
-au.addEventListener("play",()=>{play.classList.add("is-on");play.setAttribute("aria-label","Pause the call");setTab("live");});
-au.addEventListener("pause",()=>{play.classList.remove("is-on");play.setAttribute("aria-label","Play the call");});
-au.addEventListener("timeupdate",()=>sync(au.currentTime));
-au.addEventListener("ended",()=>{sync(D);const d=document.createElement("div");d.className="sx-end";d.innerHTML="<b>Call ended · analysis ready</b>";box.insertBefore(d,box.firstChild);setTimeout(()=>setTab("rev"),1400);});
-function seek(x){const r=trk.getBoundingClientRect();au.currentTime=Math.max(0,Math.min(D,((x-r.left)/r.width)*D));sync(au.currentTime);}
-trk.addEventListener("click",(e)=>seek(e.clientX));
-trk.addEventListener("keydown",(e)=>{if(e.key==="ArrowRight")au.currentTime=Math.min(D,au.currentTime+5);if(e.key==="ArrowLeft")au.currentTime=Math.max(0,au.currentTime-5);});
-function setTab(t){tab=t;root.querySelectorAll("[data-sx-tab]").forEach((b)=>b.setAttribute("aria-selected",String(b.dataset.sxTab===t)));root.querySelectorAll("[data-sx-pane]").forEach((p)=>{p.hidden=p.dataset.sxPane!==t;});}
-root.querySelectorAll("[data-sx-tab]").forEach((b)=>b.addEventListener("click",()=>setTab(b.dataset.sxTab)));
-const ch=$("[data-sx-ch]"),ba=$("[data-sx-ba]");
-function pick(i,go){const m=M[i];[...ch.children].forEach((c,j)=>c.setAttribute("aria-pressed",String(j===i)));ba.innerHTML="";
- const add=(c,l,t)=>{const d=document.createElement("div");d.className=c;const s=document.createElement("small");s.textContent=l;const p=document.createElement("p");p.textContent=t;d.append(s,p);ba.appendChild(d);};
- if(m[1]==="bad"){add("b","What the rep said",m[3]);add("a","What the coach suggests",m[4]);}
- const w=document.createElement("p");w.className="w";w.textContent=m[5];ba.appendChild(w);
- if(go){au.currentTime=Math.max(0,m[0]-1);sync(au.currentTime);au.play();}}
-M.forEach((m,i)=>{const b=document.createElement("button");b.type="button";b.className="sx-chip sx-chip--"+(m[1]==="ok"?"ok":"bad");b.setAttribute("aria-pressed","false");b.innerHTML="<i></i>";b.append(f(m[0])+" · "+m[2]);b.addEventListener("click",()=>pick(i,true));ch.appendChild(b);});
-pick(0,false);
-})();</script></div></section><section class="pg-s"><div class="w"><div class="pg-sh"><span class="sx-tag">Example</span><h2>Paid before <em>the coffee got cold.</em></h2><p>Example: one call, signed and paid in 15 minutes.</p></div><div class="dl3" data-dl3><div class="dl3__h"><div><small>Deal</small><b>Noa K. · 4 rooms, Katamon</b></div><span class="dl3__st" data-dl3-st>In progress</span></div><ol class="dl3__p"><li style="--i:0"><i></i><b>Call</b><time>14:05</time></li><li style="--i:1"><i></i><b>Contract</b><time>14:06</time></li><li style="--i:2"><i></i><b>Signed</b><time>14:07</time></li><li style="--i:3"><i></i><b>Paid</b><time>14:20</time></li></ol><div class="dl3__f"><span>Start to finish</span><b>15 min</b><span class="dl3__pay">+₪5,000</span></div></div><script>(()=>{const r=document.querySelector("[data-dl3]");if(!r)return;const st=r.querySelector("[data-dl3-st]");const done=()=>{r.classList.add("is-in");setTimeout(()=>{st.textContent="Paid";st.classList.add("is-paid");},matchMedia("(prefers-reduced-motion: reduce)").matches?0:2400);};if(!("IntersectionObserver" in window)){done();return;}new IntersectionObserver((e,o)=>{if(e[0].isIntersecting){done();o.disconnect();}},{threshold:.5}).observe(r);})();</script></div></section><section class="pg-s pg-s--paper"><div class="w"><div class="pg-sh"><span class="sx-tag">Example</span><h2>Find the exact second <em>he blew it.</em></h2></div><div class="cr2" data-cr2><div class="cr2__h"><div><b><span class="cr2__da">Dana</span> → Avi R.</b></div></div><div class="cr2__w" style="--cut:79.17%"><div class="cr2__bars"><i style="--h:58%"></i><i style="--h:64%"></i><i style="--h:85%"></i><i style="--h:75%"></i><i style="--h:88%"></i><i style="--h:81%"></i><i style="--h:67%"></i><i style="--h:69%"></i><i style="--h:47%"></i><i style="--h:48%"></i><i style="--h:31%"></i><i style="--h:28%"></i><i style="--h:36%"></i><i style="--h:50%"></i><i style="--h:40%"></i><i style="--h:52%"></i><i style="--h:73%"></i><i style="--h:90%"></i><i style="--h:87%"></i><i style="--h:85%"></i><i style="--h:98%"></i><i style="--h:69%"></i><i style="--h:81%"></i><i style="--h:57%"></i><i style="--h:44%"></i><i style="--h:35%"></i><i style="--h:34%"></i><i style="--h:45%"></i><i style="--h:32%"></i><i style="--h:49%"></i><i style="--h:59%"></i><i style="--h:63%"></i><i style="--h:77%"></i><i style="--h:72%"></i><i style="--h:76%"></i><i style="--h:80%"></i><i style="--h:87%"></i><i style="--h:73%"></i><i style="--h:61%"></i><i style="--h:58%"></i><i style="--h:45%"></i><i style="--h:35%"></i><i style="--h:45%"></i><i style="--h:44%"></i><i style="--h:38%"></i><i style="--h:55%"></i><i style="--h:63%"></i><i style="--h:82%"></i><i style="--h:87%"></i><i style="--h:81%"></i><i style="--h:99%"></i><i style="--h:75%"></i><i style="--h:76%"></i><i style="--h:75%"></i><i style="--h:50%"></i><i style="--h:49%"></i><i style="--h:30%"></i><i style="--h:42%" class=x></i><i style="--h:42%" class=x></i><i style="--h:38%" class=x></i><i style="--h:47%" class=x></i><i style="--h:39%" class=x></i><i style="--h:48%" class=x></i><i style="--h:47%" class=x></i><i style="--h:44%" class=x></i><i style="--h:38%" class=x></i><i style="--h:35%" class=x></i><i style="--h:27%" class=x></i><i style="--h:16%" class=x></i><i style="--h:11%" class=x></i><i style="--h:10%" class=x></i><i style="--h:10%" class=x></i></div><span class="cr2__pin"><em>1:43</em></span></div><div class="cr2__g"><div class="cr2__q"><p>“It’s ₪3.2M. Honestly, it’s worth every shekel.”</p><span>Price before Avi asked.</span></div><div class="cr2__t"><small>Next time, try</small><p>“What would make this worth it for you?”</p></div></div></div><script>(()=>{const r=document.querySelector("[data-cr2]");if(!r)return;if(!("IntersectionObserver" in window)){r.classList.add("is-in");return;}new IntersectionObserver((e,o)=>{if(e[0].isIntersecting){r.classList.add("is-in");o.disconnect();}},{threshold:.4}).observe(r);})();</script></div></section><section class="pg-s" id="coach"><div class="w"><div class="pg-sh"><span class="sx-tag">Example</span><h2>Then the fix. <em>Right where they slipped.</em></h2><p>The review points to the exact moment, the short lesson that covers it, and a practice call against an AI client.</p></div>
-<div class="sx-co"><div class="sx-card"><span class="sx-lbl">From the review</span><h3>“Pitched instead of asking”</h3><p>The rep started to pitch when the client asked for proof, instead of asking one question first.</p><div class="sx-less"><i></i><div><b>Lesson: ask first, then pitch</b><small>3 min · opens at the right minute</small></div></div></div>
-<div class="sx-card" data-sx-pr><span class="sx-lbl">Practice it · AI client</span><div class="sx-ai"><small>Client</small>“I’ll think about it.”</div><div class="sx-opts"><button type="button" class="sx-opt" data-ok="0">“Sure, take your time.”</button><button type="button" class="sx-opt" data-ok="1">“Of course. What do you need to think about exactly?”</button><button type="button" class="sx-opt" data-ok="0">“It’s a limited offer, so I’d decide today.”</button></div><p class="sx-fb sx-fb--ok" data-sx-ok hidden>Good. You asked what is holding it back, without pressure.</p><p class="sx-fb sx-fb--no" data-sx-no hidden>Not quite. That ends the call or adds pressure. Try asking what they need to think about.</p></div></div>
-<p class="sx-note">Example.</p>
-<script>(()=>{const r=document.querySelector("[data-sx-pr]");if(!r)return;const ok=r.querySelector("[data-sx-ok]"),no=r.querySelector("[data-sx-no]");r.querySelectorAll(".sx-opt").forEach(b=>b.addEventListener("click",()=>{const g=b.dataset.ok==="1";ok.hidden=!g;no.hidden=g;}));})();</script></div></section>
-<section class="pg-s pg-s--paper" id="team"><div class="w"><div class="pg-sh"><span class="sx-tag">Example</span><h2>Your team in <em>one view.</em></h2><p>Who is calling, who is connecting, who is improving. No listening to recordings to find out.</p></div>
-<figure class="sx-shot"><picture><source media="(max-width:760px)" srcset="/site/img/sales/crm-calls-m.webp" width="780" height="2510"><img src="/site/img/sales/crm-calls.webp" width="1500" height="945" loading="lazy" alt="The Calls page in the Igani CRM with the team table"></picture><figcaption>The Calls page in the CRM (demo data): calls, connect rate, talk time and score for every rep.</figcaption></figure><div class="win sx-tm sx-rep"><div class="win__bar"><i></i>app.yourcompany.co.il/<em>calls</em></div><div class="win__body"><table><thead><tr><th>Rep</th><th class="r">Calls</th><th class="r">Connected</th><th class="r">Talk time</th><th class="r">Avg score</th><th class="r">Trend, 7 days</th></tr></thead><tbody>
+const V=[82,37,37,100,93,95,98,98,81,10,0,1,0,94,42,41,0,50,98,97,79,0,0,14,0,74,92,88,92,81,29,19,7,83,86,77,84,65,87,53,83,86,68,81,68,73,76,70,78,72,55,0,52,56,36,0,0,0,0,0,0,65,87,70,88,80,75,79,56,0,0,46,77,78,84,96,85,87,80,71,86,62,27,60,49,86,68,81,87,80,68,0,0,0,0,0,0,90,95,83,91,50,0,24,24,0,96,89,74,20,0,64,98,92,81,77,72,77,83,87,86,77,3,71,86,78,74,49,74,82,80,76,77,80,47,79,93,82,73,0,0,0,94,89,92,90,73,77,87,81,72,68,80,60,0,79,74,78,76,0,38,78,81,71,87,12,0,70,85,66,90,84,84,20,0,90,89,87,86,85,12,78,88,40,71,90,41,86,95,30,42,80,91,93,92,81,86,84,66,87,84,85,77,85,82,90,88,90,76,0,0,84,87,90,90,0,0,71,67,79,81,75,60,0,89,91,94,90,85,82,47,65,89,93,88,78,76,70,82,71,0,0,64,83,68,83,78,0,0,0,0,0,0,20,92,50,0];
+const RED=[[18.2,24.5],[38.5,52.5],[53.1,61.4]];
+const H=[[14.5,"do","Opening","Good, you got permission. Now say why you’re calling."],[25.2,"do","Intelligence","Skip the news. Ask what the site does for them."],[33,"warn","Control","Stop telling. Ask one big-picture question about their business."],[43,"warn","Ethics","Stay calm. Drop the fear. Introduce yourself and Igani."],[55.5,"warn","Ethics","Say only what you can show, then ask permission."],[62,"do","Closing","Name the next step, then ask for a time."]];
+const W=[];for(let i=0;i<V.length;i+=2)W.push(Math.max(V[i],V[i+1]||0));W.forEach((v,i)=>{const e=document.createElement("i"),t=i*.5;e.style.height=Math.max(4,v)+"%";if(RED.some((r)=>t>=r[0]&&t<r[1]))e.className="red";db.insertBefore(e,ph);});
+const bars=[...db.querySelectorAll("i")];
+let phase="idle",shown=-1,tmr;
+function paint(t){const n=Math.floor(t/.5);bars.forEach((b,i)=>b.classList.toggle("on",i<=n&&t>0));ph.style.left=Math.min(100,t/D*100)+"%";ph.style.opacity=t>0?1:0;clock.textContent=f(t);db.setAttribute("aria-valuenow",Math.round(t));}
+function showHint(i){hint.innerHTML="";if(i<0){const p=document.createElement("p");p.className="empty";p.textContent=phase==="live"?"Listening…":"Advice for the rep appears here, one tip at a time, only when it’s useful.";hint.appendChild(p);return;}
+ const h=H[i],c=document.createElement("div");c.className="sx-hc "+h[1];const s=document.createElement("small");s.textContent=h[2];const p=document.createElement("p");p.textContent=h[3];c.append(s,p);hint.appendChild(c);
+ if(i>0){const q=document.createElement("p");q.className="sx-prev";q.textContent="Earlier: "+H[i-1][3];hint.appendChild(q);}}
+function sync(t){paint(t);let n=-1;while(n+1<H.length&&H[n+1][0]<=t)n++;if(n!==shown){shown=n;showHint(n);}}
+function setPhase(p){phase=p;app.classList.toggle("sx-live",p==="live"||p==="dial");root.classList.toggle("sx-live",p==="live"||p==="dial");
+ if(p==="idle"){bt.textContent="Call";btn.classList.remove("is-end");btn.disabled=false;ring.classList.remove("on");state.textContent="Ready";listen.textContent="· waiting for the call";}
+ if(p==="dial"){bt.textContent="Calling…";btn.disabled=true;ring.classList.add("on");rt.textContent="Calling…";state.textContent="Dialing";}
+ if(p==="live"){bt.textContent="Hang up";btn.classList.add("is-end");btn.disabled=false;ring.classList.remove("on");state.textContent="Connected";listen.textContent="· listening";}
+ if(p==="done"){bt.textContent="Call";btn.classList.remove("is-end");btn.disabled=false;ring.classList.remove("on");state.textContent="Call ended";listen.textContent="· call ended";}}
+function setTab(t){root.querySelectorAll("[data-sx-tab]").forEach((b)=>b.setAttribute("aria-selected",String(b.dataset.sxTab===t)));root.querySelectorAll("[data-sx-pane]").forEach((p)=>{p.hidden=p.dataset.sxPane!==t;});}
+function start(){clearTimeout(tmr);au.pause();au.currentTime=0;shown=-1;sync(0);setPhase("dial");tmr=setTimeout(()=>{rt.textContent="Ringing…";},900);tmr=setTimeout(()=>{rt.textContent="Connected";setPhase("live");au.play().catch(()=>{setPhase("idle");});},2600);}
+function end(){clearTimeout(tmr);au.pause();setPhase("done");setTimeout(()=>setTab("rev"),600);}
+btn.addEventListener("click",()=>{if(phase==="live")end();else if(phase==="idle"||phase==="done")start();});
+au.addEventListener("timeupdate",()=>{if(phase==="live")sync(au.currentTime);});
+au.addEventListener("ended",()=>{sync(D);setPhase("done");setTimeout(()=>setTab("rev"),1500);});
+function seek(x){if(phase!=="live")return;const r=db.getBoundingClientRect();au.currentTime=Math.max(0,Math.min(D-.2,((x-r.left)/r.width)*D));sync(au.currentTime);}
+db.addEventListener("click",(e)=>seek(e.clientX));
+db.addEventListener("keydown",(e)=>{if(phase!=="live")return;if(e.key==="ArrowRight")au.currentTime=Math.min(D-.2,au.currentTime+5);if(e.key==="ArrowLeft")au.currentTime=Math.max(0,au.currentTime-5);});
+root.querySelectorAll("[data-sx-tab]").forEach((b)=>b.addEventListener("click",()=>{setTab(b.dataset.sxTab);if(b.dataset.sxTab==="rev"&&phase==="live")au.pause();}));
+root.querySelectorAll("[data-sx-seek]").forEach((b)=>b.addEventListener("click",()=>{au.currentTime=+b.dataset.sxSeek;au.play();}));
+$("[data-sx-replay]").addEventListener("click",()=>{setTab("live");start();});
+sync(0);setPhase("idle");
+})();</script></div></section>
+<section class="pg-s" id="team"><div class="w"><div class="pg-sh"><span class="sx-tag">Example</span><h2>Your team in <em>one view.</em></h2><p>Who is calling, who is connecting, who is improving. No listening to recordings to find out.</p></div>
+<figure class="sx-shot"><picture><source media="(max-width:760px)" srcset="/site/img/sales/crm-team-m.webp" width="1104" height="590"><img src="/site/img/sales/crm-calls.webp" width="1500" height="945" loading="lazy" alt="The Calls page in the Igani CRM with the team table"></picture><figcaption>The Calls page in the CRM (demo data): calls, connect rate, talk time and score for every rep.</figcaption></figure><div class="win sx-tm sx-rep"><div class="win__bar"><i></i>app.yourcompany.co.il/<em>calls</em></div><div class="win__body"><table><thead><tr><th>Rep</th><th class="r">Calls</th><th class="r">Connected</th><th class="r">Talk time</th><th class="r">Avg score</th><th class="r">Trend, 7 days</th></tr></thead><tbody>
 <tr><td>Dana</td><td class="r">86</td><td class="r">31%</td><td class="r">5.2 h</td><td class="r"><span class="sx-sc">74</span></td><td class="r sx-up">▲ +6</td></tr>
 <tr><td>Ron</td><td class="r">92</td><td class="r">24%</td><td class="r">3.9 h</td><td class="r"><span class="sx-sc">61</span></td><td class="r sx-up">▲ +2</td></tr>
 <tr><td>Maya</td><td class="r">64</td><td class="r">28%</td><td class="r">4.4 h</td><td class="r"><span class="sx-sc">58</span></td><td class="r sx-dn">▼ −4</td></tr>
