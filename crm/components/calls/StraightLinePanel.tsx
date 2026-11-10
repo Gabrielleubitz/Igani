@@ -16,7 +16,7 @@ const SKILLS: { key: keyof SL['scores']; label: string }[] = [
   { key: 'closing', label: 'Closing' },
 ]
 
-/** The call scored against the Straight Line course, with links to the lesson (and minute) that teaches each weak point. */
+/** The call scored against control of the call course, with links to the lesson (and minute) that teaches each weak point. */
 export function StraightLinePanel({ sl, lessons }: { sl: SL; lessons: Record<number, { id: string; unlocked: boolean } | undefined> }): React.ReactElement {
   const scored = SKILLS.filter((s) => sl.scores[s.key] !== null)
   const checks = sl.checks.map((c) => ({ ...c, label: STRAIGHT_LINE_CHECKS.find((x) => x.id === c.id)?.label ?? c.id })).filter((c) => c.result !== 'na')
@@ -24,7 +24,7 @@ export function StraightLinePanel({ sl, lessons }: { sl: SL; lessons: Record<num
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">The Straight Line</CardTitle>
+        <CardTitle className="text-base">Control of the call</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5 text-sm">
         {scored.length ? (

@@ -602,7 +602,7 @@ struct PhoneAdminView: View {
             }
             Panel(title: "Calls", icon: "slider.horizontal.3") {
                 ToggleRow(title: "Record calls", hint: "Both sides, for coaching and the transcript", on: Binding(get: { d.record }, set: { v in Task { if await act("saveSettings", ["voice.record": v], ok: "Saved") { await loader.load() } } }))
-                ToggleRow(title: "Live Straight Line hints", hint: "Tips on the rep’s screen during a call (website)", on: Binding(get: { d.hints }, set: { v in Task { if await act("saveSettings", ["voice.hints": v], ok: "Saved") { await loader.load() } } }))
+                ToggleRow(title: "Live coaching hints", hint: "Tips on the rep’s screen during a call (website)", on: Binding(get: { d.hints }, set: { v in Task { if await act("saveSettings", ["voice.hints": v], ok: "Saved") { await loader.load() } } }))
                 Text("Countries that can be called: \(d.countries.joined(separator: ", "))").font(.caption).foregroundStyle(Theme.muted)
             }
             Panel(title: "Latest calls", icon: "clock") {
@@ -883,7 +883,7 @@ struct AdminSettingsView: View {
                 }
                 Section("Calls") {
                     ToggleRow(title: "Record calls", on: bind(\.record))
-                    ToggleRow(title: "Live Straight Line hints", on: bind(\.hints))
+                    ToggleRow(title: "Live coaching hints", on: bind(\.hints))
                 }
                 Section {
                     Button { openURL(Config.baseURL.appending(path: "admin/settings")) } label: { Label("Contract signer and signature (website)", systemImage: "signature") }

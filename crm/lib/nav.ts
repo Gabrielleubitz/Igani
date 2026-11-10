@@ -46,7 +46,7 @@ export const NAV: NavEntry[] = [
       { id: 'invite', label: 'Book meeting with client', icon: 'invite', href: '/sales/invite', roles: SELLERS },
     ],
   },
-  { id: 'straight-line', label: 'The Straight Line', icon: 'videos', href: '/sales/videos', roles: ALL },
+  { id: 'straight-line', label: 'Control of the call', icon: 'videos', href: '/sales/videos', roles: ALL },
   {
     id: 'tools',
     label: 'Tools',

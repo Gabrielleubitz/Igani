@@ -37,7 +37,7 @@ export interface WeekSummary {
   focus: LineStageKey | null
 }
 
-/** One rep's week on the Straight Line, from the calls that were analysed with a line map. Pure. */
+/** One rep's week on control of the call, from the calls that were analysed with a line map. Pure. */
 export function summarizeWeek(calls: WeekCall[]): WeekSummary {
   const withMap = calls.filter((c): c is WeekCall & { lineMap: LineMap } => c.lineMap !== null)
   const stages: StageWeek[] = LINE_STAGES.map((key) => {

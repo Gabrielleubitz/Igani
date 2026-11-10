@@ -25,7 +25,7 @@ function recordWindow(stream: MediaStream | null, ms: number): Promise<Blob | nu
 }
 
 /**
- * Live Straight Line hints. While a call is live, every few seconds the rep's microphone and the client's voice (two separate
+ * Live coaching hints. While a call is live, every few seconds the rep's microphone and the client's voice (two separate
  * streams) are recorded for a short window, sent to the server for transcription and a coaching hint, and the latest hint is shown.
  * Audio is not stored. Failures are silent: hints are a bonus and must never get in the way of the call.
  */

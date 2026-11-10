@@ -17,7 +17,7 @@ export interface RecentLineCall {
   map: LineMap
 }
 
-/** One rep's week on the Straight Line (this week and the one before) from their analysed calls. */
+/** One rep's week on control of the call (this week and the one before) from their analysed calls. */
 export async function loadRepWeek(userId: string, now = new Date()): Promise<{ week: WeekSummary; prev: WeekSummary; recent: RecentLineCall[] }> {
   const since = new Date(now.getTime() - 14 * 86_400_000)
   const rows = await prisma.call.findMany({

@@ -1109,7 +1109,7 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, 
       {session.direction === 'out' && session.call.hints && phase === 'live' ? (
         <div className="w-full">
           <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            <span>Straight Line coach {hintsOn && hintsActive ? '· listening' : ''}</span>
+            <span>Call coach {hintsOn && hintsActive ? '· listening' : ''}</span>
             <button type="button" onClick={onToggleHints} className="rounded px-1.5 py-0.5 normal-case tracking-normal hover:bg-white/10" aria-pressed={hintsOn}>
               {hintsOn ? 'Turn off' : 'Turn on'}
             </button>

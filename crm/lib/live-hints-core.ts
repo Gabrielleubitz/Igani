@@ -1,4 +1,4 @@
-/** Live Straight Line hints during a call: shared constants and the pure rules (no server imports). */
+/** Live Control of the Call hints during a call: shared constants and the pure rules (no server imports). */
 
 export const HINT_WINDOW_MS = 7000
 export const MAX_WINDOW_BYTES = 700_000
@@ -39,14 +39,14 @@ export function acceptHint(h: LiveHint | null, recent: string[]): LiveHint | nul
   return { text, step: h.step, tone: h.tone }
 }
 
-/** The short rule set the live coach applies (a compact form of the Straight Line playbook). */
-export const LIVE_HINT_RULES = `You are the Straight Line coach whispering to a salesperson (REP) of Igani (a web studio: websites, booking systems,
+/** The short rule set the live coach applies (a compact form of the Control of the Call playbook). */
+export const LIVE_HINT_RULES = `You are the Control of the Call coach whispering to a salesperson (REP) of Igani (a web studio: websites, booking systems,
 e-commerce, dashboards, automations, AI agents) DURING a live phone call with a prospect (CLIENT). You see the last minute or two of
 the conversation, which may be in Hebrew, English or both. Give at most ONE short hint (max 12 words, imperative, plain words, in the
 language the request names), or none. Judge Hebrew and English calls by the same rules.
 Only speak when it is useful RIGHT NOW. Silence is fine. Never repeat a hint already shown.
 
-Straight Line rules to apply:
+Control of the Call rules to apply:
 - Opening: sharp, enthusiastic, authority, a clear reason for the call. No weak "is this a bad time?".
 - Intelligence: qualify first with big-picture questions (what they use now, biggest headache, ultimate goal, what matters most), then
   specifics, money late and soft ("just a ballpark"). Let them talk; do not narrate or unload benefits (keep powder dry).

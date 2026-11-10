@@ -15,7 +15,7 @@ describe('call language', () => {
     expect(coachingLanguage('שלום, אנחנו בונים אתרים ומערכות הזמנות לעסקים קטנים, נדבר על website?')).toBe('he')
     expect(coachingLanguage('We build websites and booking systems, תודה')).toBe('en')
     expect(reviewLanguageRule('he', 'mixed')).toContain('Hebrew')
-    expect(reviewLanguageRule('he', 'mixed')).toContain('הקו הישר')
+    expect(reviewLanguageRule('he', 'mixed')).toContain('השליטה בשיחה')
     expect(reviewLanguageRule('he', 'mixed')).toContain('in both languages')
     expect(reviewLanguageRule('en', 'en')).toContain('English')
   })

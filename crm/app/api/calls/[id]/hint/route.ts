@@ -12,7 +12,7 @@ const LIVE = ['INITIATED', 'RINGING', 'IN_PROGRESS']
 const lastAt = new Map<string, number>()
 
 /**
- * Live Straight Line hints. The browser sends the last few seconds of each side's audio (rep and client are separate streams, so
+ * Live coaching hints. The browser sends the last few seconds of each side's audio (rep and client are separate streams, so
  * nobody is mislabeled); we transcribe them, append to the running conversation the browser keeps, and return the new lines plus at
  * most one short hint. Nothing is stored. Only the caller, only while the call is live, only when hints are switched on.
  */

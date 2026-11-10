@@ -332,7 +332,7 @@ struct CallDetailView: View {
                     ExpandableText(text: r.summary, lines: 6)
                     if let v = r.verdict {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("THE STRAIGHT LINE SAYS").font(.caption2.weight(.bold)).foregroundStyle(Theme.accent)
+                            Text("THE COACH SAYS").font(.caption2.weight(.bold)).foregroundStyle(Theme.accent)
                             Text(v).font(.subheadline).foregroundStyle(Theme.text)
                         }
                         .padding(12)
@@ -342,7 +342,7 @@ struct CallDetailView: View {
                     if let n = r.nextStep { Label(n, systemImage: "arrow.right.circle.fill").font(.subheadline).foregroundStyle(Theme.green) }
                 }
                 if !r.skills.isEmpty {
-                    Panel(title: "Straight Line skills", icon: "chart.bar.fill") {
+                    Panel(title: "Control-of-the-call skills", icon: "chart.bar.fill") {
                         ForEach(r.skills, id: \.key) { s in
                             VStack(alignment: .leading, spacing: 4) {
                                 BarRow(label: s.label, value: s.score, max: 5, tint: s.score >= 4 ? Theme.green : s.score >= 3 ? Theme.amber : Theme.red, trailing: "\(s.score)/5")

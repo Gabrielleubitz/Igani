@@ -9,7 +9,7 @@ import { unlockedFor } from '@/lib/video-progress'
 export const dynamic = 'force-dynamic'
 
 /**
- * The Straight Line for the app. Salespeople get the course (in order, each unlocked by finishing the one before);
+ * Control of the call for the app. Salespeople get the course (in order, each unlocked by finishing the one before);
  * admins and marketing see every team video. Internal videos ask non-admins to confirm confidentiality first.
  */
 export async function GET(): Promise<Response> {

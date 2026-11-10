@@ -62,7 +62,7 @@ export default async function CallPage(props: { params: Promise<{ id: string }> 
   const shortCall = tooShortToReview(callLength(call))
   const canReviewByHand = mayReviewByHand(user.role, callLength(call))
   const tone = a ? scoreTone(a.overallScore) : null
-  // Lesson links in the Straight Line panel: episode number -> video (by its "01 -" title prefix), and whether this viewer has unlocked it
+  // Lesson links in control of the call panel: episode number -> video (by its "01 -" title prefix), and whether this viewer has unlocked it
   const lessons: Record<number, { id: string; unlocked: boolean } | undefined> = {}
   if (a?.straightLine?.lessons.length) {
     const course = courseOrder(await listVideos())
@@ -86,7 +86,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
                     <p className="leading-relaxed">{a.summary}</p>
                     {a.straightLine?.verdict ? (
                       <div className="rounded-lg bg-primary/10 px-3 py-2 ring-1 ring-primary/30">
-                        <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">The Straight Line says</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">The coach says</div>
                         <p dir="auto" className="mt-0.5">{a.straightLine.verdict}</p>
                       </div>
                     ) : null}
@@ -278,7 +278,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base">{a.straightLine ? 'Where you left the line' : 'Coaching moments'}</CardTitle>
-                    <p className="text-sm text-muted-foreground">{a.straightLine ? 'The moments the Straight Line would have handled differently.' : 'Real moments from the call, and a stronger way to handle them.'}</p>
+                    <p className="text-sm text-muted-foreground">{a.straightLine ? 'The moments control of the call would have handled differently.' : 'Real moments from the call, and a stronger way to handle them.'}</p>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {a.moments.map((m, i) => (
@@ -492,7 +492,7 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
       </>
     )
     if (a.straightLine) {
-      // The Straight Line teaches: its score, comments, drills and lessons come first; the CallMap data is supporting facts
+      // Control of the call teaches: its score, comments, drills and lessons come first; the CallMap data is supporting facts
       return (
         <>
           {summary}

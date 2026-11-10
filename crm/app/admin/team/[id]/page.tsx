@@ -96,7 +96,7 @@ export default async function TeamMemberPage(props: { params: Promise<{ id: stri
       </div>
       {lineWeek ? (
         <>
-          <WeekLineCard title={`${display}: week on the Straight Line`} week={lineWeek.week} prevDiscipline={lineWeek.prev.discipline} lessons={lessons} callHref={(id) => `/sales/calls/${id}`} />
+          <WeekLineCard title={`${display}: week on control of the call`} week={lineWeek.week} prevDiscipline={lineWeek.prev.discipline} lessons={lessons} callHref={(id) => `/sales/calls/${id}`} />
           {lineWeek.recent.length ? (
             <Card>
               <CardHeader>

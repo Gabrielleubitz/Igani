@@ -5,16 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SAMPLE_LOST, SAMPLE_SHORT, SAMPLE_STRONG, sampleWeekCalls } from '@/lib/line-map-samples'
 import { summarizeWeek } from '@/lib/straight-line-week'
 
-export const metadata = { title: 'Straight Line preview', robots: { index: false, follow: false } }
+export const metadata = { title: 'Control of the call preview', robots: { index: false, follow: false } }
 
-/** Development preview of the Straight Line visuals with sample data. Not available in production. */
+/** Development preview of control of the call visuals with sample data. Not available in production. */
 export default function Page(): React.ReactElement {
   if (process.env.NODE_ENV === 'production') notFound()
   const week = summarizeWeek(sampleWeekCalls())
   const lessons = { 6: { id: 'x', unlocked: true }, 7: { id: 'x', unlocked: true }, 8: { id: 'x', unlocked: false } }
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-8">
-      <h1 className="text-2xl font-semibold">Straight Line visuals: preview with sample data</h1>
+      <h1 className="text-2xl font-semibold">Control of the call visuals: preview with sample data</h1>
       {[
         ['A strong call (9:12)', SAMPLE_STRONG],
         ['A call that lost the line (7:30)', SAMPLE_LOST],
@@ -32,7 +32,7 @@ export default function Page(): React.ReactElement {
           </Card>
         )
       })}
-      <WeekLineCard title="Your week on the Straight Line" week={week} prevDiscipline={(week.discipline ?? 0) - 7} lessons={lessons} callHref={(id) => `/dev/straight-line#${id}`} />
+      <WeekLineCard title="Your week on control of the call" week={week} prevDiscipline={(week.discipline ?? 0) - 7} lessons={lessons} callHref={(id) => `/dev/straight-line#${id}`} />
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Compact version (for lists of calls)</CardTitle>

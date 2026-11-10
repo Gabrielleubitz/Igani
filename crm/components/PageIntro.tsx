@@ -41,7 +41,7 @@ const PAGE_BADGE: Record<string, { icon: LucideIcon; tone: Tone }> = {
   'Send meeting invite': { icon: Send, tone: 'pink' },
   Calls: { icon: PhoneCall, tone: 'emerald' },
   'Call lists': { icon: ListChecks, tone: 'teal' },
-  'The Straight Line': { icon: Video, tone: 'rose' },
+  'Control of the call': { icon: Video, tone: 'rose' },
   Documents: { icon: FileText, tone: 'cyan' },
   Overview: { icon: LayoutDashboard, tone: 'blue' },
   Offers: { icon: FileSignature, tone: 'amber' },

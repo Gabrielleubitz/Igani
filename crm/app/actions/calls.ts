@@ -43,7 +43,7 @@ export interface StartedCall {
   /** a business on a call list (not a lead yet) */
   prospect: { id: string; name: string; listId: string; askFor: string | null } | null
   record: boolean
-  /** live Straight Line hints are on (setting + OpenAI key) */
+  /** live Control of the call hints are on (setting + OpenAI key) */
   hints: boolean
   demo: boolean
   /** placed through a conference room (listen-in on): the app connecting doesn't mean the client answered — watch callProgress */

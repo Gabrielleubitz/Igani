@@ -27,7 +27,7 @@ const ToneZ = z.object({
 
 const mmss = (sec: number): string => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
 
-const PROMPT = `You are a Straight Line sales coach LISTENING to a recorded phone call between a salesperson at Igani ("rep") and a
+const PROMPT = `You are a Control of the Call sales coach LISTENING to a recorded phone call between a salesperson at Igani ("rep") and a
 client. Judge ONLY the rep's voice: how they sound, not what they say (the words are reviewed separately). The transcript with
 timestamps and speakers is given only so you can tell who is who and cite moments.
 

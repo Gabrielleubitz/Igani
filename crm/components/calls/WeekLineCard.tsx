@@ -10,7 +10,7 @@ export type LessonLinks = Record<number, { id: string; unlocked: boolean } | und
 
 const tone = (score: number | null): string => (score === null ? 'bg-muted' : score >= 70 ? 'bg-emerald-400' : score >= 45 ? 'bg-amber-400' : 'bg-rose-400')
 
-/** A rep's week on the Straight Line: how strong each stage was, where they slip, and what to work on. Used on Today and in the admin's per-rep view. */
+/** A rep's week on control of the call: how strong each stage was, where they slip, and what to work on. Used on Today and in the admin's per-rep view. */
 export function WeekLineCard({ title, week, prevDiscipline, lessons, callHref }: { title: string; week: WeekSummary; prevDiscipline?: number | null; lessons: LessonLinks; callHref?: (callId: string, at: number | null) => string }): React.ReactElement {
   if (week.calls === 0) {
     return (
@@ -18,7 +18,7 @@ export function WeekLineCard({ title, week, prevDiscipline, lessons, callHref }:
         <CardHeader className="pb-2">
           <CardTitle className="text-base">{title}</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">No analysed calls this week yet. After each recorded call, the Straight Line review lands here.</CardContent>
+        <CardContent className="text-sm text-muted-foreground">No analysed calls this week yet. After each recorded call, control of the call review lands here.</CardContent>
       </Card>
     )
   }

@@ -96,7 +96,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
       <label className="flex items-start gap-3">
         <input type="checkbox" className="mt-1" checked={v.hints} onChange={(e) => setV({ ...v, hints: e.target.checked })} />
         <span>
-          <span className="font-medium">Live Straight Line hints</span>
+          <span className="font-medium">Live coaching hints</span>
           <span className="block text-xs text-muted-foreground">While a salesperson is on a call, short coaching hints appear on their screen. Their call audio is transcribed live by OpenAI and not stored by us. Each rep can switch it off for themselves.</span>
         </span>
       </label>

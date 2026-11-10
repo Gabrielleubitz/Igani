@@ -41,7 +41,7 @@ function stageTimes(stages: LineStage[], duration: number): Map<string, number> 
 }
 
 /**
- * The call drawn on the Straight Line: the line with its dotted boundaries and the path of the call around it (red where it left
+ * The call drawn on control of the call: the line with its dotted boundaries and the path of the call around it (red where it left
  * the boundaries), the stage markers, and below it the prospect's readiness against the action threshold. Click a marker or the
  * chart to play that moment. Everything is the coach's reading of the transcript.
  */
@@ -94,7 +94,7 @@ export function StraightLineChart({ map, durationSec, compact = false }: { map: 
         </div>
       ) : null}
       <div className={compact ? '' : 'overflow-x-auto'}>
-      <svg viewBox={`0 0 ${W} ${total}`} role="img" aria-label="The call drawn on the Straight Line with its boundaries and the action threshold" className={compact ? 'block w-full' : 'block w-full min-w-[760px]'} onClick={seekAt} style={{ cursor: player ? 'pointer' : 'default' }}>
+      <svg viewBox={`0 0 ${W} ${total}`} role="img" aria-label="The call drawn on control of the call with its boundaries and the action threshold" className={compact ? 'block w-full' : 'block w-full min-w-[760px]'} onClick={seekAt} style={{ cursor: player ? 'pointer' : 'default' }}>
         <defs>
           <linearGradient id="slc-fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#4080e0" stopOpacity=".45" />

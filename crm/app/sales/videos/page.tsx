@@ -8,7 +8,7 @@ import { listVideos } from '@/lib/video'
 import { courseOrder } from '@/lib/video-core'
 import { unlockedFor } from '@/lib/video-progress'
 
-export const metadata = { title: 'The Straight Line' }
+export const metadata = { title: 'Control of the call' }
 export const dynamic = 'force-dynamic'
 
 /** Admins and marketing see every team video. Salespeople get the course: one video at a time, each unlocked by finishing the one before. */
@@ -20,7 +20,7 @@ export default async function TeamVideosPage(props: { searchParams: Promise<{ v?
     const picked = videos.find((x) => x.id === sp.v)
     return (
       <div className="space-y-5">
-        <PageIntro title="The Straight Line" hint="Internal videos for the team. They only play while you are signed in. Salespeople see them one at a time, in order." />
+        <PageIntro title="Control of the call" hint="Internal videos for the team. They only play while you are signed in. Salespeople see them one at a time, in order." />
         {picked ? <LessonPlayer key={picked.id} id={picked.id} title={picked.title} completed nextId={null} startAt={Math.max(0, Number(sp.t) || 0)} confirm={user.role !== 'ADMIN'} /> : null}
         {videos.length === 0 ? <p className="text-sm text-muted-foreground">No videos yet.</p> : null}
         <div className="grid gap-5 lg:grid-cols-2">
@@ -35,7 +35,7 @@ export default async function TeamVideosPage(props: { searchParams: Promise<{ v?
   const { v, t } = await props.searchParams
   const startAt = Math.max(0, Math.min(Number(t) || 0, 6 * 3600))
   const { ordered, progress, unlocked } = await unlockedFor(user.id)
-  if (ordered.length === 0) return <div className="space-y-5"><PageIntro title="The Straight Line" hint="Your training course." /><p className="text-sm text-muted-foreground">No videos yet.</p></div>
+  if (ordered.length === 0) return <div className="space-y-5"><PageIntro title="Control of the call" hint="Your training course." /><p className="text-sm text-muted-foreground">No videos yet.</p></div>
 
   const visible = ordered.filter((o) => unlocked.includes(o.id))
   const firstOpen = ordered.find((o) => !progress.completed.includes(o.id))
@@ -46,7 +46,7 @@ export default async function TeamVideosPage(props: { searchParams: Promise<{ v?
 
   return (
     <div className="space-y-5">
-      <PageIntro title="The Straight Line" hint={`Your training course: ${doneCount} of ${ordered.length} completed. Finish a video to unlock the next one.`} />
+      <PageIntro title="Control of the call" hint={`Your training course: ${doneCount} of ${ordered.length} completed. Finish a video to unlock the next one.`} />
       <div className="h-2 w-full max-w-md overflow-hidden rounded-full bg-muted">
         <div className="h-full bg-primary" style={{ width: `${(doneCount / ordered.length) * 100}%` }} />
       </div>

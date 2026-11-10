@@ -1,6 +1,6 @@
 /**
  * The call score, built from parts a salesperson can see and act on (no AI number taken on trust):
- *  - Skills (40%): the Straight Line skills, graded 1–5 against fixed anchors with quoted evidence.
+ *  - Skills (40%): the Control-of-the-call skills, graded 1–5 against fixed anchors with quoted evidence.
  *  - Tonality (25%): how the rep SOUNDS, judged by a model that listens to the recording, plus the measured pace.
  *  - Conversation (15%): measured from the timestamps: talk share for the call's stage, monologues, questions,
  *    how long the client opened up.

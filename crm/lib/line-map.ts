@@ -1,4 +1,4 @@
-/** The call drawn on the Straight Line: stages, the path around the line, and the action-threshold curve. Pure (no server imports). */
+/** The call drawn on control of the call: stages, the path around the line, and the action-threshold curve. Pure (no server imports). */
 
 export const LINE_STAGES = ['open', 'questions', 'bridge', 'presentation', 'firstNo', 'loop', 'close'] as const
 export type LineStageKey = (typeof LINE_STAGES)[number]

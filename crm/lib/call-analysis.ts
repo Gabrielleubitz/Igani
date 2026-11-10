@@ -43,7 +43,7 @@ export const STEPS = ['rapport', 'intelligence', 'control', 'threeTens', 'loopin
 const CHECK_IDS = STRAIGHT_LINE_CHECKS.map((c) => c.id)
 const SlScore = Clamp(1, 5).nullable()
 
-/** Straight Line coaching (optional: calls analysed before it was added don't have it). */
+/** Control of the Call coaching (optional: calls analysed before it was added don't have it). */
 const StraightLine = z
   .object({
     verdict: Str(300).optional(),
@@ -192,8 +192,8 @@ const SPEAKER_PROMPT = `You label who is speaking in a phone call transcript bet
 business, explains what Igani builds, proposes next steps; the client describes their business, needs and concerns.
 Speakers alternate often but not always. Return JSON matching the schema.`
 
-const PROMPT = `You are the Straight Line teacher reviewing one recorded call by a salesperson ("rep") at Igani with a prospect or
-client ("client"). Our sales method is the Straight Line (described below). EVERYTHING you write about the call is judged by it and
+const PROMPT = `You are the Control of the Call teacher reviewing one recorded call by a salesperson ("rep") at Igani with a prospect or
+client ("client"). Our sales method is the Control of the Call (described below). EVERYTHING you write about the call is judged by it and
 worded in its terms (the line, the first four seconds, the three tens, the first no, looping, the soft close). Name the step each
 comment relates to. Generic sales advice that is not in the method is secondary. You get the transcript (segments with timestamps
 and speakers) and metrics MEASURED from the recording. Trust the measured metrics over your own impression and use them as
@@ -230,16 +230,16 @@ Return JSON matching the schema:
 - clientNeeds: in the client's terms. objections: each with the rep's response, handledWell (per LAER), and better: a
   stronger response in the call's language (null if it was handled well).
 - actionItems: commitments by the rep or the client.
-- scores: 1–5 for opening, discovery, listening, value, objections, closing. Derive them from your Straight Line scores
+- scores: 1–5 for opening, discovery, listening, value, objections, closing. Derive them from your Control of the Call scores
   (opening from rapport, discovery and listening from intelligence, value from threeTens, objections from looping, closing from
   closing). Be calibrated: 3 is solid, 5 is rare. Use the measured talk ratio, monologue and question metrics when scoring discovery and listening.
 - qualification: for each item, covered / partly / missing / not_expected (for this stage) and a short note on what
   was learned or what's missing.
 - spin: how many of the rep's questions were situation, problem, implication and need-payoff questions.
 - buyingSignals / riskSignals: short, specific, from this call (empty if none).
-- strengths (2–4, first one = the best moment) and improvements (2–4): specific to this call, quote it, and say which Straight Line
+- strengths (2–4, first one = the best moment) and improvements (2–4): specific to this call, quote it, and say which Control of the Call
   idea each is an example of.
-- focus: the 1–2 Straight Line changes that would most improve the next call: skill (a Straight Line skill), why it matters, a short drill, and sayThis:
+- focus: the 1–2 Control of the Call changes that would most improve the next call: skill (a Control of the Call skill), why it matters, a short drill, and sayThis:
   the exact words to try next time, in the call's language.
 - nextQuestions: 3–5 questions the rep should ask next time (in the call's language) to fill the gaps.
 - straightLine: this is the heart of the review. verdict: ONE sentence in the teacher's voice on how the rep did on the line (for
@@ -247,7 +247,7 @@ Return JSON matching the schema:
   (voicemail, support, nothing to judge). checks: one entry for EVERY check id, result yes / no / na, with a short evidence quote
   or null. lessons: 0 to 3 lessons from the LESSON INDEX that would help this rep most, as { ep, startSec, why } where why says in one
   sentence what in THIS call the lesson addresses. Do not coach deceptive or pressuring lines.
-- lineMap: draw the call on the Straight Line. stages: one entry for each stage of the line (open, questions, bridge, presentation,
+- lineMap: draw the call on the Control of the Call. stages: one entry for each stage of the line (open, questions, bridge, presentation,
   firstNo, loop, close) with status good (done well), shaky (done but weak), blown (done badly or damaged the call), skipped (the call
   got there but the rep did not do it, e.g. no bridge) or notReached (the call ended first), at (second it happened, or null) and a
   short note quoting or describing what happened. path: 10 to 18 points over the whole call {t seconds, offset}: 0 = on the line,
@@ -255,7 +255,7 @@ Return JSON matching the schema:
   threshold: 8 to 14 points {t, level 0 to 10} = how ready the prospect is to act, rising with rapport, a real fit, strong tens and
   good loops, falling with doubt, stalls and pushy lines; actAt = the level at which they would act (usually 8 to 10); a yes means
   the curve reaches it. Base every point on the transcript. Do not invent. For voicemail or non-sales calls return empty arrays.
-- moments: up to 3 coaching moments where the rep left the line or missed a Straight Line step: at (seconds), step (which step:
+- moments: up to 3 coaching moments where the rep left the line or missed a Control of the Call step: at (seconds), step (which step:
   rapport, intelligence, control, threeTens, looping, closing or ethics), clientSaid (or null), repSaid (verbatim), better (in the review language),
   why (one sentence in the review language).
 Write in the review language the request names (English unless it says otherwise); quotes stay exactly as spoken. Calls may be in

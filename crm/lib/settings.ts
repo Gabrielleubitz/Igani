@@ -23,7 +23,7 @@ export const SETTING_SCHEMAS = {
   'website.tracking': z.object({ home: z.boolean(), realestate: z.boolean() }),
   /** Dialer: record calls (both sides) and which countries may be called */
   'voice.record': z.boolean(),
-  /** Live Straight Line hints on the rep's screen during a call (needs the OpenAI key) */
+  /** Live coaching hints on the rep's screen during a call (needs the OpenAI key) */
   'voice.hints': z.boolean(),
   /** The OpenAI model that writes call reviews (empty = the default: env var, then gpt-5.5). A cheaper one costs less per review */
   'calls.reviewModel': z.string().trim().max(60).regex(/^[A-Za-z0-9._:-]*$/),

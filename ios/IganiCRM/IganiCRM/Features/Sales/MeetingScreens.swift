@@ -379,7 +379,7 @@ struct FlowLayout: Layout {
     }
 }
 
-// MARK: - The Straight Line (training videos)
+// MARK: - Control of the call (training videos)
 
 struct VideosData: Decodable {
     struct Video: Decodable, Identifiable, Hashable { let id: String; let title: String; let stream: String; let locked: Bool; let done: Bool; let needsAck: Bool }
@@ -441,7 +441,7 @@ struct VideosView: View {
             }
         }
         .screenBackground()
-        .navigationTitle("The Straight Line")
+        .navigationTitle("Control of the call")
         .refreshable { await load() }
         .task { await load() }
         .fullScreenCover(item: $playing, onDismiss: { Task { await load() } }) { v in LessonPlayerView(video: v, course: data?.course ?? false) }

@@ -40,8 +40,8 @@ export const TRANSCRIBE_PROMPT =
   'שלום, מדבר מ-Igani. אנחנו בונים אתרים, landing pages, מערכות booking, חנויות e-commerce, CRM, dashboards ואוטומציות. ' +
   'Hi, this is Igani, we build websites, booking systems and online stores. כן, בטח, אז מה הכי חשוב לך? Sounds good, נדבר ביום ראשון.'
 
-/** The Straight Line's terms as we say them in Hebrew (so the Hebrew coaching uses one vocabulary). */
-export const HEBREW_TERMS = `Straight Line terms in Hebrew (use these exactly): the Straight Line = הקו הישר; on/off the line = על הקו / יצא מהקו;
+/** The Control of the Call's terms as we say them in Hebrew (so the Hebrew coaching uses one vocabulary). */
+export const HEBREW_TERMS = `Control of the Call terms in Hebrew (use these exactly): the Control of the Call = השליטה בשיחה; on/off the line = על הקו / יצא מהקו;
 the first four seconds = ארבע השניות הראשונות; sharp, enthusiastic, an authority = חד, נלהב, סמכותי; rapport = חיבור (rapport);
 intelligence gathering = איסוף מידע; big-picture questions = שאלות תמונה רחבה; keep your powder dry = לשמור את התחמושת;
 the bridge / transition = המעבר; the presentation = ההצגה; the three tens = שלוש העשיריות (המוצר, אתה, החברה);

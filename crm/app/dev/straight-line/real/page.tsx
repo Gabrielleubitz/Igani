@@ -8,7 +8,7 @@ import { STAGE_LABEL, type LineMap } from '@/lib/line-map'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
-export const metadata = { title: 'Straight Line: a real call (preview)', robots: { index: false, follow: false } }
+export const metadata = { title: 'Control of the call: a real call (preview)', robots: { index: false, follow: false } }
 
 /** Development only: shows a real call's analysis from a local JSON file (REAL_CALL_JSON or /tmp/call/analysis.json). The data file is never committed. */
 export default function Page(): React.ReactElement {
@@ -27,11 +27,11 @@ export default function Page(): React.ReactElement {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold">{a.call.who}</h1>
-          <p className="text-sm text-muted-foreground">{a.call.type} · {mm(a.call.durationSec)} · analysed by the Straight Line</p>
+          <p className="text-sm text-muted-foreground">{a.call.type} · {mm(a.call.durationSec)} · analysed by control of the call</p>
         </div>
         <div className={cn('flex items-center gap-3 rounded-2xl px-4 py-3 ring-1', tone.bg, tone.ring)}>
           <div className={cn('text-4xl font-semibold tabular-nums', tone.text)}>{a.overallScore}</div>
-          <div className="text-xs leading-tight text-muted-foreground">Straight Line score<br />out of 100</div>
+          <div className="text-xs leading-tight text-muted-foreground">Control-of-the-call score<br />out of 100</div>
         </div>
       </div>
       <Card>
@@ -39,7 +39,7 @@ export default function Page(): React.ReactElement {
         <CardContent className="space-y-3 text-sm">
           <p className="leading-relaxed">{a.summary}</p>
           <div className="rounded-lg bg-primary/10 px-3 py-2 ring-1 ring-primary/30">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">The Straight Line says</div>
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-primary">The coach says</div>
             <p className="mt-0.5">{a.verdict}</p>
           </div>
         </CardContent>
