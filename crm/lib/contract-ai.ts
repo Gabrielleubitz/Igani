@@ -1,4 +1,5 @@
 import 'server-only'
+import { openaiFetch } from './ai-usage'
 import { IGANI_STANDARD_TERMS, parseContractDoc, type ContractDoc, type ContractLang } from './contract'
 
 /** Drafts a contract from Igani's standard terms + the offer's facts (OpenAI). An admin reviews and edits before approval. */
@@ -42,7 +43,7 @@ export async function draftContract(facts: object, lang: ContractLang): Promise<
   if (!key) throw new Error('OpenAI is not set up (OPENAI_API_KEY is missing).')
   const model = process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await openaiFetch('contract', 'https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify({

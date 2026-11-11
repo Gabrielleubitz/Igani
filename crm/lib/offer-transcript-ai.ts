@@ -1,4 +1,5 @@
 import 'server-only'
+import { openaiFetch } from './ai-usage'
 import { z } from 'zod'
 import { MODULE_GROUPS, slugify } from './offer-modules'
 
@@ -107,7 +108,7 @@ export async function modulesFromTranscript(transcript: string, existing: { id: 
   // Breaking a messy call into scope needs a strong model; the cheap default used for note tidying misses the traps
   const model = process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await openaiFetch('offer-transcript', 'https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify({

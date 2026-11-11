@@ -1,4 +1,5 @@
 import 'server-only'
+import { openaiFetch } from './ai-usage'
 import { z } from 'zod'
 import type { TranscriptSeg } from './call-coaching'
 import { TONALITY_DIMS, type Tonality } from './call-score'
@@ -61,7 +62,7 @@ function parseJson(text: string): unknown {
 }
 
 async function ask(model: string, key: string, audioB64: string, text: string): Promise<Response> {
-  return fetch('https://api.openai.com/v1/chat/completions', {
+  return openaiFetch('tonality', 'https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify({

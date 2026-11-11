@@ -1,4 +1,5 @@
 import 'server-only'
+import { openaiFetch } from './ai-usage'
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
@@ -184,7 +185,7 @@ async function implementationPlan(facts: string): Promise<string> {
   if (!key) throw new Error('OPENAI_API_KEY is not set')
   const model = process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await openaiFetch('offer', 'https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify({ model, ...(reasoning ? { reasoning_effort: 'medium' } : { temperature: 0.2 }), messages: [{ role: 'system', content: PLAN_PROMPT }, { role: 'user', content: facts }] }),

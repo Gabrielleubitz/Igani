@@ -90,6 +90,8 @@ export async function extractIntel(key: string, lines: TranscriptLine[], ctx: { 
     'lead_intel',
     SCHEMA,
     'low',
+    undefined,
+    'lead-intel',
   )
   return CallIntel.parse(raw)
 }

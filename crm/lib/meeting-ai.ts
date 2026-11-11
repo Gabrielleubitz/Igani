@@ -1,4 +1,5 @@
 import 'server-only'
+import { openaiFetch } from './ai-usage'
 import { shareActions } from './share-actions'
 import { organizedSchema, type OrganizedNotes } from './organize-notes'
 
@@ -17,7 +18,7 @@ export async function tidyWithAI(text: string, team: string[] = []): Promise<Org
   const key = process.env.OPENAI_API_KEY
   if (!key || !text.trim()) return null
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await openaiFetch('meeting', 'https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify({

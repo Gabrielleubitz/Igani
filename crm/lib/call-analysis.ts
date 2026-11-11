@@ -1,4 +1,5 @@
 import 'server-only'
+import { openaiFetch, type AiFeature } from './ai-usage'
 import { NOT_CONNECTED_MESSAGE, SHORT_CALL_MESSAGE, callLength, notConnected, tooShortToReview } from './call-review-rules'
 import { getSetting } from './settings'
 import { openAiReason } from './live-hints'
@@ -271,7 +272,7 @@ async function transcribe(audio: Blob, key: string, fileName = 'call.mp3'): Prom
   form.append('timestamp_granularities[]', 'segment')
   // Hebrew, English or both: a bilingual sample keeps each language as spoken
   if (!/gpt-4o/.test(process.env.OPENAI_TRANSCRIBE_MODEL ?? '')) form.append('prompt', TRANSCRIBE_PROMPT)
-  const post = (): Promise<Response> => fetch('https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(240_000) })
+  const post = (): Promise<Response> => openaiFetch('transcription', 'https://api.openai.com/v1/audio/transcriptions', { method: 'POST', headers: { authorization: `Bearer ${key}` }, body: form, signal: AbortSignal.timeout(240_000) })
   let res = await post()
   // a busy or briefly failing OpenAI gets one more try before the call is marked as failed
   if (!res.ok && (res.status === 429 || res.status >= 500)) {
@@ -294,10 +295,10 @@ export async function reviewModelName(): Promise<string> {
   return set.trim() || process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
 }
 
-export async function chat(key: string, system: string, user: string, name: string, schema: object, effort: 'low' | 'medium', modelName?: string): Promise<unknown> {
+export async function chat(key: string, system: string, user: string, name: string, schema: object, effort: 'low' | 'medium', modelName?: string, feature: AiFeature = 'call-review'): Promise<unknown> {
   const model = modelName || process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await openaiFetch(feature, 'https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify({

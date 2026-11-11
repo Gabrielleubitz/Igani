@@ -1191,3 +1191,20 @@ model ChatPresence {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+/// One OpenAI request: what it was for and what it used (lib/ai-usage.ts). Admin → Phone shows the monthly totals.
+model AiUsage {
+  id           String   @id @default(cuid())
+  /// call-review, transcription, tonality, live-hints, live-transcription, contract, offer, offer-transcript, meeting, site-audit, prospect
+  feature      String
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  /// part of inputTokens OpenAI served from its cache (billed cheaper)
+  cachedTokens Int      @default(0)
+  /// transcription billed by the minute (whisper-1)
+  audioSeconds Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}

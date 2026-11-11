@@ -5,6 +5,7 @@
  * appear there, so nothing is invented.
  */
 import 'server-only'
+import { openaiFetch } from './ai-usage'
 import type { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import { formatPhone, toE164 } from './phone-numbers'
@@ -89,7 +90,7 @@ async function aiRead(name: string, text: string): Promise<{ summary: string | n
   if (!key || text.length < 80) return null
   const model = process.env.OPENAI_ENRICH_MODEL || process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await openaiFetch('prospect', 'https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
     body: JSON.stringify({

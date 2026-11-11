@@ -1,4 +1,5 @@
 import 'server-only'
+import { openaiFetch } from './ai-usage'
 import { acceptAiPoints, factsText, type Finding, type RawAiPoint, type SiteReport } from './site-audit-core'
 
 const SCHEMA = {
@@ -41,7 +42,7 @@ export async function aiPoints(report: SiteReport, pageText: string): Promise<Fi
   const model = process.env.OPENAI_ENRICH_MODEL || process.env.OPENAI_CALL_MODEL || process.env.OPENAI_OFFER_MODEL || 'gpt-5.5'
   const reasoning = /^(gpt-5|o\d)/.test(model)
   try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    const res = await openaiFetch('site-audit', 'https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
       body: JSON.stringify({
