@@ -103,7 +103,9 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     }
     const lead = await callContact(leadId)
     const record = await getSetting('voice.record')
-    const hints = (await getSetting('voice.hints')) && Boolean(process.env.OPENAI_API_KEY)
+    // No AI during the call: live hints recorded and uploaded both sides every few seconds, competing with the call's
+    // own audio for bandwidth and CPU. The AI review runs after the call, on the recording, and can't slow it down.
+    const hints = false
     const conference = !demo && (await getSetting('voice.listenIn'))
     const call = await prisma.call.create({
       data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo, conference },

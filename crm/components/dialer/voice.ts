@@ -51,11 +51,28 @@ export function voiceErrorText(err: { message?: string; code?: number } | undefi
   return err?.message ? `The call failed: ${err.message}` : 'The call failed. Please try again.'
 }
 
+/** Twilio edges to connect through, nearest first (NEXT_PUBLIC_TWILIO_EDGE overrides, comma separated). */
+const VOICE_EDGES = (process.env.NEXT_PUBLIC_TWILIO_EDGE || 'frankfurt,dublin,roaming')
+  .split(',')
+  .map((e) => e.trim())
+  .filter(Boolean)
+
 /** Real calls through Twilio. The Device is created once and reused; its token is refreshed before it expires. */
 export async function twilioEngine(token: string): Promise<VoiceEngine> {
-  const { Device } = await import('@twilio/voice-sdk')
-  // SDK 2.x: ringing state is always on and Opus is preferred by default
-  const device = new Device(token, { closeProtection: 'You’re on a call. Leave and hang up?', logLevel: 'error', sounds: { incoming: '/sounds/igani-ring.wav' } })
+  const { Device, Call } = await import('@twilio/voice-sdk')
+  // Less delay on the line:
+  // - Opus first (the SDK's default puts PCMU first): it copes with patchy connections (loss concealment, FEC) at a
+  //   fraction of the bandwidth, so audio doesn't build up delay on a busy or weak network.
+  // - A pinned edge near the team (Israel → Frankfurt, then Dublin) instead of DNS-based roaming, which a VPN or a
+  //   foreign DNS server can send across the Atlantic; roaming stays as the last fallback.
+  const device = new Device(token, {
+    closeProtection: 'You’re on a call. Leave and hang up?',
+    logLevel: 'error',
+    sounds: { incoming: '/sounds/igani-ring.wav' },
+    codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU],
+    edge: VOICE_EDGES,
+    maxCallSignalingTimeoutMs: 30_000,
+  })
   let ok = true
   device.on('tokenWillExpire', async () => {
     try {
@@ -217,8 +234,8 @@ export async function listenToCall(callId: string, handlers: { onLive: () => voi
   const t = await fetchVoiceToken()
   if ('demo' in t) throw new Error('Listening in needs Twilio (it can’t run in demo mode).')
   if ('error' in t) throw new Error(t.error)
-  const { Device } = await import('@twilio/voice-sdk')
-  const device = new Device(t.token, { logLevel: 'error' })
+  const { Device, Call } = await import('@twilio/voice-sdk')
+  const device = new Device(t.token, { logLevel: 'error', codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU], edge: VOICE_EDGES })
   let over = false
   const end = (error?: string): void => {
     if (over) return

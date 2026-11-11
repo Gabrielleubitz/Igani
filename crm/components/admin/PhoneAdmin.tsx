@@ -93,13 +93,6 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
           <span className="block text-xs text-muted-foreground">Both sides, from the moment they answer. Needed later for transcripts, coaching and reviews (CallMap).</span>
         </span>
       </label>
-      <label className="flex items-start gap-3">
-        <input type="checkbox" className="mt-1" checked={v.hints} onChange={(e) => setV({ ...v, hints: e.target.checked })} />
-        <span>
-          <span className="font-medium">Live coaching hints</span>
-          <span className="block text-xs text-muted-foreground">While a salesperson is on a call, short coaching hints appear on their screen. Their call audio is transcribed live by OpenAI and not stored by us. Each rep can switch it off for themselves.</span>
-        </span>
-      </label>
       <label className="block space-y-1">
         <span className="font-medium">Model for call reviews</span>
         <Input value={v.reviewModel} onChange={(e) => setV({ ...v, reviewModel: e.target.value })} placeholder="Leave empty for the default (gpt-5.5)" className="max-w-sm" />
@@ -112,7 +105,7 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
         <span>
           <span className="font-medium">Allow listening in</span>
           <span className="block text-xs text-muted-foreground">
-            Admins can join any live outgoing call from Calls → Live now, muted and unannounced: neither the salesperson nor the client hears them. Calls placed after you switch this on run through a Twilio conference room (a little more per minute). Each time someone listens, it’s noted in the audit log. Check that listening to calls is allowed where you and your clients are.
+            Admins can join any live outgoing call from Calls → Live now, muted and unannounced: neither the salesperson nor the client hears them. Calls placed after you switch this on run through a Twilio conference room (a little more per minute, and a slightly slower connect and a little extra delay on the line; leave it off unless you use it). Each time someone listens, it’s noted in the audit log. Check that listening to calls is allowed where you and your clients are.
           </span>
         </span>
       </label>

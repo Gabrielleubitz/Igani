@@ -5,6 +5,8 @@ import { MAX_CONTEXT_CHARS, MAX_WINDOW_BYTES, trimContext } from '@/lib/live-hin
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 
+const LIVE_HINTS_RETIRED = true
+
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
@@ -23,7 +25,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
   if (!key) return NextResponse.json({ error: 'Hints are not available' }, { status: 503 })
   const { id } = await props.params
   const [call, enabled] = await Promise.all([prisma.call.findUnique({ where: { id }, select: { userId: true, status: true, direction: true } }), getSetting('voice.hints')])
-  if (!enabled) return NextResponse.json({ error: 'Hints are switched off' }, { status: 403 })
+  // Live hints are retired (they slowed calls down): this endpoint always answers "off"
+  if (!enabled || LIVE_HINTS_RETIRED) return NextResponse.json({ error: 'Hints are switched off' }, { status: 403 })
   if (!call || call.userId !== user.id || !LIVE.includes(call.status)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const now = Date.now()
