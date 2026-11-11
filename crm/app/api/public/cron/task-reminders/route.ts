@@ -17,6 +17,7 @@ import { analyzeCall } from '@/lib/call-analysis'
 import { enrichPending } from '@/lib/prospect-details'
 import { syncDueMeetings } from '@/lib/meetings'
 import { syncCalendarChanges } from '@/lib/calendar-sync'
+import { runFollowUpAssistant } from '@/lib/follow-ups'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -151,6 +152,11 @@ async function run(): Promise<Record<string, number>> {
   // Call-list businesses whose website hasn't been read yet (the lookup after adding them ran out of time)
   await enrichPending({ limit: 30, budgetMs: 60_000 }).catch((err: unknown) => console.error('[cron] prospect details failed', err))
   const followUps = await createFollowUps()
+  // Conversations that went quiet with something open get a drafted follow-up (on the owner's Today page)
+  const followUpDrafts = await runFollowUpAssistant().catch((err: unknown) => {
+    console.error('[cron] follow-up assistant failed', err)
+    return { looked: 0, drafted: 0 }
+  })
   const expired = await expireStalePending()
   const meetingReminders = await sendMeetingReminders()
 
@@ -208,5 +214,5 @@ async function run(): Promise<Record<string, number>> {
     sent++
     for (const t of list) await logActivity({ entityType: 'LEAD', entityId: t.leadId, action: 'task.reminded', metadata: { taskId: t.id, dueAt: t.dueAt!.toISOString() } })
   }
-  return { checked, emailed: sent, followUps, meetingReminders, expired, emailsSynced: mail.stored, mailboxErrors: mail.failed, calendarCancelled: calendar.cancelled, calendarMoved: calendar.moved, calendarErrors: calendar.failed, meetingsChecked: meet.checked, meetingErrors: meet.failed }
+  return { checked, emailed: sent, followUps, followUpDrafts: followUpDrafts.drafted, followUpsLooked: followUpDrafts.looked, meetingReminders, expired, emailsSynced: mail.stored, mailboxErrors: mail.failed, calendarCancelled: calendar.cancelled, calendarMoved: calendar.moved, calendarErrors: calendar.failed, meetingsChecked: meet.checked, meetingErrors: meet.failed }
 }

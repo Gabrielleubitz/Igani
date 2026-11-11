@@ -22,6 +22,7 @@ import type { CalendarItem } from '@/components/crm/TodayCalendar'
 import { MailSyncTrigger } from '@/components/crm/MailSyncTrigger'
 import { MeetingSyncTrigger } from '@/components/crm/MeetingCall'
 import { CalendarSection, DoneButton, StartCalling, StartsIn } from '@/components/today/TodayClient'
+import { FollowUpDrafts } from '@/components/today/FollowUpDrafts'
 import { requireUser } from '@/lib/auth'
 import { bookingScope } from '@/lib/bookings'
 import { entryColorVar } from '@/lib/calendar-entries'
@@ -29,6 +30,7 @@ import { pushPendingEntries } from '@/lib/calendar-entry-sync'
 import { formatIls } from '@/lib/commission'
 import { STATUS_LABEL, formatMoney, timeAgo } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
+import { leadDisplayName } from '@/lib/lead-history'
 import { tasksForUser } from '@/lib/tasks'
 import { startOfLocalDay } from '@/lib/time'
 import { loadToday, type ActionItem, type AgendaItem, type DealRow, type TodayData } from '@/lib/today'
@@ -513,6 +515,15 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   const lineWeek = d.seller && user.role !== 'MARKETING' ? await Promise.all([loadRepWeek(user.id), lessonLinksFor(user)]).catch(() => null) : null
   const upcoming = items.filter((i) => new Date(i.end).getTime() > d.now.getTime() && new Date(i.start).getTime() < d.now.getTime() + 7 * 864e5).length
   const needs = d.actionsTotal
+  // Drafts from the follow-up assistant waiting for this person
+  const drafts = (
+    await prisma.followUpDraft.findMany({
+      where: { userId: user.id, status: 'open', lead: { assignedToId: user.id } },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+      select: { id: true, leadId: true, channel: true, subject: true, body: true, reason: true, kind: true, lead: { select: { firstName: true, lastName: true, company: true, email: true, phone: true } } },
+    })
+  ).map((x) => ({ id: x.id, leadId: x.leadId, leadName: leadDisplayName(x.lead), channel: x.channel, subject: x.subject, body: x.body, reason: x.reason, kind: x.kind }))
   const soon = d.agenda.some((a) => (a.kind === 'meeting' || a.kind === 'team') && Math.abs(a.start.getTime() - d.now.getTime()) < 15 * 60_000)
 
   return (
@@ -567,6 +578,11 @@ export default async function TodayPage(): Promise<React.ReactElement> {
           </div>
         </div>
         <div className="contents lg:col-span-5 lg:flex lg:min-w-0 lg:flex-col lg:gap-5">
+          {drafts.length ? (
+            <div className="order-1 min-w-0">
+              <FollowUpDrafts drafts={drafts} />
+            </div>
+          ) : null}
           <div className="order-1 min-w-0">
             <NeedsYou d={d} />
           </div>

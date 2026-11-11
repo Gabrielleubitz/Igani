@@ -7,6 +7,7 @@ import { CallLink } from '@/components/dialer/Dialer'
 import { formatPhone } from '@/lib/phone-numbers'
 import { notFound } from 'next/navigation'
 import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
+import { BriefMeButton } from '@/components/crm/BriefMeButton'
 import { EditLeadButton } from '@/components/crm/EditLeadButton'
 import { EmailComposer } from '@/components/crm/EmailComposer'
 import { EmailsPanel, type EmailView } from '@/components/crm/EmailsPanel'
@@ -336,6 +337,7 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="truncate text-2xl font-semibold">{leadName(lead)}</h1>
                 <EditLeadButton key={`h-${lead.updatedAt.toISOString()}`} name={leadName(lead)} leadId={lead.id} canEditEmail={isAdmin} initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }} />
+                <BriefMeButton leadId={lead.id} name={leadName(lead)} />
               </div>
               <p className="truncate text-sm text-muted-foreground">{[lead.company, lead.email ?? lead.phone].filter(Boolean).join(' · ')}</p>
             </div>

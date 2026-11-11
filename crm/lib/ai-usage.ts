@@ -18,6 +18,8 @@ export const AI_FEATURES = {
   meeting: 'Meeting notes',
   'site-audit': 'Site audits',
   'lead-intel': 'Lead insights from calls',
+  'lead-brief': 'Brief me',
+  'follow-up': 'Follow-up drafts',
   prospect: 'Prospect details',
 } as const
 export type AiFeature = keyof typeof AI_FEATURES

@@ -7,7 +7,7 @@ import { notArchivedBy } from './lead-archive'
 
 /** System-created task (same activity-log shape the UI folds into task state). */
 export async function createAutoTask(
-  t: { leadId: string; title: string; dueAt: Date; assigneeId: string | null; priority?: TaskPriority; auto: 'prep' | 'follow-up' | 'invoice' | 'callback' | 'email-reply'; bookingId?: string; offerId?: string; callId?: string; emailId?: string },
+  t: { leadId: string; title: string; dueAt: Date; assigneeId: string | null; priority?: TaskPriority; auto: 'prep' | 'follow-up' | 'invoice' | 'callback' | 'email-reply' | 'follow-up-draft'; bookingId?: string; offerId?: string; callId?: string; emailId?: string },
   db?: Prisma.TransactionClient,
 ): Promise<string> {
   const taskId = randomUUID()

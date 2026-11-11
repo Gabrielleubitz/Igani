@@ -19,6 +19,8 @@ export const SETTING_SCHEMAS = {
   'reminders.meetingEmails': z.boolean(),
   /** Email every admin a summary of the week on Sunday morning */
   'notifications.weeklySummary': z.boolean(),
+  /** The follow-up assistant: drafts follow-ups for conversations that went quiet with something still open (needs the OpenAI key) */
+  'followUps.enabled': z.boolean(),
   /** Visitor analytics (scroll, clicks, heatmap) on the main website's pages, switched per page under Admin → Website */
   'website.tracking': z.object({ home: z.boolean(), realestate: z.boolean() }),
   /** Dialer: record calls (both sides) and which countries may be called */
@@ -57,6 +59,7 @@ export const SETTING_DEFAULTS: { [K in SettingKey]: z.infer<(typeof SETTING_SCHE
   'booking.bufferMinutes': 0,
   'brand.name': 'Igani',
   'brand.supportEmail': 'hello@igani.co',
+  'followUps.enabled': true,
   'leads.staleDays': 7,
   'notifications.newLead': true,
   'reminders.meetingEmails': true,

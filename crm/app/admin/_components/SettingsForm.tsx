@@ -44,6 +44,7 @@ export function SettingsForm({ initial }: { initial: typeof SETTING_DEFAULTS }):
               .filter(Boolean),
             'notifications.newLead': v['notifications.newLead'],
             'notifications.weeklySummary': v['notifications.weeklySummary'],
+            'followUps.enabled': v['followUps.enabled'],
             'reminders.meetingEmails': v['reminders.meetingEmails'],
             'booking.defaultDurationMinutes': Number(v['booking.defaultDurationMinutes']),
             'booking.bufferMinutes': Number(v['booking.bufferMinutes']),
@@ -86,6 +87,12 @@ export function SettingsForm({ initial }: { initial: typeof SETTING_DEFAULTS }):
           </div>
           <Toggle checked={v['notifications.newLead']} onChange={(x) => set({ 'notifications.newLead': x })} label="Email the list above when a new lead arrives" hint="A branded alert with the lead's details and a button to open them in the CRM." />
           <Toggle checked={v['notifications.weeklySummary']} onChange={(x) => set({ 'notifications.weeklySummary': x })} label="Email admins a weekly summary every Sunday" hint="New leads, deals won and signed, offers clients are reading, and who has overdue tasks." />
+          <Toggle
+            checked={v['followUps.enabled']}
+            onChange={(x) => set({ 'followUps.enabled': x })}
+            label="Follow-up assistant"
+            hint="Spots conversations that went quiet while something was still open (a quote, a call back, an unanswered message) and drafts the follow-up in the salesperson's own style, ready on their Today page. Nothing is sent without them."
+          />
           <Toggle checked={v['reminders.meetingEmails']} onChange={(x) => set({ 'reminders.meetingEmails': x })} label="Remind guests the day before a meeting" hint="Sent about 24 hours before each confirmed meeting, with the Meet link. Cuts no-shows." />
         </CardContent>
       </Card>

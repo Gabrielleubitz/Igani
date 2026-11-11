@@ -123,6 +123,7 @@ model User {
   leadArchives    LeadArchive[]
   leadNotes       LeadNote[]
   phoneLine       PhoneLine?
+  followUpDrafts  FollowUpDraft[]
   calls           Call[]
   chatMemberships ChatMember[]
   chatPresence    ChatPresence?
@@ -238,8 +239,8 @@ model Lead {
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
-  assignedTo  User?          @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  sourcedBy   User?          @relation("LeadSourcer", fields: [sourcedById], references: [id], onDelete: SetNull)
+  assignedTo  User?           @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  sourcedBy   User?           @relation("LeadSourcer", fields: [sourcedById], references: [id], onDelete: SetNull)
   bookings    Booking[]
   notes       LeadNote[]
   emails      EmailMessage[]
@@ -249,6 +250,7 @@ model Lead {
   calls       Call[]
   smsMessages SmsMessage[]
   prospects   Prospect[]
+  followUps   FollowUpDraft[]
 
   @@index([status, createdAt])
   @@index([assignedToId, status])
@@ -1207,4 +1209,33 @@ model AiUsage {
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// A follow-up the assistant drafted for a conversation that went quiet (lib/follow-ups.ts). The salesperson edits and
+/// sends it from Today, or dismisses it; its task closes either way.
+model FollowUpDraft {
+  id        String    @id @default(cuid())
+  leadId    String
+  /// who it's for: the contact's owner when it was drafted
+  userId    String
+  /// the task on the contact that points to it
+  taskId    String
+  /// email | sms
+  channel   String
+  subject   String?
+  body      String    @db.Text
+  /// why it was drafted, in one line ("They asked for a quote on 3 Nov and haven't heard back")
+  reason    String
+  /// unanswered | promise | quiet
+  kind      String
+  /// open | sent | dismissed
+  status    String    @default("open")
+  createdAt DateTime  @default(now())
+  closedAt  DateTime?
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([leadId, createdAt])
 }
