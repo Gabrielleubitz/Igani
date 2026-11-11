@@ -70,14 +70,14 @@ export default async function CallsPage(props: { searchParams: Promise<{ person?
   const since = range === 'today' ? localMidnight(now, tz) : range === '7d' ? localMidnight(now, tz, -6) : range === '30d' ? localMidnight(now, tz, -29) : null
 
   const base: Prisma.CallWhereInput = {
-    AND: [{ simulated: false }, isAdmin ? (person ? { userId: person } : {}) : { OR: [{ userId: user.id }, { shares: { some: { userId: user.id } } }] }, since ? { startedAt: { gte: since } } : {}, searchWhere(q) ?? {}],
+    AND: [{ simulated: false, private: false }, isAdmin ? (person ? { userId: person } : {}) : { OR: [{ userId: user.id }, { shares: { some: { userId: user.id } } }] }, since ? { startedAt: { gte: since } } : {}, searchWhere(q) ?? {}],
   }
   const where = (v: View): Prisma.CallWhereInput => ({ AND: [base, VIEW_WHERE[v]] })
 
   const [calls, counts, recent, people] = await Promise.all([
     loadCalls(where(view), limit),
     Promise.all(VIEWS.map((v) => prisma.call.count({ where: where(v) }))),
-    prisma.call.findMany({ where: { simulated: false, startedAt: { gte: new Date(now.getTime() - 30 * DAY) }, ...(isAdmin ? {} : { userId: user.id }) }, select: { userId: true, status: true, durationSec: true, analysis: true, startedAt: true } }),
+    prisma.call.findMany({ where: { simulated: false, private: false, startedAt: { gte: new Date(now.getTime() - 30 * DAY) }, ...(isAdmin ? {} : { userId: user.id }) }, select: { userId: true, status: true, durationSec: true, analysis: true, startedAt: true } }),
     isAdmin ? prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true, image: true }, orderBy: { name: 'asc' } }) : Promise.resolve([]),
   ])
   const count = Object.fromEntries(VIEWS.map((v, i) => [v, counts[i] ?? 0])) as Record<View, number>

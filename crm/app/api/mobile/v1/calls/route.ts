@@ -28,7 +28,7 @@ export async function GET(req: Request): Promise<Response> {
   const now = new Date()
   const since = range === 'today' ? localMidnight(now, me.timeZone) : range === '7d' ? localMidnight(now, me.timeZone, -6) : range === '30d' ? localMidnight(now, me.timeZone, -29) : null
   const base: Prisma.CallWhereInput = {
-    AND: [{ simulated: false }, isAdmin ? (person ? { userId: person } : {}) : { OR: [{ userId: user.id }, { shares: { some: { userId: user.id } } }] }, since ? { startedAt: { gte: since } } : {}, searchWhere(q) ?? {}],
+    AND: [{ simulated: false, private: false }, isAdmin ? (person ? { userId: person } : {}) : { OR: [{ userId: user.id }, { shares: { some: { userId: user.id } } }] }, since ? { startedAt: { gte: since } } : {}, searchWhere(q) ?? {}],
   }
   const where = (v: View): Prisma.CallWhereInput => ({ AND: [base, VIEW_WHERE[v]] })
   const [rows, counts, inWindow, people] = await Promise.all([

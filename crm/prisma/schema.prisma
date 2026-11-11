@@ -819,6 +819,8 @@ model Call {
   conference       Boolean       @default(false)
   /// What the AI learned about the client on this call (lib/lead-intel.ts): person, company, site, meeting, next steps
   intel            Json?
+  /// A personal call (admins only): not recorded, not reviewed, not tied to a contact, and only its caller can see it
+  private          Boolean       @default(false)
 
   user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
   lead     Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)

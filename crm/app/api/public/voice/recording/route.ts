@@ -12,6 +12,8 @@ export async function POST(req: Request): Promise<Response> {
   const p = await readTwilioWebhook(req, 'recording')
   if (!p) return new Response('Forbidden', { status: 403 })
   const callId = new URL(req.url).searchParams.get('callId')
+  // a personal call is never recorded; if a recording shows up anyway, it is not kept or analysed
+  if (callId && (await prisma.call.findUnique({ where: { id: callId }, select: { private: true } }))?.private) return new Response('ok')
   if (callId && /^RE[0-9a-f]{32}$/i.test(p.RecordingSid ?? '')) {
     const sec = Number.parseInt(p.RecordingDuration ?? '', 10)
     await prisma.call.updateMany({

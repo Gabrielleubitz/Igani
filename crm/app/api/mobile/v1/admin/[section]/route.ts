@@ -141,7 +141,7 @@ const SECTIONS: Record<string, (user: User, sp: Params) => Promise<unknown>> = {
       prisma.user.findMany({ where: { role: { in: ['ADMIN', 'SALES'] } }, select: { id: true, name: true, email: true, role: true }, orderBy: { name: 'asc' } }),
       prisma.phoneLine.findMany({ select: { userId: true, number: true, active: true } }),
       getSettings(),
-      prisma.call.findMany({ orderBy: { startedAt: 'desc' }, take: 25, include: { user: { select: { name: true, email: true } }, lead: { select: { id: true, firstName: true, lastName: true, email: true } } } }),
+      prisma.call.findMany({ where: { private: false }, orderBy: { startedAt: 'desc' }, take: 25, include: { user: { select: { name: true, email: true } }, lead: { select: { id: true, firstName: true, lastName: true, email: true } } } }),
     ])
     const lineOf = new Map(lines.map((l) => [l.userId, l]))
     return {

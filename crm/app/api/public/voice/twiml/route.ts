@@ -87,7 +87,7 @@ export async function POST(req: Request): Promise<Response> {
     return xml(r.toString())
   }
 
-  const record = await getSetting('voice.record')
+  const record = !call.private && (await getSetting('voice.record'))
   const r = twiml()
   const dial = r.dial({
     callerId: line.number,

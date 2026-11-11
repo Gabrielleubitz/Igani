@@ -24,7 +24,7 @@ import { toActionError, type ActionResult } from './result'
 
 const callers = ['ADMIN', 'SALES'] as const
 
-const StartInput = z.object({ to: z.string().trim().min(3).max(40), leadId: z.string().cuid().nullish(), prospectId: z.string().cuid().nullish() })
+const StartInput = z.object({ to: z.string().trim().min(3).max(40), leadId: z.string().cuid().nullish(), prospectId: z.string().cuid().nullish(), private: z.boolean().optional() })
 
 /** The contact on a call, as the wrap-up shows it (so the rep can put a name to a number). */
 export interface CallContact {
@@ -48,6 +48,8 @@ export interface StartedCall {
   demo: boolean
   /** placed through a conference room (listen-in on): the app connecting doesn't mean the client answered — watch callProgress */
   conference: boolean
+  /** a personal call: not recorded, no wrap-up, not on the CRM */
+  private: boolean
 }
 
 /**
@@ -76,6 +78,16 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     if (lastMinute >= CALL_LIMITS.perMinute) throw new BookingError('That’s a lot of calls in a minute. Wait a moment and try again.', 'SLOT_TAKEN')
     if (today >= CALL_LIMITS.perDay) throw new BookingError(`You’ve reached the limit of ${CALL_LIMITS.perDay} calls in 24 hours. Ask an admin if you need more.`, 'SLOT_TAKEN')
 
+    // A personal call (admins only): no contact, no recording, no AI, no listen-in, and nobody else sees it
+    if (data.private) {
+      if (user.role !== 'ADMIN') throw new BookingError('Only admins can make private calls.', 'FORBIDDEN')
+      const call = await prisma.call.create({
+        data: { userId: user.id, leadId: null, prospectId: null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo, conference: false, private: true },
+        select: { id: true },
+      })
+      return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead: null, prospect: null, record: false, hints: false, demo, conference: false, private: true } }
+    }
+
     let leadId: string
     let prospect: StartedCall['prospect'] = null
     if (data.leadId && !data.prospectId) {
@@ -97,7 +109,7 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
       data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo, conference },
       select: { id: true },
     })
-    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, hints, demo, conference } }
+    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, hints, demo, conference, private: false } }
   } catch (err) {
     return toActionError(err)
   }
@@ -337,6 +349,8 @@ export interface RecentCall {
   durationSec: number | null
   startedAt: string
   live: boolean
+  /** a personal call (only its caller sees it) */
+  private: boolean
 }
 
 /** This user's latest calls, for the dialer's Recent tab. */
@@ -364,6 +378,7 @@ export async function recentCalls(): Promise<ActionResult<RecentCall[]>> {
         durationSec: c.durationSec,
         startedAt: c.startedAt.toISOString(),
         live: LIVE_STATUSES.includes(c.status),
+        private: c.private,
       })),
     }
   } catch (err) {
@@ -459,7 +474,7 @@ export async function liveCalls(): Promise<ActionResult<{ calls: LiveCall[]; lis
   try {
     const user = await requireUser(['ADMIN'])
     const rows = await prisma.call.findMany({
-      where: { status: { in: [...LIVE_STATUSES] }, simulated: false, startedAt: { gt: new Date(Date.now() - 95 * 60_000) }, twilioCallSid: { not: null } },
+      where: { status: { in: [...LIVE_STATUSES] }, simulated: false, private: false, startedAt: { gt: new Date(Date.now() - 95 * 60_000) }, twilioCallSid: { not: null } },
       orderBy: { startedAt: 'desc' },
       take: 50,
       include: { user: { select: { id: true, name: true, email: true } }, lead: { select: { firstName: true, lastName: true, email: true, company: true } }, prospect: { select: { name: true } } },

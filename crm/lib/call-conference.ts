@@ -29,7 +29,7 @@ export async function dialClientIntoRoom(callId: string): Promise<void> {
   if (!claimed.count) return
   const call = await prisma.call.findUnique({ where: { id: callId } })
   if (!call || FINAL_STATUSES.includes(call.status)) return
-  const record = await getSetting('voice.record')
+  const record = !call.private && (await getSetting('voice.record'))
   try {
     const p = await twilioClient(c)
       .conferences(roomName(callId))

@@ -21,7 +21,7 @@ export interface RecentLineCall {
 export async function loadRepWeek(userId: string, now = new Date()): Promise<{ week: WeekSummary; prev: WeekSummary; recent: RecentLineCall[] }> {
   const since = new Date(now.getTime() - 14 * 86_400_000)
   const rows = await prisma.call.findMany({
-    where: { userId, startedAt: { gt: since }, analysisStatus: 'ready' },
+    where: { userId, private: false, startedAt: { gt: since }, analysisStatus: 'ready' },
     orderBy: { startedAt: 'desc' },
     take: 300,
     select: { id: true, startedAt: true, durationSec: true, recordingSec: true, toNumber: true, analysis: true, lead: { select: { firstName: true, lastName: true, email: true, company: true } } },

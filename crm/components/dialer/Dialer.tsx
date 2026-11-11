@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowUpRight, Check, ChevronDown, ChevronLeft, Delete, Grid3x3, History, ListChecks, MessageCircle, Mic, MicOff, Search, Users, Voicemail, X } from 'lucide-react'
+import { ArrowUpRight, Check, ChevronDown, ChevronLeft, Delete, Grid3x3, History, ListChecks, Lock, MessageCircle, Mic, MicOff, Search, Users, Voicemail, X } from 'lucide-react'
 import { smsUnread } from '@/app/actions/sms'
 import { Messages } from './Messages'
 import { usePathname, useRouter } from 'next/navigation'
@@ -152,7 +152,7 @@ const CRM_PATH = /^\/(sales|admin|marketing)(\/|$)/
 export function DialerRoot({ children }: { children: React.ReactNode }): React.ReactElement {
   const pathname = usePathname() ?? ''
   const crm = CRM_PATH.test(pathname)
-  const [cfg, setCfg] = useState<{ number: string | null; demo: boolean } | null>(null)
+  const [cfg, setCfg] = useState<{ number: string | null; demo: boolean; admin: boolean } | null>(null)
   const checked = useRef<string | null>(null)
   useEffect(() => {
     // Check on entering the CRM, and again on later pages until calling is available (e.g. a line was just assigned)
@@ -160,7 +160,7 @@ export function DialerRoot({ children }: { children: React.ReactNode }): React.R
     checked.current = pathname
     void fetch('/api/voice/status', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d: { enabled?: boolean; number?: string | null; demo?: boolean } | null) => setCfg(d?.enabled ? { number: d.number ?? null, demo: Boolean(d.demo) } : null))
+      .then((d: { enabled?: boolean; number?: string | null; demo?: boolean; admin?: boolean } | null) => setCfg(d?.enabled ? { number: d.number ?? null, demo: Boolean(d.demo), admin: Boolean(d.admin) } : null))
       .catch(() => undefined)
   }, [crm, cfg, pathname])
   // Signed out: forget, check again after the next sign-in (adjusting state during render, not in an effect)
@@ -168,7 +168,7 @@ export function DialerRoot({ children }: { children: React.ReactNode }): React.R
     setCfg(null) // the next CRM page has a new path, so the check runs again
   }
   return (
-    <DialerProvider enabled={Boolean(cfg)} visible={crm} number={cfg?.number ?? null} demo={cfg?.demo ?? false}>
+    <DialerProvider enabled={Boolean(cfg)} visible={crm} number={cfg?.number ?? null} demo={cfg?.demo ?? false} admin={cfg?.admin ?? false}>
       {children}
     </DialerProvider>
   )
@@ -180,7 +180,7 @@ export function DialerRoot({ children }: { children: React.ReactNode }): React.R
  * The CRM dialer: a floating phone button on every page for teammates with a line. Wraps the app so any "Call" link
  * can open it pre-filled (useDialer). One call at a time; every call ends in a short wrap-up saved on the lead.
  */
-export function DialerProvider({ enabled, visible, number, demo, children }: { enabled: boolean; visible: boolean; number: string | null; demo: boolean; children: React.ReactNode }): React.ReactElement {
+export function DialerProvider({ enabled, visible, number, demo, admin = false, children }: { enabled: boolean; visible: boolean; number: string | null; demo: boolean; admin?: boolean; children: React.ReactNode }): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<Tab>('keypad')
@@ -195,6 +195,8 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
   const [notice, setNotice] = useState<string | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [showPad, setShowPad] = useState(false)
+  /** admins: the next call is personal (not recorded, not on the CRM). Off again after each call. */
+  const [privateNext, setPrivateNext] = useState(false)
   /** the rep can switch live hints off for themselves (kept in this browser) */
   const [hintsOn, setHintsOn] = useState(true)
   useEffect(() => {
@@ -319,7 +321,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     const c = call.accept()
     active.current = c
     const display = caller?.display ?? formatPhone(call.from)
-    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ?? null, prospect: null, record: false, hints: false, demo, conference: false }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in', company: caller?.id?.prospect?.name ?? caller?.id?.label?.company ?? null })
+    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ?? null, prospect: null, record: false, hints: false, demo, conference: false, private: false }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in', company: caller?.id?.prospect?.name ?? caller?.id?.label?.company ?? null })
     const finish = (): void => {
       active.current = null
       setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'answered' } : s))
@@ -357,7 +359,8 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
       setOpen(true)
       setShowPad(false)
       try {
-        const res = await startCall({ to: phone, leadId: lead?.id ?? null, prospectId: prospect?.id ?? null })
+        const res = await startCall({ to: phone, leadId: lead?.id ?? null, prospectId: prospect?.id ?? null, private: admin && privateNext })
+        setPrivateNext(false)
         if (!res.ok) {
           setError(res.error)
           return
@@ -425,7 +428,7 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
         busy.current = false
       }
     },
-    [getEngine, resetEngine, session],
+    [getEngine, resetEngine, session, admin, privateNext],
   )
 
   const api = useMemo<DialerApi>(
@@ -456,6 +459,13 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
     if (!session || !active.current) return
     active.current.mute(!session.muted)
     setSession({ ...session, muted: !session.muted })
+  }
+
+  // A private call has no wrap-up: nothing about it is saved on the CRM (adjusting state during render, not in an effect)
+  if (session?.phase === 'wrapup' && session.call.private) {
+    setSession(null)
+    setTyped('')
+    setNotice('Private call ended. It wasn’t recorded or saved to the CRM.')
   }
 
   const onWrapped = (leadName: string | null, madeLead = false): void => {
@@ -500,9 +510,25 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
                 </div>
               </div>
             </div>
+            <div className="flex shrink-0 items-center gap-1">
+            {admin && !session && !incoming ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={privateNext}
+                aria-label="Private call"
+                onClick={() => setPrivateNext((v) => !v)}
+                title={privateNext ? 'The next call is private: not recorded, no AI review, not saved to a contact, and only you can see it' : 'Make the next call private (personal use)'}
+                className={cn('inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[11.5px] font-medium transition', privateNext ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground')}
+              >
+                {privateNext ? <Lock className="h-3 w-3" aria-hidden /> : <span className="h-1.5 w-1.5 rounded-full bg-rose-500" aria-hidden />}
+                {privateNext ? 'Private' : 'Recorded'}
+              </button>
+            ) : null}
             <button type="button" onClick={() => setOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/[0.06] hover:text-foreground" aria-label="Close phone">
               <X className="h-4 w-4" />
             </button>
+            </div>
           </header>
 
           {incoming ? (
@@ -1064,6 +1090,7 @@ function Recent({ onCall }: { onCall: (r: RecentCall) => void }): React.ReactEle
                 <a href={`/sales/calls/${r.id}`} className="hover:underline">
                   {r.lead?.name ?? r.display}
                 </a>
+                {r.private ? <Lock className="ms-1.5 inline h-3 w-3 align-[-1px] text-muted-foreground" aria-label="Private call" /> : null}
               </span>
               <span className="block truncate text-xs text-muted-foreground">
                 {r.outcome ? OUTCOME_LABEL[r.outcome] : r.live ? 'In progress' : r.status === 'COMPLETED' ? 'Connected' : r.status.replace('_', ' ').toLowerCase()}
@@ -1111,6 +1138,11 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, 
         <div className={cn('mt-2 text-sm tabular-nums', phase === 'live' ? 'text-emerald-400' : 'text-muted-foreground')} aria-live="polite">
           {status}
         </div>
+        {call.private ? (
+          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.06] px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <Lock className="h-3 w-3" aria-hidden /> Private call · not recorded
+          </div>
+        ) : null}
         {call.record && phase === 'live' ? (
           <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-rose-300">
             <span className="h-1.5 w-1.5 rounded-full bg-rose-400" /> Recording

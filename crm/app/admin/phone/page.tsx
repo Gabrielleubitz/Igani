@@ -39,7 +39,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
     getSetting('voice.record'),
     getSetting('voice.hints'),
     getSetting('voice.countries'),
-    prisma.call.findMany({ orderBy: { startedAt: 'desc' }, take: 25, include: { user: { select: { name: true, email: true } }, lead: { select: { id: true, firstName: true, lastName: true, email: true } } } }),
+    prisma.call.findMany({ where: { private: false }, orderBy: { startedAt: 'desc' }, take: 25, include: { user: { select: { name: true, email: true } }, lead: { select: { id: true, firstName: true, lastName: true, email: true } } } }),
     prisma.user.findUniqueOrThrow({ where: { id: admin.id }, select: { timeZone: true } }),
     getSetting('voice.listenIn'),
     getSetting('calls.reviewModel'),
@@ -47,7 +47,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
   // Costs per month: the last six months of calls, priced with the estimate rates in lib/call-costs.ts
   const since = new Date(Date.now() - 190 * 86_400_000)
   const costRows = await prisma.call.findMany({
-    where: { simulated: false, startedAt: { gte: since } },
+    where: { simulated: false, private: false, startedAt: { gte: since } },
     select: { userId: true, startedAt: true, direction: true, fromNumber: true, toNumber: true, durationSec: true, recordingSec: true, analysisStatus: true, user: { select: { name: true, email: true } } },
   })
   const costCalls: CostCall[] = costRows.map((c) => ({

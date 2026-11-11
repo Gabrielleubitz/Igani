@@ -96,7 +96,7 @@ export async function loadToday(user: SessionUser) {
       select: { offerId: true, lastSeenAt: true, durationMs: true, maxScrollPct: true, offer: { select: { title: true, status: true, lead: { select: { id: true, firstName: true, lastName: true, email: true, phone: true, company: true } } } } },
     }),
     seller ? prisma.callList.findMany({ where: { ownerId: user.id }, select: { id: true, name: true, prospects: { where: { status: { in: OPEN_PROSPECT } }, select: { id: true } } }, orderBy: { updatedAt: 'desc' }, take: 20 }) : Promise.resolve([]),
-    seller ? prisma.call.findMany({ where: { userId: user.id, simulated: false, startedAt: { gte: new Date(dayStart.getTime() - 6 * DAY) } }, select: { startedAt: true, status: true, durationSec: true, analysis: true } }) : Promise.resolve([]),
+    seller ? prisma.call.findMany({ where: { userId: user.id, simulated: false, private: false, startedAt: { gte: new Date(dayStart.getTime() - 6 * DAY) } }, select: { startedAt: true, status: true, durationSec: true, analysis: true } }) : Promise.resolve([]),
     prisma.activityLog.findMany({ where: { action: 'task.completed', actorId: user.id, createdAt: { gte: new Date(dayStart.getTime() - 13 * DAY) } }, select: { createdAt: true } }),
     prisma.activityLog.findMany({
       where: { entityType: 'LEAD', action: { in: ['lead.created', 'email.received', 'lead.status_changed', 'call.analyzed', 'lead.resubmitted', 'lead.assigned'] }, createdAt: { gte: new Date(now.getTime() - 7 * DAY) }, ...(isAdmin ? {} : { entityId: { in: (await prisma.lead.findMany({ where: { assignedToId: user.id }, select: { id: true }, take: 2000 })).map((l) => l.id) } }) },
