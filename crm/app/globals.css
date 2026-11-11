@@ -121,6 +121,24 @@
   80% { transform: rotate(4deg); }
 }
 
+/* Incoming call: a slow halo that breathes out from the caller's photo, and the details settling in */
+@keyframes call-halo {
+  0% { transform: scale(0.92); opacity: 0; }
+  25% { opacity: 0.55; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+@keyframes call-settle {
+  from { opacity: 0; transform: translateY(8px); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes call-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.035); }
+}
+.call-halo { animation: call-halo 3.2s cubic-bezier(0.22, 0.61, 0.36, 1) infinite; }
+.call-settle { animation: call-settle 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.call-breathe { animation: call-breathe 2.4s ease-in-out infinite; }
+
 /* Light mode: the pale tints written for the dark theme become their deep shades, so status text stays readable on white */
 html.light .text-emerald-100:not(.dark, .dark *), html.light .text-emerald-200:not(.dark, .dark *), html.light .text-emerald-300:not(.dark, .dark *), html.light .text-emerald-400:not(.dark, .dark *) { color: #047857; }
 html.light .text-rose-100:not(.dark, .dark *), html.light .text-rose-200:not(.dark, .dark *), html.light .text-rose-300:not(.dark, .dark *), html.light .text-rose-400:not(.dark, .dark *) { color: #be123c; }

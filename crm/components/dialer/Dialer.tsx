@@ -9,6 +9,7 @@ import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect 
 import { abandonCall, callProgress, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
+import { playDtmf } from './dtmf'
 import { dialProblem, formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
 import type { CallerId } from '@/lib/caller-id'
 import { useLiveHints } from './useLiveHints'
@@ -588,12 +589,17 @@ export function DialerProvider({ enabled, visible, number, demo, children }: { e
 function FloatingButton({ session, now, open, unread, incoming, onClick }: { session: Session | null; now: number; open: boolean; unread: number; incoming: string | null; onClick: () => void }): React.ReactElement {
   if (incoming && !open) {
     return (
-      <button type="button" onClick={onClick} aria-label={`Incoming call from ${incoming}. Show the phone`} className="fixed bottom-5 right-5 z-[59] flex h-[52px] items-center gap-2.5 rounded-2xl border border-white/15 bg-[#16a34a] pl-3.5 pr-4 text-sm font-semibold text-white shadow-[0_12px_28px_-10px_rgba(0,0,0,0.8)]">
-        <span className="relative flex h-6 w-6 items-center justify-center">
-          <span className="absolute inset-0 animate-ping rounded-full bg-white/40 motion-reduce:hidden" />
-          <Handset className="relative h-4 w-4 animate-[wiggle_0.9s_ease-in-out_infinite] motion-reduce:animate-none" />
+      <button type="button" onClick={onClick} aria-label={`Incoming call from ${incoming}. Show the phone`} className="call-settle fixed bottom-5 right-5 z-[59] flex h-[52px] items-center gap-3 rounded-full border border-border/70 bg-background pl-2 pr-5 text-sm text-foreground shadow-[0_18px_40px_-16px_rgba(0,0,0,0.45)]">
+        <span className="relative flex h-9 w-9 items-center justify-center">
+          <span aria-hidden className="call-halo absolute inset-0 rounded-full border border-[#34c759]/60 motion-reduce:hidden" />
+          <span className="call-breathe relative flex h-9 w-9 items-center justify-center rounded-full bg-[#34c759] text-white motion-reduce:animate-none">
+            <Handset className="h-4 w-4" />
+          </span>
         </span>
-        <span className="max-w-[10rem] truncate">Incoming · {incoming}</span>
+        <span className="flex max-w-[11rem] flex-col items-start leading-tight">
+          <span className="text-[11px] text-muted-foreground">Incoming call</span>
+          <span className="truncate font-medium">{incoming}</span>
+        </span>
       </button>
     )
   }
@@ -645,35 +651,42 @@ function IncomingView({ caller, from, onAccept, onDecline }: { caller: IncomingC
   const name = callerName(caller) ?? undefined
   const line = callerLine(caller)
   const display = caller?.display ?? formatPhone(from)
+  const delay = (ms: number): React.CSSProperties => ({ animationDelay: `${ms}ms` })
   return (
-    <div className="flex flex-1 flex-col items-center px-6 pb-8 pt-10" role="alertdialog" aria-label={`Incoming call from ${name ?? display}`}>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">Incoming call</div>
-      <div className="relative mt-8 flex h-28 w-28 items-center justify-center">
-        <span className="absolute -inset-4 animate-ping rounded-full border-2 border-emerald-400/40 motion-reduce:hidden" />
-        <span className="absolute -inset-4 rounded-full border border-border" />
-        <span className="relative flex h-28 w-28 items-center justify-center rounded-full border-2 border-border bg-muted text-3xl font-semibold text-white">{initials(name, '#')}</span>
+    <div className="flex flex-1 flex-col items-center px-6 pb-8 pt-9" role="alertdialog" aria-label={`Incoming call from ${name ?? display}`}>
+      <div className="call-settle text-[13px] text-muted-foreground" style={delay(0)}>
+        Incoming call
       </div>
-      <div className="mt-7 text-center">
-        <div className="text-2xl font-semibold">{name ?? display}</div>
-        {line ? <div className="mt-0.5 text-sm text-muted-foreground">{line}</div> : null}
+      <div className="call-settle relative mt-10 flex h-28 w-28 items-center justify-center" style={delay(60)}>
+        {/* three soft rings, one after another: a calm, steady ring, never a flash */}
+        {[0, 1066, 2133].map((d) => (
+          <span key={d} aria-hidden className="call-halo absolute inset-0 rounded-full border border-foreground/25 motion-reduce:hidden" style={delay(d)} />
+        ))}
+        <span className="relative flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-b from-foreground/[0.07] to-foreground/[0.13] text-[34px] font-light tracking-wide text-foreground ring-1 ring-foreground/10">{initials(name, '#')}</span>
+      </div>
+      <div className="call-settle mt-8 text-center" style={delay(140)}>
+        <div className="text-[28px] font-light leading-tight tracking-tight">{name ?? display}</div>
+        {line ? <div className="mt-1 text-sm text-muted-foreground">{line}</div> : null}
         {name ? <div className="mt-1 text-sm tabular-nums text-muted-foreground">{display}</div> : <div className="mt-1 text-sm text-muted-foreground">{caller ? 'Not in the CRM yet' : 'Looking up…'}</div>}
       </div>
       <div className="flex-1" />
-      <div className="flex w-full items-center justify-center gap-14">
-        <div className="flex flex-col items-center gap-2">
-          <button type="button" onClick={onDecline} aria-label="Decline" className="flex h-16 w-16 items-center justify-center rounded-full border border-[#f87171]/40 bg-[#dc2626] text-white shadow-[0_10px_24px_-10px_rgba(220,38,38,0.9)] transition hover:bg-[#c41f1f] active:scale-95">
+      <div className="call-settle flex w-full items-start justify-center gap-16" style={delay(240)}>
+        <div className="flex flex-col items-center gap-2.5">
+          <button type="button" onClick={onDecline} aria-label="Decline" className="flex h-[66px] w-[66px] items-center justify-center rounded-full bg-[#ff3b30] text-white transition hover:brightness-95 active:scale-95">
             <Handset className="h-7 w-7 rotate-[135deg]" />
           </button>
           <span className="text-xs text-muted-foreground">Decline</span>
         </div>
-        <div className="flex flex-col items-center gap-2">
-          <button type="button" onClick={onAccept} autoFocus aria-label="Accept" className="flex h-16 w-16 items-center justify-center rounded-full border border-[#22c55e]/40 bg-[#16a34a] text-white shadow-[0_10px_24px_-10px_rgba(22,163,74,0.9)] transition hover:bg-[#15913f] active:scale-95">
-            <Handset className="h-7 w-7 animate-[wiggle_0.9s_ease-in-out_infinite] motion-reduce:animate-none" />
+        <div className="flex flex-col items-center gap-2.5">
+          <button type="button" onClick={onAccept} autoFocus aria-label="Accept" className="call-breathe flex h-[66px] w-[66px] items-center justify-center rounded-full bg-[#34c759] text-white transition hover:brightness-95 active:scale-95 motion-reduce:animate-none">
+            <Handset className="h-7 w-7" />
           </button>
           <span className="text-xs text-muted-foreground">Accept</span>
         </div>
       </div>
-      <p className="mt-6 text-center text-[11px] text-muted-foreground">Declined or unanswered calls go to voicemail, with a “Call back” task for you.</p>
+      <p className="call-settle mt-7 text-center text-[11px] text-muted-foreground/80" style={delay(320)}>
+        Declined or unanswered calls go to voicemail, with a “Call back” task for you.
+      </p>
     </div>
   )
 }
@@ -714,7 +727,8 @@ const KEYS: [string, string][] = [
   ['#', ''],
 ]
 
-function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: string) => void }): React.ReactElement {
+/** The 12 keys. `tones` plays each key's touch-tone (off during a call: the phone line plays its own). */
+function KeyGrid({ onKey, onLong, tones = true }: { onKey: (k: string) => void; onLong?: (k: string) => void; tones?: boolean }): React.ReactElement {
   const timer = useRef<number | null>(null)
   const longFired = useRef(false)
   return (
@@ -724,6 +738,7 @@ function KeyGrid({ onKey, onLong }: { onKey: (k: string) => void; onLong?: (k: s
           key={k}
           type="button"
           onPointerDown={() => {
+            if (tones) playDtmf(k)
             longFired.current = false
             if (k === '0' && onLong)
               timer.current = window.setTimeout(() => {
@@ -785,6 +800,7 @@ function Keypad({ value, onChange, onCall, onText }: { value: string; onChange: 
       if (e.target instanceof HTMLElement && e.target !== input.current && /input|textarea|select/i.test(e.target.tagName)) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (/^[0-9*#+]$/.test(e.key)) {
+        playDtmf(e.key)
         if (document.activeElement !== input.current) {
           e.preventDefault()
           onChange(value + e.key)
@@ -1130,6 +1146,7 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, 
         <div className="w-full">
           <div className="mb-3 h-6 text-center text-lg tabular-nums tracking-widest">{tones}</div>
           <KeyGrid
+            tones={false}
             onKey={(k) => {
               setTones((t) => (t + k).slice(-16))
               onDigit(k)
