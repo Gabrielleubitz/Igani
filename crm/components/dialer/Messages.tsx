@@ -82,11 +82,11 @@ function Threads({ onOpen }: { onOpen: (n: string) => void }): React.ReactElemen
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 px-4 pb-2 pt-3">
-        <label className="flex h-9 flex-1 items-center gap-2 rounded-xl border border-[#2b4060] bg-[#0b1728] px-3 text-sm focus-within:border-[#4a7bd0]">
+        <label className="flex h-9 flex-1 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm focus-within:border-primary">
           <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search messages" aria-label="Search messages" className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground/70" />
         </label>
-        <button type="button" onClick={() => onOpen('')} aria-label="New message" title="New message" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#2b4263] bg-[#172b47] text-[#9cc0ff] transition hover:border-[#3a5884] hover:text-white">
+        <button type="button" onClick={() => onOpen('')} aria-label="New message" title="New message" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-border bg-muted text-primary transition hover:border-border hover:text-white">
           <MessageSquarePlus className="h-4 w-4" />
         </button>
       </div>
@@ -95,17 +95,17 @@ function Threads({ onOpen }: { onOpen: (n: string) => void }): React.ReactElemen
         <div className="space-y-1 px-2" aria-hidden>
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-3">
-              <div className="h-11 w-11 animate-pulse rounded-full bg-[#172b47]" />
+              <div className="h-11 w-11 animate-pulse rounded-full bg-muted" />
               <div className="flex-1 space-y-2">
-                <div className="h-3 w-1/3 animate-pulse rounded bg-[#172b47]" />
-                <div className="h-3 w-2/3 animate-pulse rounded bg-[#132540]" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
               </div>
             </div>
           ))}
         </div>
       ) : rows && rows.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center px-8 pb-10 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-[#2b4263] bg-[#132540] text-[#8fb5ff]">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted text-primary">
             <MessageSquarePlus className="h-6 w-6" />
           </span>
           <p className="mt-4 font-medium">No texts yet</p>
@@ -115,12 +115,12 @@ function Threads({ onOpen }: { onOpen: (n: string) => void }): React.ReactElemen
         <ul className="px-2 pb-3">
           {shown.map((t) => (
             <li key={t.number}>
-              <button type="button" onClick={() => onOpen(t.number)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-[#132540]">
-                <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold', t.leadId ? 'bg-[#1d3354] text-[#9cc0ff]' : 'bg-[#1a2a40] text-[#8ea3c0]')}>{initials(t.name)}</span>
+              <button type="button" onClick={() => onOpen(t.number)} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-foreground/[0.07]">
+                <span className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-semibold', t.leadId ? 'bg-muted text-primary' : 'bg-muted text-muted-foreground')}>{initials(t.name)}</span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-baseline gap-2">
                     <span className={cn('min-w-0 flex-1 truncate text-sm', t.unread ? 'font-semibold text-white' : 'font-medium')}>{t.name ?? t.display}</span>
-                    <span className={cn('shrink-0 text-[11px]', t.unread ? 'font-semibold text-[#8fb5ff]' : 'text-muted-foreground')}>{when(t.last.at)}</span>
+                    <span className={cn('shrink-0 text-[11px]', t.unread ? 'font-semibold text-primary' : 'text-muted-foreground')}>{when(t.last.at)}</span>
                   </span>
                   <span className="mt-0.5 flex items-center gap-2">
                     <span className={cn('min-w-0 flex-1 truncate text-xs', t.unread ? 'text-foreground' : 'text-muted-foreground')}>
@@ -128,7 +128,7 @@ function Threads({ onOpen }: { onOpen: (n: string) => void }): React.ReactElemen
                       {t.last.body || (t.last.media ? 'Picture or file' : '')}
                       {t.last.direction === 'OUTBOUND' && t.last.status === 'failed' ? <span className="text-rose-300"> · Not sent</span> : null}
                     </span>
-                    {t.unread ? <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-[#3b78db] px-1.5 text-[10px] font-bold text-white">{t.unread}</span> : null}
+                    {t.unread ? <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">{t.unread}</span> : null}
                   </span>
                 </span>
               </button>
@@ -146,8 +146,8 @@ function NewMessage({ onOpen, onBack }: { onOpen: (n: string) => void; onBack: (
   const e164 = toE164(value)
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-[#22344f] px-3 py-2.5">
-        <button type="button" onClick={onBack} aria-label="Back to messages" className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8fb5ff] hover:bg-[#172b47]">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+        <button type="button" onClick={onBack} aria-label="Back to messages" className="flex h-8 w-8 items-center justify-center rounded-lg text-primary hover:bg-foreground/[0.07]">
           <ChevronLeft className="h-5 w-5" />
         </button>
         <span className="font-semibold">New message</span>
@@ -159,11 +159,11 @@ function NewMessage({ onOpen, onBack }: { onOpen: (n: string) => void; onBack: (
           if (e164) onOpen(e164)
         }}
       >
-        <label className="flex items-center gap-2 rounded-xl border border-[#2b4060] bg-[#0b1728] px-3 py-2.5 text-sm focus-within:border-[#4a7bd0]">
+        <label className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2.5 text-sm focus-within:border-primary">
           <span className="text-muted-foreground">To:</span>
           <input value={formatAsTyped(value)} onChange={(e) => setValue(e.target.value.replace(/[^\d+]/g, ''))} inputMode="tel" autoFocus autoComplete="off" placeholder="Phone number" aria-label="Phone number" className="min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-muted-foreground/70" />
         </label>
-        <button type="submit" disabled={!e164} className="mt-3 w-full rounded-xl border border-white/10 bg-[#3b78db] py-2.5 text-sm font-semibold text-white transition hover:bg-[#4685e6] disabled:border-[#2b4263] disabled:bg-[#172b47] disabled:text-[#5d7392]">
+        <button type="submit" disabled={!e164} className="mt-3 w-full rounded-xl border border-white/10 bg-primary py-2.5 text-sm font-semibold text-white transition hover:bg-primary disabled:border-border disabled:bg-muted disabled:text-muted-foreground">
           {e164 ? `Text ${formatPhone(e164)}` : 'Enter a number'}
         </button>
       </form>
@@ -234,11 +234,11 @@ function Conversation({ number, onBack, onCall, onRead }: { number: string; onBa
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-[#22344f] px-3 py-2">
-        <button type="button" onClick={onBack} aria-label="Back to messages" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#8fb5ff] hover:bg-[#172b47]">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
+        <button type="button" onClick={onBack} aria-label="Back to messages" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-primary hover:bg-foreground/[0.07]">
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#1d3354] text-xs font-semibold text-[#9cc0ff]">{initials(name)}</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-primary">{initials(name)}</span>
         <div className="min-w-0 flex-1">
           {conv?.leadId ? (
             <Link href={`/sales/leads/${conv.leadId}`} className="block truncate text-sm font-semibold hover:underline">
@@ -283,7 +283,7 @@ function Conversation({ number, onBack, onCall, onRead }: { number: string; onBa
                 <div
                   className={cn(
                     'max-w-[78%] whitespace-pre-wrap break-words px-3.5 py-2 text-[14px] leading-snug',
-                    out ? 'rounded-[18px] bg-[#3b78db] text-white' : 'rounded-[18px] bg-[#1d3354] text-[#e6eefc]',
+                    out ? 'rounded-[18px] bg-primary text-white' : 'rounded-[18px] bg-muted text-foreground',
                     out && !last && 'rounded-br-[6px]',
                     out && !first && 'rounded-tr-[6px]',
                     !out && !last && 'rounded-bl-[6px]',
@@ -317,10 +317,10 @@ function Conversation({ number, onBack, onCall, onRead }: { number: string; onBa
 
       {error ? <p className="mx-3 mb-1 rounded-lg bg-rose-500/10 px-3 py-1.5 text-xs text-rose-200 ring-1 ring-rose-500/25">{error}</p> : null}
       {conv?.blocked ? (
-        <p className="shrink-0 border-t border-[#22344f] px-4 py-3 text-center text-xs text-muted-foreground">This number is {conv.blocked}’s lead, so you can’t text it.</p>
+        <p className="shrink-0 border-t border-border px-4 py-3 text-center text-xs text-muted-foreground">This number is {conv.blocked}’s lead, so you can’t text it.</p>
       ) : (
         <form
-          className="shrink-0 border-t border-[#22344f] bg-[#0b1728] px-3 py-2.5"
+          className="shrink-0 border-t border-border bg-background px-3 py-2.5"
           onSubmit={(e) => {
             e.preventDefault()
             void send()
@@ -341,9 +341,9 @@ function Conversation({ number, onBack, onCall, onRead }: { number: string; onBa
               dir="auto"
               placeholder="Text message"
               aria-label="Text message"
-              className="max-h-[120px] min-h-[38px] flex-1 resize-none rounded-[19px] border border-[#2b4060] bg-[#0f1d31] px-4 py-2 text-[14px] leading-snug outline-none transition placeholder:text-muted-foreground/70 focus:border-[#4a7bd0]"
+              className="max-h-[120px] min-h-[38px] flex-1 resize-none rounded-[19px] border border-border bg-background px-4 py-2 text-[14px] leading-snug outline-none transition placeholder:text-muted-foreground/70 focus:border-primary"
             />
-            <button type="submit" disabled={!draft.trim() || sending} aria-label="Send" className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-[#3b78db] text-white transition hover:bg-[#4685e6] disabled:bg-[#172b47] disabled:text-[#5d7392]">
+            <button type="submit" disabled={!draft.trim() || sending} aria-label="Send" className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-primary text-white transition hover:bg-primary disabled:bg-muted disabled:text-muted-foreground">
               <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.5} />
             </button>
           </div>
