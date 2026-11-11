@@ -188,6 +188,9 @@ struct NotificationSettingsView: View {
     @State private var push = PushCenter.shared
     @State private var kinds: [Kind] = []
     @State private var ready = true
+    @State private var loadFailed: String?
+    /// a toggle being put back after a failed save (its change isn't sent again)
+    @State private var reverting: String?
     @State private var testResult: String?
     @Environment(\.openURL) private var openURL
 
@@ -211,6 +214,13 @@ struct NotificationSettingsView: View {
             .listRowBackground(Theme.card)
             if allowed {
                 Section {
+                    if kinds.isEmpty {
+                        if let loadFailed {
+                            Button { Task { await load() } } label: { Label("\(loadFailed) Tap to try again.", systemImage: "arrow.clockwise") }.font(.footnote)
+                        } else {
+                            HStack { Spacer(); ProgressView(); Spacer() }
+                        }
+                    }
                     ForEach($kinds) { $k in
                         Toggle(isOn: $k.on) {
                             VStack(alignment: .leading, spacing: 2) {
@@ -218,7 +228,17 @@ struct NotificationSettingsView: View {
                                 Text(k.hint).font(.caption).foregroundStyle(Theme.muted)
                             }
                         }
-                        .onChange(of: k.on) { _, v in Task { await push.registerWithServer(prefs: [k.key: v]) } }
+                        .onChange(of: k.on) { _, v in
+                            let key = k.key
+                            if reverting == key { reverting = nil; return }
+                            Task {
+                                if !(await push.registerWithServer(prefs: [key: v])) {
+                                    // not saved (offline, or this iPhone hasn't got its push token yet): put it back
+                                    if let i = kinds.firstIndex(where: { $0.key == key }), kinds[i].on == v { reverting = key; kinds[i].on = !v }
+                                    ToastCenter.shared?.show("Couldn’t save that. Try again in a moment.", tone: .warn)
+                                }
+                            }
+                        }
                     }
                     Button {
                         Task {
@@ -248,10 +268,13 @@ struct NotificationSettingsView: View {
         await push.refreshStatus()
         var q: [URLQueryItem] = []
         if let t = push.token { q.append(URLQueryItem(name: "token", value: t)) }
-        if let r: Reply = try? await API.shared.get("/api/mobile/v1/push", query: q) {
+        do {
+            let r: Reply = try await API.shared.get("/api/mobile/v1/push", query: q)
             kinds = r.kinds
             ready = r.ready
-        }
+            loadFailed = nil
+        } catch is CancellationError {
+        } catch { loadFailed = error.localizedDescription }
     }
 }
 

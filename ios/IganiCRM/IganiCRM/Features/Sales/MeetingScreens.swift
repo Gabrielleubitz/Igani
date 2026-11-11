@@ -80,16 +80,20 @@ struct BookMeetingView: View {
         .screenBackground()
         .navigationTitle(kind == .client ? "Meeting with a client" : "Meeting with the team")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await load() }
-        .task(id: "\(day)|\(duration)|\(hostId)") { await loadSlots() }
-        .task(id: "\(time?.timeIntervalSince1970 ?? 0)|\(mates.count)") { await check() }
+        .task { if data == nil { await load() } }
+        .task(id: "\(day)|\(duration)|\(hostId)|\(data != nil)") { await loadSlots() }
+        .task(id: "\(time?.timeIntervalSince1970 ?? 0)|\(duration)|\(hostId)|\(mates.sorted().joined(separator: ","))") { await check() }
+        // a time picked for another day no longer fits the strip: pick again
+        .onChange(of: day) { _, d in if let t = time, !Calendar.current.isDate(t, inSameDayAs: d) { time = nil } }
         .sheet(isPresented: $picking) { LeadPicker(leads: data?.leads ?? []) { l in pick(l) } }
         .alert(done ?? "", isPresented: Binding(get: { done != nil }, set: { if !$0 { done = nil } })) { Button("OK") {} }
     }
 
     private var ready: Bool {
-        guard time != nil else { return false }
-        return kind == .client ? (!guestName.isEmpty && guestEmail.contains("@")) : !mates.isEmpty
+        guard time != nil, !sending else { return false }
+        let name = guestName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let email = guestEmail.trimmingCharacters(in: .whitespacesAndNewlines)
+        return kind == .client ? (!name.isEmpty && email.contains("@") && email.contains(".")) : !mates.isEmpty
     }
 
     @ViewBuilder private func who(_ d: MeetingsData) -> some View {
@@ -102,11 +106,13 @@ struct BookMeetingView: View {
                         Image(systemName: "chevron.right").font(.caption).foregroundStyle(Theme.muted)
                     }
                     .padding(12).background(Theme.raised.opacity(0.6), in: RoundedRectangle(cornerRadius: 12))
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(lead.map { "Contact: \($0.name). Change" } ?? "Pick a contact")
                 Text("or someone new").font(.caption).foregroundStyle(Theme.muted)
-                FieldBox("Name", text: $guestName, content: .name)
-                FieldBox("Email", text: $guestEmail, content: .emailAddress, keyboard: .emailAddress)
+                FieldBox("Name", text: Binding(get: { guestName }, set: { guestName = $0; if let l = lead, $0 != l.name { lead = nil } }), content: .name)
+                FieldBox("Email", text: Binding(get: { guestEmail }, set: { guestEmail = $0; if let l = lead, $0 != l.email { lead = nil } }), content: .emailAddress, keyboard: .emailAddress)
                 if !d.hosts.isEmpty {
                     Picker("Host", selection: $hostId) { ForEach(d.hosts) { Text($0.name).tag($0.id) } }.tint(Theme.accent)
                 }
@@ -136,8 +142,11 @@ struct BookMeetingView: View {
                         .padding(.leading, 4).padding(.trailing, 10).padding(.vertical, 4)
                         .background(on ? Theme.accent.opacity(0.2) : Theme.raised.opacity(0.6), in: Capsule())
                         .overlay(Capsule().strokeBorder(on ? Theme.accent.opacity(0.5) : .clear))
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(on ? .isSelected : [])
                 }
             }
             .sensoryFeedback(.selection, trigger: mates)
@@ -201,7 +210,10 @@ struct BookMeetingView: View {
                     }
                     Spacer()
                     if b.status == "PENDING" { Tag(text: "Waiting", tint: Theme.amber) }
-                    if let m = b.meetUrl, let u = URL(string: m) { Link(destination: u) { Image(systemName: "video.fill").foregroundStyle(Theme.accent) } }
+                    if let m = b.meetUrl, let u = URL(string: m) {
+                        Link(destination: u) { Image(systemName: "video.fill").foregroundStyle(Theme.accent).frame(width: 44, height: 44) }
+                            .accessibilityLabel("Join \(b.title)")
+                    }
                 }
             }
         }
@@ -214,25 +226,32 @@ struct BookMeetingView: View {
     }
 
     private func load() async {
+        let first = data == nil
         do {
             let d: MeetingsData = try await API.shared.get("/api/mobile/v1/meetings")
             data = d
-            duration = [15, 30, 45, 60, 90].contains(d.duration) ? d.duration : 30
+            failed = nil
+            // only the first time: a reload after sending must not undo what the person picked
+            if first {
+                duration = [15, 30, 45, 60, 90].contains(d.duration) ? d.duration : 30
+                if let leadId, let l = d.leads.first(where: { $0.id == leadId }) { pick(l) }
+            }
             if hostId.isEmpty { hostId = session.me?.id ?? "" }
-            if let leadId, let l = d.leads.first(where: { $0.id == leadId }) { pick(l) }
-        } catch { failed = error.localizedDescription }
+        } catch { if data == nil, !Task.isCancelled { failed = error.localizedDescription } }
     }
 
     private func loadSlots() async {
         guard data != nil else { return }
         loadingSlots = true
-        defer { loadingSlots = false }
+        defer { if !Task.isCancelled { loadingSlots = false } }
         let f = DateFormatter()
         f.calendar = Calendar(identifier: .gregorian)
         f.dateFormat = "yyyy-MM-dd"
         var input: [String: Any] = ["date": f.string(from: day), "durationMinutes": duration]
         if !hostId.isEmpty, hostId != session.me?.id { input["hostId"] = hostId }
         let raw: [String] = (try? await API.shared.act("getHostSlots", input)) ?? []
+        // a newer day/length/host took over: its own load sets the slots
+        guard !Task.isCancelled else { return }
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let plain = ISO8601DateFormatter()
@@ -242,26 +261,32 @@ struct BookMeetingView: View {
     private func check() async {
         guard let time, data != nil else { note = nil; return }
         try? await Task.sleep(for: .milliseconds(250))
+        guard !Task.isCancelled else { return }
         struct Note: Decodable { let note: String? }
         var input: [String: Any] = ["startTime": ISO8601DateFormatter().string(from: time), "durationMinutes": duration, "teammateIds": Array(mates)]
         if kind == .client, !hostId.isEmpty, hostId != session.me?.id { input["hostId"] = hostId }
         let r: Note? = try? await API.shared.act("checkInviteTime", input)
+        guard !Task.isCancelled else { return }
         withAnimation(.snappy) { note = r?.note }
     }
 
     private func send(_ d: MeetingsData) async {
-        guard let time else { return }
+        guard let time, !sending else { return }
+        guard time > Date() else { toasts.show("That time has passed. Pick another one.", tone: .warn); self.time = nil; return }
         sending = true
         defer { sending = false }
         let start = ISO8601DateFormatter().string(from: time)
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let name = guestName.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
             if kind == .client {
-                var input: [String: Any] = ["guestName": guestName, "guestEmail": guestEmail, "startTime": start, "durationMinutes": duration, "title": title.isEmpty ? "Igani intro call" : title, "teammateIds": Array(mates)]
+                var input: [String: Any] = ["guestName": name, "guestEmail": guestEmail.trimmingCharacters(in: .whitespacesAndNewlines), "startTime": start, "durationMinutes": duration, "title": title.isEmpty ? "Igani intro call" : title, "teammateIds": Array(mates)]
                 if let lead { input["leadId"] = lead.id }
                 if !notes.isEmpty { input["notes"] = notes }
                 if !hostId.isEmpty, hostId != session.me?.id { input["hostId"] = hostId }
                 try await API.shared.run("createSalesInvite", input)
-                done = "Invite sent to \(guestName). The Meet link is created when they confirm."
+                done = "Invite sent to \(name). The Meet link is created when they confirm."
             } else {
                 struct R: Decodable { let meetUrl: String?; let requested: Bool }
                 var input: [String: Any] = ["startTime": start, "durationMinutes": duration, "title": title.isEmpty ? "Team call" : title, "teammateIds": Array(mates)]
@@ -269,7 +294,12 @@ struct BookMeetingView: View {
                 let r: R? = try await API.shared.act("createTeamMeeting", input)
                 done = r?.requested == true ? "Asked. The admins approve it, then everyone gets the Meet link." : "Booked. Everyone has the Meet link by email."
             }
+            // clear the form so a second tap can't send the same invite again
             self.time = nil
+            self.title = ""
+            self.notes = ""
+            mates = []
+            if leadId == nil { lead = nil; guestName = ""; guestEmail = "" }
             await load()
         } catch { toasts.show(error.localizedDescription, tone: .warn) }
     }
@@ -463,7 +493,7 @@ struct VideosView: View {
     }
 
     private func load() async {
-        do { data = try await API.shared.get("/api/mobile/v1/videos") } catch { failed = error.localizedDescription }
+        do { data = try await API.shared.get("/api/mobile/v1/videos"); failed = nil } catch { if data == nil, !Task.isCancelled { failed = error.localizedDescription } }
     }
 }
 
@@ -475,16 +505,18 @@ struct LessonPlayerView: View {
     @Environment(Toasts.self) private var toasts
     @State private var player: AVPlayer?
     @State private var reported = false
+    @State private var endObserver: NSObjectProtocol?
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             Color.black.ignoresSafeArea()
             if let player { VideoPlayer(player: player).ignoresSafeArea() }
-            Button { dismiss() } label: { Image(systemName: "xmark").font(.headline).foregroundStyle(.white).frame(width: 42, height: 42).glass(in: Circle(), interactive: true) }
+            Button { dismiss() } label: { Image(systemName: "xmark").font(.headline).foregroundStyle(.white).frame(width: 44, height: 44).glass(in: Circle(), interactive: true) }
                 .padding(16)
+                .accessibilityLabel("Close")
         }
         .onAppear {
-            guard let u = URL(string: video.stream) else { return }
+            guard player == nil, let u = URL(string: video.stream) else { return }
             var headers: [String: String] = [:]
             if let c = API.shared.cookieHeader { headers["Cookie"] = c }
             let item = AVPlayerItem(asset: AVURLAsset(url: u, options: ["AVURLAssetHTTPHeaderFieldsKey": headers]))
@@ -492,12 +524,16 @@ struct LessonPlayerView: View {
             try? AVAudioSession.sharedInstance().setCategory(.playback)
             player = p
             p.play()
-            NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { _ in
+            endObserver = NotificationCenter.default.addObserver(forName: AVPlayerItem.didPlayToEndTimeNotification, object: item, queue: .main) { _ in
                 let seconds = item.duration.seconds
                 Task { @MainActor in await finished(seconds) }
             }
         }
-        .onDisappear { player?.pause() }
+        .onDisappear {
+            player?.pause()
+            if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+            endObserver = nil
+        }
     }
 
     private func finished(_ duration: Double) async {
@@ -554,25 +590,31 @@ struct DocumentsView: View {
         .scrollContentBackground(.hidden)
         .screenBackground()
         .navigationTitle("Documents")
+        .refreshable { await load() }
         .task { await load() }
         .quickLookPreview($file)
     }
 
     private func load() async {
-        do { data = try await API.shared.get("/api/mobile/v1/documents") } catch { failed = error.localizedDescription }
+        do { data = try await API.shared.get("/api/mobile/v1/documents"); failed = nil } catch { if data == nil, !Task.isCancelled { failed = error.localizedDescription } }
     }
 
     /// Downloads with the session and shows it in Quick Look (share, print, save to Files from there).
     private func open(_ d: DocumentsData.Doc) async {
-        guard let u = URL(string: d.url) else { return }
+        guard opening == nil, let u = URL(string: d.url) else { return }
         opening = d.id
         defer { opening = nil }
         var req = URLRequest(url: u)
         if let c = API.shared.cookieHeader { req.setValue(c, forHTTPHeaderField: "Cookie") }
         guard let (data, resp) = try? await URLSession.shared.data(for: req), (resp as? HTTPURLResponse)?.statusCode == 200 else { ToastCenter.shared?.show("Couldn’t open the document.", tone: .warn); return }
         let name = (resp as? HTTPURLResponse)?.suggestedFilename ?? "\(d.title).pdf"
-        let dest = FileManager.default.temporaryDirectory.appending(path: name)
-        try? data.write(to: dest)
-        file = dest
+        // its own folder per document, so two files with the same name never overwrite each other
+        let dir = FileManager.default.temporaryDirectory.appending(path: "documents/\(d.id)", directoryHint: .isDirectory)
+        let dest = dir.appending(path: name.replacingOccurrences(of: "/", with: "-"))
+        do {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            try data.write(to: dest, options: .atomic)
+            file = dest
+        } catch { ToastCenter.shared?.show("Couldn’t open the document.", tone: .warn) }
     }
 }

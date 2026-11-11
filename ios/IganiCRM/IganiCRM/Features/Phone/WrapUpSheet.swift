@@ -108,6 +108,7 @@ struct WrapUpSheet: View {
         }
         .presentationDetents([.large])
         .interactiveDismissDisabled(saving)
+        .sensoryFeedback(.success, trigger: saved)
     }
 
     private func field(_ label: String, _ text: Binding<String>) -> some View {
@@ -119,6 +120,7 @@ struct WrapUpSheet: View {
     }
 
     private func save() async {
+        guard !saving, !saved else { return }
         saving = true
         defer { saving = false }
         var input: [String: Any] = ["callId": wrap.callId, "outcome": outcome.rawValue]
@@ -128,13 +130,18 @@ struct WrapUpSheet: View {
         struct Saved: Decodable { let leadId: String?; let madeLead: Bool }
         do {
             let r: Saved? = try await API.shared.act("saveCallWrapUp", input)
+            // the wrap-up is saved: a reminder that fails must not make it look unsaved (and get saved twice)
+            var reminderFailed = false
             if followUp, let leadId = r?.leadId ?? wrap.leadId {
                 var due = Calendar.current.date(byAdding: .day, value: 1, to: Date()) ?? Date()
                 due = Calendar.current.date(bySettingHour: 10, minute: 0, second: 0, of: due) ?? due
-                let _: Ok<Anything> = try await API.shared.post("/api/mobile/v1/tasks", ["leadId": leadId, "title": "Call back \(wrap.name)", "dueAt": ISO8601DateFormatter().string(from: due), "priority": "HIGH"])
+                do {
+                    let _: Ok<Anything> = try await API.shared.post("/api/mobile/v1/tasks", ["leadId": leadId, "title": "Call back \(wrap.name)", "dueAt": ISO8601DateFormatter().string(from: due), "priority": "HIGH"])
+                } catch { reminderFailed = true }
             }
             saved = true
-            toasts.show(r?.madeLead == true ? "Saved, and \(wrap.name) is now a lead" : "Call saved on the contact")
+            if reminderFailed { toasts.show("Call saved, but the call-back reminder couldn’t be added. Add it from the contact.", tone: .warn) }
+            else { toasts.show(r?.madeLead == true ? "Saved, and \(wrap.name) is now a lead" : "Call saved on the contact") }
             try? await Task.sleep(for: .milliseconds(450))
             dismiss()
         } catch {

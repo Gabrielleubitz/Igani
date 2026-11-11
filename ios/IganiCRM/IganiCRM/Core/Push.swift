@@ -82,18 +82,37 @@ import UserNotifications
         Task { await registerWithServer() }
     }
 
-    func registerWithServer(prefs: [String: Bool]? = nil) async {
-        guard let token, API.shared.session?.stored != nil else { return }
+    @discardableResult func registerWithServer(prefs: [String: Bool]? = nil) async -> Bool {
+        guard let token, API.shared.session?.stored != nil else { return false }
         var body: [String: Any] = ["token": token, "env": env]
         if let prefs { body["prefs"] = prefs }
-        let _: Anything? = try? await API.shared.post("/api/mobile/v1/push", body)
+        do {
+            let _: Anything = try await API.shared.post("/api/mobile/v1/push", body)
+            return true
+        } catch {
+            return false
+        }
     }
 
-    /// Signing out: this phone stops getting this person's notifications.
+    /// Signing out: this phone stops getting this person's notifications. (Call it while still signed in: the server
+    /// needs the session to know whose phone this was.)
     func unregister() async {
         guard let token else { return }
         let _: Anything? = try? await API.shared.delete("/api/mobile/v1/push", query: [URLQueryItem(name: "token", value: token)])
         try? await UNUserNotificationCenter.current().setBadgeCount(0)
+    }
+
+    /// Signed out (by choice, or the session ran out): nothing of the last person's stays on screen, and Apple stops
+    /// delivering to this install until someone signs in again (the server can't be told once the session is gone, so
+    /// its record of this phone goes when Apple reports the token unregistered, or when the next person registers it).
+    func signedOut() {
+        opened = nil
+        banner = nil
+        token = nil
+        let center = UNUserNotificationCenter.current()
+        center.removeAllDeliveredNotifications()
+        Task { try? await center.setBadgeCount(0) }
+        UIApplication.shared.unregisterForRemoteNotifications()
     }
 
     /// The icon's number: unread chat plus unread texts.
@@ -118,21 +137,22 @@ import UserNotifications
     }
 
     fileprivate func handle(action: String, info: [String: String], text: String?) async {
-        let type = info["type"] as? String
+        let type = info["type"]
+        // signed out since it arrived: it isn't ours to act on any more
+        guard API.shared.session?.stored != nil else { return }
         switch action {
         case "REPLY":
-            guard let channel = info["channelId"] as? String, let text, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            guard let channel = info["channelId"], let text, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
             var args: [String: Any] = ["channelId": channel, "body": text]
             // a reply to a thread notification stays in that thread
             if let thread = info["threadId"], thread.count >= 20 { args["parentId"] = thread }
             try? await API.shared.run("chatSend", args)
         case "TEXT":
-            guard let number = info["number"] as? String, let text, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+            guard let number = info["number"], let text, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return }
             try? await API.shared.run("sendText", ["to": number, "body": text])
         case "CALL":
-            let number = (info["number"] as? String) ?? (info["phone"] as? String)
-            guard let number else { opened = PushCenter.link(from: info); return }
-            do { try await Phone.shared.call(number, leadId: info["leadId"] as? String, name: info["name"] as? String) } catch { ToastCenter.shared?.show(error.localizedDescription, tone: .warn) }
+            guard let number = info["number"] ?? info["phone"], !number.isEmpty else { opened = PushCenter.link(from: info); return }
+            do { try await Phone.shared.call(number, leadId: info["leadId"], name: info["name"]) } catch { ToastCenter.shared?.show(error.localizedDescription, tone: .warn) }
         default:
             if type != nil { opened = PushCenter.link(from: info) }
         }
@@ -141,6 +161,8 @@ import UserNotifications
 
     fileprivate func present(_ n: UNNotification) -> UNNotificationPresentationOptions {
         let info = n.request.content.userInfo
+        // signed out: nothing of the last person's on screen
+        guard API.shared.session?.phase == .signedIn else { return [] }
         let link = PushCenter.link(from: info)
         // already looking at that conversation: no banner, the message is right there
         if case .chat(let c)? = link, ChatScreenTracker.open == c { return [] }
@@ -162,7 +184,7 @@ extension PushCenter: UNUserNotificationCenterDelegate {
         let action = response.actionIdentifier == UNNotificationDefaultActionIdentifier ? "OPEN" : response.actionIdentifier
         // the info dictionary isn't Sendable: pass the few strings we use
         var plain: [String: String] = [:]
-        for k in ["type", "channelId", "number", "name", "leadId", "phone", "senderPhoto"] { if let v = info[k] as? String { plain[k] = v } }
+        for k in ["type", "channelId", "threadId", "number", "name", "leadId", "phone", "senderPhoto"] { if let v = info[k] as? String { plain[k] = v } }
         await PushCenter.shared.handle(action: action, info: plain, text: text)
     }
 }
@@ -173,7 +195,11 @@ extension PushCenter: UNUserNotificationCenterDelegate {
 /// UIKit's side: the APNs device token arrives here.
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        MainActor.assumeIsolated { PushCenter.shared.configure() }
+        MainActor.assumeIsolated {
+            PushCenter.shared.configure()
+            // incoming calls to a closed app: CallKit + PushKit must exist before launch finishes
+            Phone.shared.bootForIncomingCalls()
+        }
         return true
     }
 

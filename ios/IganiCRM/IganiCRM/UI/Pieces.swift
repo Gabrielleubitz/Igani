@@ -111,6 +111,9 @@ struct ScoreRing: View {
             }
         }
         .frame(width: size, height: size)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(label ?? "Score")
+        .accessibilityValue("\(score) out of 100")
         .onAppear { withAnimation(.spring(response: 1.1, dampingFraction: 0.85).delay(0.1)) { shown = Double(score) } }
         .onChange(of: score) { _, v in withAnimation(.snappy) { shown = Double(v) } }
     }
@@ -222,6 +225,11 @@ struct HoldToConfirm: View {
         }
         .sensoryFeedback(.impact(weight: .heavy), trigger: fired)
         .sensoryFeedback(.selection, trigger: holding)
+        // VoiceOver can't hold: a double-tap does it (VoiceOver users confirm by finding and activating it on purpose)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { fired += 1; action() }
     }
 }
 
@@ -279,9 +287,9 @@ struct WaveformScrub: View {
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { v in dragging = min(1, max(0, v.location.x / g.size.width)) }
+                    .onChanged { v in dragging = min(1, max(0, v.location.x / Swift.max(1, g.size.width))) }
                     .onEnded { v in
-                        let x = min(1, max(0, v.location.x / g.size.width))
+                        let x = min(1, max(0, v.location.x / Swift.max(1, g.size.width)))
                         dragging = nil
                         seek(x)
                     }
@@ -289,6 +297,16 @@ struct WaveformScrub: View {
         }
         .frame(height: 44)
         .animation(.linear(duration: 0.2), value: progress)
+        .accessibilityElement()
+        .accessibilityLabel("Playback position")
+        .accessibilityValue("\(Int((progress * 100).rounded())) percent")
+        .accessibilityAdjustableAction { d in
+            switch d {
+            case .increment: seek(min(1, progress + 0.1))
+            case .decrement: seek(max(0, progress - 0.1))
+            @unknown default: break
+            }
+        }
     }
 }
 

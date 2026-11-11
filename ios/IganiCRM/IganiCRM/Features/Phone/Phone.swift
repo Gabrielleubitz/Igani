@@ -16,6 +16,11 @@ enum VoiceEvent {
     case incomingGone(UUID)
     /// we answered from the system call screen (lock screen, CallKit)
     case answered(UUID)
+    /// muted or held from the system call screen (or by iOS, e.g. a cellular call came in)
+    case muted(UUID, Bool)
+    case held(UUID, Bool)
+    /// the audio moved to or off the loudspeaker outside the app (Control Center, AirPods)
+    case speaker(Bool)
 }
 
 /// The engine that carries the audio: Twilio's Voice SDK with CallKit in real use, or a demo engine that walks a call
@@ -93,6 +98,14 @@ enum VoiceEvent {
     private var token: String?
     private var tokenAt: Date?
     private var answeredFlag = false
+    /// a token request in flight: callers wait for it instead of starting a second engine
+    private var preparing: Task<Void, Never>?
+    /// a call or listen-in is being set up (between the tap and `active`): a second tap is ignored
+    private var starting = false
+    /// the incoming call the user declined here (so it isn't announced as missed)
+    private var declined: UUID?
+    /// conference calls: why the server says the call ended before the client answered (busy, no answer)
+    private var serverEnd: [UUID: String] = [:]
 
     var isSeller: Bool { ["ADMIN", "SALES"].contains(API.shared.session?.me?.role ?? "") }
     var onCall: Bool { active != nil }
@@ -103,6 +116,14 @@ enum VoiceEvent {
     func prepare(force: Bool = false) async {
         guard isSeller else { setup = .unavailable("Calling is for the sales team."); return }
         if !force, let at = tokenAt, Date().timeIntervalSince(at) < 40 * 60, engine != nil { return }
+        if let preparing { await preparing.value; return }
+        let t = Task { await fetchToken() }
+        preparing = t
+        await t.value
+        preparing = nil
+    }
+
+    private func fetchToken() async {
         if setup == .unknown { setup = .checking }
         do {
             #if DEBUG
@@ -118,6 +139,7 @@ enum VoiceEvent {
                 token = tok
                 tokenAt = Date()
                 if let tw = engine as? TwilioEngine { tw.updateToken(tok) } else { install(TwilioEngine(token: tok)) }
+                UserDefaults.standard.set(true, forKey: Self.ringsKey)
                 setup = .ready(line: t.line, push: t.push)
             }
         } catch {
@@ -125,8 +147,22 @@ enum VoiceEvent {
         }
     }
 
+    /// At launch (including a launch by a VoIP push for an incoming call): if this phone took calls before, set up CallKit
+    /// and PushKit straight away, before sign-in and the token request finish. iOS delivers the call push only to a
+    /// registry made during launch, so without this a call to a closed app may never ring. Answering needs no token;
+    /// the token for outgoing calls and registration arrives with prepare().
+    func bootForIncomingCalls() {
+        guard engine == nil, UserDefaults.standard.bool(forKey: Self.ringsKey) else { return }
+        install(TwilioEngine(token: ""))
+    }
+
+    private static let ringsKey = "phone.takesIncomingCalls"
+
     func signedOut() {
-        (engine as? TwilioEngine)?.unregister()
+        UserDefaults.standard.set(false, forKey: Self.ringsKey)
+        if let a = active { engine?.end(uuid: a.id) }
+        (engine as? TwilioEngine)?.shutdown()
+        engine?.onEvent = nil
         engine = nil
         token = nil
         tokenAt = nil
@@ -144,14 +180,24 @@ enum VoiceEvent {
 
     /// Places a call: checks the line and number on the server (which creates the call row), then dials through Twilio.
     func call(_ number: String, leadId: String? = nil, prospectId: String? = nil, name: String? = nil) async throws {
-        guard active == nil else { throw APIError(message: "You’re already on a call. Hang up first.", status: 0) }
+        // a second tap while the first is still setting up does nothing
+        if starting && active == nil { return }
+        guard active == nil else { throw APIError(message: active?.status == .ended ? "Wait a moment: the last call is still closing." : "You’re already on a call. Hang up first.", status: 0) }
+        starting = true
+        defer { starting = false }
         await prepare()
         guard let engine else { throw APIError(message: setupMessage ?? "Calling isn’t available right now.", status: 0) }
         try await Phone.askForMicrophone()
+        // an incoming call may have started ringing while we were getting ready
+        guard active == nil else { throw APIError(message: "You’re already on a call. Hang up first.", status: 0) }
         var input: [String: Any] = ["to": number]
         if let leadId { input["leadId"] = leadId }
         if let prospectId { input["prospectId"] = prospectId }
         guard let s: StartedCall = try await API.shared.act("startCall", input) else { throw APIError(message: "The call couldn’t start.", status: 0) }
+        guard active == nil else {
+            try? await API.shared.run("abandonCall", s.callId, "canceled")
+            throw APIError(message: "You’re already on a call. Hang up first.", status: 0)
+        }
         let shown = s.prospect?.name ?? (s.lead.map { $0.name.hasPrefix("+") ? nil : $0.name } ?? nil) ?? name ?? s.display
         let uuid = UUID()
         answeredFlag = false
@@ -168,16 +214,21 @@ enum VoiceEvent {
     }
 
     func hangUp() {
-        guard let a = active else { return }
+        guard let a = active, a.status != .ended else { return }
+        if a.status == .incoming { declined = a.id }
         engine?.end(uuid: a.id)
     }
 
     /// Admins: listen in on a teammate's live call, muted and unannounced (needs Settings → Phone → Allow listening in).
     func listen(to call: LiveCall) async throws {
+        if starting && active == nil { return }
         guard active == nil else { throw APIError(message: "Hang up your own call first.", status: 0) }
+        starting = true
+        defer { starting = false }
         await prepare()
         guard let engine, !(engine is DemoEngine) else { throw APIError(message: setupMessage ?? "Listening in needs Twilio (it can’t run in demo mode).", status: 0) }
         try await Phone.askForMicrophone()
+        guard active == nil else { throw APIError(message: "Hang up your own call first.", status: 0) }
         let uuid = UUID()
         answeredFlag = false
         active = ActiveCall(id: uuid, callId: call.callId, direction: "LISTEN", name: "\(call.rep.name) → \(call.contact)", sub: "Listening in · they can’t hear you", number: call.number, status: .connecting, muted: true, listening: true)
@@ -196,7 +247,7 @@ enum VoiceEvent {
     }
 
     func toggleMute() {
-        guard var a = active, !a.listening else { return }
+        guard var a = active, !a.listening, a.status != .ended, a.status != .incoming else { return }
         a.muted.toggle()
         active = a
         engine?.setMuted(a.muted, uuid: a.id)
@@ -210,7 +261,7 @@ enum VoiceEvent {
     }
 
     func toggleSpeaker() {
-        guard var a = active else { return }
+        guard var a = active, a.status != .ended else { return }
         a.speaker.toggle()
         active = a
         engine?.setSpeaker(a.speaker)
@@ -267,8 +318,21 @@ enum VoiceEvent {
                 if engine is DemoEngine { Task { try? await API.shared.run("simulateCallProgress", ["callId": a.callId, "status": "IN_PROGRESS"]) } }
             }
         case .reconnecting(let id, let on):
-            guard var a = active, a.id == id else { return }
-            a.status = on ? .reconnecting : .live
+            guard var a = active, a.id == id, a.status != .ended else { return }
+            // a dropped connection while it was still ringing goes back to ringing, not to "live"
+            a.status = on ? .reconnecting : (a.connectedAt == nil ? .ringing : .live)
+            active = a
+        case .muted(let id, let on):
+            guard var a = active, a.id == id, !a.listening, a.muted != on else { return }
+            a.muted = on
+            active = a
+        case .held(let id, let on):
+            guard var a = active, a.id == id, a.held != on else { return }
+            a.held = on
+            active = a
+        case .speaker(let on):
+            guard var a = active, a.speaker != on else { return }
+            a.speaker = on
             active = a
         case .incoming(let id, let callId, let from):
             guard active == nil else { engine?.end(uuid: id); return }
@@ -281,9 +345,14 @@ enum VoiceEvent {
             if engine is DemoEngine { Task { try? await API.shared.run("simulateCallProgress", ["callId": a.callId, "status": "NO_ANSWER"]) } }
             active = nil
             expanded = false
-            ToastCenter.shared?.show("Missed call from \(a.name)", tone: .warn)
-        case .ended(let id, let failure):
-            guard let a = active, a.id == id else { return }
+            let byMe = declined == id
+            declined = nil
+            ToastCenter.shared?.show(byMe ? "Declined: \(a.name) goes to voicemail" : "Missed call from \(a.name)", tone: byMe ? .ok : .warn)
+        case .ended(let id, let reported):
+            guard let a = active, a.id == id, a.status != .ended else { return }
+            let fromServer = serverEnd.removeValue(forKey: id)
+            let failure = reported ?? fromServer
+            if declined == id { declined = nil }
             if a.listening {
                 var ended = a
                 ended.status = .ended
@@ -299,10 +368,11 @@ enum VoiceEvent {
             }
             let seconds = a.connectedAt.map { Int(Date().timeIntervalSince($0)) } ?? 0
             let demo = engine is DemoEngine
-            if !answeredFlag, a.direction == "OUTBOUND", a.status == .connecting {
+            let answered = answeredFlag
+            if !answered, a.direction == "OUTBOUND", a.status == .connecting {
                 Task { try? await API.shared.run("abandonCall", a.callId, failure == nil ? "canceled" : "failed") }
             }
-            if demo { Task { try? await API.shared.run("simulateCallProgress", ["callId": a.callId, "status": answeredFlag ? "COMPLETED" : (a.direction == "INBOUND" ? "NO_ANSWER" : "CANCELED")]) } }
+            if demo { Task { try? await API.shared.run("simulateCallProgress", ["callId": a.callId, "status": answered ? "COMPLETED" : (a.direction == "INBOUND" ? "NO_ANSWER" : "CANCELED")]) } }
             var ended = a
             ended.status = .ended
             ended.failure = failure
@@ -313,9 +383,9 @@ enum VoiceEvent {
                 self.active = nil
                 self.expanded = false
                 // an incoming call nobody answered goes to voicemail: no wrap-up
-                if a.direction == "INBOUND" && !self.answeredFlag { return }
+                if a.direction == "INBOUND" && !answered { return }
                 let busy = failure?.localizedCaseInsensitiveContains("busy") == true
-                self.wrapUp = WrapUp(callId: a.callId, name: a.name, number: a.number, direction: a.direction, answered: self.answeredFlag, seconds: seconds, leadId: a.leadId, prospect: a.prospect != nil, known: a.name != a.number, suggested: self.answeredFlag ? .connected : (busy ? .busy : .no_answer))
+                self.wrapUp = WrapUp(callId: a.callId, name: a.name, number: a.number, direction: a.direction, answered: answered, seconds: seconds, leadId: a.leadId, prospect: a.prospect != nil, known: a.name != a.number, suggested: answered ? .connected : (busy ? .busy : .no_answer))
             }
         }
     }
@@ -325,8 +395,15 @@ enum VoiceEvent {
         Task {
             for _ in 0..<120 {
                 try? await Task.sleep(for: .seconds(1))
-                guard var a = active, a.id == call.id, a.status != .ended else { return }
+                guard let a = active, a.id == call.id, a.status != .ended else { return }
                 guard let p: CallProgress = try? await API.shared.act("callProgress", call.callId) else { continue }
+                guard var a = active, a.id == call.id, a.status == .ringing || a.status == .reconnecting else { return }
+                // the client's side is over (busy, no answer, failed) but our leg is still in the room: hang it up
+                if !p.answered, ["COMPLETED", "NO_ANSWER", "BUSY", "FAILED", "CANCELED"].contains(p.status) {
+                    if p.status == "BUSY" { serverEnd[call.id] = "The line is busy." } else if p.status == "FAILED" { serverEnd[call.id] = "The call couldn’t go through." }
+                    engine?.end(uuid: call.id)
+                    return
+                }
                 if p.answered {
                     a.status = .live
                     a.connectedAt = Date()

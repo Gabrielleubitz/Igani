@@ -22,13 +22,18 @@ import UIKit
     /// calls by CallKit uuid: a dialled or answered call, or an invite still ringing
     private var calls: [UUID: Call] = [:]
     private var invites: [UUID: CallInvite] = [:]
-    private var pending: [UUID: (callId: String, to: String)] = [:]
+    private var pending: [UUID: (callId: String, to: String, name: String)] = [:]
     /// calls that are an admin listening in (joined muted with the listen parameter)
     private var listening: Set<UUID> = []
     /// conference calls: tell CallKit "connected" only once the client answers
     private var late: Set<UUID> = []
     private var answered: Set<UUID> = []
+    /// calls muted before Twilio connected them (applied on connect, so the button never lies)
+    private var muted: Set<UUID> = []
+    /// calls this phone ended itself (CallKit already knows: don't report them ended a second time)
+    private var endedHere: Set<UUID> = []
     private var speakerOn = false
+    private var routeObserver: NSObjectProtocol?
 
     init(token: String) {
         self.token = token
@@ -46,6 +51,25 @@ import UIKit
         provider.setDelegate(self, queue: nil)
         registry.delegate = self
         registry.desiredPushTypes = [.voIP]
+        // the route can change outside the app (Control Center, AirPods, the system call screen): keep Speaker honest
+        routeObserver = NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.routeChanged() }
+        }
+    }
+
+    /// Signed out: hang up, stop ringing for that line, and let CallKit forget this provider.
+    func shutdown() {
+        // straight to Twilio: the provider is about to go, so CallKit actions may never run
+        for call in calls.values { call.disconnect() }
+        for invite in invites.values { invite.reject() }
+        calls = [:]
+        invites = [:]
+        pending = [:]
+        onEvent = nil
+        unregister()
+        if let routeObserver { NotificationCenter.default.removeObserver(routeObserver) }
+        routeObserver = nil
+        provider.invalidate()
     }
 
     func updateToken(_ t: String) {
@@ -61,10 +85,12 @@ import UIKit
     }
 
     private func registerForIncoming() {
-        guard let pushToken else { return }
+        // started at launch without a token yet: registration happens when prepare() brings one
+        guard let pushToken, !token.isEmpty else { return }
         let t = token
         TwilioVoiceSDK.register(accessToken: t, deviceToken: pushToken) { [weak self] error in
-            MainActor.assumeIsolated {
+            // Twilio doesn't promise which queue this runs on
+            Task { @MainActor in
                 if let error { print("[phone] incoming calls not registered:", error.localizedDescription) } else { self?.registeredToken = t }
             }
         }
@@ -73,13 +99,13 @@ import UIKit
     // MARK: VoiceEngine
 
     func start(uuid: UUID, callId: String, to: String, name: String) throws {
-        pending[uuid] = (callId, to)
+        pending[uuid] = (callId, to, name)
         let handle = CXHandle(type: .phoneNumber, value: to)
         let action = CXStartCallAction(call: uuid, handle: handle)
         action.contactIdentifier = name
         controller.request(CXTransaction(action: action)) { [weak self] error in
             guard let error else { return }
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 self?.pending[uuid] = nil
                 self?.onEvent?(.ended(uuid, failure: "The call couldn’t start: \(error.localizedDescription)"))
             }
@@ -87,13 +113,13 @@ import UIKit
     }
 
     func startListening(uuid: UUID, callId: String, name: String) throws {
-        pending[uuid] = (callId, "")
+        pending[uuid] = (callId, "", name)
         listening.insert(uuid)
         let action = CXStartCallAction(call: uuid, handle: CXHandle(type: .generic, value: name))
         action.contactIdentifier = name
         controller.request(CXTransaction(action: action)) { [weak self] error in
             guard let error else { return }
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 self?.pending[uuid] = nil
                 self?.listening.remove(uuid)
                 self?.onEvent?(.ended(uuid, failure: "Couldn’t listen in: \(error.localizedDescription)"))
@@ -116,7 +142,7 @@ import UIKit
         controller.request(CXTransaction(action: CXEndCallAction(call: uuid))) { [weak self] error in
             guard error != nil else { return }
             // CallKit no longer knows the call: end it directly
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 self?.calls[uuid]?.disconnect()
                 self?.invites[uuid]?.reject()
                 self?.finish(uuid, failure: nil)
@@ -125,6 +151,8 @@ import UIKit
     }
 
     func setMuted(_ on: Bool, uuid: UUID) {
+        if on { muted.insert(uuid) } else { muted.remove(uuid) }
+        calls[uuid]?.isMuted = on
         controller.request(CXTransaction(action: CXSetMutedCallAction(call: uuid, muted: on))) { _ in }
     }
 
@@ -147,6 +175,15 @@ import UIKit
         provider.reportCall(with: uuid, updated: update)
     }
 
+    private func routeChanged() {
+        let outs = AVAudioSession.sharedInstance().currentRoute.outputs
+        guard !outs.isEmpty, !calls.isEmpty else { return }
+        let onSpeaker = outs.contains { $0.portType == .builtInSpeaker }
+        guard onSpeaker != speakerOn else { return }
+        speakerOn = onSpeaker
+        onEvent?(.speaker(onSpeaker))
+    }
+
     private func applyRoute() {
         let speaker = speakerOn
         audio.block = {
@@ -164,6 +201,8 @@ import UIKit
         listening.remove(uuid)
         late.remove(uuid)
         answered.remove(uuid)
+        muted.remove(uuid)
+        endedHere.remove(uuid)
         speakerOn = false
         if known { onEvent?(.ended(uuid, failure: failure)) }
     }
@@ -190,6 +229,12 @@ extension TwilioEngine: CXProviderDelegate {
                 call.disconnect()
                 finish(uuid, failure: nil)
             }
+            for (uuid, invite) in invites {
+                invite.reject()
+                invites[uuid] = nil
+                onEvent?(.incomingGone(uuid))
+            }
+            for uuid in pending.keys { finish(uuid, failure: nil) }
         }
     }
 
@@ -197,6 +242,15 @@ extension TwilioEngine: CXProviderDelegate {
         MainActor.assumeIsolated {
             guard let p = pending[action.callUUID] else { action.fail(); return }
             provider.reportOutgoingCall(with: action.callUUID, startedConnectingAt: Date())
+            // what the system call screen offers: no merging or swapping (one call at a time), keypad tones and hold
+            let update = CXCallUpdate()
+            update.localizedCallerName = p.name
+            update.supportsDTMF = !listening.contains(action.callUUID)
+            update.supportsHolding = !listening.contains(action.callUUID)
+            update.supportsGrouping = false
+            update.supportsUngrouping = false
+            update.hasVideo = false
+            provider.reportCall(with: action.callUUID, updated: update)
             audio.isEnabled = false
             let listen = listening.contains(action.callUUID)
             let options = ConnectOptions(accessToken: token) { b in
@@ -229,6 +283,7 @@ extension TwilioEngine: CXProviderDelegate {
                 invites[action.callUUID] = nil
                 onEvent?(.incomingGone(action.callUUID))
             } else if let call = calls[action.callUUID] {
+                endedHere.insert(action.callUUID)
                 call.disconnect()
             } else {
                 finish(action.callUUID, failure: nil)
@@ -240,13 +295,18 @@ extension TwilioEngine: CXProviderDelegate {
     nonisolated func provider(_ provider: CXProvider, perform action: CXSetHeldCallAction) {
         MainActor.assumeIsolated {
             calls[action.callUUID]?.isOnHold = action.isOnHold
+            onEvent?(.held(action.callUUID, action.isOnHold))
             action.fulfill()
         }
     }
 
     nonisolated func provider(_ provider: CXProvider, perform action: CXSetMutedCallAction) {
         MainActor.assumeIsolated {
+            if listening.contains(action.callUUID) { action.fulfill(); return } // listening in stays muted
+            if action.isMuted { muted.insert(action.callUUID) } else { muted.remove(action.callUUID) }
             calls[action.callUUID]?.isMuted = action.isMuted
+            // muted from the lock screen or the system call screen: the app's button follows
+            onEvent?(.muted(action.callUUID, action.isMuted))
             action.fulfill()
         }
     }
@@ -280,7 +340,8 @@ extension TwilioEngine: CallDelegate {
     nonisolated func callDidConnect(call: Call) {
         MainActor.assumeIsolated {
             guard let uuid = call.uuid else { return }
-            if listening.contains(uuid) { call.isMuted = true } // the room mutes us too
+            // the room mutes a listener too; a call muted while it was connecting stays muted
+            call.isMuted = listening.contains(uuid) || muted.contains(uuid)
             if !late.contains(uuid) { provider.reportOutgoingCall(with: uuid, connectedAt: Date()) }
             applyRoute()
             onEvent?(.connected(uuid))
@@ -304,7 +365,7 @@ extension TwilioEngine: CallDelegate {
     nonisolated func callDidFailToConnect(call: Call, error: Error) {
         MainActor.assumeIsolated {
             guard let uuid = call.uuid else { return }
-            provider.reportCall(with: uuid, endedAt: Date(), reason: .failed)
+            if !endedHere.contains(uuid) { provider.reportCall(with: uuid, endedAt: Date(), reason: .failed) }
             finish(uuid, failure: TwilioEngine.words(error))
         }
     }
@@ -312,7 +373,7 @@ extension TwilioEngine: CallDelegate {
     nonisolated func callDidDisconnect(call: Call, error: Error?) {
         MainActor.assumeIsolated {
             guard let uuid = call.uuid else { return }
-            provider.reportCall(with: uuid, endedAt: Date(), reason: error == nil ? .remoteEnded : .failed)
+            if !endedHere.contains(uuid) { provider.reportCall(with: uuid, endedAt: Date(), reason: error == nil ? .remoteEnded : .failed) }
             finish(uuid, failure: error.map(TwilioEngine.words))
         }
     }
@@ -334,10 +395,13 @@ extension TwilioEngine: NotificationDelegate {
             update.supportsGrouping = false
             update.supportsUngrouping = false
             update.hasVideo = false
+            let callId = callInvite.customParameters?["callId"] ?? ""
             provider.reportNewIncomingCall(with: uuid, update: update) { [weak self] error in
-                MainActor.assumeIsolated {
-                    if error != nil { self?.invites[uuid] = nil; callInvite.reject(); return }
-                    self?.onEvent?(.incoming(uuid, callId: callInvite.customParameters?["callId"] ?? "", from: from))
+                let failed = error != nil
+                // CallKit calls this back on its own queue
+                Task { @MainActor in
+                    if failed { self?.invites.removeValue(forKey: uuid)?.reject(); return }
+                    self?.onEvent?(.incoming(uuid, callId: callId, from: from))
                 }
             }
         }

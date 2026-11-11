@@ -124,6 +124,12 @@ struct ContactsPane: View {
             }
         }
         .task { if store.people.isEmpty { await store.load() } }
+        // back from Settings after allowing contacts: show them without a restart
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            let before = store.access
+            store.refreshAccess()
+            if store.access != before { Task { await store.load() } }
+        }
         .confirmationDialog(choose?.name ?? "", isPresented: Binding(get: { choose != nil }, set: { if !$0 { choose = nil } }), titleVisibility: .visible) {
             if let p = choose {
                 ForEach(p.numbers, id: \.self) { n in
@@ -171,7 +177,7 @@ struct ContactsPane: View {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(Theme.muted)
                 TextField("Search contacts", text: $query).textInputAutocapitalization(.never).autocorrectionDisabled()
-                if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted) } }
+                if !query.isEmpty { Button { query = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.muted) }.accessibilityLabel("Clear search") }
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
             .glass(in: Capsule())
@@ -210,6 +216,9 @@ struct ContactsPane: View {
                     Section(g.key) {
                         ForEach(g.value) { p in row(p) }
                     }
+                }
+                if store.loading, store.people.isEmpty {
+                    HStack { Spacer(); ProgressView(); Spacer() }.listRowBackground(Color.clear)
                 }
                 if filtered.isEmpty, !store.loading {
                     Text(q.isEmpty ? "No contacts with a phone number." : "No one matches “\(q)”.").foregroundStyle(Theme.muted).listRowBackground(Color.clear)

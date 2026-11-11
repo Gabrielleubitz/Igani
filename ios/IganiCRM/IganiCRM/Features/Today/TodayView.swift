@@ -5,10 +5,13 @@ struct TodayView: View {
     @Binding var tab: AppTab
     @Environment(Session.self) private var session
     @Environment(Toasts.self) private var toasts
+    @Environment(\.scenePhase) private var scenePhase
     @State private var state: Load<TodayData> = .loading
     @State private var path = NavigationPath()
     @State private var doneIds: Set<String> = []
     @State private var showProfile = false
+    /// tasks being ticked from "Do next" (a second tap waits)
+    @State private var completing: Set<String> = []
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -25,13 +28,15 @@ struct TodayView: View {
                 .padding(.bottom, 30)
             }
             .scrollIndicators(.hidden)
-            .refreshable { await load() }
+            .refreshable { await load(announceErrors: true) }
             .screenBackground()
             .toolbar(.hidden, for: .navigationBar)
             .routes()
             .sheet(isPresented: $showProfile) { ProfileSheet() }
         }
-        .task { if state.value == nil { await load() } }
+        // also when switching back to this tab, so tasks ticked and leads moved elsewhere show here
+        .task { await load() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active, state.value != nil { Task { await load() } } }
     }
 
     private var header: some View {
@@ -43,8 +48,9 @@ struct TodayView: View {
                     .font(.system(size: 30, weight: .bold, design: .rounded)).foregroundStyle(Theme.text)
             }
             Spacer()
-            Button { showProfile = true } label: { Avatar(name: session.me?.name ?? "?", url: session.me?.avatar, size: 42) }
+            Button { showProfile = true } label: { Avatar(name: session.me?.name ?? "?", url: session.me?.avatar, size: 42).frame(width: 44, height: 44) }
                 .buttonStyle(PressStyle())
+                .accessibilityLabel("Your profile")
         }
         .padding(.top, 8)
     }
@@ -81,11 +87,12 @@ struct TodayView: View {
         }
 
         VStack(alignment: .leading, spacing: 12) {
+            let actions = d.actions.filter { !doneIds.contains($0.id) }
             SectionTitle(title: "Do next", trailing: d.actionsTotal > d.actions.count ? "All tasks" : nil) { tab = .tasks }
-            if d.actions.isEmpty {
+            if actions.isEmpty {
                 EmptyHint(icon: "checkmark.seal", title: "You’re all caught up", message: "Nothing needs you right now. New leads and follow-ups show up here.").card()
             } else {
-                VStack(spacing: 10) { ForEach(d.actions.filter { !doneIds.contains($0.id) }) { actionRow($0) } }
+                VStack(spacing: 10) { ForEach(actions) { actionRow($0) } }
             }
         }
 
@@ -111,17 +118,25 @@ struct TodayView: View {
                         metric("\(d.calls.talkMin)m", "talk time")
                         if let s = d.calls.avgScore { metric("\(s)", "avg score") }
                     }
+                    // connected is part of calls: draw it over the calls bar, not stacked on top of it
                     Chart(d.calls.perDay) { day in
-                        BarMark(x: .value("Day", day.label + day.key), y: .value("Calls", day.calls))
+                        BarMark(x: .value("Day", day.label + day.key), y: .value("Calls", day.calls), stacking: .unstacked)
                             .foregroundStyle(Theme.brandGradient)
                             .clipShape(RoundedRectangle(cornerRadius: 5))
-                        BarMark(x: .value("Day", day.label + day.key), y: .value("Connected", day.connected))
+                        BarMark(x: .value("Day", day.label + day.key), y: .value("Calls", day.connected), stacking: .unstacked)
                             .foregroundStyle(Theme.green.opacity(0.8))
                             .clipShape(RoundedRectangle(cornerRadius: 5))
                     }
                     .chartXAxis { AxisMarks { v in AxisValueLabel { if let s = v.as(String.self) { Text(String(s.prefix(1))) } } } }
                     .chartYAxis(.hidden)
                     .frame(height: 110)
+                    .accessibilityLabel("Calls per day this week: \(d.calls.perDay.map { "\($0.calls) calls, \($0.connected) connected" }.joined(separator: "; "))")
+                    HStack(spacing: 14) {
+                        Label("Calls", systemImage: "square.fill").foregroundStyle(Theme.blue)
+                        Label("Connected", systemImage: "square.fill").foregroundStyle(Theme.green)
+                    }
+                    .font(.caption)
+                    .accessibilityHidden(true)
                 }
                 .card()
             }
@@ -176,11 +191,14 @@ struct TodayView: View {
                     Text(a.live ? "Join now" : "Join").font(.caption.weight(.bold)).padding(.horizontal, 12).padding(.vertical, 7)
                         .background(a.live ? Theme.green : Theme.accent, in: Capsule()).foregroundStyle(Color(hex: 0x062E6F))
                 }
-            } else if let href = a.href {
-                Button { path.append(Route.from(href: href, title: a.title)) } label: { Image(systemName: "chevron.right").foregroundStyle(Theme.muted) }
+            } else if a.href != nil {
+                Image(systemName: "chevron.right").font(.footnote).foregroundStyle(Theme.muted)
             }
         }
         .padding(10)
+        .contentShape(Rectangle())
+        // the whole row opens it (a lone chevron was too small to hit)
+        .onTapGesture { if let href = a.href { path.append(Route.from(href: href, title: a.title)) } }
     }
 
     private func actionRow(_ a: TodayData.Action) -> some View {
@@ -199,8 +217,12 @@ struct TodayView: View {
                 } label: {
                     Image(systemName: "checkmark").font(.footnote.weight(.bold)).foregroundStyle(Color(hex: 0x062E6F))
                         .frame(width: 34, height: 34).background(Theme.accent, in: Circle())
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
+                .padding(-5)
+                .disabled(completing.contains(a.id))
+                .accessibilityLabel("Mark “\(a.title)” done")
             } else {
                 Image(systemName: "chevron.right").font(.footnote).foregroundStyle(Theme.muted)
             }
@@ -243,6 +265,9 @@ struct TodayView: View {
     }
 
     private func complete(_ a: TodayData.Action, _ t: TaskRef) async {
+        guard !completing.contains(a.id) else { return }
+        completing.insert(a.id)
+        defer { completing.remove(a.id) }
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { _ = doneIds.insert(a.id) }
         do {
             let _: Ok<Empty> = try await API.shared.post("/api/mobile/v1/tasks/\(t.taskId)", ["leadId": t.leadId, "done": true])
@@ -253,12 +278,14 @@ struct TodayView: View {
         }
     }
 
-    private func load() async {
+    private func load(announceErrors: Bool = false) async {
         do {
             let d: TodayData = try await API.shared.get("/api/mobile/v1/today")
-            withAnimation(.snappy) { state = .ready(d); doneIds = [] }
+            // keep hiding a tick still on its way to the server
+            withAnimation(.snappy) { state = .ready(d); doneIds = doneIds.intersection(completing) }
         } catch {
-            if state.value == nil { state = .failed(error.localizedDescription) }
+            guard !Task.isCancelled else { return }
+            if state.value == nil { state = .failed(error.localizedDescription) } else if announceErrors { toasts.show(error.localizedDescription, tone: .warn) }
         }
     }
 }

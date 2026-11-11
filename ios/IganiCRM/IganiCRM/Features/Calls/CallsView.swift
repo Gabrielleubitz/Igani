@@ -113,11 +113,14 @@ struct CallsView: View {
         .navigationTitle("Calls")
         .searchable(text: $query, prompt: "Name, business or number")
         .refreshable { await load() }
-        .task(id: "\(view)|\(range)|\(person)|\(query)") {
-            if !query.isEmpty { try? await Task.sleep(for: .milliseconds(300)) }
+        .task(id: filterKey) {
+            // typing cancels the previous wait: only the last keystroke loads
+            if !query.isEmpty { do { try await Task.sleep(for: .milliseconds(300)) } catch { return } }
             await load()
         }
     }
+
+    private var filterKey: String { "\(view)|\(range)|\(person)|\(query)" }
 
     private var days: [(String, [CallsPage.Row])] {
         var out: [(String, [CallsPage.Row])] = []
@@ -142,23 +145,37 @@ struct CallsView: View {
     }
 
     private func load() async {
+        let key = filterKey
         do {
             let p: CallsPage = try await API.shared.get("/api/mobile/v1/calls", query: query(1))
+            // a slower answer for filters the user has already changed is dropped
+            guard key == filterKey else { return }
             withAnimation(.snappy) {
                 page = p
                 rows = p.calls
                 pageNo = 1
+                failed = nil
             }
-        } catch { if page == nil { failed = error.localizedDescription } }
+        } catch {
+            if page == nil { failed = error.localizedDescription } else if !(error is CancellationError) { ToastCenter.shared?.show(error.localizedDescription, tone: .warn) }
+        }
     }
 
     private func more() async {
+        guard !loadingMore else { return }
+        let key = filterKey
         loadingMore = true
         defer { loadingMore = false }
-        if let p: CallsPage = try? await API.shared.get("/api/mobile/v1/calls", query: query(pageNo + 1)) {
+        do {
+            let p: CallsPage = try await API.shared.get("/api/mobile/v1/calls", query: query(pageNo + 1))
+            guard key == filterKey else { return }
             pageNo += 1
-            rows += p.calls
+            // a call can slip to the next page while new ones come in: never show it twice
+            let seen = Set(rows.map(\.id))
+            rows += p.calls.filter { !seen.contains($0.id) }
             page = p
+        } catch {
+            ToastCenter.shared?.show(error.localizedDescription, tone: .warn)
         }
     }
 }
@@ -239,6 +256,8 @@ struct CallDetail: Decodable {
     let by: String?
     let recording: String?
     let analysis: String?
+    /// why there's no review (calls under a minute aren't reviewed automatically)
+    let analysisNote: String?
     let canAnalyze: Bool
     let review: Review?
     let transcript: [Line]
@@ -275,8 +294,19 @@ struct CallDetail: Decodable {
 
     func toggle() {
         guard let player else { return }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
-        if player.rate > 0 { player.pause() } else { player.rate = rate }
+        if player.currentItem?.status == .failed { failed = true; return }
+        // never take the audio session from a live call
+        if !Phone.shared.onCall {
+            try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .spokenAudio)
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
+        if player.rate > 0 {
+            player.pause()
+        } else {
+            // finished: play again from the start
+            if duration > 0, time >= duration - 0.3 { player.seek(to: .zero); time = 0 }
+            player.rate = rate
+        }
         playing = player.rate > 0
     }
 
@@ -296,6 +326,8 @@ struct CallDetail: Decodable {
         if let observer { player?.removeTimeObserver(observer) }
         observer = nil
         player = nil
+        playing = false
+        if !Phone.shared.onCall { try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
     }
 }
 
@@ -318,6 +350,7 @@ struct CallDetailView: View {
         .screenBackground()
         .navigationTitle("Call")
         .navigationBarTitleDisplayMode(.inline)
+        .refreshable { await load() }
         .task { await load() }
         .onDisappear { player.stop() }
     }
@@ -401,6 +434,11 @@ struct CallDetailView: View {
                         }
                     }
                 }
+            } else if let note = c.analysisNote {
+                Panel(title: "Coaching", icon: "sparkles") {
+                    Text(note).font(.subheadline).foregroundStyle(Theme.muted)
+                    if c.canAnalyze { PrimaryButton(title: "Analyse this call", icon: "sparkles", busy: analyzing) { Task { await analyze() } } }
+                }
             } else if c.canAnalyze {
                 Panel(title: "Coaching", icon: "sparkles") {
                     Text(c.analysis == "processing" || c.analysis == "pending" ? "The recording is being analysed. This takes a minute or two." : "No analysis for this call yet.").font(.subheadline).foregroundStyle(Theme.muted)
@@ -456,12 +494,13 @@ struct CallDetailView: View {
                         .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(ElasticStyle())
+                .accessibilityLabel(player.playing ? "Pause recording" : "Play recording")
                 WaveformScrub(progress: player.duration > 0 ? player.time / player.duration : 0, seed: c.id) { p in player.seek(p * player.duration, play: player.playing) }
             }
             HStack {
                 Text(PhoneFmt.clock(Int(player.time))).monospacedDigit()
                 Spacer()
-                Button { player.cycleRate() } label: { Text("\(player.rate.formatted())×").font(.caption.weight(.bold)).padding(.horizontal, 8).padding(.vertical, 3).background(Theme.raised, in: Capsule()) }
+                Button { player.cycleRate() } label: { Text("\(player.rate.formatted())×").frame(minWidth: 44, minHeight: 30).font(.caption.weight(.bold)).padding(.horizontal, 8).padding(.vertical, 3).background(Theme.raised, in: Capsule()) }
                 Spacer()
                 Text(PhoneFmt.clock(Int(player.duration > 0 ? player.duration : Double(c.durationSec ?? 0)))).monospacedDigit()
             }
@@ -544,10 +583,13 @@ struct CallDetailView: View {
     }
 
     private func load() async {
-        do { state = .ready(try await API.shared.get("/api/mobile/v1/calls/\(id)")) } catch { state = .failed(error.localizedDescription) }
+        do { state = .ready(try await API.shared.get("/api/mobile/v1/calls/\(id)")) } catch {
+            if state.value == nil { state = .failed(error.localizedDescription) } else { toasts.show(error.localizedDescription, tone: .warn) }
+        }
     }
 
     private func analyze() async {
+        guard !analyzing else { return }
         analyzing = true
         defer { analyzing = false }
         do {

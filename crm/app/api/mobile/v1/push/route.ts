@@ -38,9 +38,15 @@ export async function POST(req: Request): Promise<Response> {
 
 /** Signed out: this phone stops getting this person's notifications. */
 export async function DELETE(req: Request): Promise<Response> {
-  const user = await mobileUser()
-  if (user instanceof Response) return user
   const token = new URL(req.url).searchParams.get('token') ?? ''
+  const user = await mobileUser()
+  if (user instanceof Response) {
+    // a phone whose session already expired can still stop its own notifications: the APNs device token is a long
+    // random value only that phone knows, so holding it is proof enough to remove it (nothing else is revealed)
+    if (!/^[0-9a-f]{64,200}$/i.test(token)) return user
+    await prisma.pushDevice.deleteMany({ where: { token } })
+    return json({ ok: true })
+  }
   await prisma.pushDevice.deleteMany({ where: { token, userId: user.id } })
   return json({ ok: true })
 }

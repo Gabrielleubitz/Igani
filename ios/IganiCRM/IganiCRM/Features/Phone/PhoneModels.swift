@@ -48,6 +48,8 @@ struct RecentCall: Decodable, Identifiable, Hashable {
     let durationSec: Int?
     let startedAt: Date
     let live: Bool
+    /// an admin's personal call from the website (only its caller sees it)
+    let `private`: Bool?
 }
 
 struct DialerContact: Decodable, Identifiable, Hashable { let id: String; let name: String; let company: String?; let phone: String; let display: String }

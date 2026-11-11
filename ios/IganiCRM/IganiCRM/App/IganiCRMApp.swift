@@ -35,7 +35,9 @@ struct RootView: View {
                 VStack(spacing: 18) {
                     EmptyHint(icon: "wifi.exclamationmark", title: "Can’t reach Igani", message: message)
                     PrimaryButton(title: "Try again", icon: "arrow.clockwise") { Task { await session.start() } }.frame(maxWidth: 240)
-                    Button("Sign out", role: .destructive) { session.signOut() }.font(.footnote)
+                    Button("Sign out", role: .destructive) { Task { await PushCenter.shared.unregister(); session.signOut() } }
+                        .font(.footnote)
+                        .frame(minHeight: 44)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .screenBackground()
@@ -49,15 +51,36 @@ struct RootView: View {
             }
             ToastOverlay()
         }
-        .sheet(item: $push.opened) { PushLinkSheet(link: $0) }
-        .sheet(isPresented: $askPush) { NotificationsPrompt() }
+        // a tapped notification opens once signed in (a cold launch from a tap lands here before the session is ready)
+        .sheet(item: Binding(get: { session.phase == .signedIn ? push.opened : nil }, set: { push.opened = $0 })) { PushLinkSheet(link: $0).toastHost() }
+        .sheet(isPresented: $askPush) { NotificationsPrompt().toastHost() }
         // tapping an Igani call in the iPhone's Recents (or "call with Igani" from Contacts) dials through the app
         .onContinueUserActivity("INStartCallIntent") { activity in
             guard let intent = activity.interaction?.intent as? INStartCallIntent, let handle = intent.contacts?.first?.personHandle?.value else { return }
-            Task { do { try await Phone.shared.call(handle, name: intent.contacts?.first?.displayName) } catch { toasts.show(error.localizedDescription, tone: .warn) } }
+            let name = intent.contacts?.first?.displayName
+            // only real numbers: a listen-in shows in Recents as "Listening: <rep>", which can't be dialled
+            let digits = handle.filter { !" -().".contains($0) }
+            guard digits.count >= 3, digits.allSatisfy({ $0.isNumber || $0 == "+" }) else { return }
+            Task {
+                // opened from Recents with the app closed: wait for the session to come back first
+                for _ in 0..<40 where session.phase == .starting { try? await Task.sleep(for: .milliseconds(250)) }
+                guard session.phase == .signedIn else { toasts.show("Sign in to call through Igani.", tone: .warn); return }
+                do { try await Phone.shared.call(handle, name: name) } catch { toasts.show(error.localizedDescription, tone: .warn) }
+            }
         }
         .onChange(of: scenePhase) { _, p in
-            if p == .active, session.phase == .signedIn { Task { await ChatBadge.shared.refresh(); await PushCenter.shared.refreshBadge() } }
+            guard p == .active else { return }
+            if session.phase == .signedIn {
+                Task {
+                    await ChatBadge.shared.refresh()
+                    await PushCenter.shared.refreshBadge()
+                    // notifications turned on or off in iPhone Settings while away
+                    await PushCenter.shared.refreshStatus()
+                }
+            } else if case .failed = session.phase {
+                // couldn't reach Igani before: try again on coming back (the connection is often back by then)
+                Task { await session.start() }
+            }
         }
         .animation(.easeInOut(duration: 0.35), value: session.phase)
         .task { await session.start() }
@@ -100,7 +123,7 @@ struct PhoneLayer: View {
         }
         .animation(.spring(response: 0.45, dampingFraction: 0.86), value: phone.expanded)
         .animation(.spring(response: 0.45, dampingFraction: 0.86), value: phone.active?.id)
-        .sheet(item: $phone.wrapUp) { w in WrapUpSheet(wrap: w) }
+        .sheet(item: $phone.wrapUp) { w in WrapUpSheet(wrap: w).toastHost() }
     }
 }
 

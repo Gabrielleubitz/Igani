@@ -56,8 +56,10 @@ struct BoardView: View {
         .searchable(text: $query, prompt: "Find a card")
         .task(id: query) {
             if !query.isEmpty { try? await Task.sleep(for: .milliseconds(300)) }
+            guard !Task.isCancelled else { return }
             await load()
         }
+        .onChange(of: session.stages.map(\.key)) { _, keys in if !keys.contains(stage), let f = keys.first { stage = f } }
         .sheet(item: $lostFor) { c in
             StageSheet(current: c.status) { s, reason in await move(c, to: s, reason: reason) }
         }
@@ -111,12 +113,12 @@ struct BoardView: View {
                     NavigationLink(value: Route.lead(c.id)) { card(c, data) }
                         .buttonStyle(PressStyle())
                         .draggable(c.id) { card(c, data).frame(width: 300).opacity(0.9) }
-                        .contextMenu { if c.canMove { moveMenu(c) } }
+                        .contextMenu { moveMenu(c) }
                 }
             }
             .padding(16)
         }
-        .refreshable { await load() }
+        .refreshable { await load(announceErrors: true) }
     }
 
     private func card(_ c: BoardData.Card, _ data: BoardData) -> some View {
@@ -147,24 +149,44 @@ struct BoardView: View {
     }
 
     @ViewBuilder private func moveMenu(_ c: BoardData.Card) -> some View {
-        Section("Move to") {
-            ForEach(stages.filter { $0.settable && $0.key != c.status }, id: \.key) { s in
-                Button { Task { if s.key == "LOST" { lostFor = c } else { await move(c, to: s.key) } } } label: { Label(s.label, systemImage: "arrow.right.circle") }
+        if c.canMove {
+            Section("Move to") {
+                ForEach(stages.filter { $0.settable && $0.key != c.status }, id: \.key) { s in
+                    Button { Task { if s.key == "LOST" { lostFor = c } else { await move(c, to: s.key) } } } label: { Label(s.label, systemImage: "arrow.right.circle") }
+                }
             }
         }
-        if let p = c.phone { Button { Task { try? await Phone.shared.call(p, leadId: c.id, name: c.name) } } label: { Label("Call", systemImage: "phone") } }
+        if let p = c.phone {
+            Button {
+                if Phone.shared.isSeller {
+                    Task { do { try await Phone.shared.call(p, leadId: c.id, name: c.name) } catch { toasts.show(error.localizedDescription, tone: .warn) } }
+                } else if let u = URL(string: "tel:\(p.filter { $0.isNumber || $0 == "+" })") {
+                    UIApplication.shared.open(u)
+                }
+            } label: { Label("Call", systemImage: "phone") }
+        }
     }
 
-    private func load() async {
+    private func load(announceErrors: Bool = false) async {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            data = try await API.shared.get("/api/mobile/v1/board", query: query.isEmpty ? [] : [URLQueryItem(name: "q", value: query)])
+            let d: BoardData = try await API.shared.get("/api/mobile/v1/board", query: q.isEmpty ? [] : [URLQueryItem(name: "q", value: q)])
+            guard !Task.isCancelled else { return }
+            data = d
             failed = nil
-        } catch { if data == nil { failed = error.localizedDescription } }
+        } catch {
+            guard !Task.isCancelled else { return }
+            if data == nil { failed = error.localizedDescription } else if announceErrors { toasts.show(error.localizedDescription, tone: .warn) }
+        }
     }
 
     @discardableResult
     private func move(_ c: BoardData.Card, to s: String, reason: String? = nil) async -> String? {
+        // the card as it is now (a drag carries the id; the copy captured by the view may be old)
+        let c = data?.cards.first(where: { $0.id == c.id }) ?? c
+        guard c.status != s else { return nil }
         guard c.canMove else { toasts.show("You can only move your own cards.", tone: .warn); return nil }
+        guard stages.first(where: { $0.key == s })?.settable ?? false else { toasts.show("Only an admin can move a card to \(session.me?.stageLabel(s) ?? s).", tone: .warn); return nil }
         if s == "LOST", reason == nil { lostFor = c; return nil }
         let before = data
         if let i = data?.cards.firstIndex(where: { $0.id == c.id }) { withAnimation(.snappy) { data?.cards[i].status = s } }
@@ -175,7 +197,8 @@ struct BoardView: View {
             toasts.show("\(c.name) → \(session.me?.stageLabel(s) ?? s)")
             return nil
         } catch {
-            data = before
+            // put back only this card (other moves may have landed meanwhile)
+            if let i = data?.cards.firstIndex(where: { $0.id == c.id }), let old = before?.cards.first(where: { $0.id == c.id }) { withAnimation(.snappy) { data?.cards[i].status = old.status } }
             toasts.show(error.localizedDescription, tone: .warn)
             return error.localizedDescription
         }
@@ -259,7 +282,8 @@ struct AnalyticsView: View {
                         .sensoryFeedback(.selection, trigger: picked)
                     }
                     Panel(title: "Funnel", icon: "line.3.horizontal.decrease") {
-                        let top = d.funnel.map(\.count).max() ?? 1
+                        let top = max(d.funnel.map(\.count).max() ?? 1, 1)
+                        if d.funnel.allSatisfy({ $0.count == 0 }) { Text("No leads yet.").font(.subheadline).foregroundStyle(Theme.muted) }
                         ForEach(d.funnel.filter { $0.count > 0 }, id: \.key) { f in
                             BarRow(label: f.label, value: f.count, max: top, tint: Theme.stage(f.key))
                         }
@@ -286,11 +310,16 @@ struct AnalyticsView: View {
         .task(id: scope) { await load() }
     }
 
-    private func table(_ title: String, _ rows: [AnalyticsData.Row]) -> some View {
+    @ViewBuilder private func table(_ title: String, _ rows: [AnalyticsData.Row]) -> some View {
+        if !rows.isEmpty { tableBody(title, rows) }
+    }
+
+    private func tableBody(_ title: String, _ rows: [AnalyticsData.Row]) -> some View {
         Panel(title: title, icon: "tablecells") {
             Chart(rows.prefix(8), id: \.name) { r in
-                BarMark(x: .value("Leads", r.total), y: .value("Name", r.name)).foregroundStyle(Theme.blue.opacity(0.55)).cornerRadius(4)
-                BarMark(x: .value("Won", r.won), y: .value("Name", r.name)).foregroundStyle(Theme.green).cornerRadius(4)
+                // won is part of the total: overlay, don't stack
+                BarMark(x: .value("Leads", r.total), y: .value("Name", r.name), stacking: .unstacked).foregroundStyle(Theme.blue.opacity(0.55)).cornerRadius(4)
+                BarMark(x: .value("Leads", r.won), y: .value("Name", r.name), stacking: .unstacked).foregroundStyle(Theme.green).cornerRadius(4)
             }
             .chartXAxis(.hidden)
             .chartYAxis { AxisMarks { _ in AxisValueLabel().foregroundStyle(Theme.text) } }
@@ -320,8 +349,9 @@ struct AnalyticsView: View {
     private func load() async {
         do {
             let d: AnalyticsData = try await API.shared.get("/api/mobile/v1/analytics", query: scope == "mine" ? [URLQueryItem(name: "scope", value: "mine")] : [])
-            withAnimation(.snappy) { data = d }
-        } catch { if data == nil { failed = error.localizedDescription } }
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { data = d; failed = nil }
+        } catch { if data == nil, !Task.isCancelled { failed = error.localizedDescription } }
     }
 }
 
@@ -359,7 +389,7 @@ struct MarketingView: View {
                         Panel(title: t.title, icon: "megaphone") {
                             Text(t.hint).font(.caption).foregroundStyle(Theme.muted)
                             if t.rows.isEmpty { Text("No leads in this window.").font(.subheadline).foregroundStyle(Theme.muted) }
-                            let top = t.rows.map(\.total).max() ?? 1
+                            let top = max(t.rows.map(\.total).max() ?? 1, 1)
                             ForEach(t.rows, id: \.label) { r in
                                 VStack(alignment: .leading, spacing: 3) {
                                     BarRow(label: r.label, value: r.total, max: top, tint: Theme.blue)
@@ -369,7 +399,8 @@ struct MarketingView: View {
                         }
                     }
                     Panel(title: "Where they are now", icon: "line.3.horizontal.decrease") {
-                        let top = d.funnel.map(\.count).max() ?? 1
+                        let top = max(d.funnel.map(\.count).max() ?? 1, 1)
+                        if d.funnel.allSatisfy({ $0.count == 0 }) { Text("No leads in this window.").font(.subheadline).foregroundStyle(Theme.muted) }
                         ForEach(d.funnel.filter { $0.count > 0 }, id: \.key) { BarRow(label: $0.label, value: $0.count, max: top, tint: Theme.stage($0.key)) }
                     }
                 } else if let failed {
@@ -387,6 +418,13 @@ struct MarketingView: View {
     }
 
     private func load() async {
-        do { data = try await API.shared.get("/api/mobile/v1/marketing", query: [URLQueryItem(name: "days", value: String(days))]) } catch { failed = error.localizedDescription }
+        do {
+            let d: MarketingData = try await API.shared.get("/api/mobile/v1/marketing", query: [URLQueryItem(name: "days", value: String(days))])
+            guard !Task.isCancelled else { return }
+            withAnimation(.snappy) { data = d; failed = nil }
+        } catch {
+            // switching the window quickly cancels the older load: that's not a failure
+            if data == nil, !Task.isCancelled { failed = error.localizedDescription }
+        }
     }
 }

@@ -113,7 +113,8 @@ struct ConversationView: View {
                     }
                 }
                 if let blocked = convo.blocked {
-                    Text(blocked).font(.footnote).foregroundStyle(Theme.muted).multilineTextAlignment(.center).padding()
+                    // the server sends the owner's name: say what it means
+                    Text("This contact belongs to \(blocked). You can read what they send to your line, but not text back.").font(.footnote).foregroundStyle(Theme.muted).multilineTextAlignment(.center).padding()
                 } else {
                     composer
                 }
@@ -131,8 +132,11 @@ struct ConversationView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 HStack(spacing: 4) {
-                    if let id = convo?.leadId { NavigationLink(value: Route.lead(id)) { Image(systemName: "person.crop.circle") } }
-                    Button { Task { do { try await Phone.shared.call(number, leadId: convo?.leadId, name: convo?.name) } catch { toasts.show(error.localizedDescription, tone: .warn) } } } label: { Image(systemName: "phone") }
+                    if let id = convo?.leadId { NavigationLink(value: Route.lead(id)) { Image(systemName: "person.crop.circle") }.accessibilityLabel("Open contact") }
+                    if Phone.shared.isSeller {
+                        Button { Task { do { try await Phone.shared.call(number, leadId: convo?.leadId, name: convo?.name) } catch { toasts.show(error.localizedDescription, tone: .warn) } } } label: { Image(systemName: "phone") }
+                            .accessibilityLabel("Call")
+                    }
                 }
             }
         }
@@ -169,7 +173,11 @@ struct ConversationView: View {
     private func load() async {
         do {
             if let c: SmsConversation = try await API.shared.act("smsConversation", number) {
-                withAnimation(.snappy) { convo = c }
+                // polling: only touch the screen when something changed (keeps the scroll position and the animation calm)
+                if convo?.messages != c.messages || convo?.blocked != c.blocked || convo?.name != c.name {
+                    withAnimation(.snappy) { convo = c }
+                }
+                failed = nil
             }
         } catch {
             if convo == nil { failed = error.localizedDescription }
@@ -252,8 +260,10 @@ struct NewTextSheet: View {
                     .background(Theme.bg)
                     .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Name, business or number")
                     .task(id: query) {
-                        try? await Task.sleep(for: .milliseconds(250))
-                        results = (try? await API.shared.act("searchDialerContacts", query) as [DialerContact]?) ?? []
+                        // typing cancels the last search: don't send it, and don't let a slow one overwrite a newer one
+                        do { try await Task.sleep(for: .milliseconds(250)) } catch { return }
+                        let found = (try? await API.shared.act("searchDialerContacts", query) as [DialerContact]?) ?? []
+                        if !Task.isCancelled { results = found }
                     }
                 }
             }
@@ -304,7 +314,9 @@ struct CallListsPane: View {
     }
 
     private func load() async {
-        do { state = .ready((try await API.shared.act("dialerCallLists") as [DialerList]?) ?? []) } catch { state = .failed(error.localizedDescription) }
+        do { state = .ready((try await API.shared.act("dialerCallLists") as [DialerList]?) ?? []) } catch {
+            if state.value == nil { state = .failed(error.localizedDescription) } else { ToastCenter.shared?.show(error.localizedDescription, tone: .warn) }
+        }
     }
 }
 
@@ -348,6 +360,8 @@ struct ProspectsView: View {
                                     Image(systemName: "phone.fill").foregroundStyle(.white).frame(width: 40, height: 40).background(Theme.green, in: Circle())
                                 }
                                 .buttonStyle(ElasticStyle())
+                                .frame(width: 44, height: 44)
+                                .accessibilityLabel("Call \(p.name)")
                             }
                             .padding(.vertical, 4)
                             .listRowBackground(Theme.card)
@@ -382,7 +396,9 @@ struct ProspectsView: View {
     private func load() async {
         do {
             if let p: ProspectPage = try await API.shared.act("dialerProspects", listId) { state = .ready(p) }
-        } catch { state = .failed(error.localizedDescription) }
+        } catch {
+            if state.value == nil { state = .failed(error.localizedDescription) } else { toasts.show(error.localizedDescription, tone: .warn) }
+        }
     }
 
     private func call(_ p: DialerProspect, _ number: String) async {

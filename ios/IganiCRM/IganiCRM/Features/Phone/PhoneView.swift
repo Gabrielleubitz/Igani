@@ -217,7 +217,9 @@ struct KeypadPane: View {
                     Image(systemName: "delete.left.fill").font(.system(size: 24)).foregroundStyle(Theme.muted)
                         .frame(width: 84, height: 84)
                 }
-                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in number = ""; who = nil; matches = [] })
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.5).onEnded { _ in lookup?.cancel(); number = ""; who = nil; matches = []; phoneName = nil; tap += 1 })
+                .disabled(number.isEmpty)
+                .accessibilityHint("Touch and hold to clear the number")
                 .opacity(number.isEmpty ? 0 : 1)
                 .accessibilityLabel("Delete")
             }
@@ -362,11 +364,14 @@ struct RecentsPane: View {
         }
         .refreshable { await load() }
         .task { await load() }
-        .onChange(of: Phone.shared.wrapUp == nil) { _, done in if done { Task { await load() } } }
+        // after every call (missed and listened-in ones have no wrap-up), and again once a wrap-up is saved
+        .onChange(of: Phone.shared.active == nil && Phone.shared.wrapUp == nil) { _, idle in if idle { Task { await load() } } }
     }
 
     private func load() async {
-        do { state = .ready((try await API.shared.act("recentCalls") as [RecentCall]?) ?? []) } catch { if state.value == nil { state = .failed(error.localizedDescription) } }
+        do { state = .ready((try await API.shared.act("recentCalls") as [RecentCall]?) ?? []) } catch {
+            if state.value == nil { state = .failed(error.localizedDescription) } else { toasts.show(error.localizedDescription, tone: .warn) }
+        }
     }
 
     private func callBack(_ c: RecentCall) async {
@@ -383,6 +388,7 @@ struct RecentRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(call.lead.flatMap { $0.name == "Unnamed contact" ? nil : $0.name } ?? PhoneContacts.shared.name(for: call.other) ?? call.otherDisplay).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1)
                 HStack(spacing: 6) {
+                    if call.private == true { Image(systemName: "lock.fill").accessibilityLabel("Private") }
                     Text(look.label).foregroundStyle(look.tint)
                     if let o = Outcome.label(call.outcome) { Text("· \(o)") }
                     if let d = call.durationSec, d > 0 { Text("· \(PhoneFmt.clock(d))").monospacedDigit() }
@@ -392,7 +398,7 @@ struct RecentRow: View {
                 .lineLimit(1)
             }
             Spacer()
-            Text(Fmt.relative(call.startedAt)).font(.caption).foregroundStyle(Theme.muted)
+            Text(Fmt.relative(call.startedAt)).font(.caption).foregroundStyle(Theme.muted).lineLimit(1).layoutPriority(1)
         }
         .padding(.vertical, 3)
     }

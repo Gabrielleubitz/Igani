@@ -131,7 +131,7 @@ struct ChatLead: Decodable, Hashable {
 /// A file picked in the app, uploaded straight to Cloudinary with a ticket from the CRM (what chatSend takes).
 struct ChatUpload: Identifiable {
     let id = UUID()
-    let name: String
+    var name: String
     var preview: UIImage?
     var progress: Double = 0
     var done: [String: Any]?
@@ -144,7 +144,8 @@ struct ChatChannelInfo: Decodable, Hashable {
     let name: String
     let topic: String?
     let isPrivate: Bool
-    let member: Bool
+    /// var: posting in (or joining) a public channel makes you a member right away
+    var member: Bool
     var muted: Bool = false
     let canManage: Bool
     let members: [ChatPerson]
@@ -203,12 +204,19 @@ enum ChatText {
                 s.font = .body.weight(.semibold)
                 out += s
             } else {
-                let link = String(m.output.0)
+                // "see https://igani.co." — the full stop (or a closing bracket) isn't part of the link
+                var link = String(m.output.0)
+                var trailing = ""
+                while let last = link.last, ".,!?;:'\"]".contains(last) || (last == ")" && !link.contains("(")) {
+                    trailing = String(last) + trailing
+                    link.removeLast()
+                }
                 var s = AttributedString(link)
                 s.link = URL(string: link)
                 s.foregroundColor = Theme.accent
                 s.underlineStyle = .single
                 out += s
+                if !trailing.isEmpty { out += AttributedString(trailing) }
             }
             rest = rest[m.range.upperBound...]
         }

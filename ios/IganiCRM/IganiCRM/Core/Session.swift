@@ -17,8 +17,9 @@ struct StoredSession: Codable, Equatable { var cookie: String; var token: String
     private(set) var stored: StoredSession?
 
     init() {
-        // The Keychain outlives the app: a fresh install starts signed out
-        if !UserDefaults.standard.bool(forKey: "installed") {
+        // The Keychain outlives the app: a fresh install starts signed out. (Not before the phone's first unlock, when
+        // an incoming call can wake the app: settings read as empty then, and this would sign a real install out.)
+        if UIApplication.shared.isProtectedDataAvailable, !UserDefaults.standard.bool(forKey: "installed") {
             Keychain.delete(account: "session")
             UserDefaults.standard.set(true, forKey: "installed")
         }
@@ -29,6 +30,8 @@ struct StoredSession: Codable, Equatable { var cookie: String; var token: String
     var stages: [Stage] { me?.stages ?? [] }
 
     func start() async {
+        // launched before the phone's first unlock (an incoming call after a restart): the Keychain wasn't readable then
+        if stored == nil, let d = Keychain.load(account: "session"), let s = try? JSONDecoder().decode(StoredSession.self, from: d) { stored = s }
         #if DEBUG
         if stored == nil, Config.isLocal, let email = UserDefaults.standard.string(forKey: "devEmail") { await devSignIn(email: email); return }
         #endif
@@ -85,6 +88,9 @@ struct StoredSession: Codable, Equatable { var cookie: String; var token: String
         guard var s = stored, s.token != token else { return }
         s.token = token
         save(s)
+        // the in-app web pages use the same session: give them the fresh one too, or they'd be signed out when the
+        // old one runs out
+        if phase == .signedIn { Task { await WebCookies.install(s, me: me) } }
     }
 
     func expire() {
@@ -102,6 +108,8 @@ struct StoredSession: Codable, Equatable { var cookie: String; var token: String
         stored = nil
         me = nil
         phase = .signedOut
+        // this phone stops showing the last person's chats and texts
+        PushCenter.shared.signedOut()
         Task { await WebCookies.clear() }
     }
 

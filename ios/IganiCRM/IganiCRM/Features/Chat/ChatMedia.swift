@@ -65,6 +65,17 @@ struct ChatMediaViewer: View {
     @State private var forwarding = false
     @State private var quickLook: URL?
 
+    init(items: [ChatMediaItem], start: Int, meId: String, people: [String: ChatPerson], onReply: ((ChatMessage) -> Void)?, onReact: @escaping (ChatMessage, String) -> Void) {
+        self.items = items
+        self.start = start
+        self.meId = meId
+        self.people = people
+        self.onReply = onReply
+        self.onReact = onReact
+        // open on the photo you tapped (setting it on appear first showed the first one, then jumped)
+        _at = State(initialValue: min(max(start, 0), max(items.count - 1, 0)))
+    }
+
     private var item: ChatMediaItem? { items.indices.contains(at) ? items[at] : nil }
 
     var body: some View {
@@ -88,11 +99,16 @@ struct ChatMediaViewer: View {
             if chrome, let item { overlay(item).transition(.opacity) }
         }
         .statusBarHidden(!chrome)
-        .onAppear { at = min(max(start, 0), max(items.count - 1, 0)) }
         .onChange(of: at) { _, _ in zoomed = false }
+        // the message was deleted while you looked: nothing left to show (and the close button goes with the overlay)
+        .onChange(of: items.count) { _, n in
+            if n == 0 { dismiss() } else if at >= n { at = n - 1 }
+        }
+        .overlay { ToastOverlay() }
         .sheet(item: $sharing) { url in ShareSheet(items: [url]).presentationDetents([.medium, .large]) }
         .sheet(isPresented: $forwarding) {
             if let item { ForwardSheet(item: item) { place in toasts.show("Forwarded to \(place)", tone: .ok) } }
+            else { Color.clear.onAppear { forwarding = false } }
         }
         .quickLookPreview($quickLook)
     }
@@ -131,6 +147,7 @@ struct ChatMediaViewer: View {
             HStack(spacing: 12) {
                 Button { dismiss() } label: {
                     Image(systemName: "xmark").font(.headline).foregroundStyle(.white).frame(width: 40, height: 40).background(.white.opacity(0.12), in: Circle())
+                        .frame(width: 44, height: 44).contentShape(Circle())
                 }
                 .accessibilityLabel("Close")
                 Avatar(name: it.message.name, url: it.message.photoURL, size: 34)
@@ -181,6 +198,8 @@ struct ChatMediaViewer: View {
                                 .opacity(i == at ? 1 : 0.55)
                         }
                         .id(i)
+                        .accessibilityLabel("\(it.file.name), \(i + 1) of \(items.count)")
+                        .accessibilityAddTraits(i == at ? .isSelected : [])
                     }
                 }
                 .padding(.horizontal, 16)
@@ -203,6 +222,7 @@ struct ChatMediaViewer: View {
             Menu {
                 ForEach(ChatText.emoji, id: \.self) { e in Button(e) { onReact(it.message, e) } }
             } label: { actionLabel("React", "face.smiling") }
+            .disabled(it.message.deleted)
             if let onReply { action("Reply", "arrowshape.turn.up.left") { dismiss(); onReply(it.message) } }
         }
         .overlay { if busy { ProgressView().tint(.white) } }
@@ -229,6 +249,7 @@ private struct ZoomableRemoteImage: View {
     let item: ChatMediaItem
     @Binding var zoomed: Bool
     @State private var url: URL?
+    @State private var failed = false
     @State private var scale: CGFloat = 1
     @State private var base: CGFloat = 1
     @State private var offset: CGSize = .zero
@@ -245,6 +266,8 @@ private struct ZoomableRemoteImage: View {
                         default: ProgressView().tint(.white)
                         }
                     }
+                } else if failed {
+                    Label("Couldn’t load the photo", systemImage: "exclamationmark.triangle").foregroundStyle(.white.opacity(0.7))
                 } else {
                     ProgressView().tint(.white)
                 }
@@ -279,7 +302,11 @@ private struct ZoomableRemoteImage: View {
                 }
             }
         }
-        .task { if url == nil { url = await ChatFiles.link(item, mode: "view") } }
+        .task {
+            guard url == nil else { return }
+            url = await ChatFiles.link(item, mode: "view")
+            failed = url == nil
+        }
         .accessibilityLabel("Photo \(item.file.name)")
     }
 
@@ -291,11 +318,19 @@ private struct ZoomableRemoteImage: View {
 private struct RemoteVideo: View {
     let item: ChatMediaItem
     @State private var player: AVPlayer?
+    @State private var failed = false
     var body: some View {
         ZStack {
-            if let player { VideoPlayer(player: player).onDisappear { player.pause() } } else { ProgressView().tint(.white) }
+            if let player { VideoPlayer(player: player).onDisappear { player.pause() } }
+            else if failed { Label("Couldn’t load the video", systemImage: "exclamationmark.triangle").foregroundStyle(.white.opacity(0.7)) }
+            else { ProgressView().tint(.white) }
         }
-        .task { if player == nil, let u = await ChatFiles.link(item, mode: "view") { player = AVPlayer(url: u) } }
+        .task {
+            guard player == nil else { return }
+            if let u = await ChatFiles.link(item, mode: "view") {
+                player = AVPlayer(url: u)
+            } else { failed = true }
+        }
     }
 }
 
@@ -361,6 +396,17 @@ private struct ForwardSheet: View {
     @State private var channels: [ChatChannelRow] = []
     @State private var query = ""
     @State private var busy: String?
+    @State private var loading = true
+    @State private var loadError: String?
+
+    private func load() async {
+        loading = true
+        defer { loading = false }
+        do {
+            if let o: ChatOverview = try await API.shared.act("chatOverview") { channels = o.channels }
+            loadError = nil
+        } catch { loadError = error.localizedDescription }
+    }
 
     var body: some View {
         NavigationStack {
@@ -388,7 +434,13 @@ private struct ForwardSheet: View {
             .navigationTitle("Forward to…")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
-            .task { if let o: ChatOverview = try? await API.shared.act("chatOverview") { channels = o.channels } }
+            .overlay {
+                if loading { ProgressView() }
+                else if let loadError { LoadFailed(message: loadError) { await load() } }
+                else if channels.isEmpty { Text("No conversations to forward to.").foregroundStyle(Theme.muted) }
+            }
+            .overlay { ToastOverlay() }
+            .task { await load() }
         }
         .presentationDetents([.medium, .large])
     }

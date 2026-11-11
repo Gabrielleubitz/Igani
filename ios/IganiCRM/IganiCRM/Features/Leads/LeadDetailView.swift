@@ -12,6 +12,9 @@ struct LeadDetailView: View {
     @State private var editSheet = false
     @State private var meetBusy = false
     @State private var meetURL: URL?
+    @State private var confirmMeet = false
+    /// tasks with a tick on its way to the server (a second tap waits)
+    @State private var toggling: Set<String> = []
     @FocusState private var noteFocused: Bool
 
     var body: some View {
@@ -25,7 +28,7 @@ struct LeadDetailView: View {
         .scrollDismissesKeyboard(.interactively)
         .screenBackground()
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { await load() }
+        .refreshable { await load(announceErrors: true) }
         .toolbar {
             if let l = state.value {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -33,7 +36,7 @@ struct LeadDetailView: View {
                         .accessibilityLabel("Edit the contact’s details")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(value: Route.web(path: "/sales/leads/\(l.id)", title: l.name)) { Image(systemName: "safari") }
+                    NavigationLink(value: Route.web(path: "/sales/leads/\(l.id)", title: l.name)) { Image(systemName: "safari").frame(minWidth: 44, minHeight: 44) }
                         .accessibilityLabel("Open the full lead page")
                 }
             }
@@ -47,15 +50,19 @@ struct LeadDetailView: View {
             // hero
             VStack(spacing: 10) {
                 Avatar(name: l.name, size: 84).shadow(color: .black.opacity(0.4), radius: 14, y: 8)
-                Text(l.name).font(.system(size: 26, weight: .bold, design: .rounded)).foregroundStyle(Theme.text).multilineTextAlignment(.center)
+                Text(l.name).font(.system(.title, design: .rounded, weight: .bold)).foregroundStyle(Theme.text).multilineTextAlignment(.center)
                 if let c = l.company { Text(c).font(.subheadline).foregroundStyle(Theme.muted) }
                 Button { stageSheet = true } label: {
                     HStack(spacing: 6) {
                         StagePill(status: l.status, label: session.me?.stageLabel(l.status) ?? l.status)
                         Image(systemName: "chevron.down").font(.caption2.weight(.bold)).foregroundStyle(Theme.muted)
                     }
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
+                .accessibilityLabel("Stage: \(session.me?.stageLabel(l.status) ?? l.status)")
+                .accessibilityHint("Move to another stage")
             }
             .padding(.top, 6)
 
@@ -71,9 +78,20 @@ struct LeadDetailView: View {
                     quick("Text", "message.fill", Theme.blue, l.phone.flatMap { URL(string: "sms:\($0.filter { $0.isNumber || $0 == "+" })") })
                 }
                 quick("Email", "envelope.fill", Theme.violet, l.email.flatMap { URL(string: "mailto:\($0)") })
-                Button { Task { await meet(l) } } label: { quickLabel("Meet", meetBusy ? "hourglass" : "video.fill", Theme.accent) }
+                Button { confirmMeet = true } label: { quickLabel("Meet", meetBusy ? "hourglass" : "video.fill", Theme.accent) }
                     .buttonStyle(PressStyle())
                     .disabled(meetBusy)
+                    .accessibilityLabel("Start a video call")
+            }
+            // nothing goes to a client without asking: the Meet invite email is an explicit choice
+            .confirmationDialog("Video call with \(l.name)", isPresented: $confirmMeet, titleVisibility: .visible) {
+                if let e = l.email {
+                    Button("Start and email the invite to \(e)") { Task { await meet(l, invite: true) } }
+                }
+                Button(l.email == nil ? "Start the call" : "Start without emailing them") { Task { await meet(l, invite: false) } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(l.email == nil ? "There’s no email on this contact, so share the link with them yourself." : "Opens an Igani Meet call now.")
             }
 
             // details
@@ -82,7 +100,7 @@ struct LeadDetailView: View {
                 info("phone", "Phone", l.phone)
                 info("globe", "Website", l.website)
                 info("arrow.down.left.circle", "Source", [l.source, l.sourceDetail].compactMap { $0 }.joined(separator: " · "))
-                info("person.crop.circle", "Owner", l.owner?.name ?? "Unassigned")
+                info("person.crop.circle", "Owner", l.owner.map { $0.name ?? "Teammate" } ?? "Unassigned")
                 info("calendar", "Added", l.createdAt.formatted(date: .abbreviated, time: .omitted))
             }
             .card(padding: 4)
@@ -118,8 +136,9 @@ struct LeadDetailView: View {
                         .background(Theme.raised, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     Button { Task { await addNote(l) } } label: {
                         Image(systemName: savingNote ? "hourglass" : "arrow.up").font(.body.weight(.bold)).foregroundStyle(Color(hex: 0x062E6F))
-                            .frame(width: 42, height: 42).background(Theme.accent, in: Circle())
+                            .frame(width: 44, height: 44).background(Theme.accent, in: Circle())
                     }
+                    .accessibilityLabel("Save note")
                     .disabled(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || savingNote)
                     .opacity(note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1)
                 }
@@ -141,10 +160,12 @@ struct LeadDetailView: View {
                         ForEach(l.calls) { c in
                             NavigationLink(value: CallRoute.detail(c.id)) {
                                 HStack(spacing: 12) {
-                                    Image(systemName: c.direction == "INBOUND" ? "phone.arrow.down.left" : "phone.arrow.up.right").foregroundStyle(Theme.green)
-                                        .frame(width: 34, height: 34).background(Theme.green.opacity(0.13), in: Circle())
+                                    let missed = Self.unanswered.contains(c.status)
+                                    let tint = missed ? Theme.red : Theme.green
+                                    Image(systemName: missed ? "phone.down" : c.direction == "INBOUND" ? "phone.arrow.down.left" : "phone.arrow.up.right").foregroundStyle(tint)
+                                        .frame(width: 34, height: 34).background(tint.opacity(0.13), in: Circle())
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(c.direction == "INBOUND" ? "Incoming call" : "Outgoing call").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
+                                        Text(Self.callTitle(c)).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text)
                                         Text("\(Fmt.day(c.startedAt)) · \(Fmt.duration(c.durationSec))").font(.caption).foregroundStyle(Theme.muted)
                                     }
                                     Spacer()
@@ -181,6 +202,18 @@ struct LeadDetailView: View {
         .sheet(isPresented: $editSheet) { EditLeadSheet(lead: l) { Task { await load() } } }
     }
 
+    static let unanswered: Set<String> = ["NO_ANSWER", "BUSY", "FAILED", "CANCELED"]
+
+    static func callTitle(_ c: LeadDetail.Call) -> String {
+        let inbound = c.direction == "INBOUND"
+        switch c.status {
+        case "NO_ANSWER", "CANCELED": return inbound ? "Missed call" : "No answer"
+        case "BUSY": return inbound ? "Missed call" : "Busy"
+        case "FAILED": return "Call failed"
+        default: return inbound ? "Incoming call" : "Outgoing call"
+        }
+    }
+
     /// Calls the contact from the user's Igani number (logged on the contact, with a wrap-up after).
     private func dial(_ l: LeadDetail) async {
         guard let p = l.phone else { return }
@@ -197,10 +230,10 @@ struct LeadDetailView: View {
     private func quickLabel(_ title: String, _ icon: String, _ tint: Color) -> some View {
         VStack(spacing: 6) {
             Image(systemName: icon).font(.title3).foregroundStyle(tint)
-            Text(title).font(.caption.weight(.semibold)).foregroundStyle(Theme.text)
+            Text(title).font(.caption.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(1).minimumScaleFactor(0.8)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 70)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 70)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line))
     }
@@ -219,7 +252,7 @@ struct LeadDetailView: View {
 
     private func taskRow(_ l: LeadDetail, _ t: LeadDetail.Task) -> some View {
         HStack(spacing: 12) {
-            CheckCircle(done: t.done) { Task { await toggle(l, t) } }
+            CheckCircle(done: t.done) { Task { await toggle(l, t) } }.disabled(toggling.contains(t.id))
             VStack(alignment: .leading, spacing: 2) {
                 Text(t.title).font(.subheadline.weight(.medium)).foregroundStyle(t.done ? Theme.muted : Theme.text).strikethrough(t.done)
                 HStack(spacing: 6) {
@@ -236,12 +269,13 @@ struct LeadDetailView: View {
 
     // MARK: actions
 
-    private func load() async {
+    private func load(announceErrors: Bool = false) async {
         do {
             let l: LeadDetail = try await API.shared.get("/api/mobile/v1/leads/\(id)")
             withAnimation(.snappy) { state = .ready(l) }
         } catch {
-            if state.value == nil { state = .failed(error.localizedDescription) }
+            guard !Task.isCancelled else { return }
+            if state.value == nil { state = .failed(error.localizedDescription) } else if announceErrors { toasts.show(error.localizedDescription, tone: .warn) }
         }
     }
 
@@ -271,26 +305,33 @@ struct LeadDetailView: View {
     }
 
     private func toggle(_ l: LeadDetail, _ t: LeadDetail.Task) async {
-        guard case .ready(var cur) = state, let i = cur.tasks.firstIndex(where: { $0.id == t.id }) else { return }
-        cur.tasks[i].done.toggle()
+        guard !toggling.contains(t.id), case .ready(var cur) = state, let i = cur.tasks.firstIndex(where: { $0.id == t.id }) else { return }
+        let done = !cur.tasks[i].done
+        cur.tasks[i].done = done
+        toggling.insert(t.id)
+        defer { toggling.remove(t.id) }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { state = .ready(cur) }
         do {
-            let _: Ok<Empty> = try await API.shared.post("/api/mobile/v1/tasks/\(t.id)", ["leadId": l.id, "done": !t.done])
+            let _: Ok<Empty> = try await API.shared.post("/api/mobile/v1/tasks/\(t.id)", ["leadId": l.id, "done": done])
         } catch {
             toasts.show(error.localizedDescription, tone: .warn)
             await load()
         }
     }
 
-    /// A video call with this lead: invites them by email and opens the call.
-    private func meet(_ l: LeadDetail) async {
+    /// A video call with this lead, and (only when asked) the invite emailed to them.
+    private func meet(_ l: LeadDetail, invite: Bool) async {
+        guard !meetBusy else { return }
         meetBusy = true
         defer { meetBusy = false }
+        let email = invite ? (l.email ?? "") : ""
         do {
-            let r: Ok<NewRoom> = try await API.shared.post("/api/mobile/v1/meet", ["title": "Call with \(l.name)", "emails": l.email ?? ""])
+            let r: Ok<NewRoom> = try await API.shared.post("/api/mobile/v1/meet", ["title": "Call with \(l.name)", "emails": email])
             if let s = r.data?.joinUrl, let u = URL(string: s) {
-                if l.email != nil { toasts.show("Invite sent to \(l.name)") }
+                if !email.isEmpty { toasts.show("Invite sent to \(l.name)") }
                 meetURL = u
+            } else {
+                toasts.show("The call didn’t start. Please try again.", tone: .warn)
             }
         } catch { toasts.show(error.localizedDescription, tone: .warn) }
     }
@@ -313,8 +354,11 @@ struct CheckCircle: View {
             }
             .frame(width: 26, height: 26)
             .animation(.spring(response: 0.3, dampingFraction: 0.55), value: done)
+            .frame(width: 44, height: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .padding(-9)
         .sensoryFeedback(.success, trigger: done) { _, new in new }
         .accessibilityLabel(done ? "Mark as not done" : "Mark as done")
     }
@@ -336,7 +380,7 @@ struct StageSheet: View {
             List {
                 ForEach(session.stages, id: \.key) { s in
                     Button {
-                        if s.key == "LOST" { askLost = true } else { Task { await pick(s.key, nil) } }
+                        if s.key == "LOST" { lostReason = ""; askLost = true } else { Task { await pick(s.key, nil) } }
                     } label: {
                         HStack {
                             Circle().fill(Theme.stage(s.key)).frame(width: 10, height: 10)
@@ -360,15 +404,20 @@ struct StageSheet: View {
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .alert("Why was it lost?", isPresented: $askLost) {
                 TextField("Reason", text: $lostReason)
-                Button("Mark as lost", role: .destructive) { Task { await pick("LOST", lostReason) } }
+                Button("Mark as lost", role: .destructive) { Task { await pick("LOST", lostReason.trimmingCharacters(in: .whitespacesAndNewlines)) } }
+                    .disabled(lostReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("A short reason helps the team see why deals are lost.")
             }
         }
         .presentationDetents([.medium, .large])
+        .interactiveDismissDisabled(busy != nil)
     }
 
     private func pick(_ s: String, _ reason: String?) async {
         busy = s
+        error = nil
         if let e = await save(s, reason) { error = e } else { dismiss() }
         busy = nil
     }
@@ -431,9 +480,11 @@ struct EditLeadSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { Task { await save() } }.disabled(busy)
+                    if busy { ProgressView() } else { Button("Save") { Task { await save() } }.fontWeight(.semibold) }
                 }
             }
+            .scrollDismissesKeyboard(.interactively)
+            .interactiveDismissDisabled(busy)
             .onAppear {
                 first = lead.firstName ?? ""
                 last = lead.lastName ?? ""
@@ -448,13 +499,15 @@ struct EditLeadSheet: View {
     }
 
     private func save() async {
+        guard !busy else { return }
         busy = true
         defer { busy = false }
+        let t = { (s: String) in s.trimmingCharacters(in: .whitespacesAndNewlines) }
         var input: [String: Any] = [
-            "firstName": first, "lastName": last, "phone": phone, "company": company, "website": website, "budget": budget,
+            "firstName": t(first), "lastName": t(last), "phone": t(phone), "company": t(company), "website": t(website), "budget": t(budget),
             "tags": tags.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty },
         ]
-        if isAdmin { input["email"] = email }
+        if isAdmin { input["email"] = t(email) }
         do {
             try await API.shared.run("updateLead", lead.id, input)
             toasts.show("Saved", tone: .ok)

@@ -7,6 +7,7 @@ struct LiveCallsPanel: View {
     @State private var live: LiveCalls?
     @State private var phone = Phone.shared
     @State private var messageRep: LiveCall.Rep?
+    @State private var starting = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -69,7 +70,8 @@ struct LiveCallsPanel: View {
             Spacer(minLength: 4)
             if !c.rep.id.isEmpty {
                 Button { messageRep = c.rep } label: {
-                    Image(systemName: "bubble.left.fill").font(.footnote).foregroundStyle(Theme.muted).frame(width: 34, height: 34).glass(in: Circle(), interactive: true)
+                    Image(systemName: "bubble.left.fill").font(.footnote).foregroundStyle(Theme.muted).frame(width: 36, height: 36).glass(in: Circle(), interactive: true)
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Message \(c.rep.name)")
@@ -77,7 +79,11 @@ struct LiveCallsPanel: View {
             if c.canListen {
                 Button {
                     if listeningHere { phone.hangUp(); return }
-                    Task { do { try await phone.listen(to: c) } catch { toasts.show(error.localizedDescription, tone: .warn) } }
+                    starting = true
+                    Task {
+                        do { try await phone.listen(to: c) } catch { toasts.show(error.localizedDescription, tone: .warn) }
+                        starting = false
+                    }
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "ear")
@@ -88,8 +94,12 @@ struct LiveCallsPanel: View {
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .background(listeningHere ? AnyShapeStyle(Theme.green) : AnyShapeStyle(Theme.green.opacity(0.14)), in: Capsule())
                         .fixedSize()
+                        .frame(minHeight: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .disabled(starting || (phone.onCall && !listeningHere))
+                .opacity(phone.onCall && !listeningHere ? 0.4 : 1)
+                .accessibilityLabel(listeningHere ? "Stop listening to \(c.rep.name)" : "Listen in on \(c.rep.name)")
             }
         }
         .padding(10)

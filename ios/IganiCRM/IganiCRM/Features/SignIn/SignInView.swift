@@ -19,6 +19,7 @@ struct SignInView: View {
                 Spacer()
                 IganiLoader(size: 170)
                     .padding(.bottom, 10)
+                    .accessibilityHidden(true)
                 VStack(spacing: 10) {
                     Text("Igani CRM").font(.system(size: 40, weight: .bold, design: .rounded)).foregroundStyle(.white)
                     Text("Your pipeline, calls, tasks and meetings,\nwherever you are.")
@@ -36,7 +37,7 @@ struct SignInView: View {
                         }
                     } label: {
                         HStack(spacing: 10) {
-                            if busy { ProgressView().tint(.black) } else { GoogleG().frame(width: 20, height: 20) }
+                            if busy { ProgressView().tint(.black) } else { GoogleG().frame(width: 20, height: 20).accessibilityHidden(true) }
                             Text(busy ? "Opening Google…" : "Continue with Google").fontWeight(.semibold)
                         }
                         .foregroundStyle(Color(hex: 0x0F172A))
@@ -51,6 +52,7 @@ struct SignInView: View {
 
                     if let e = session.signInError {
                         Text(e).font(.footnote).foregroundStyle(Theme.red).multilineTextAlignment(.center)
+                            .accessibilityLabel("Error: \(e)")
                     }
                     Label("Team access only. Ask an admin if your Google account isn’t accepted.", systemImage: "lock.shield")
                         .font(.footnote).foregroundStyle(Theme.muted).multilineTextAlignment(.center)

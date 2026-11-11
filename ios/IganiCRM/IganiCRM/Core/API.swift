@@ -44,7 +44,15 @@ struct APIError: LocalizedError {
     }
 
     func post<T: Decodable>(_ path: String, _ body: [String: Any], authenticated: Bool = true) async throws -> T {
-        try await send(path, method: "POST", query: [], body: try JSONSerialization.data(withJSONObject: body), authenticated: authenticated)
+        // JSONSerialization raises an Objective-C exception (a crash, not a Swift error) for values JSON can't hold
+        // (a Date, a nil inside Any…): refuse those here instead
+        guard JSONSerialization.isValidJSONObject(body) else {
+            #if DEBUG
+            print("[api] not JSON \(path):", body)
+            #endif
+            throw APIError(message: "The app couldn’t prepare that request. Please try again.", status: 0)
+        }
+        return try await send(path, method: "POST", query: [], body: try JSONSerialization.data(withJSONObject: body), authenticated: authenticated)
     }
 
     func delete<T: Decodable>(_ path: String, query: [URLQueryItem] = []) async throws -> T {
@@ -80,28 +88,52 @@ struct APIError: LocalizedError {
             req.httpBody = body
             req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         }
-        if authenticated, let s = session?.stored { req.setValue("\(s.cookie)=\(s.token); igani-app=1", forHTTPHeaderField: "Cookie") }
+        let sent = authenticated ? session?.stored : nil
+        if let s = sent { req.setValue("\(s.cookie)=\(s.token); igani-app=1", forHTTPHeaderField: "Cookie") }
 
         let data: Data
         let resp: URLResponse
         do {
             (data, resp) = try await http.data(for: req)
         } catch let e as URLError {
-            throw APIError(message: e.code == .notConnectedToInternet ? "You’re offline. Check your connection and try again." : "Couldn’t reach Igani. Please try again.", status: 0)
+            switch e.code {
+            case .cancelled: throw CancellationError()
+            case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed:
+                throw APIError(message: "You’re offline. Check your connection and try again.", status: 0)
+            case .timedOut: throw APIError(message: "Igani is taking too long to answer. Please try again.", status: 0)
+            default: throw APIError(message: "Couldn’t reach Igani. Please try again.", status: 0)
+            }
         }
         guard let res = resp as? HTTPURLResponse else { throw APIError(message: "Unexpected answer from Igani.", status: 0) }
 
         // The server rolls the session cookie now and then: keep the newest one
-        if let fields = res.allHeaderFields as? [String: String], let name = session?.stored?.cookie,
+        if sent != nil, let fields = res.allHeaderFields as? [String: String], let name = session?.stored?.cookie,
            let fresh = HTTPCookie.cookies(withResponseHeaderFields: fields, for: url).first(where: { $0.name == name }), !fresh.value.isEmpty {
             session?.updateToken(fresh.value)
         }
         if res.statusCode == 401, authenticated {
-            session?.expire()
+            // Only end the session this request was made with: a late answer to a request sent after signing out (no
+            // cookie) or before signing in again (an older session) mustn't sign the new one out
+            if let sent, let now = session?.stored, now.cookie == sent.cookie, now.token == sent.token {
+                session?.expire()
+            }
             throw APIError(message: "Please sign in again.", status: 401)
         }
         guard (200..<300).contains(res.statusCode) else {
-            let msg = (try? JSONDecoder().decode(ServerError.self, from: data))?.error ?? "Something went wrong (\(res.statusCode))."
+            // the server's own message when it sent one; never a raw HTML or proxy error page
+            let server = (try? JSONDecoder().decode(ServerError.self, from: data))?.error.trimmingCharacters(in: .whitespacesAndNewlines)
+            let msg: String
+            if let server, !server.isEmpty, server.count < 400 { msg = server } else {
+                switch res.statusCode {
+                case 403: msg = "You don’t have access to that."
+                case 404: msg = "That isn’t there any more."
+                case 408, 504: msg = "Igani is taking too long to answer. Please try again."
+                case 413: msg = "That’s too big to send."
+                case 429: msg = "Too many tries. Wait a moment and try again."
+                case 500...599: msg = "Igani’s server had a problem. Please try again in a moment."
+                default: msg = "Something went wrong (\(res.statusCode))."
+                }
+            }
             throw APIError(message: msg, status: res.statusCode)
         }
         do {

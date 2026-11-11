@@ -252,6 +252,12 @@ struct ToastOverlay: View {
     }
 }
 
+extension View {
+    /// Shows the app's toasts over this view. The root has one, but a sheet or full-screen cover sits above it, so put
+    /// this on a sheet's content for its toasts to be seen.
+    func toastHost() -> some View { overlay { ToastOverlay() } }
+}
+
 // MARK: - Dates
 
 enum Fmt {

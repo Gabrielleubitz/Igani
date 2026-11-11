@@ -44,6 +44,8 @@ struct MoreView: View {
                         .card()
                     }
                     .buttonStyle(PressStyle())
+                    .accessibilityLabel("\(session.me?.name ?? "Profile"), \(session.me?.roleLabel ?? "")")
+                    .accessibilityHint("Opens your profile, notifications and sign out")
 
                     ForEach(groups, id: \.0) { g in
                         VStack(alignment: .leading, spacing: 10) {
@@ -56,7 +58,7 @@ struct MoreView: View {
 
                     VStack(spacing: 10) {
                         Link(destination: Config.baseURL) { Label("Open Igani CRM in Safari", systemImage: "safari").frame(maxWidth: .infinity).padding(.vertical, 12).background(Theme.card, in: Capsule()) }
-                        Text("Igani CRM \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "") · \(Config.baseURL.host ?? "")").font(.caption2).foregroundStyle(Theme.muted)
+                        Text("Igani CRM \(AppVersion.label) · \(Config.baseURL.host ?? "")").font(.caption2).foregroundStyle(Theme.muted)
                     }
                     .font(.subheadline.weight(.semibold))
                 }
@@ -65,7 +67,7 @@ struct MoreView: View {
             .screenBackground()
             .navigationTitle("More")
             .routes()
-            .sheet(isPresented: $showProfile) { ProfileSheet() }
+            .sheet(isPresented: $showProfile) { ProfileSheet().toastHost() }
             #if DEBUG
             .onAppear {
                 if let p = UserDefaults.standard.string(forKey: "openPage"), path.isEmpty {
@@ -98,16 +100,28 @@ struct MoreView: View {
         .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Theme.line))
 
         if NativePage.browserOnly.contains(p.id) {
-            Button { openURL(Config.baseURL.appending(path: String(p.href.dropFirst()))) } label: { label }.buttonStyle(PressStyle())
+            Button { openURL(WebScreen.resolve(p.href)) } label: { label }.buttonStyle(PressStyle())
+                .accessibilityHint("Opens in Safari")
         } else {
             NavigationLink(value: Route.page(p)) { label }.buttonStyle(PressStyle())
         }
     }
 }
 
+/// "1.0 (12)": the version and build, so TestFlight reports say which build.
+enum AppVersion {
+    static var label: String {
+        let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let b = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? ""
+        return b.isEmpty ? v : "\(v) (\(b))"
+    }
+}
+
 struct ProfileSheet: View {
     @Environment(Session.self) private var session
     @Environment(\.dismiss) private var dismiss
+    @State private var confirmSignOut = false
+    @State private var signingOut = false
     #if DEBUG
     @AppStorage("serverURL") private var server = ""
     #endif
@@ -128,7 +142,10 @@ struct ProfileSheet: View {
                 Section("Account") {
                     NavigationLink { NotificationSettingsView() } label: { Label("Notifications", systemImage: "bell.badge") }
                     LabeledContent("Time zone", value: session.me?.timeZone ?? "")
-                    NavigationLink("Settings on the web") { WebScreen(path: "/admin/settings", title: "Settings") }
+                    // the website's settings are for admins (anyone else would land on "not allowed")
+                    if session.me?.role == "ADMIN" {
+                        NavigationLink("Settings on the web") { WebScreen(path: "/admin/settings", title: "Settings") }
+                    }
                 }
                 .listRowBackground(Theme.card)
                 #if DEBUG
@@ -139,7 +156,15 @@ struct ProfileSheet: View {
                 .listRowBackground(Theme.card)
                 #endif
                 Section {
-                    Button("Sign out", role: .destructive) { dismiss(); Task { await PushCenter.shared.unregister(); session.signOut() } }
+                    Button(role: .destructive) { confirmSignOut = true } label: {
+                        HStack {
+                            Text("Sign out")
+                            if signingOut { Spacer(); ProgressView() }
+                        }
+                    }
+                    .disabled(signingOut)
+                } footer: {
+                    Text("Igani CRM \(AppVersion.label)")
                 }
                 .listRowBackground(Theme.card)
             }
@@ -148,6 +173,18 @@ struct ProfileSheet: View {
             .navigationTitle("Profile")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .confirmationDialog("Sign out of Igani CRM?", isPresented: $confirmSignOut, titleVisibility: .visible) {
+                Button("Sign out", role: .destructive) {
+                    signingOut = true
+                    Task {
+                        // tell the server first (it needs the session to know whose phone this is), then sign out
+                        await PushCenter.shared.unregister()
+                        signingOut = false
+                        dismiss()
+                        session.signOut()
+                    }
+                }
+            } message: { Text("This iPhone stops getting your calls and notifications until you sign in again.") }
         }
     }
 }

@@ -225,6 +225,7 @@ const SECTIONS: Record<string, (user: User, sp: Params) => Promise<unknown>> = {
         'notifications.newLead': s['notifications.newLead'],
         'reminders.meetingEmails': s['reminders.meetingEmails'],
         'notifications.weeklySummary': s['notifications.weeklySummary'],
+        'followUps.enabled': s['followUps.enabled'],
         'voice.record': s['voice.record'],
         'voice.hints': s['voice.hints'],
         'voice.listenIn': s['voice.listenIn'],

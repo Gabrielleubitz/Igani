@@ -12,7 +12,12 @@ import SwiftUI
             let v: T = try await API.shared.get("/api/mobile/v1/admin/\(section)", query: query)
             withAnimation(.snappy) { value = v }
             failed = nil
-        } catch { if value == nil { failed = error.localizedDescription } }
+        } catch is CancellationError {
+            // the screen went away or asked again (a new filter): not a failure
+        } catch {
+            // with something on screen already, keep it and say the refresh failed
+            if value == nil { failed = error.localizedDescription } else { ToastCenter.shared?.show(error.localizedDescription, tone: .warn) }
+        }
     }
 }
 
@@ -91,7 +96,7 @@ struct AdminOverviewView: View {
         AdminPage(title: "Overview", loader: loader) { d in
             LiveCallsPanel()
             if d.cronOff {
-                Label("Reminders and email sync are off: the hourly job needs CRON_SECRET in Vercel.", systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(Theme.amber).card()
+                Label("Meeting reminder drafts and email sync are off: the hourly job needs CRON_SECRET in Vercel.", systemImage: "exclamationmark.triangle.fill").font(.footnote).foregroundStyle(Theme.amber).card()
             }
             StatGrid {
                 LiveStat(label: "Open deals", value: "\(d.open)", icon: "briefcase.fill")
@@ -189,6 +194,7 @@ struct PayoutsData: Decodable {
 
 struct PayoutsView: View {
     @State private var loader = AdminLoader<PayoutsData>("payouts")
+    @State private var paying: PayoutsData.Row?
     var body: some View {
         AdminPage(title: "Payouts", loader: loader) { d in
             if d.months.isEmpty && d.clawbacks.isEmpty { EmptyHint(icon: "checkmark.seal", title: "Nothing to pay", message: "Commissions show up here once clients pay.") }
@@ -214,6 +220,14 @@ struct PayoutsView: View {
                 }
             }
         }
+        .confirmationDialog("Mark \(paying.map { Money.ils($0.amount) } ?? "") as paid?", isPresented: Binding(get: { paying != nil }, set: { if !$0 { paying = nil } }), titleVisibility: .visible, presenting: paying) { r in
+            Button("Paid to \(r.salesperson) today") {
+                Task {
+                    let ok = if let pid = r.paymentId { await act("setPaymentCommissionPaid", pid, ymd(Date()), ok: "Marked paid") } else { await act("setBonusPaid", r.leadId, ymd(Date()), ok: "Bonus marked paid") }
+                    if ok { await loader.load() }
+                }
+            }
+        } message: { r in Text("\(r.lead) · \(r.label)") }
     }
 
     private func row(_ r: PayoutsData.Row) -> some View {
@@ -224,13 +238,9 @@ struct PayoutsView: View {
             }
             Spacer()
             Text(Money.ils(r.amount)).font(.subheadline.weight(.bold)).foregroundStyle(Theme.green)
-            Button {
-                Task {
-                    let ok = r.paymentId != nil ? await act("setPaymentCommissionPaid", r.paymentId!, ymd(Date()), ok: "Marked paid") : await act("setBonusPaid", r.leadId, ymd(Date()), ok: "Bonus marked paid")
-                    if ok { await loader.load() }
-                }
-            } label: { Text("Paid").font(.caption.weight(.bold)).padding(.horizontal, 10).padding(.vertical, 6).background(Theme.green.opacity(0.18), in: Capsule()).foregroundStyle(Theme.green) }
+            Button { paying = r } label: { Text("Paid").font(.caption.weight(.bold)).padding(.horizontal, 12).padding(.vertical, 6).background(Theme.green.opacity(0.18), in: Capsule()).foregroundStyle(Theme.green).frame(minHeight: 44).contentShape(Rectangle()) }
             .buttonStyle(PressStyle())
+            .accessibilityLabel("Mark \(Money.ils(r.amount)) to \(r.salesperson) paid")
         }
     }
 
@@ -336,7 +346,7 @@ struct BookingPagesView: View {
                     Text("\(p.durationMinutes) min · host \(p.host ?? "") · \(p.bookings) booking\(p.bookings == 1 ? "" : "s")").font(.caption).foregroundStyle(Theme.muted)
                     Text(p.url).font(.caption.monospaced()).foregroundStyle(Theme.accent).lineLimit(1).truncationMode(.middle)
                     HStack {
-                        ShareLink(item: URL(string: p.url)!) { Label("Share", systemImage: "square.and.arrow.up") }
+                        if let u = URL(string: p.url) { ShareLink(item: u) { Label("Share", systemImage: "square.and.arrow.up") } }
                         Button { UIPasteboard.general.string = p.url; ToastCenter.shared?.show("Link copied") } label: { Label("Copy", systemImage: "doc.on.doc") }
                         Spacer()
                         Button("Edit") { editing = p }
@@ -346,9 +356,9 @@ struct BookingPagesView: View {
                 .card()
             }
         }
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button { creating = true } label: { Image(systemName: "plus") } } }
-        .sheet(item: $editing) { p in BookingPageForm(page: p, hosts: loader.value?.hosts ?? []) { await loader.load() } }
-        .sheet(isPresented: $creating) { BookingPageForm(page: nil, hosts: loader.value?.hosts ?? []) { await loader.load() } }
+        .toolbar { ToolbarItem(placement: .primaryAction) { Button { creating = true } label: { Image(systemName: "plus") }.accessibilityLabel("New booking page") } }
+        .sheet(item: $editing) { p in BookingPageForm(page: p, hosts: loader.value?.hosts ?? []) { await loader.load() }.toastHost() }
+        .sheet(isPresented: $creating) { BookingPageForm(page: nil, hosts: loader.value?.hosts ?? []) { await loader.load() }.toastHost() }
     }
 }
 
@@ -439,6 +449,7 @@ struct VideoLibraryView: View {
     @State private var loader = AdminLoader<VideoLibraryData>("videos")
     @State private var playing: VideosData.Video?
     @State private var renaming: VideoLibraryData.Video?
+    @State private var deleting: VideoLibraryData.Video?
     @State private var newTitle = ""
     @Environment(\.openURL) private var openURL
     var body: some View {
@@ -459,7 +470,9 @@ struct VideoLibraryView: View {
                     HStack(spacing: 12) {
                         Button { playing = VideosData.Video(id: v.id, title: v.title, stream: v.stream, locked: false, done: true, needsAck: false) } label: {
                             Image(systemName: "play.fill").foregroundStyle(.white).frame(width: 52, height: 36).background(Theme.gradient(for: v.title), in: RoundedRectangle(cornerRadius: 8))
+                                .frame(minHeight: 44)
                         }
+                        .accessibilityLabel("Play \(v.title)")
                         VStack(alignment: .leading, spacing: 2) {
                             Text(v.title).font(.subheadline.weight(.semibold)).foregroundStyle(Theme.text).lineLimit(2)
                             Text(v.visibility == "team" ? "Team training" : "On an offer").font(.caption).foregroundStyle(Theme.muted)
@@ -467,19 +480,23 @@ struct VideoLibraryView: View {
                         Spacer()
                         Menu {
                             Button { newTitle = v.title; renaming = v } label: { Label("Rename", systemImage: "pencil") }
-                            Button(role: .destructive) { Task { if await act("removeVideo", v.id, ok: "Removed") { await loader.load() } } } label: { Label("Delete", systemImage: "trash") }
-                        } label: { Image(systemName: "ellipsis.circle").foregroundStyle(Theme.muted) }
+                            Button(role: .destructive) { deleting = v } label: { Label("Delete", systemImage: "trash") }
+                        } label: { Image(systemName: "ellipsis.circle").foregroundStyle(Theme.muted).frame(width: 44, height: 44).contentShape(Rectangle()) }
+                        .accessibilityLabel("Options for \(v.title)")
                     }
                 }
             }
             Button { openURL(Config.baseURL.appending(path: "admin/videos")) } label: { Label("Upload videos on the website", systemImage: "arrow.up.forward.app") }.font(.footnote.weight(.semibold))
         }
-        .fullScreenCover(item: $playing) { v in LessonPlayerView(video: v, course: false) }
+        .fullScreenCover(item: $playing) { v in LessonPlayerView(video: v, course: false).toastHost() }
         .alert("Rename video", isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }), presenting: renaming) { v in
             TextField("Title", text: $newTitle)
             Button("Save") { Task { if await act("setVideoAccess", v.id, v.visibility, v.offerId as Any? ?? NSNull(), newTitle, ok: "Renamed") { await loader.load() } } }
             Button("Cancel", role: .cancel) {}
         }
+        .confirmationDialog("Delete \(deleting?.title ?? "")?", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }), titleVisibility: .visible, presenting: deleting) { v in
+            Button("Delete video", role: .destructive) { Task { if await act("removeVideo", v.id, ok: "Removed") { await loader.load() } } }
+        } message: { v in Text(v.visibility == "team" ? "It leaves the training course for everyone." : "It disappears from the offer it’s on.") }
     }
 }
 
@@ -565,7 +582,8 @@ struct PhoneAdminData: Decodable {
     let numbersError: String?
     let numbers: [Number]
     var record: Bool
-    var hints: Bool
+    /// live coaching hints: switched off on the server and no longer offered (kept optional so older answers decode)
+    var hints: Bool?
     let countries: [String]
     let team: [Mate]
     let calls: [Call]
@@ -596,13 +614,13 @@ struct PhoneAdminView: View {
                                 Button("\(n.display) \(n.name.isEmpty ? "" : "· \(n.name)")") { Task { if await act("assignPhoneLine", ["userId": m.id, "number": n.number, "twilioSid": n.sid], ok: "\(n.display) is \(m.name)’s line") { await loader.load() } } }
                             }
                             if m.line != nil { Button("Remove line", role: .destructive) { Task { if await act("removePhoneLine", m.id, ok: "Line removed") { await loader.load() } } } }
-                        } label: { Text(m.line == nil ? "Assign" : "Change").font(.caption.weight(.bold)).padding(.horizontal, 10).padding(.vertical, 6).background(Theme.raised, in: Capsule()) }
+                        } label: { Text(m.line == nil ? "Assign" : "Change").font(.caption.weight(.bold)).padding(.horizontal, 12).padding(.vertical, 6).background(Theme.raised, in: Capsule()).frame(minHeight: 44).contentShape(Rectangle()) }
+                        .accessibilityLabel(m.line == nil ? "Assign a line to \(m.name)" : "Change \(m.name)’s line")
                     }
                 }
             }
             Panel(title: "Calls", icon: "slider.horizontal.3") {
                 ToggleRow(title: "Record calls", hint: "Both sides, for coaching and the transcript", on: Binding(get: { d.record }, set: { v in Task { if await act("saveSettings", ["voice.record": v], ok: "Saved") { await loader.load() } } }))
-                ToggleRow(title: "Live coaching hints", hint: "Tips on the rep’s screen during a call (website)", on: Binding(get: { d.hints }, set: { v in Task { if await act("saveSettings", ["voice.hints": v], ok: "Saved") { await loader.load() } } }))
                 Text("Countries that can be called: \(d.countries.joined(separator: ", "))").font(.caption).foregroundStyle(Theme.muted)
             }
             Panel(title: "Latest calls", icon: "clock") {
@@ -715,19 +733,20 @@ struct TeamAccessView: View {
                     Menu {
                         Section("Role") {
                             ForEach(["ADMIN", "SALES", "MARKETING"], id: \.self) { r in
-                                Button { Task { if await act("upsertAllowedUser", ["email": p.email, "role": r, "active": p.active], ok: "Role changed") { await loader.load() } } } label: { Label(r.capitalized, systemImage: p.role == r ? "checkmark" : "") }
+                                Button { Task { if await act("upsertAllowedUser", ["email": p.email, "role": r, "active": p.active], ok: "Role changed") { await loader.load() } } } label: { if p.role == r { Label(r.capitalized, systemImage: "checkmark") } else { Text(r.capitalized) } }
                             }
                         }
                         Button { Task { if await act("upsertAllowedUser", ["email": p.email, "role": p.role, "active": !p.active], ok: p.active ? "Access turned off" : "Access turned on") { await loader.load() } } } label: { Label(p.active ? "Turn off access" : "Turn on access", systemImage: p.active ? "pause.circle" : "play.circle") }
                         if !p.signedUp { Button { Task { _ = await act("resendInvite", p.email, ok: "Invite sent again") } } label: { Label("Resend invite", systemImage: "envelope") } }
                         Button(role: .destructive) { removing = p } label: { Label("Remove", systemImage: "trash") }
-                    } label: { Image(systemName: "ellipsis.circle").font(.title3).foregroundStyle(Theme.muted) }
+                    } label: { Image(systemName: "ellipsis.circle").font(.title3).foregroundStyle(Theme.muted).frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .accessibilityLabel("Options for \(p.name ?? p.email)")
                 }
                 .card(padding: 14)
             }
         }
-        .toolbar { ToolbarItem(placement: .primaryAction) { Button { adding = true } label: { Image(systemName: "person.badge.plus") } } }
-        .sheet(isPresented: $adding) { AddTeammateSheet { await loader.load() } }
+        .toolbar { ToolbarItem(placement: .primaryAction) { Button { adding = true } label: { Image(systemName: "person.badge.plus") }.accessibilityLabel("Add teammate") } }
+        .sheet(isPresented: $adding) { AddTeammateSheet { await loader.load() }.toastHost() }
         .confirmationDialog("Remove \(removing?.email ?? "")?", isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }), titleVisibility: .visible, presenting: removing) { p in
             Button("Remove access", role: .destructive) { Task { if await act("removeAllowedUser", p.email, ok: "Removed. Their open leads are unassigned.") { await loader.load() } } }
         } message: { _ in Text("They can’t sign in any more, and their open leads go back to the pool.") }
@@ -780,6 +799,7 @@ struct AuditView: View {
     @State private var page = 1
     @State private var more = false
     @State private var failed: String?
+    @State private var loaded = false
     private let types = [("", "All"), ("LEAD", "Leads"), ("BOOKING", "Bookings"), ("USER", "Sign-ins"), ("ALLOWED_USER", "Team"), ("SETTING", "Settings"), ("OFFER", "Offers")]
 
     var body: some View {
@@ -788,6 +808,8 @@ struct AuditView: View {
                 FilterRail(items: types.map { ($0.0, $0.1, nil) }, selection: $type).listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
             }
             if let failed { LoadFailed(message: failed) { await load(reset: true) }.listRowBackground(Color.clear) }
+            else if !loaded { ProgressView().frame(maxWidth: .infinity).padding(.vertical, 30).listRowBackground(Color.clear) }
+            else if logs.isEmpty { EmptyHint(icon: "list.clipboard", title: "Nothing here", message: q.isEmpty ? "No activity of this kind yet." : "No actions match “\(q)”.").listRowBackground(Color.clear) }
             ForEach(logs) { l in
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
@@ -822,7 +844,9 @@ struct AuditView: View {
             page = p
             more = d.more
             failed = nil
-        } catch { failed = error.localizedDescription }
+            loaded = true
+        } catch is CancellationError {
+        } catch { failed = error.localizedDescription; loaded = true }
     }
 }
 
@@ -842,14 +866,20 @@ struct SettingsData: Decodable {
         var reminders: Bool
         var weekly: Bool
         var record: Bool
-        var hints: Bool
+        /// the follow-up assistant (drafts only; nothing is sent without the salesperson). Optional until every server sends it
+        var followUps: Bool?
         enum CodingKeys: String, CodingKey {
-            case roundRobin = "roundRobin.enabled", defaultOwner = "leads.defaultOwnerEmail", notifyEmails = "notifications.emails", duration = "booking.defaultDurationMinutes", buffer = "booking.bufferMinutes", brand = "brand.name", support = "brand.supportEmail", staleDays = "leads.staleDays", newLead = "notifications.newLead", reminders = "reminders.meetingEmails", weekly = "notifications.weeklySummary", record = "voice.record", hints = "voice.hints"
+            case roundRobin = "roundRobin.enabled", defaultOwner = "leads.defaultOwnerEmail", notifyEmails = "notifications.emails", duration = "booking.defaultDurationMinutes", buffer = "booking.bufferMinutes", brand = "brand.name", support = "brand.supportEmail", staleDays = "leads.staleDays", newLead = "notifications.newLead", reminders = "reminders.meetingEmails", weekly = "notifications.weeklySummary", record = "voice.record", followUps = "followUps.enabled"
         }
     }
     struct Signer: Decodable { let name: String; let title: String; let email: String; let phone: String }
     var values: Values
     let signer: Signer
+}
+
+extension SettingsData.Values {
+    /// placeholder values for a binding read while nothing is loaded (never shown)
+    static let blank = SettingsData.Values(roundRobin: false, defaultOwner: "", notifyEmails: [], duration: 30, buffer: 0, brand: "", support: "", staleDays: 7, newLead: false, reminders: false, weekly: false, record: false, followUps: nil)
 }
 
 struct AdminSettingsView: View {
@@ -861,35 +891,37 @@ struct AdminSettingsView: View {
 
     var body: some View {
         Form {
-            if let _ = v {
+            if let cur = v {
                 Section("Leads") {
                     ToggleRow(title: "Round-robin new leads", hint: "Share website leads between salespeople", on: bind(\.roundRobin))
-                    TextField("Every new lead to (email, optional)", text: bind(\.defaultOwner)).keyboardType(.emailAddress).textInputAutocapitalization(.never)
-                    Stepper("Quiet after \(v!.staleDays) days", value: bind(\.staleDays), in: 1...365)
+                    TextField("Every new lead to (email, optional)", text: bind(\.defaultOwner)).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    Stepper("Quiet after \(cur.staleDays) days", value: bind(\.staleDays), in: 1...365)
+                    if let f = cur.followUps {
+                        ToggleRow(title: "Follow-up assistant", hint: "Drafts a follow-up when a conversation goes quiet with something still open, ready on the salesperson’s Today. Nothing is sent without them.", on: Binding(get: { f }, set: { v?.followUps = $0 }))
+                    }
                 }
                 Section("Meetings") {
-                    Stepper("Default length \(v!.duration) min", value: bind(\.duration), in: 15...240, step: 15)
-                    Stepper("Buffer \(v!.buffer) min", value: bind(\.buffer), in: 0...120, step: 5)
-                    ToggleRow(title: "Remind guests a day before", on: bind(\.reminders))
+                    Stepper("Default length \(cur.duration) min", value: bind(\.duration), in: 15...240, step: 15)
+                    Stepper("Buffer \(cur.buffer) min", value: bind(\.buffer), in: 0...120, step: 5)
+                    ToggleRow(title: "Prepare guest reminders a day before", hint: "The host gets each reminder (with the Meet link) ready on Today. It goes to the guest only when they press Send.", on: bind(\.reminders))
                 }
                 Section("Emails") {
-                    ToggleRow(title: "Email on every new lead", on: bind(\.newLead))
+                    ToggleRow(title: "Email on every new lead", hint: "To the team list below", on: bind(\.newLead))
                     ToggleRow(title: "Weekly summary to admins", on: bind(\.weekly))
-                    TextField("Who gets them (comma separated)", text: $emails, axis: .vertical).keyboardType(.emailAddress).textInputAutocapitalization(.never)
+                    TextField("Who gets them (comma separated)", text: $emails, axis: .vertical).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 Section("Brand") {
                     TextField("Name", text: bind(\.brand))
-                    TextField("Support email", text: bind(\.support)).keyboardType(.emailAddress).textInputAutocapitalization(.never)
+                    TextField("Support email", text: bind(\.support)).keyboardType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 Section("Calls") {
-                    ToggleRow(title: "Record calls", on: bind(\.record))
-                    ToggleRow(title: "Live coaching hints", on: bind(\.hints))
+                    ToggleRow(title: "Record calls", hint: "Both sides, for coaching and the transcript", on: bind(\.record))
                 }
                 Section {
                     Button { openURL(Config.baseURL.appending(path: "admin/settings")) } label: { Label("Contract signer and signature (website)", systemImage: "signature") }
                 } footer: { Text("Signing contracts needs a drawn signature, so it stays on the website.") }
             } else if let f = loader.failed {
-                LoadFailed(message: f) { await loader.load() }
+                LoadFailed(message: f) { await loader.load(); fill() }
             } else {
                 ProgressView()
             }
@@ -899,14 +931,22 @@ struct AdminSettingsView: View {
         .navigationTitle("Settings")
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Save") { Task { await save() } }.disabled(saving || v == nil) } }
         .task {
+            // coming back to the screen mustn't throw away changes not saved yet
+            guard v == nil else { return }
             await loader.load()
-            v = loader.value?.values
-            emails = v?.notifyEmails.joined(separator: ", ") ?? ""
+            fill()
         }
     }
 
+    private func fill() {
+        guard v == nil, let values = loader.value?.values else { return }
+        v = values
+        emails = values.notifyEmails.joined(separator: ", ")
+    }
+
     private func bind<T>(_ k: WritableKeyPath<SettingsData.Values, T>) -> Binding<T> {
-        Binding(get: { v![keyPath: k] }, set: { v![keyPath: k] = $0 })
+        // only used while `v` is set (the form shows them then)
+        Binding(get: { v.map { $0[keyPath: k] } ?? SettingsData.Values.blank[keyPath: k] }, set: { v?[keyPath: k] = $0 })
     }
 
     private func save() async {
@@ -914,12 +954,13 @@ struct AdminSettingsView: View {
         saving = true
         defer { saving = false }
         let list = emails.split(whereSeparator: { $0 == "," || $0 == " " || $0 == "\n" }).map(String.init).filter { $0.contains("@") }
-        let values: [String: Any] = [
+        var values: [String: Any] = [
             "roundRobin.enabled": v.roundRobin, "leads.defaultOwnerEmail": v.defaultOwner.trimmingCharacters(in: .whitespaces).lowercased(), "notifications.emails": list,
-            "booking.defaultDurationMinutes": v.duration, "booking.bufferMinutes": v.buffer, "brand.name": v.brand, "brand.supportEmail": v.support,
+            "booking.defaultDurationMinutes": v.duration, "booking.bufferMinutes": v.buffer, "brand.name": v.brand.trimmingCharacters(in: .whitespaces), "brand.supportEmail": v.support.trimmingCharacters(in: .whitespaces),
             "leads.staleDays": v.staleDays, "notifications.newLead": v.newLead, "reminders.meetingEmails": v.reminders, "notifications.weeklySummary": v.weekly,
-            "voice.record": v.record, "voice.hints": v.hints,
+            "voice.record": v.record,
         ]
+        if let f = v.followUps { values["followUps.enabled"] = f }
         _ = await act("saveSettings", values, ok: "Settings saved")
     }
 }
@@ -961,7 +1002,8 @@ struct SalesContractsView: View {
                             Button { UIPasteboard.general.string = pending.url; ToastCenter.shared?.show("Link copied") } label: { Label("Copy link", systemImage: "doc.on.doc") }
                         }
                         Button { if let u = URL(string: p.page) { openURL(u) } } label: { Label("Write or send on the website", systemImage: "safari") }
-                    } label: { Image(systemName: "ellipsis.circle").font(.title3).foregroundStyle(Theme.muted) }
+                    } label: { Image(systemName: "ellipsis.circle").font(.title3).foregroundStyle(Theme.muted).frame(width: 44, height: 44).contentShape(Rectangle()) }
+                    .accessibilityLabel("Options for \(p.name)")
                 }
                 .card(padding: 14)
             }

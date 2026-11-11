@@ -7,13 +7,23 @@ import UserNotifications
 final class NotificationService: UNNotificationServiceExtension {
     private var handler: ((UNNotificationContent) -> Void)?
     private var original: UNNotificationContent?
+    private let lock = NSLock()
+
+    /// iOS must get exactly one answer: whichever comes first, the finished notification or the time-out.
+    private func finish(_ content: UNNotificationContent) {
+        lock.lock()
+        let h = handler
+        handler = nil
+        lock.unlock()
+        h?(content)
+    }
 
     override func didReceive(_ request: UNNotificationRequest, withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {
         handler = contentHandler
         original = request.content
         let info = request.content.userInfo
         let type = info["type"] as? String
-        guard type == "chat" || type == "sms" else { return contentHandler(request.content) }
+        guard type == "chat" || type == "sms" else { return finish(request.content) }
 
         let name = (type == "chat" ? info["senderName"] as? String : info["name"] as? String) ?? request.content.title
         let key = (type == "chat" ? info["senderId"] as? String : info["number"] as? String) ?? name
@@ -21,7 +31,12 @@ final class NotificationService: UNNotificationServiceExtension {
 
         Task {
             var imageData: Data?
-            if let photoURL, let (d, r) = try? await URLSession.shared.data(from: photoURL), (r as? HTTPURLResponse)?.statusCode == 200, UIImage(data: d) != nil { imageData = d }
+            // a slow photo mustn't hold the notification back: give up after a few seconds and use initials
+            if let photoURL, photoURL.scheme == "https" {
+                var req = URLRequest(url: photoURL)
+                req.timeoutInterval = 6
+                if let (d, r) = try? await URLSession.shared.data(for: req), (r as? HTTPURLResponse)?.statusCode == 200, UIImage(data: d) != nil { imageData = d }
+            }
             let image = INImage(imageData: imageData ?? Self.initials(name, seed: key))
             let sender = INPerson(personHandle: INPersonHandle(value: key, type: type == "sms" ? .phoneNumber : .unknown), nameComponents: nil, displayName: name, image: image, contactIdentifier: nil, customIdentifier: key)
             let channel = info["channel"] as? String
@@ -40,15 +55,15 @@ final class NotificationService: UNNotificationServiceExtension {
             interaction.direction = .incoming
             try? await interaction.donate()
             if let updated = try? request.content.updating(from: intent) {
-                contentHandler(updated)
+                finish(updated)
             } else {
-                contentHandler(request.content)
+                finish(request.content)
             }
         }
     }
 
     override func serviceExtensionTimeWillExpire() {
-        if let handler, let original { handler(original) }
+        if let original { finish(original) }
     }
 
     /// Initials on the same colours the app uses for avatars.
@@ -60,7 +75,8 @@ final class NotificationService: UNNotificationServiceExtension {
             (UIColor(red: 0.96, green: 0.56, blue: 0.36, alpha: 1), UIColor(red: 0.86, green: 0.36, blue: 0.27, alpha: 1)),
             (UIColor(red: 0.93, green: 0.40, blue: 0.62, alpha: 1), UIColor(red: 0.78, green: 0.24, blue: 0.47, alpha: 1)),
         ]
-        let (a, b) = palette[abs(seed.unicodeScalars.reduce(0) { $0 &* 31 &+ Int($1.value) }) % palette.count]
+        // magnitude, not abs(): the wrapping hash can land on Int.min, where abs() traps
+        let (a, b) = palette[Int(seed.unicodeScalars.reduce(0) { $0 &* 31 &+ Int($1.value) }.magnitude % UInt(palette.count))]
         let letters = name.split(whereSeparator: { $0 == " " || $0 == "@" || $0 == "." }).prefix(2).compactMap { $0.first.map { String($0).uppercased() } }.joined()
         let size = CGSize(width: 180, height: 180)
         let img = UIGraphicsImageRenderer(size: size).image { ctx in

@@ -87,6 +87,8 @@ struct IganiLoader: View {
                 Text(text).font(.subheadline).foregroundStyle(Theme.muted).contentTransition(.opacity)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(text ?? "Igani")
         .onAppear {
             withAnimation(.spring(response: 0.6, dampingFraction: 0.6)) { shown = true }
             withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) { spin = true }

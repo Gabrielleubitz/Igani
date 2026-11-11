@@ -70,10 +70,15 @@ struct LeadProfilePanel: View {
     private func step(_ item: LeadProfileData.Item) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Button { act("done-\(item.id)") { try await API.shared.run("setProfileItem", leadId, item.id, "done") } } label: {
-                Image(systemName: "circle").font(.body).foregroundStyle(Theme.muted)
+                Group {
+                    if busy == "done-\(item.id)" { ProgressView() } else { Image(systemName: "circle").font(.body).foregroundStyle(Theme.muted) }
+                }
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Mark done")
+            .padding(.vertical, -12).padding(.horizontal, -10)
+            .accessibilityLabel("Mark “\(item.text)” done")
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.text).font(.subheadline).foregroundStyle(Theme.text)
                 HStack(spacing: 6) {
@@ -85,8 +90,11 @@ struct LeadProfilePanel: View {
             Spacer(minLength: 4)
             Button { act("task-\(item.id)") { try await API.shared.run("profileItemToTask", leadId, item.id) } done: { "Task added." } } label: {
                 Text(busy == "task-\(item.id)" ? "…" : "Make task").font(.caption.weight(.bold)).padding(.horizontal, 10).padding(.vertical, 6).glass(in: Capsule(), interactive: true)
+                    .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .padding(.vertical, -10)
+            .accessibilityLabel("Make a task from “\(item.text)”")
             .foregroundStyle(Theme.accent)
         }
         .padding(10)
@@ -101,7 +109,7 @@ struct LeadProfilePanel: View {
             if let l = f["location"]?.value { row("mappin.and.ellipse", "Location", l) }
             if let site = profile.siteCheck?.url ?? f["website"]?.value {
                 VStack(alignment: .leading, spacing: 4) {
-                    row("globe", "Website", site.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""), link: URL(string: site))
+                    row("globe", "Website", site.replacingOccurrences(of: "https://", with: "").replacingOccurrences(of: "http://", with: ""), link: URL(string: site.contains("://") ? site : "https://\(site)"))
                     HStack(spacing: 6) {
                         if let p = profile.siteCheck, p.platform != "Unreachable" { Tag(text: [p.platform, p.version].compactMap { $0 }.joined(separator: " "), tint: p.kind == "wordpress" ? Theme.accent : Theme.muted) }
                         else if let p = f["platform"]?.value { Tag(text: p, tint: Theme.muted) }
@@ -141,6 +149,8 @@ struct LeadProfilePanel: View {
     }
 
     private func act(_ key: String, _ work: @escaping () async throws -> Void, done: (() -> String)? = nil) {
+        // one at a time: the profile reloads after each, and a second tap would act on a stale list
+        guard busy == nil else { return }
         busy = key
         Task {
             do {

@@ -33,7 +33,7 @@ struct MeetView: View {
             .scrollDismissesKeyboard(.interactively)
             .screenBackground()
             .navigationTitle("Meet")
-            .refreshable { await load() }
+            .refreshable { await load(announceErrors: true) }
             .task { await load() }
             .fullScreenCover(item: $call, onDismiss: { Task { await load() } }) { u in MeetCallScreen(url: u) }
             #if DEBUG
@@ -66,10 +66,10 @@ struct MeetView: View {
     private var joinBox: some View {
         HStack(spacing: 10) {
             Image(systemName: "keyboard").foregroundStyle(Theme.muted)
-            TextField("Enter a code or link", text: $code).textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.join).onSubmit(join)
-            Button("Join", action: join).fontWeight(.semibold).disabled(code.trimmingCharacters(in: .whitespaces).isEmpty)
+            TextField("Enter a code or link", text: $code).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL).submitLabel(.join).onSubmit(join)
+            Button("Join", action: join).fontWeight(.semibold).frame(minHeight: 44).disabled(code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-        .padding(14)
+        .padding(.horizontal, 14).padding(.vertical, 4)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Theme.line))
     }
@@ -90,7 +90,15 @@ struct MeetView: View {
         }
         if !ended.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                SectionTitle(title: "Ended", trailing: "Recordings") { path.append(Route.web(path: session.me.map { $0.meetUrl } ?? "/meet", title: "Igani Meet")) }
+                // a link, not path.append: inside the More tab this screen has no path of its own
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Ended").font(.title3.weight(.bold)).foregroundStyle(Theme.text)
+                    Spacer()
+                    NavigationLink(value: Route.web(path: session.me.map { $0.meetUrl } ?? "/meet", title: "Igani Meet")) {
+                        Text("Recordings").font(.subheadline.weight(.medium)).foregroundStyle(Theme.accent)
+                    }
+                }
+                .padding(.horizontal, 4)
                 VStack(spacing: 0) {
                     ForEach(ended.prefix(10)) { m in
                         HStack {
@@ -99,7 +107,10 @@ struct MeetView: View {
                                 Text("\(Fmt.relative(m.createdAt)) · host \(m.host)").font(.caption).foregroundStyle(Theme.muted.opacity(0.7))
                             }
                             Spacer()
-                            if m.recordings > 0 { Label("\(m.recordings)", systemImage: "record.circle").font(.caption).foregroundStyle(Theme.red) }
+                            if m.recordings > 0 {
+                                Label("\(m.recordings)", systemImage: "record.circle").font(.caption).foregroundStyle(Theme.red)
+                                    .accessibilityLabel("\(m.recordings) \(m.recordings == 1 ? "recording" : "recordings")")
+                            }
                         }
                         .padding(12)
                     }
@@ -116,15 +127,20 @@ struct MeetView: View {
                 Text(m.scheduledAt.map { "\(Fmt.day($0)) · \(m.durationMin) min" } ?? "Any time").font(.caption).foregroundStyle(Theme.muted)
                 HStack(spacing: 10) {
                     Label("host \(m.host)", systemImage: "person").lineLimit(1)
-                    if m.invites > 0 { Label("\(m.invites)", systemImage: "envelope") }
+                    if m.invites > 0 { Label("\(m.invites)", systemImage: "envelope").accessibilityLabel("\(m.invites) invited") }
                 }
                 .font(.caption2).foregroundStyle(Theme.muted)
             }
             Spacer()
+            ShareLink(item: m.joinUrl) {
+                Image(systemName: "square.and.arrow.up").font(.subheadline.weight(.semibold)).foregroundStyle(Theme.accent).frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Share the link")
             Button { call = URL(string: m.joinUrl) } label: {
-                Text("Join").font(.subheadline.weight(.bold)).foregroundStyle(Color(hex: 0x062E6F)).padding(.horizontal, 18).padding(.vertical, 10).background(Theme.accent, in: Capsule())
+                Text("Join").font(.subheadline.weight(.bold)).foregroundStyle(Color(hex: 0x062E6F)).padding(.horizontal, 18).padding(.vertical, 10).frame(minHeight: 44).background(Theme.accent, in: Capsule())
             }
             .buttonStyle(PressStyle())
+            .accessibilityLabel("Join \(m.title)")
         }
         .card()
         .contextMenu {
@@ -134,29 +150,36 @@ struct MeetView: View {
     }
 
     private func join() {
-        let c = code.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !c.isEmpty, let base = session.me.flatMap({ URL(string: $0.meetUrl) }) else { return }
-        if let u = URL(string: c), u.scheme?.hasPrefix("http") == true { call = u; return }
+        let raw = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty, let base = session.me.flatMap({ URL(string: $0.meetUrl) }) else { return }
+        // a full link (kept as typed: an invite link's token is case-sensitive)
+        if let u = URL(string: raw), let scheme = u.scheme?.lowercased(), scheme == "https" || scheme == "http" { call = u; code = ""; return }
+        // a link without https://, or just the code: the room code is the last part of the path
+        let last = raw.split(separator: "?").first.map(String.init)?.split(separator: "/").last.map(String.init) ?? raw
+        let c = last.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "-" }
+        guard !c.isEmpty else { toasts.show("That doesn’t look like a meeting code.", tone: .warn); return }
         let slug = c.hasPrefix("igani-") ? c : "igani-\(c)"
         call = base.appending(path: slug)
         code = ""
     }
 
     private func start() async {
+        guard !starting else { return }
         starting = true
         defer { starting = false }
         do {
             let r: Ok<NewRoom> = try await API.shared.post("/api/mobile/v1/meet", [:])
-            if let s = r.data?.joinUrl { call = URL(string: s) }
+            if let s = r.data?.joinUrl, let u = URL(string: s) { call = u } else { toasts.show("The meeting didn’t start. Please try again.", tone: .warn) }
         } catch { toasts.show(error.localizedDescription, tone: .warn) }
     }
 
-    private func load() async {
+    private func load(announceErrors: Bool = false) async {
         do {
             let r: MeetList = try await API.shared.get("/api/mobile/v1/meet")
             withAnimation(.snappy) { state = .ready(r) }
         } catch {
-            if state.value == nil { state = .failed(error.localizedDescription) }
+            guard !Task.isCancelled else { return }
+            if state.value == nil { state = .failed(error.localizedDescription) } else if announceErrors { toasts.show(error.localizedDescription, tone: .warn) }
         }
     }
 }
