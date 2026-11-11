@@ -93,7 +93,7 @@ export function SettingsForm({ initial }: { initial: typeof SETTING_DEFAULTS }):
             label="Follow-up assistant"
             hint="Spots conversations that went quiet while something was still open (a quote, a call back, an unanswered message) and drafts the follow-up in the salesperson's own style, ready on their Today page. Nothing is sent without them."
           />
-          <Toggle checked={v['reminders.meetingEmails']} onChange={(x) => set({ 'reminders.meetingEmails': x })} label="Remind guests the day before a meeting" hint="Sent about 24 hours before each confirmed meeting, with the Meet link. Cuts no-shows." />
+          <Toggle checked={v['reminders.meetingEmails']} onChange={(x) => set({ 'reminders.meetingEmails': x })} label="Prepare a reminder for guests the day before a meeting" hint="About 24 hours before each confirmed meeting, the host gets the reminder (with the Meet link) ready on their Today page. It goes to the guest only when they press Send. Cuts no-shows." />
         </CardContent>
       </Card>
 

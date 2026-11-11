@@ -1,13 +1,12 @@
 import { MIN_REVIEW_SECONDS } from '@/lib/call-review-rules'
 import { splitDue } from '@/components/crm/crm-utils'
 import { logActivity } from '@/lib/audit'
-import { cancelBooking, emailDataFor, teamMeetingIds } from '@/lib/bookings'
+import { cancelBooking } from '@/lib/bookings'
 import { cronAuthorised } from '@/lib/cron-auth'
 import { appUrl } from '@/lib/env'
-import { sendMeetingReminderEmail, sendTaskDigestEmail } from '@/lib/email'
+import { sendTaskDigestEmail } from '@/lib/email'
 import { formatDateTime, leadName } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
-import { getSetting } from '@/lib/settings'
 import { canOpenLeadTask, createAutoTask, loadTasks, taskOwner } from '@/lib/tasks'
 import { localHour } from '@/lib/time'
 import { syncAllMailboxes } from '@/lib/mail-sync'
@@ -18,6 +17,7 @@ import { enrichPending } from '@/lib/prospect-details'
 import { syncDueMeetings } from '@/lib/meetings'
 import { syncCalendarChanges } from '@/lib/calendar-sync'
 import { runFollowUpAssistant } from '@/lib/follow-ups'
+import { draftMeetingReminders } from '@/lib/meeting-reminders'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
@@ -58,39 +58,9 @@ async function expireStalePending(): Promise<number> {
   return stale.length
 }
 
-/** Guests of confirmed meetings starting in the next ~24h get one reminder (marked by `booking.reminder_sent`). */
-async function sendMeetingReminders(): Promise<number> {
-  if (!(await getSetting('reminders.meetingEmails'))) return 0
-  const now = Date.now()
-  const soon = await prisma.booking.findMany({
-    where: { status: 'CONFIRMED', source: { not: 'TEAM_MEETING' }, startTime: { gt: new Date(now + 2 * 3600_000), lte: new Date(now + 25 * 3600_000) } },
-    select: { id: true, meetUrl: true, confirmedAt: true },
-    take: 200,
-  })
-  const sent = new Set(
-    (await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.reminder_sent', entityId: { in: soon.map((b) => b.id) } }, select: { entityId: true } })).map((l) => l.entityId),
-  )
-  // Internal team calls have no client to remind.
-  const team = await teamMeetingIds(soon.map((b) => b.id))
-  let n = 0
-  for (const b of soon) {
-    if (team.has(b.id)) continue
-    // Skip meetings booked in the last few hours: the confirmation email is still fresh in their inbox.
-    if (sent.has(b.id) || (b.confirmedAt && now - b.confirmedAt.getTime() < 6 * 3600_000)) continue
-    try {
-      const emailId = await sendMeetingReminderEmail({ ...(await emailDataFor(b.id)), meetUrl: b.meetUrl })
-      await logActivity({ entityType: 'BOOKING', entityId: b.id, action: 'booking.reminder_sent', metadata: { emailId } })
-      n++
-    } catch (err) {
-      console.error('[reminders] meeting reminder failed', b.id, err)
-    }
-  }
-  return n
-}
-
 /**
  * Cron endpoint (hourly), public path in middleware but gated by the bearer secret (Vercel cron sends `Authorization: Bearer $CRON_SECRET`).
- * 1) creates follow-up tasks for calls that ended, 2) emails guests a reminder ~24h before confirmed meetings,
+ * 1) creates follow-up tasks for calls that ended, 2) drafts a reminder ~24h before confirmed meetings (the host approves it on Today),
  * 3) closes requests whose time passed without approval, 4) emails each person (assignee, or the contact owner
  *    for unassigned tasks) one digest of tasks overdue / due today in THEIR time zone, during their daytime,
  *    logging `task.reminded` per (task, due date) so nobody is emailed twice about the same thing.
@@ -158,7 +128,7 @@ async function run(): Promise<Record<string, number>> {
     return { looked: 0, drafted: 0 }
   })
   const expired = await expireStalePending()
-  const meetingReminders = await sendMeetingReminders()
+  const meetingReminders = await draftMeetingReminders()
 
   // Only tasks on contacts that still exist and aren't archived.
   const leads = await prisma.lead.findMany({ select: { id: true, assignedToId: true, email: true, phone: true, firstName: true, lastName: true, company: true } })

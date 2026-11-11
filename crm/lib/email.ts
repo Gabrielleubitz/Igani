@@ -225,7 +225,7 @@ export async function sendBookingRequestedEmail(b: BookingEmailData): Promise<st
   return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Request received: ${b.title}`, html: await render(element), text: await render(element, { plainText: true }) })
 }
 
-/** Guest reminder ~24h before a confirmed meeting (sent by the hourly cron). */
+/** Guest reminder ~24h before a confirmed meeting. The hourly cron only drafts it; it goes out when the host approves it on Today. */
 export async function sendMeetingReminderEmail(b: BookingEmailData & { meetUrl: string | null }): Promise<string> {
   const element = MeetingReminder({ ...b, hostPhotoUrl: await avatarEmailUrlFor(b.hostEmail), logoUrl: logoUrl(), ...(await brand()) })
   return send({ to: b.guestEmail, replyTo: b.hostEmail, subject: `Reminder: ${b.title} is coming up`, html: await render(element), text: await render(element, { plainText: true }) })

@@ -1226,8 +1226,10 @@ model FollowUpDraft {
   body      String    @db.Text
   /// why it was drafted, in one line ("They asked for a quote on 3 Nov and haven't heard back")
   reason    String
-  /// unanswered | promise | quiet
+  /// unanswered | promise | quiet | reminder (the branded meeting reminder, sent to the guest once approved)
   kind      String
+  /// the meeting a reminder is for
+  bookingId String?
   /// open | sent | dismissed
   status    String    @default("open")
   createdAt DateTime  @default(now())

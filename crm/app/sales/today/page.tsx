@@ -518,7 +518,7 @@ export default async function TodayPage(): Promise<React.ReactElement> {
   // Drafts from the follow-up assistant waiting for this person
   const drafts = (
     await prisma.followUpDraft.findMany({
-      where: { userId: user.id, status: 'open', lead: { assignedToId: user.id } },
+      where: { userId: user.id, status: 'open' },
       orderBy: { createdAt: 'desc' },
       take: 10,
       select: { id: true, leadId: true, channel: true, subject: true, body: true, reason: true, kind: true, lead: { select: { firstName: true, lastName: true, company: true, email: true, phone: true } } },

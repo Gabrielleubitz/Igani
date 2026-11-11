@@ -6,7 +6,9 @@ import { toActionError, type ActionResult } from '@/app/actions/result'
 import { sendText } from '@/app/actions/sms'
 import { completeTask, deleteTask, emailContact } from '@/app/sales/actions'
 import { requireUser } from '@/lib/auth'
-import { BookingError } from '@/lib/bookings'
+import { BookingError, emailDataFor } from '@/lib/bookings'
+import { logActivity } from '@/lib/audit'
+import { sendMeetingReminderEmail } from '@/lib/email'
 import { coachingLanguage } from '@/lib/call-language'
 import { briefLead, type LeadBrief } from '@/lib/lead-brief'
 import { assertCanSeeLead } from '@/lib/lead-access'
@@ -44,7 +46,14 @@ export async function sendFollowUp(draftId: string, input: z.input<typeof SendDr
   try {
     const draft = await draftFor(draftId)
     const data = SendDraft.parse(input)
-    if (draft.channel === 'email') {
+    if (draft.kind === 'reminder') {
+      // the branded meeting reminder, to the guest of a meeting that is still on
+      const b = draft.bookingId ? await prisma.booking.findUnique({ where: { id: draft.bookingId }, select: { id: true, status: true, startTime: true, meetUrl: true } }) : null
+      if (!b || b.status !== 'CONFIRMED' || b.startTime.getTime() <= Date.now()) throw new BookingError('This meeting was cancelled, moved or has already started.', 'INVALID_STATE')
+      const user = await requireUser()
+      const emailId = await sendMeetingReminderEmail({ ...(await emailDataFor(b.id)), meetUrl: b.meetUrl })
+      await logActivity({ entityType: 'BOOKING', entityId: b.id, action: 'booking.reminder_sent', actorId: user.id, metadata: { emailId } })
+    } else if (draft.channel === 'email') {
       const r = await emailContact(draft.leadId, { subject: data.subject || draft.subject || 'Following up', body: data.body, lang: coachingLanguage(data.body), followUpDays: 3 })
       if (!r.ok) return r
     } else {
@@ -54,7 +63,7 @@ export async function sendFollowUp(draftId: string, input: z.input<typeof SendDr
       if (!r.ok) return r
       if (r.data.status === 'failed' || r.data.status === 'undelivered') return { ok: false, error: r.data.error ? `Text not sent: ${r.data.error}` : 'Text not sent.' }
     }
-    await prisma.followUpDraft.update({ where: { id: draft.id }, data: { status: 'sent', closedAt: new Date(), subject: draft.channel === 'email' ? data.subject || draft.subject : null, body: data.body } })
+    await prisma.followUpDraft.update({ where: { id: draft.id }, data: draft.kind === 'reminder' ? { status: 'sent', closedAt: new Date() } : { status: 'sent', closedAt: new Date(), subject: draft.channel === 'email' ? data.subject || draft.subject : null, body: data.body } })
     await completeTask(draft.leadId, draft.taskId)
     revalidatePath('/sales/today')
     return { ok: true, data: undefined }
