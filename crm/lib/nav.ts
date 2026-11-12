@@ -84,6 +84,7 @@ export const NAV: NavEntry[] = [
         roles: ['ADMIN'],
         children: [
           { id: 'video-library', label: 'Video library', icon: 'videos', href: '/admin/videos', roles: ['ADMIN'] },
+          { id: 'reels', label: 'Reels', icon: 'videos', href: '/admin/reels', roles: ['ADMIN'] },
           { id: 'website', label: 'Website', icon: 'website', href: '/admin/website', roles: ['ADMIN'] },
           { id: 'phone', label: 'Phone', icon: 'phone', href: '/admin/phone', roles: ['ADMIN'] },
         ],

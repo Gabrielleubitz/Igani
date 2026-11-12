@@ -28,6 +28,9 @@ const schema = z.object({
   TIKTOK_CLIENT_KEY: z.string().optional(),
   TIKTOK_CLIENT_SECRET: z.string().optional(),
   TIKTOK_JOB_SECRET: z.string().min(24).optional(),
+  /** Instagram API with Instagram Login (lib/instagram.ts): the app's Instagram app ID/secret (not the Facebook app ID). */
+  INSTAGRAM_APP_ID: z.string().optional(),
+  INSTAGRAM_APP_SECRET: z.string().optional(),
 })
 
 export type Env = z.infer<typeof schema>
