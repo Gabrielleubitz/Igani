@@ -1,0 +1,50 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@600;700;800&family=DM+Mono:wght@400;500&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ls:"League Spartan",sans-serif;--ar:Arial,"Liberation Sans",Helvetica,sans-serif;--mo:"DM Mono",monospace;--bd:#242424;--t:#ededed;--t2:rgba(237,237,237,.62);--t3:rgba(237,237,237,.38);--ac:#ec5c13;--ac2:#f07832;--ok:#6fe3a0}
+body{width:726px;height:900px;position:relative;overflow:hidden;font-family:var(--ar);color:var(--t);background:radial-gradient(520px 380px at 100% 0%,rgba(236,92,19,.13),transparent 70%),radial-gradient(460px 360px at 0% 100%,rgba(236,92,19,.07),transparent 70%),#0e0e0e}
+.hd{position:absolute;left:44px;top:40px}.hd img{height:54px;display:block;margin-left:-12px}
+.bento{position:absolute;left:54px;right:54px;top:124px;bottom:54px;display:grid;grid-template-columns:1.25fr 1fr;grid-template-rows:1fr 1fr;gap:14px}
+.c{position:relative;overflow:hidden;border-radius:26px;background:linear-gradient(180deg,#181818,#111);border:1px solid var(--bd);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 30px 50px -24px rgba(0,0,0,.9);padding:26px}
+.k{font:700 12px/1 var(--ls);letter-spacing:.14em;text-transform:uppercase;color:var(--ac2)}
+.h{margin-top:9px;font:700 25px/1.08 var(--ls);letter-spacing:-.005em;color:#fff}
+/* 1 */
+.rows{position:absolute;left:26px;right:26px;bottom:26px;display:grid;gap:9px}
+.rw{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:15px;background:#1b1b1b;border:1px solid #272727;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.av{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--ar);color:#fff;background:linear-gradient(140deg,#ff9a62,#ec5c13)}
+.av.g{background:linear-gradient(140deg,#4a4a4a,#2a2a2a)}
+.rw b{display:block;font:700 14.5px/1.15 var(--ar)}.rw small{display:block;margin-top:2px;font:400 11.5px var(--ar);color:var(--t2)}
+.pill{margin-left:auto;padding:6px 11px;border-radius:99px;font:700 11px var(--ar);white-space:nowrap;background:rgba(236,92,19,.16);color:#ff9357}
+.pill.ok{background:rgba(111,227,160,.13);color:var(--ok)}.pill.n{background:#262626;color:var(--t2)}
+/* 2 */
+.rec{position:absolute;right:24px;top:24px;display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;background:rgba(255,80,60,.13);font:700 10.5px var(--ar);letter-spacing:.06em;color:#ff8f84}.rec::before{content:"";width:7px;height:7px;border-radius:50%;background:#ff5a47;box-shadow:0 0 10px #ff5a47}
+.tm{position:absolute;left:26px;bottom:104px;font:500 46px/1 var(--mo);letter-spacing:-.04em;color:#fff}
+.wf{position:absolute;left:26px;right:26px;bottom:28px;height:60px;display:flex;align-items:center;gap:3px}
+.wf i{flex:1;border-radius:3px;background:#333}.wf i.on{background:linear-gradient(180deg,#ff9357,#ec5c13)}
+/* 3 */
+.ring{position:absolute;left:50%;bottom:30px;width:176px;height:176px;margin-left:-88px}
+.ring svg{width:176px;height:176px;filter:drop-shadow(0 0 26px rgba(236,92,19,.4))}
+.ring div{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring b{font:800 62px/1 var(--ls);color:#fff;margin-top:8px}.ring small{font:400 12px var(--ar);color:var(--t2);margin-top:-2px}
+/* 4 */
+.big{position:absolute;left:26px;top:112px}.big b{font:800 54px/1 var(--ls);color:#fff}.big span{display:inline-block;margin-left:10px;padding:5px 9px;border-radius:8px;background:rgba(111,227,160,.13);color:var(--ok);font:500 12px var(--mo);vertical-align:14px}
+.big small{display:block;margin-top:2px;font:400 12.5px var(--ar);color:var(--t2)}
+.area{position:absolute;left:0;right:0;bottom:0;width:100%;height:150px}
+</style></head><body>
+<div class="hd"><img src="logo-white.png"></div>
+<div class="bento">
+<div class="c"><div class="k">Custom CRM</div><div class="h">Every lead.<br>One place.</div>
+<div class="rows"><div class="rw"><span class="av">DL</span><div><b>Dana Levi</b><small>Acme Studio</small></div><span class="pill">New lead</span></div>
+<div class="rw"><span class="av g">YC</span><div><b>Yoni Cohen</b><small>Bluebird</small></div><span class="pill n">Contacted</span></div>
+<div class="rw"><span class="av g">ML</span><div><b>Maya Levin</b><small>Studio M</small></div><span class="pill ok">Demo booked</span></div></div></div>
+<div class="c"><div class="k">Call recording</div><div class="h">Every call,<br>saved.</div><span class="rec">REC</span>
+<div class="tm">04:12</div><div class="wf" id="wf"></div></div>
+<div class="c"><div class="k">Automatic call analysis</div><div class="h">Scored the moment<br>it ends.</div>
+<div class="ring"><svg viewBox="0 0 176 176"><defs><linearGradient id="r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffa26b"/><stop offset="1" stop-color="#ec5c13"/></linearGradient></defs><circle cx="88" cy="88" r="74" fill="none" stroke="#262626" stroke-width="13"/><circle cx="88" cy="88" r="74" fill="none" stroke="url(#r)" stroke-width="13" stroke-linecap="round" stroke-dasharray="344 465" transform="rotate(-90 88 88)"/></svg><div><b>74</b><small>call score</small></div></div></div>
+<div class="c"><div class="k">Manager view</div><div class="h">Clear performance,<br>at a glance.</div>
+<div class="big"><b>68</b><span>▲ 5.2%</span><small>Team average score</small></div>
+<svg class="area" viewBox="0 0 280 150" preserveAspectRatio="none"><defs><linearGradient id="a" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#ec5c13" stop-opacity=".45"/><stop offset="1" stop-color="#ec5c13" stop-opacity="0"/></linearGradient></defs>
+<path d="M0 118 C30 112 44 96 70 100 S112 84 138 74 S180 80 206 52 S250 40 280 22 L280 150 L0 150Z" fill="url(#a)"/><path d="M0 118 C30 112 44 96 70 100 S112 84 138 74 S180 80 206 52 S250 40 280 22" fill="none" stroke="#f07832" stroke-width="3" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg></div>
+</div>
+<script>const h=[18,34,52,30,70,92,60,40,78,100,66,44,84,58,36,62,88,50,28,46,72,54,32,20,40,64,48,26];document.getElementById("wf").innerHTML=h.map((v,i)=>'<i class="'+(i<17?'on':'')+'" style="height:'+v+'%"></i>').join("")</script>
+</body></html>

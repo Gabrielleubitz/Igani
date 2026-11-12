@@ -1,0 +1,1 @@
+const {chromium}=require('playwright');(async()=>{const b=await chromium.launch();for(const n of ['s5']){const p=await (await b.newContext({viewport:{width:726,height:900},deviceScaleFactor:2})).newPage();await p.goto('file://'+process.cwd()+'/'+n+'.html',{waitUntil:'networkidle'});await p.waitForTimeout(700);await p.screenshot({path:n+'.png'});}await b.close()})();
