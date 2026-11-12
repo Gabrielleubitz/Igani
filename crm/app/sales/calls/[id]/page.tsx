@@ -6,6 +6,7 @@ import { BENCHMARKS } from '@/lib/call-coaching'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { relationToCall } from '@/lib/call-access-db'
+import { DeleteCallButton } from '@/components/calls/DeleteCallButton'
 import { ShareCall } from '@/components/calls/ShareCall'
 import { AnalysisRefresher, CallPlayerProvider, ReanalyzeButton, SeekButton, Transcript } from '@/components/calls/CallView'
 import { StraightLineChart } from '@/components/calls/StraightLineChart'
@@ -591,6 +592,9 @@ const renderAnalysis = (a: NonNullable<ReturnType<typeof asAnalysis>>): React.Re
         {user.role === 'ADMIN' ? (
           <div className="mt-3">
             <ShareCall callId={call.id} candidates={people.map(toPerson)} shared={sharedRows.map((r) => toPerson(r.user))} />
+            <div className="mt-3">
+              <DeleteCallButton callId={call.id} />
+            </div>
           </div>
         ) : null}
         {isShared ? <p className="mt-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">This call was shared with you. It is not counted in your call numbers or average score.</p> : null}

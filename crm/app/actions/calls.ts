@@ -6,14 +6,14 @@ import { logActivity } from '@/lib/audit'
 import { requireUser, type SessionUser } from '@/lib/auth'
 import { identifyNumber, type CallerId } from '@/lib/caller-id'
 import { BookingError } from '@/lib/bookings'
-import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, advanceCall, createMissedCallTask, leadIdsByPhoneDigits, reconcileCall } from '@/lib/calls'
+import { CALL_LIMITS, CALL_OUTCOMES, FINAL_STATUSES, LIVE_STATUSES, MAX_CALL_MIN, advanceCall, createMissedCallTask, leadIdsByPhoneDigits, reconcileCall } from '@/lib/calls'
 import { leadName } from '@/lib/format'
 import { assertCanSeeLead, canSeeLead, leadScope } from '@/lib/lead-access'
 import { findExistingLead } from '@/lib/leads'
 import { dialProblem, formatPhone, toE164 } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
-import { dialerDemo } from '@/lib/twilio'
+import { dialerDemo, twilioClient, twilioConfig } from '@/lib/twilio'
 import { analyzeCall } from '@/lib/call-analysis'
 import { callLength, mayReviewByHand } from '@/lib/call-review-rules'
 import { statusAfterCall } from '@/lib/call-status'
@@ -493,6 +493,48 @@ export async function liveCalls(): Promise<ActionResult<{ calls: LiveCall[]; lis
       canListen: c.conference && Boolean(c.conferenceSid) && c.userId !== user.id,
     }))
     return { ok: true, data: { calls, listenIn: await getSetting('voice.listenIn') } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/**
+ * Delete a call for good (admins only): its row with the transcript and review, who it was shared with, and the Twilio
+ * recording. Leads, call lists and the activity on a lead's timeline stay. A call that is still going can't be deleted.
+ */
+export async function deleteCall(callId: string): Promise<ActionResult<{ recordingDeleted: boolean }>> {
+  try {
+    const admin = await requireUser(['ADMIN'])
+    const id = z.string().cuid().parse(callId)
+    const call = await prisma.call.findUnique({ where: { id }, select: { id: true, status: true, userId: true, leadId: true, toNumber: true, startedAt: true, durationSec: true, recordingSid: true, private: true } })
+    if (!call) throw new BookingError('Call not found.', 'NOT_FOUND')
+    const goingNow = LIVE_STATUSES.includes(call.status) && Date.now() - call.startedAt.getTime() < MAX_CALL_MIN * 60_000
+    if (goingNow) throw new BookingError('This call is still going. Delete it after it ends.', 'INVALID_STATE')
+    // The audio lives at Twilio: remove it too, so a deleted call leaves no recording behind.
+    let recordingDeleted = false
+    const cfg = twilioConfig()
+    if (call.recordingSid && cfg) {
+      try {
+        await twilioClient(cfg).recordings(call.recordingSid).remove()
+        recordingDeleted = true
+      } catch (err) {
+        // already gone at Twilio counts as deleted; anything else is only logged, the call is still removed
+        const status = (err as { status?: number }).status
+        if (status === 404) recordingDeleted = true
+        else console.error('[calls] could not delete the Twilio recording', call.id, err)
+      }
+    }
+    await prisma.call.delete({ where: { id: call.id } })
+    await logActivity({
+      entityType: 'USER',
+      entityId: admin.id,
+      actorId: admin.id,
+      action: 'call.deleted',
+      metadata: { callId: call.id, repId: call.userId, leadId: call.leadId, to: call.toNumber, startedAt: call.startedAt.toISOString(), durationSec: call.durationSec, private: call.private, hadRecording: Boolean(call.recordingSid), recordingDeleted },
+    })
+    revalidatePath('/sales/calls')
+    revalidatePath('/sales', 'layout')
+    return { ok: true, data: { recordingDeleted } }
   } catch (err) {
     return toActionError(err)
   }
