@@ -38,6 +38,9 @@ const ACTIONS: Record<string, Action> = {
   saveCallWrapUp: calls.saveCallWrapUp,
   liveCalls: calls.liveCalls,
   sendCallNote: calls.sendCallNote,
+  // admins listening in from the app (the audio comes from the listen relay; these start/stop the stream)
+  listenStart: calls.listenStart,
+  listenStop: calls.listenStop,
   callNotes: calls.callNotes,
   // the AI profile on a lead
   addProfileMeetingToCalendar: leadIntel.addProfileMeetingToCalendar,

@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// Admins: calls happening right now. Note slips a short text onto the rep's call screen (the client never sees it);
-/// the bubble messages the rep in team chat. Listening in is on the web CRM (Calls → Live now).
+/// the bubble messages the rep in team chat. Listen plays the call's audio through the listen relay (ListenSheet), muted
+/// and unannounced: it isn't a phone call, nobody on the call hears it.
 /// Shows nothing when nobody is on the phone.
 struct LiveCallsPanel: View {
     @Environment(Toasts.self) private var toasts
@@ -9,6 +10,7 @@ struct LiveCallsPanel: View {
     @State private var phone = Phone.shared
     @State private var messageRep: LiveCall.Rep?
     @State private var noteFor: LiveCall?
+    @State private var listenTo: LiveCall?
     @State private var noteText = ""
     @State private var sending = false
 
@@ -22,7 +24,7 @@ struct LiveCallsPanel: View {
                         Text("Live now").font(.headline).foregroundStyle(Theme.text)
                         Text("\(live.calls.count)").font(.caption.weight(.bold)).foregroundStyle(Theme.muted)
                         Spacer()
-                        Text(live.listenIn ? "Listen from the web" : "Listening in is off").font(.caption).foregroundStyle(Theme.muted)
+                        if !live.listenIn { Text("Listening in is off").font(.caption).foregroundStyle(Theme.muted) } else if live.listenReady == false { Text("Listening needs the relay").font(.caption).foregroundStyle(Theme.muted) }
                     }
                     ForEach(live.calls) { c in row(c, listenIn: live.listenIn) }
                 }
@@ -39,6 +41,7 @@ struct LiveCallsPanel: View {
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { messageRep = nil } } }
             }
         }
+        .sheet(item: $listenTo) { c in ListenSheet(call: c) }
         .alert("Note to \(noteFor?.rep.name ?? "the rep")", isPresented: Binding(get: { noteFor != nil }, set: { if !$0 { noteFor = nil } })) {
             TextField("Ask about their budget", text: $noteText)
             Button("Send") { send() }
@@ -104,7 +107,24 @@ struct LiveCallsPanel: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Message \(c.rep.name)")
             }
-            if c.status == "IN_PROGRESS" {
+            if c.canListen {
+                Button { listenTo = c } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "ear")
+                        Text("Listen").lineLimit(1)
+                    }
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(Theme.bg)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Theme.green, in: Capsule())
+                    .fixedSize()
+                    .frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(phone.onCall)
+                .opacity(phone.onCall ? 0.4 : 1)
+                .accessibilityLabel("Listen to \(c.rep.name)'s call")
+            } else if c.status == "IN_PROGRESS" {
                 Button { noteText = ""; noteFor = c } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "text.bubble")

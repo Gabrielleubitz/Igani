@@ -35,6 +35,7 @@
 		AA8BB6021DAE2F6BE2F9C973 /* CallScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A46A2AFA5181FA13B53711E /* CallScreen.swift */; };
 		ADE73497A600D23D81005708 /* MeetingScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD255EAADE2743D3FD479B /* MeetingScreens.swift */; };
 		AFC8C55A2B1B5F44E1323E54 /* SalesScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE3EC42F06AD6C3B4DD96AB /* SalesScreens.swift */; };
+		B0BFD5A8279BD107A896E07D /* ListenSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EECEFECAA1BA333077FEBBF /* ListenSheet.swift */; };
 		B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508FFF27437A22EE664F4639 /* MoreView.swift */; };
 		B468571772913AD07DB6C968 /* Pieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7545C8F3138B87B3CC295E7E /* Pieces.swift */; };
 		B65DC4CE793EFADD20D922B7 /* igani-chat.caf in Resources */ = {isa = PBXBuildFile; fileRef = 9B2CE17DA0F4C49B52B21C8E /* igani-chat.caf */; };
@@ -87,6 +88,7 @@
 		21A576F7741A54254AA872E1 /* KeypadFab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeypadFab.swift; sourceTree = "<group>"; };
 		253AAC50CF65AE0D44D0DC8B /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		2CCF43D7548265E175098940 /* ChatViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatViews.swift; sourceTree = "<group>"; };
+		2EECEFECAA1BA333077FEBBF /* ListenSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListenSheet.swift; sourceTree = "<group>"; };
 		3227A979AB1764CF5308A252 /* AdminScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdminScreens.swift; sourceTree = "<group>"; };
 		35005F07570C45CD38FD96E7 /* CallsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallsView.swift; sourceTree = "<group>"; };
 		3C5E508DD140AA183506097D /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
@@ -252,6 +254,7 @@
 			isa = PBXGroup;
 			children = (
 				35005F07570C45CD38FD96E7 /* CallsView.swift */,
+				2EECEFECAA1BA333077FEBBF /* ListenSheet.swift */,
 				798463C65EFF8848E44EA13B /* LiveCallsSection.swift */,
 			);
 			path = Calls;
@@ -476,6 +479,7 @@
 				E68CA3C7A91CA46DDDB3E4DA /* LeadDetailView.swift in Sources */,
 				84801D352964103FFE421731 /* LeadProfilePanel.swift in Sources */,
 				5B8E8FF6F84D160EB966BEE2 /* LeadsView.swift in Sources */,
+				B0BFD5A8279BD107A896E07D /* ListenSheet.swift in Sources */,
 				108ECCAC5C6185D3971FBDEE /* LiveCallsSection.swift in Sources */,
 				3A605B987D820B3760D355DA /* MeetView.swift in Sources */,
 				ADE73497A600D23D81005708 /* MeetingScreens.swift in Sources */,
@@ -614,7 +618,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 8T65J68WA2;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -681,7 +685,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 8T65J68WA2;
 				ENABLE_NS_ASSERTIONS = NO;
