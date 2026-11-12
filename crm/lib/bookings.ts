@@ -2,7 +2,7 @@ import { EARLY_STATUSES } from './call-status'
 import 'server-only'
 import type { Booking, BookingSource, Prisma } from '@prisma/client'
 import { logActivity } from './audit'
-import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, isSlotStillFree } from './calendar'
+import { createMeetEvent, deleteCalendarEvent, getAvailableSlots, getGoogleBusy, isSlotStillFree } from './calendar'
 import { getSetting } from './settings'
 import { createAutoTask, deleteAutoTasksForBooking } from './tasks'
 import { sendApprovalRequestEmail, sendBookingCancelledEmail, sendBookingConfirmedEmail, sendBookingRequestedEmail, sendTeammateMeetingEmail, type BookingEmailData } from './email'
@@ -223,6 +223,26 @@ export async function emailDataFor(bookingId: string): Promise<BookingEmailData>
     hostEmail: b.host.email ?? env().EMAIL_FROM,
     timeZone: b.host.timeZone,
     notes: b.notes,
+  }
+}
+
+/**
+ * When a teammate is busy in [from, to): meetings they host or were added to (pending or confirmed) and their Google
+ * Calendar. `google` is false when their calendar couldn't be read (not connected), so the caller can say so.
+ */
+export async function busyIntervalsFor(userId: string, from: Date, to: Date): Promise<{ busy: { start: Date; end: Date }[]; google: boolean }> {
+  const logs = await prisma.activityLog.findMany({ where: { entityType: 'BOOKING', action: 'booking.teammates', metadata: { path: ['userIds'], array_contains: userId } }, select: { entityId: true } })
+  const rows = await prisma.booking.findMany({
+    where: { status: { in: ['PENDING', 'CONFIRMED'] }, startTime: { lt: to }, endTime: { gt: from }, OR: [{ hostId: userId }, ...(logs.length ? [{ id: { in: logs.map((l) => l.entityId) } }] : [])] },
+    select: { startTime: true, endTime: true },
+  })
+  const busy = rows.map((r) => ({ start: r.startTime, end: r.endTime }))
+  try {
+    const tz = (await prisma.user.findUnique({ where: { id: userId }, select: { timeZone: true } }))?.timeZone || 'Asia/Jerusalem'
+    busy.push(...(await getGoogleBusy(userId, { start: from, end: to }, tz)))
+    return { busy, google: true }
+  } catch {
+    return { busy, google: false }
   }
 }
 

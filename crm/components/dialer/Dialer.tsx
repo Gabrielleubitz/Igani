@@ -9,6 +9,7 @@ import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect 
 import { abandonCall, callProgress, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
+import { CallActions } from './CallActions'
 import { playDtmf } from './dtmf'
 import { dialProblem, formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
 import type { CallerId } from '@/lib/caller-id'
@@ -1114,10 +1115,13 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, 
   const { call, phase } = session
   const name = call.lead?.name ?? call.prospect?.name
   const [tones, setTones] = useState('')
+  const [acting, setActing] = useState(false)
+  const actionsFor = phase === 'live' && call.lead && !call.private ? call.lead : null
+  const compact = acting && !showPad
   const status = phase === 'connecting' ? 'Calling…' : phase === 'ringing' ? 'Ringing…' : session.answeredAt ? fmt(now - session.answeredAt) : ''
   return (
-    <div className="flex flex-1 flex-col items-center gap-6 px-6 pb-7 pt-8">
-      <div className="relative flex h-24 w-24 items-center justify-center">
+    <div className={cn('flex min-h-0 flex-1 flex-col items-center overflow-y-auto px-6 pb-7', compact ? 'gap-3 pt-4' : 'gap-6 pt-8')}>
+      <div className={cn('relative items-center justify-center', compact ? 'hidden' : 'flex h-24 w-24')}>
         {phase !== 'live' ? (
           <>
             <span className="absolute -inset-3 animate-ping rounded-full border-2 border-primary/40 motion-reduce:hidden" />
@@ -1186,7 +1190,7 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, 
           />
         </div>
       ) : (
-        <div className="flex-1" />
+        <div className="flex w-full flex-1 flex-col justify-end">{actionsFor ? <CallActions lead={actionsFor} onOpenChange={setActing} /> : null}</div>
       )}
 
       <div className="flex items-center justify-center gap-6">
