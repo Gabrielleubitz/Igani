@@ -1,5 +1,6 @@
 import { ListChecks } from 'lucide-react'
 import Link from 'next/link'
+import { ImportCallListCsv } from '@/components/crm/ImportCallListCsv'
 import { PageIntro } from '@/components/PageIntro'
 import { buttonVariants } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -26,9 +27,12 @@ export default async function CallListsPage(): Promise<React.ReactElement> {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <PageIntro title="Call lists" hint="Businesses to call. Call them from the dialer’s Lists tab; when a call goes well, pick “Interested” and the business becomes your lead." />
-        <Link href="/sales/leads" className={buttonVariants({ variant: 'outline' })}>
-          Find businesses
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <ImportCallListCsv />
+          <Link href="/sales/leads" className={buttonVariants({ variant: 'outline' })}>
+            Find businesses
+          </Link>
+        </div>
       </div>
       {lists.length === 0 ? (
         <EmptyState title="No call lists yet" description="On the Leads page, use Find businesses to search Google Maps (e.g. real estate in Jerusalem) and put the results on a call list." />

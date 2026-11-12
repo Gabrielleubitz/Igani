@@ -6,13 +6,19 @@ import { z } from 'zod'
 import { logActivity } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { BookingError } from '@/lib/bookings'
+import { IMPORT_MAX_CHARS, ImportFileError, prepareImport } from '@/lib/call-list-import'
 import { OPEN_PROSPECT, assertCanUseList, assertCanUseProspect, convertProspect, listScope } from '@/lib/call-lists'
 import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
+import { getSetting } from '@/lib/settings'
 import { allPhones, asDetails, askFor, enrichProspect } from '@/lib/prospect-details'
 import { toActionError, type ActionResult } from './result'
 
 const callers = ['ADMIN', 'SALES'] as const
+
+async function allowedCountries(): Promise<readonly ('IL' | 'US')[]> {
+  return getSetting('voice.countries')
+}
 
 const refresh = (listId?: string): void => {
   revalidatePath('/sales/call-lists')
@@ -214,6 +220,104 @@ export async function refreshProspectDetails(prospectId: string): Promise<Action
     const after = await prisma.prospect.findUnique({ where: { id: p.id }, select: { enrichStatus: true } })
     refresh(p.listId)
     return { ok: true, data: { status: after?.enrichStatus ?? null } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/* ------------------------------------------------------------------------------------------------------------
+ * Import a CSV of people to call
+ * ---------------------------------------------------------------------------------------------------------- */
+
+const importSchema = z
+  .object({
+    text: z.string().min(1).max(IMPORT_MAX_CHARS),
+    /** add to one of your lists… */
+    listId: z.string().cuid().optional(),
+    /** …or start a new one (admins can make it for a teammate) */
+    newList: z.object({ name: z.string().trim().min(1).max(120), ownerId: z.string().cuid().optional() }).optional(),
+  })
+  .refine((d) => Boolean(d.listId) !== Boolean(d.newList), { message: 'Pick a call list or name a new one', path: ['listId'] })
+
+export interface CsvImportResult {
+  listId: string
+  listName: string
+  added: number
+  /** the number is already a lead */
+  alreadyLead: number
+  /** the number is already on a call list */
+  alreadyOnList: number
+  duplicatesInFile: number
+  rejected: { line: number; reason: string }[]
+  rejectedCount: number
+}
+
+/**
+ * Put the people in a CSV on a call list. Skipped: numbers we can't dial, numbers that are already a lead or already on a
+ * call list (anyone's), and repeats inside the file. A list given to a salesperson is visible to them (and admins) only.
+ */
+export async function importCsvToCallList(input: z.input<typeof importSchema>): Promise<ActionResult<CsvImportResult>> {
+  try {
+    const user = await requireUser([...callers])
+    const data = importSchema.parse(input)
+    let prepared
+    try {
+      prepared = prepareImport(data.text, await allowedCountries())
+    } catch (err) {
+      if (err instanceof ImportFileError) throw new BookingError(err.message, 'INVALID_STATE')
+      throw err
+    }
+    if (!prepared.rows.length) throw new BookingError(`None of the ${prepared.total} rows has a number we can call.${prepared.rejected[0] ? ` For example, line ${prepared.rejected[0].line}: ${prepared.rejected[0].reason}` : ''}`, 'INVALID_STATE')
+
+    let ownerId = user.id
+    if (data.newList?.ownerId && data.newList.ownerId !== user.id) {
+      if (user.role !== 'ADMIN') throw new BookingError('Only admins can make a list for someone else.', 'FORBIDDEN')
+      const owner = await prisma.user.findUnique({ where: { id: data.newList.ownerId }, select: { role: true } })
+      if (!owner || owner.role === 'MARKETING') throw new BookingError('Pick a salesperson or admin.', 'INVALID_STATE')
+      ownerId = data.newList.ownerId
+    }
+    if (data.listId) await assertCanUseList(data.listId, user)
+
+    const keys = [...new Set(prepared.rows.map((r) => r.phone.replace(/\D/g, '').slice(-8)))]
+    const result = await prisma.$transaction(
+      async (tx) => {
+        // One import at a time, so two uploads of the same file can't both add a number.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('places.import'))`
+        const [leads, prospects] = await Promise.all([
+          tx.$queryRaw<{ pkey: string }[]>`
+            SELECT DISTINCT right(regexp_replace(phone, '[^0-9]', '', 'g'), 8) AS pkey FROM "Lead"
+            WHERE phone IS NOT NULL AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 8) = ANY(${keys}::text[])`,
+          tx.$queryRaw<{ pkey: string }[]>`
+            SELECT DISTINCT right(regexp_replace(phone, '[^0-9]', '', 'g'), 8) AS pkey FROM "Prospect"
+            WHERE status <> 'CONVERTED' AND right(regexp_replace(phone, '[^0-9]', '', 'g'), 8) = ANY(${keys}::text[])`,
+        ])
+        const leadKeys = new Set(leads.map((r) => r.pkey))
+        const listKeys = new Set(prospects.map((r) => r.pkey))
+        const fresh = prepared.rows.filter((r) => {
+          const k = r.phone.replace(/\D/g, '').slice(-8)
+          return !leadKeys.has(k) && !listKeys.has(k)
+        })
+        const alreadyLead = prepared.rows.filter((r) => leadKeys.has(r.phone.replace(/\D/g, '').slice(-8))).length
+        const alreadyOnList = prepared.rows.length - fresh.length - alreadyLead
+        const list = data.listId
+          ? await tx.callList.update({ where: { id: data.listId }, data: { updatedAt: new Date() }, select: { id: true, name: true } })
+          : await tx.callList.create({ data: { name: data.newList!.name, ownerId }, select: { id: true, name: true } })
+        const created = fresh.length
+          ? await tx.prospect.createMany({ data: fresh.map((r) => ({ listId: list.id, name: r.name, phone: r.phone, website: r.website, enrichStatus: 'none' })) })
+          : { count: 0 }
+        return { listId: list.id, listName: list.name, added: created.count, alreadyLead, alreadyOnList }
+      },
+      { timeout: 30_000 },
+    )
+    const out: CsvImportResult = {
+      ...result,
+      duplicatesInFile: prepared.duplicatesInFile,
+      rejected: prepared.rejected.slice(0, 20),
+      rejectedCount: prepared.rejected.length,
+    }
+    await logActivity({ entityType: 'USER', entityId: user.id, actorId: user.id, action: 'call_list.csv_import', metadata: { ...result, rows: prepared.total, rejected: prepared.rejected.length, duplicatesInFile: prepared.duplicatesInFile } })
+    refresh(result.listId)
+    return { ok: true, data: out }
   } catch (err) {
     return toActionError(err)
   }
