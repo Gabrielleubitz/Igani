@@ -950,6 +950,7 @@ model MeetRoom {
   invites      MeetInvite[]
   recordings   MeetRecording[]
   presence     MeetPresence[]
+  reactions    MeetReaction[]
 
   @@index([hostId, createdAt])
 }
@@ -1261,4 +1262,19 @@ model FollowUpDraft {
 
   @@index([userId, status])
   @@index([leadId, createdAt])
+}
+
+/// An emoji reaction in a Meet call, relayed through the CRM so it reaches everyone even in a direct (peer-to-peer)
+/// call where Jitsi's data channel isn't open. Kept for a couple of minutes, then deleted.
+model MeetReaction {
+  id        String   @id
+  roomId    String
+  /// the sender's tab (same random key as presence), so a tab skips its own
+  key       String
+  name      String
+  emoji     String
+  createdAt DateTime @default(now())
+  room      MeetRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
 }

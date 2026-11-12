@@ -976,6 +976,10 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
   const [messages, setMessages] = useState<ChatMsg[]>([])
   const [unread, setUnread] = useState(0)
   const [flying, setFlying] = useState<Flying[]>([])
+  /** reactions already shown, by id: each one is sent two ways (the call's data channel and the CRM) */
+  const seenReactions = useRef(new Set<string>())
+  /** this tab, as the CRM's reaction relay knows it (to skip its own) */
+  const [reactionKey] = useState(() => Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => (b % 36).toString(36)).join(''))
   const [full, setFull] = useState(false)
   // what this device can do: iPhones can't share their screen or go full screen from a web page
   const [canShare] = useState(() => typeof navigator !== 'undefined' && typeof navigator.mediaDevices?.getDisplayMedia === 'function' && !/iPhone|iPod|Android.*Mobile/i.test(navigator.userAgent))
@@ -1005,7 +1009,12 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
     setToasts((t) => [...t.slice(-2), { id, text, tone }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4500)
   }, [])
-  const fly = useCallback((emoji: string, name: string) => {
+  const fly = useCallback((emoji: string, name: string, reactionId?: string) => {
+    if (reactionId) {
+      if (seenReactions.current.has(reactionId)) return
+      seenReactions.current.add(reactionId)
+      if (seenReactions.current.size > 300) seenReactions.current = new Set([...seenReactions.current].slice(-150))
+    }
     const id = ++seq.current
     setFlying((f) => [...f.slice(-14), { id, emoji, name, left: 4 + Math.random() * 22 }])
     setTimeout(() => setFlying((f) => f.filter((x) => x.id !== id)), 4200)
@@ -1142,9 +1151,9 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
     api.addListener('endpointTextMessageReceived', (e: { senderInfo?: { id?: string }; eventData?: { text?: string } }) => {
       const text = e.eventData?.text ?? ''
       if (!text.startsWith(REACTION_TAG)) return
-      const emoji = text.slice(REACTION_TAG.length)
+      const [emoji = '', reactionId] = text.slice(REACTION_TAG.length).split('|')
       if (!REACTIONS.includes(emoji)) return
-      fly(emoji, names.get(e.senderInfo?.id ?? '')?.name ?? 'Someone')
+      fly(emoji, names.get(e.senderInfo?.id ?? '')?.name ?? 'Someone', reactionId)
     })
     // someone's microphone went on or off; if it's mine and I didn't do it, the host muted me
     api.addListener('participantMuted', (e: { participantId?: string; isMuted?: boolean; mediaType?: string }) => {
@@ -1204,6 +1213,31 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- listeners are added once per call; me/blur are the values at join
   }, [apiRaw, toast, fly, moderator])
+
+  // everyone's reactions, through the CRM (works in direct 1-to-1 calls too): checked every 1.5 s while in the call
+  useEffect(() => {
+    if (!joinedAt) return
+    let since = Date.now() - 2000
+    let stop = false
+    const url = (): string => `/api/public/meet/${encodeURIComponent(presence.code)}/reactions?since=${since}${presence.token ? `&t=${encodeURIComponent(presence.token)}` : ''}`
+    const tick = async (): Promise<void> => {
+      if (stop || document.hidden) return
+      try {
+        const res = await fetch(url(), { cache: 'no-store' })
+        if (!res.ok) return
+        const d = (await res.json()) as { now: number; reactions: { id: string; key: string; name: string; emoji: string; at: number }[] }
+        for (const r of d.reactions) if (r.key !== reactionKey && REACTIONS.includes(r.emoji)) fly(r.emoji, r.name, r.id)
+        since = Math.max(since, d.now - 1500)
+      } catch {
+        // offline for a moment: the next tick catches up
+      }
+    }
+    const t = setInterval(() => void tick(), 1500)
+    return () => {
+      stop = true
+      clearInterval(t)
+    }
+  }, [joinedAt, presence.code, presence.token, reactionKey, fly])
 
   // tell the lobby who's here: check in every 20s, check out on leaving
   useEffect(() => {
@@ -1418,8 +1452,12 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
     }, 25_000)
   }
   const react = (emoji: string): void => {
-    fly(emoji, 'You')
-    for (const id of Object.keys(people)) api.executeCommand('sendEndpointTextMessage', id, `${REACTION_TAG}${emoji}`)
+    const reactionId = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => (b % 36).toString(36)).join('')
+    fly(emoji, 'You', reactionId)
+    // instant where the call runs through the meeting server; in a direct 1-to-1 call (peer-to-peer) Jitsi's data channel
+    // isn't open, so the CRM relays it too (everyone polls it), and the id stops it showing twice
+    for (const id of Object.keys(people)) api.executeCommand('sendEndpointTextMessage', id, `${REACTION_TAG}${emoji}|${reactionId}`)
+    void fetch(`/api/public/meet/${encodeURIComponent(presence.code)}/reactions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ t: presence.token, id: reactionId, key: reactionKey, name: me.name, emoji }) }).catch(() => undefined)
   }
   const chooseLayout = (l: Layout): void => {
     setLayout(l)
