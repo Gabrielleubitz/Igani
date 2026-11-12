@@ -1,4 +1,12 @@
 import { GRADIENT, STAGE_TONE, Tag } from '@/components/ui/tone'
+import { CatchUp } from '@/components/crm/lead/CatchUp'
+import { LeadActivities } from '@/components/crm/lead/LeadActivities'
+import { QuickActions } from '@/components/crm/lead/QuickActions'
+import { Section } from '@/components/crm/lead/Section'
+import { CopyButton } from '@/components/ui/copy-button'
+import { challengesFrom, insightBullets, interactionSplit, sentimentFrom, type CallRead } from '@/lib/lead-catchup'
+import { buildTimeline } from '@/lib/lead-timeline'
+import { cn } from '@/lib/utils'
 import { aiTidyEnabled } from '@/lib/meeting-ai'
 import { organizedFor } from '@/lib/organize-notes'
 import type { Metadata } from 'next'
@@ -9,27 +17,22 @@ import { notFound } from 'next/navigation'
 import { leadScore, scoreLabel, staleDays } from '@/components/crm/crm-utils'
 import { BriefMeButton } from '@/components/crm/BriefMeButton'
 import { EditLeadButton } from '@/components/crm/EditLeadButton'
-import { EmailComposer } from '@/components/crm/EmailComposer'
 import { EmailsPanel, type EmailView } from '@/components/crm/EmailsPanel'
 import { googleGrants } from '@/lib/google'
 import { MeetConnectBanner, MeetingCall, MeetingSyncTrigger, type MeetingCallView } from '@/components/crm/MeetingCall'
-import { LeadActions } from '@/components/crm/LeadActions'
 import { LeadDocuments } from '@/components/crm/LeadDocuments'
 import { OFFER_STATUS_LABEL, OFFER_STATUS_TONE } from '@/lib/offer-admin'
 import { offerScope } from '@/lib/offer-access'
-import { formatPrice } from '@/lib/offer-modules'
-import { AddNoteForm, AddTaskForm, LogTouchButtons, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
+import { AddTaskForm, TaskRow, type TaskView } from '@/components/crm/LeadNotesTasks'
 import { StagePill } from '@/components/crm/StagePill'
 import { AdminDealPanel, MyCommissionCard } from '@/components/crm/AdminDealPanel'
 import { LeadControls } from '@/components/LeadControls'
 import { LeadProfileCard } from '@/components/crm/LeadProfileCard'
 import { readProfile } from '@/lib/lead-intel'
 import { Badge } from '@/components/ui/badge'
-import { buttonVariants } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { requireUser } from '@/lib/auth'
 import { appUrl } from '@/lib/env'
-import { formatDateTime, formatMoney, leadName, statusLabel, timeAgo } from '@/lib/format'
+import { formatDateTime, formatMoney, leadName, timeAgo } from '@/lib/format'
 import { recipientLabel } from '@/lib/email-labels'
 import { canSeeLead } from '@/lib/lead-access'
 import { dealTerms, parseTerms, salespersonCommissionView, statusOf, type CommissionBreakdown, type CommissionTerms } from '@/lib/commission'
@@ -48,33 +51,14 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   return { title: lead && canSeeLead(user, lead) ? leadName(lead) : 'Contact' }
 }
 
-const ICON: Record<string, string> = {
-  'meeting.started': '🟢',
-  'meeting.ended': '🎥',
-  'meeting.not_held': '⚪',
-  'meeting.notes': '✨',
-  'note.added': '📝',
-  'touch.logged': '📞',
-  'email.sent': '✉️',
-  'email.received': '📨',
-  'lead.status_changed': '🏷️',
-  'lead.assigned': '👤',
-  'lead.created': '✨',
-  'lead.resubmitted': '🔁',
-  'lead.edited': '✏️',
-  'lead.archived': '🗄️',
-  'lead.restored': '♻️',
-  'meeting.cancelled': '🚫',
-}
-const TOUCH: Record<string, string> = { call: 'Call', email: 'Email', meeting: 'Meeting', whatsapp: 'WhatsApp' }
-const HIDDEN = new Set(['task.reminded'])
 const MONEY_EVENTS = ['lead.price_changed', 'lead.commission_overridden', 'lead.commission_recalculated', 'lead.commission_payment', 'lead.source_type_changed'] as const
 
 // rebuilding a lead's profile reads several calls with AI
 export const maxDuration = 300
 
-export default async function LeadPage(props: { params: Promise<{ id: string }> }): Promise<React.ReactElement> {
-  const params = await props.params;
+export default async function LeadPage(props: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }): Promise<React.ReactElement> {
+  const params = await props.params
+  const tab = (await props.searchParams).tab === 'activities' ? 'activities' : 'catch-up'
   const user = await requireUser()
   const isAdmin = user.role === 'ADMIN'
   const lead = await prisma.lead.findUnique({
@@ -156,101 +140,14 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
   const upcoming = lead.bookings.filter((b) => b.status !== 'CANCELLED' && b.endTime >= now).reverse()
   const past = lead.bookings.filter((b) => !(b.status !== 'CANCELLED' && b.endTime >= now))
 
-  const describe = (l: (typeof logs)[number]): { title: string; body?: string } => {
-    const m = (l.metadata ?? {}) as Record<string, unknown>
-    const s = (v: unknown): string => (v == null ? '' : String(v))
-    switch (l.action) {
-      case 'note.added':
-        return { title: 'Note', body: s(m.body) }
-      case 'touch.logged':
-        return { title: `${TOUCH[s(m.kind)] ?? 'Touch'} logged`, body: s(m.summary) || undefined }
-      case 'email.sent':
-        return { title: `${m.via === 'gmail' ? 'Emailed from Gmail' : 'Email sent'}: ${s(m.subject)}${m.followUpDays ? ` · reminder in ${s(m.followUpDays)} days if no reply` : ''}`, body: s(m.body) ? s(m.body).slice(0, 280) + (s(m.body).length > 280 ? '…' : '') : undefined }
-      case 'email.received':
-        return { title: `Email from ${s(m.from)}: ${s(m.subject)}`, body: s(m.body) ? s(m.body).slice(0, 280) + (s(m.body).length > 280 ? '…' : '') : undefined }
-      case 'lead.status_changed':
-        return {
-          title: `Stage: ${statusLabel(s(m.from))} → ${statusLabel(s(m.to))}`,
-          body: [m.lostReason ? `Reason: ${s(m.lostReason)}` : '', isAdmin && (m.quotedPrice ?? m.dealValue) != null ? `Quoted price: ₪${formatMoney(Number(m.quotedPrice ?? m.dealValue))}` : '', m.bookingId ? 'Meeting booked' : ''].filter(Boolean).join(' · ') || undefined,
-        }
-      case 'lead.assigned': {
-        const to = m.to ?? m.assignedToId
-        const who = (id: unknown): string => (id ? (nameOf.get(String(id)) ?? 'former teammate') : 'nobody')
-        const how = m.strategy === 'round-robin' ? ' (auto, round-robin)' : m.strategy === 'reassign-on-deactivate' ? ' (owner left the team)' : ''
-        return { title: 'from' in m ? `Owner: ${who(m.from)} → ${who(to)}${how}` : `Assigned to ${who(to)}${how}` }
-      }
-      case 'lead.created':
-        return { title: `Lead created${m.source ? ` · source ${s(m.source)}` : ''}` }
-      case 'lead.resubmitted':
-        return { title: `Contacted us again${m.source ? ` via ${s(m.source)}` : ''}`, body: s(m.message) || undefined }
-      case 'lead.edited':
-        return { title: `Details edited${Array.isArray(m.fields) && m.fields.length ? `: ${(m.fields as string[]).join(', ')}` : ''}` }
-      case 'lead.archived':
-        return { title: 'Archived' }
-      case 'lead.restored':
-        return { title: 'Restored from archive' }
-      case 'lead.assignment_skipped':
-        return { title: 'Auto-assign skipped: no active sales reps' }
-      case 'meeting.started':
-        return { title: `Call started: ${s(m.title)}`, body: m.at ? formatDateTime(new Date(s(m.at)), tz) : undefined }
-      case 'meeting.ended':
-        return { title: `Call ended: ${s(m.title)}${m.minutes != null ? ` · ${s(m.minutes)} min` : ''}`, body: Array.isArray(m.people) && m.people.length ? `Joined: ${(m.people as string[]).join(', ')}` : undefined }
-      case 'meeting.not_held':
-        return { title: `Nobody joined the call: ${s(m.title)}` }
-      case 'meeting.notes':
-        return { title: `Gemini notes: ${s(m.title)}`, body: s(m.summary) ? s(m.summary).slice(0, 400) + (s(m.summary).length > 400 ? '…' : '') : 'Notes doc linked under Meetings' }
-      case 'meeting.cancelled':
-        return { title: `Meeting cancelled: ${s(m.title)}`, body: m.start ? formatDateTime(new Date(s(m.start)), tz) : undefined }
-      case 'call.ended': {
-        const secs = Number(m.durationSec ?? 0)
-        const talk = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`
-        const how = m.answered ? `talked ${talk}` : ({ BUSY: 'busy', NO_ANSWER: 'no answer', FAILED: 'didn’t go through', CANCELED: 'hung up before they answered' } as Record<string, string>)[s(m.status)] ?? 'not answered'
-        return { title: `📞 ${m.direction === 'INBOUND' ? 'Call from' : 'Called'} ${formatPhone(s(m.direction === 'INBOUND' ? m.from : m.to))} · ${how}` }
-      }
-      case 'sms.sent':
-        return { title: `💬 Text to ${formatPhone(s(m.to))}`, body: s(m.body) || undefined }
-      case 'sms.received':
-        return { title: `💬 Text from ${formatPhone(s(m.from))}`, body: s(m.body) || (m.media ? 'Picture or file (open it in Twilio)' : undefined) }
-      case 'call.analyzed':
-        return { title: `Call summary${m.outcome ? `: ${s(m.outcome)}` : ''}`, body: [s(m.summary), m.nextStep ? `Next step: ${s(m.nextStep)}` : ''].filter(Boolean).join('\n') || undefined }
-      case 'call.outcome':
-        return { title: `Call outcome: ${({ interested: 'Interested', connected: 'Connected', voicemail: 'Left voicemail', no_answer: 'No answer', busy: 'Busy', callback: 'Call back later', not_interested: 'Not interested', wrong_number: 'Wrong number' } as Record<string, string>)[s(m.outcome)] ?? s(m.outcome)}`, body: s(m.notes) || undefined }
-      case 'task.created':
-        return { title: `Task added: ${s(m.title)}`, body: m.auto === 'invoice' ? 'Created when the client signed the offer' : m.auto ? 'Created automatically around a meeting' : undefined }
-      case 'task.completed':
-        return { title: `Task done: ${titles.get(s(m.taskId)) ?? 'task'}` }
-      case 'task.reopened':
-        return { title: `Task reopened: ${titles.get(s(m.taskId)) ?? 'task'}` }
-      case 'task.updated':
-        return { title: `Task edited: ${titles.get(s(m.taskId)) ?? 'task'}` }
-      case 'task.deleted':
-        return { title: `Task deleted: ${titles.get(s(m.taskId)) ?? 'task'}` }
-      case 'offer.created':
-        return { title: `Offer created: ${s(m.title)}` }
-      case 'offer.live':
-        return { title: 'Offer published to the client' }
-      case 'offer.draft':
-        return { title: 'Offer taken back to draft' }
-      case 'offer.archived':
-        return { title: 'Offer archived' }
-      case 'offer.deleted':
-        return { title: 'Draft offer deleted' }
-      case 'offer.signed':
-        return { title: `Offer signed online by ${s(m.signerName)}`, body: isAdmin && m.total != null ? `One-time total ${formatPrice(Number(m.total), s(m.currency) || 'ILS')} · signed PDF in Documents` : 'Signed PDF in Documents' }
-      case 'document.added':
-        return { title: `Document added: ${s(m.title)}` }
-      case 'document.removed':
-        return { title: `Document removed: ${s(m.title)}` }
-      case 'lead.price_changed':
-        return { title: `Quoted price: ${m.from != null ? `₪${formatMoney(Number(m.from))}` : 'none'} → ${m.to != null ? `₪${formatMoney(Number(m.to))}` : 'none'}` }
-      case 'lead.commission_payment':
-        return { title: `${s(m.kind) === 'received' ? 'Client payment received' : 'Commission paid out'}${m.date ? ` (${s(m.date)})` : ' (undone)'}` }
-      default:
-        return { title: l.action.replace(/[._]/g, ' ') };
-    }
-  }
-  // Email bodies live in the Emails card; the timeline shows a one-line entry for each.
-  const timeline = logs.filter((l) => !HIDDEN.has(l.action))
+  const timeline = buildTimeline({
+    logs,
+    tasks: tasks.map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt, done: t.done })),
+    bookings: lead.bookings.map((b) => ({ id: b.id, title: b.title, startTime: b.startTime, endTime: b.endTime, status: b.status, hostName: b.host.name })),
+    now,
+    ctx: { isAdmin, tz, nameOf, titles },
+    me: user.id,
+  })
   const unreadEmails = emailRows.filter((e) => e.direction === 'INBOUND' && !e.readAt).length
   const emails: EmailView[] = emailRows.map((e) => ({
     id: e.id,
@@ -320,77 +217,200 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
     ] as [string, React.ReactNode][]
   ).filter(([, v]) => v !== null && v !== '' && v !== undefined)
 
+  // Catch-up: what the analysed calls said (only four fields, never the transcript). Marketing sees no call insights.
+  const showCallInsights = user.role !== 'MARKETING'
+  const callRows = showCallInsights
+    ? await prisma.$queryRaw<{ sentiment: string | null; summary: string | null; nextStep: string | null; objections: unknown; startedAt: Date }[]>`
+        SELECT analysis->>'sentiment' AS sentiment, analysis->>'summary' AS summary, analysis->>'nextStep' AS "nextStep", analysis->'objections' AS objections, "startedAt"
+        FROM "Call" WHERE "leadId" = ${lead.id} AND simulated = false AND analysis IS NOT NULL ORDER BY "startedAt" DESC LIMIT 5`
+    : []
+  const reads: CallRead[] = callRows.map((r) => ({
+    sentiment: r.sentiment === 'positive' || r.sentiment === 'neutral' || r.sentiment === 'negative' ? r.sentiment : null,
+    summary: r.summary,
+    nextStep: r.nextStep,
+    objections: Array.isArray(r.objections) ? (r.objections as { objection?: unknown }[]).map((o) => (typeof o?.objection === 'string' ? o.objection : '')).filter(Boolean) : [],
+    at: r.startedAt.toISOString(),
+  }))
+  const profile = user.role !== 'MARKETING' ? readProfile(lead.profile) : null
+  const split = interactionSplit(timeline, now)
+  const nextOpenTask = taskViews.find((t) => !t.done)
+  const bullets = insightBullets({
+    reads,
+    nextTask: nextOpenTask ? { title: nextOpenTask.title, due: nextOpenTask.dueLabel } : null,
+    nextMeeting: upcoming[0] ? { title: upcoming[0].title, when: formatDateTime(upcoming[0].startTime, tz) } : null,
+    profileNeeds: profile?.lists.needs.map((n) => n.value) ?? [],
+  })
+  const challenges = challengesFrom(profile?.lists.pains.map((x) => x.value) ?? [], reads)
+  const editProps = { leadId: lead.id, canEditEmail: isAdmin, initial: { email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail } }
+  const roleLine = profile?.fields.role?.value ?? null
+  const name = leadName(lead)
+
+  const tabHref = (t: string): string => `/sales/leads/${lead.id}?tab=${t}`
+  const tabs = [
+    { id: 'catch-up', label: 'Catch-up' },
+    { id: 'activities', label: 'Activities' },
+  ]
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <Link href="/sales/leads" className="text-sm text-muted-foreground underline-offset-4 hover:underline">
         ← All contacts
       </Link>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
-            <div aria-hidden className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-lg font-semibold text-white shadow-lg ring-1 ring-white/15 ${GRADIENT[STAGE_TONE[lead.status]]}`}>
-              {(lead.firstName?.[0] ?? lead.email?.[0] ?? '?').toUpperCase()}
-              {lead.lastName?.[0]?.toUpperCase() ?? ''}
-            </div>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="truncate text-2xl font-semibold">{leadName(lead)}</h1>
-                <EditLeadButton key={`h-${lead.updatedAt.toISOString()}`} name={leadName(lead)} leadId={lead.id} canEditEmail={isAdmin} initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }} />
-                <BriefMeButton leadId={lead.id} name={leadName(lead)} />
+      <div className="grid gap-4 lg:grid-cols-[22rem_minmax(0,1fr)] [&>*]:min-w-0">
+        {/* The contact card */}
+        <div className="order-1 lg:col-start-1 lg:row-start-1">
+          <div className="space-y-4 rounded-xl border bg-card p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div aria-hidden className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-xl font-semibold text-white shadow-lg ring-1 ring-white/15 ${GRADIENT[STAGE_TONE[lead.status]]}`}>
+                {(lead.firstName?.[0] ?? lead.email?.[0] ?? '?').toUpperCase()}
+                {lead.lastName?.[0]?.toUpperCase() ?? ''}
               </div>
-              <p className="truncate text-sm text-muted-foreground">{[lead.company, lead.email ?? lead.phone].filter(Boolean).join(' · ')}</p>
+              <div className="min-w-0">
+                <h1 className="break-words text-xl font-semibold leading-tight">{name}</h1>
+                {[roleLine, lead.company].filter(Boolean).length ? <p className="mt-0.5 break-words text-sm text-muted-foreground">{[roleLine, lead.company].filter(Boolean).join(' at ')}</p> : null}
+                {lead.email ? (
+                  <p className="mt-1 flex items-center gap-1 text-sm">
+                    <a href={`mailto:${lead.email}`} className="min-w-0 truncate text-primary underline-offset-4 hover:underline">
+                      {lead.email}
+                    </a>
+                    <CopyButton text={lead.email} label="Copy" />
+                  </p>
+                ) : lead.phone ? (
+                  <p className="mt-1 text-sm text-muted-foreground">{formatPhone(lead.phone)}</p>
+                ) : null}
+              </div>
             </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <StagePill status={lead.status} />
+              {lead.status !== 'WON' && lead.status !== 'LOST' ? (
+                <span title="Heat score: how far along the deal is plus how complete the contact details are">
+                  <Tag tone={score >= 65 ? 'rose' : score >= 35 ? 'amber' : 'sky'} className="text-xs">
+                    {score >= 65 ? '🔥 ' : ''}
+                    {scoreLabel(score)} · {score}
+                  </Tag>
+                </span>
+              ) : null}
+              {stale !== null ? <Tag tone="orange" className="text-xs">No contact for {stale} days</Tag> : null}
+              {archivedByMe ? <Badge variant="outline">Archived (only for you)</Badge> : null}
+              {unreadEmails ? <Tag tone="emerald" className="text-xs">{unreadEmails} new email{unreadEmails === 1 ? '' : 's'}</Tag> : null}
+              {lead.tags.map((t) => (
+                <Link key={t} href={`/sales/leads?tag=${encodeURIComponent(t)}`} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary ring-1 ring-primary/20 transition hover:bg-primary/20">
+                  #{t}
+                </Link>
+              ))}
+            </div>
+            <QuickActions
+              leadId={lead.id}
+              name={name}
+              email={lead.email}
+              firstName={lead.firstName}
+              company={lead.company}
+              phone={lead.phone}
+              senderName={me.name ?? user.email}
+              bookingUrl={anyPage ? appUrl(`/book/${anyPage.slug}`) : null}
+              canMeet={user.role !== 'MARKETING'}
+              teammates={teammates}
+              currentUserId={user.id}
+              timeZone={tz}
+              archived={archivedByMe}
+              canArchive={canArchive && user.role !== 'MARKETING'}
+              isAdmin={isAdmin}
+              edit={editProps}
+            />
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-            <StagePill status={lead.status} />
-            {lead.status !== 'WON' && lead.status !== 'LOST' ? (
-              <span title="Heat score: how far along the deal is plus how complete the contact details are">
-                <Tag tone={score >= 65 ? 'rose' : score >= 35 ? 'amber' : 'sky'} className="text-xs">
-                  {score >= 65 ? '🔥 ' : ''}
-                  {scoreLabel(score)} · {score}
-                </Tag>
-              </span>
-            ) : null}
-            {stale !== null ? <Tag tone="orange" className="text-xs">No contact for {stale} days</Tag> : null}
-            {archivedByMe ? <Badge variant="outline">Archived (only for you)</Badge> : null}
-            {unreadEmails ? <Tag tone="emerald" className="text-xs">📨 {unreadEmails} new email{unreadEmails === 1 ? '' : 's'}</Tag> : null}
-            {openTasks ? <Tag tone="violet" className="text-xs">{openTasks} open task{openTasks === 1 ? '' : 's'}</Tag> : null}
-            {lead.tags.map((t) => (
-              <Link key={t} href={`/sales/leads?tag=${encodeURIComponent(t)}`} className="rounded-full bg-indigo-500/15 px-2 py-0.5 text-xs font-medium text-indigo-300 ring-1 ring-indigo-500/25 transition hover:bg-indigo-500/25">
-                #{t}
+        </div>
+
+        {/* Tabs */}
+        <div className="order-2 space-y-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <nav aria-label="Contact views" className="flex gap-1 border-b">
+            {tabs.map((t) => (
+              <Link
+                key={t.id}
+                href={tabHref(t.id)}
+                replace
+                scroll={false}
+                aria-current={tab === t.id ? 'page' : undefined}
+                className={cn('-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors', tab === t.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground')}
+              >
+                {t.label}
               </Link>
             ))}
-          </div>
-        </div>
-        <div className="flex flex-col items-start gap-2 sm:items-end">
-          <div className="flex flex-wrap items-center gap-2">
-            {lead.email ? <EmailComposer leadId={lead.id} email={lead.email} firstName={lead.firstName} company={lead.company} senderName={me.name ?? user.email} bookingUrl={anyPage ? appUrl(`/book/${anyPage.slug}`) : null} /> : null}
-            {lead.phone ? (
-              <CallLink phone={lead.phone} lead={{ id: lead.id, name: leadName(lead) }} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
-                📞 Call
-              </CallLink>
-            ) : null}
-            {user.role !== 'MARKETING' ? (
-              <Link href={`/sales/invite?leadId=${lead.id}`} className={buttonVariants({ size: 'sm', variant: 'outline' })}>
-                📅 Invite to meeting
-              </Link>
-            ) : null}
-          </div>
-          <LeadControls leadId={lead.id} status={lead.status} quotedPrice={isAdmin ? lead.quotedPrice : null} assignedToId={lead.assignedToId} currentUserId={user.id} isAdmin={isAdmin} canClaim={false} reps={reps} wonCommission={isAdmin && lead.status === 'WON' ? lead.commissionTotal : null} commissionPaidOut={lead.finalPaidAt !== null} />
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
-        <div className="space-y-6 lg:col-span-1">
-          {user.role !== 'MARKETING' ? (
-            <LeadProfileCard
-              leadId={lead.id}
-              profile={readProfile(lead.profile)}
-              reviewedCalls={leadCalls.filter((c) => c.analysisStatus === 'ready').length}
-              callDates={Object.fromEntries(leadCalls.map((c) => [c.id, new Intl.DateTimeFormat('en-GB', { timeZone: me.timeZone, day: 'numeric', month: 'short' }).format(c.startedAt)]))}
+          </nav>
+          {tab === 'catch-up' ? (
+            <CatchUp
+              bullets={bullets}
+              profile={
+                profile !== null || user.role !== 'MARKETING' ? (
+                  <LeadProfileCard
+                    leadId={lead.id}
+                    profile={profile}
+                    reviewedCalls={leadCalls.filter((c) => c.analysisStatus === 'ready').length}
+                    callDates={Object.fromEntries(leadCalls.map((c) => [c.id, new Intl.DateTimeFormat('en-GB', { timeZone: me.timeZone, day: 'numeric', month: 'short' }).format(c.startedAt)]))}
+                  />
+                ) : null
+              }
+              brief={user.role !== 'MARKETING' ? <BriefMeButton leadId={lead.id} name={name} /> : null}
+              inbound={split.inbound}
+              outbound={split.outbound}
+              status={split.status}
+              sentiment={sentimentFrom(reads)}
+              challenges={challenges}
+              tz={tz}
+              showCallInsights={showCallInsights}
             />
-          ) : null}
+          ) : (
+            <LeadActivities
+              items={timeline}
+              tz={tz}
+              emailCount={emailRows.length}
+              emails={
+                <div id="emails">
+                  <EmailsPanel
+                    leadId={lead.id}
+                    emails={emails}
+                    gmailConnected={gmailConnected}
+                    canMarkRead={!lead.assignedToId || lead.assignedToId === user.id}
+                    composer={lead.email ? { email: lead.email, firstName: lead.firstName, company: lead.company, senderName: me.name ?? user.email } : null}
+                  />
+                </div>
+              }
+            />
+          )}
+        </div>
+
+        {/* Key information and the rest of the sidebar */}
+        <div className="order-3 space-y-4 lg:col-start-1 lg:row-start-2">
+          <div className="rounded-xl border bg-card p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold">Key information</h2>
+              <EditLeadButton key={`c-${lead.updatedAt.toISOString()}`} variant="card" name={name} {...editProps} />
+            </div>
+            <div className="mb-3">
+              <LeadControls leadId={lead.id} status={lead.status} quotedPrice={isAdmin ? lead.quotedPrice : null} assignedToId={lead.assignedToId} currentUserId={user.id} isAdmin={isAdmin} canClaim={false} reps={reps} wonCommission={isAdmin && lead.status === 'WON' ? lead.commissionTotal : null} commissionPaidOut={lead.finalPaidAt !== null} />
+            </div>
+            <dl className="space-y-2.5 text-sm">
+              {facts.map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-xs text-muted-foreground">{k}</dt>
+                  <dd className="min-w-0 break-words">{v}</dd>
+                </div>
+              ))}
+              {profile?.fields.location?.value ? (
+                <div>
+                  <dt className="text-xs text-muted-foreground">Location</dt>
+                  <dd className="break-words">{profile.fields.location.value}</dd>
+                </div>
+              ) : null}
+            </dl>
+            {lead.message ? (
+              <div className="pt-3">
+                <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Their message</div>
+                <p className="max-h-60 overflow-auto whitespace-pre-wrap rounded-md border bg-background/40 p-3 text-sm text-muted-foreground">{lead.message}</p>
+              </div>
+            ) : null}
+          </div>
+
           {adminDeal ? (
             <AdminDealPanel
               key={`${lead.updatedAt.toISOString()}-${lead.commissionTotal ?? 0}`}
@@ -413,36 +433,76 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
           ) : null}
           {myCommission ? <MyCommissionCard {...myCommission} /> : null}
 
-          <Card>
-            <CardHeader className="flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-base">Details</CardTitle>
-              <EditLeadButton key={`c-${lead.updatedAt.toISOString()}`} variant="card" name={leadName(lead)} leadId={lead.id} canEditEmail={isAdmin} initial={{ email: lead.email, firstName: lead.firstName, lastName: lead.lastName, phone: lead.phone, company: lead.company, website: lead.website, budget: lead.budget, tags: lead.tags, source: lead.source, sourceDetail: lead.sourceDetail }} />
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              {facts.map(([k, v]) => (
-                <div key={k} className="flex justify-between gap-3">
-                  <span className="shrink-0 text-muted-foreground">{k}</span>
-                  <span className="min-w-0 text-right">{v}</span>
-                </div>
-              ))}
-              {lead.message ? (
-                <div className="pt-2">
-                  <div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Their message</div>
-                  <p className="max-h-60 overflow-auto whitespace-pre-wrap rounded-md border bg-background/40 p-3 text-muted-foreground">{lead.message}</p>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+          <Section title="Tasks" count={openTasks ? `${openTasks} open` : null} defaultOpen={taskViews.length > 0}>
+            <div className="space-y-3">
+              {taskViews.length === 0 ? <p className="text-sm text-muted-foreground">No tasks yet. Add a follow-up so nothing slips.</p> : null}
+              <div className="divide-y">
+                {taskViews.map((t) => (
+                  <TaskRow key={t.id} task={t} teammates={teammates} timeZone={tz} />
+                ))}
+              </div>
+              <AddTaskForm leadId={lead.id} teammates={teammates} currentUserId={user.id} timeZone={tz} />
+            </div>
+          </Section>
+
+          <Section title="Meetings" count={lead.bookings.length || null} defaultOpen={lead.bookings.length > 0}>
+            <div className="space-y-3 text-sm">
+              <MeetingSyncTrigger leadId={lead.id} everyMs={upcoming.some((b) => b.startTime.getTime() - now.getTime() < 15 * 60_000) ? 60_000 : 0} />
+              {hostsMeetCalls && grants.connected && !(grants.meet && grants.docs) ? <MeetConnectBanner /> : null}
+              {lead.bookings.length === 0 ? <p className="text-muted-foreground">No meetings yet.</p> : null}
+              {[...upcoming, ...past].map((b) => {
+                const call = callView(b)
+                return (
+                  <div key={b.id}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className={b.status === 'CANCELLED' ? 'text-muted-foreground line-through' : 'font-medium'}>{b.title}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {formatDateTime(b.startTime, tz)} · {b.host.name ?? 'host'}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {b.meetUrl && b.status === 'CONFIRMED' && b.endTime >= now && call?.status !== 'ENDED' ? (
+                          <a href={b.meetUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline-offset-4 hover:underline">
+                            Join
+                          </a>
+                        ) : null}
+                        {call?.status === 'LIVE' ? (
+                          <Badge variant="success">Live now</Badge>
+                        ) : call?.status === 'ENDED' ? (
+                          <Badge variant="secondary">Held</Badge>
+                        ) : call?.status === 'NOT_HELD' ? (
+                          <Badge variant="outline">No-show</Badge>
+                        ) : (
+                          <Badge variant={b.status === 'CONFIRMED' ? (b.endTime < now ? 'secondary' : 'success') : b.status === 'PENDING' ? 'warning' : 'outline'}>
+                            {b.status === 'CONFIRMED' ? (b.endTime < now ? 'Held' : 'Confirmed') : b.status === 'PENDING' ? 'Awaiting guest' : 'Cancelled'}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    {call ? <MeetingCall m={call} /> : null}
+                  </div>
+                )
+              })}
+            </div>
+          </Section>
+
+          <Section title="Documents" count={documents.length || null} defaultOpen={documents.length > 0}>
+            <LeadDocuments leadId={lead.id} documents={documents} />
+          </Section>
 
           {isAdmin ? (
-            <Card>
-              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base">Offers</CardTitle>
-                <Link href={`/admin/offers?lead=${lead.id}`} className="text-sm text-primary hover:underline">
+            <Section
+              title="Offers"
+              count={offers.length || null}
+              defaultOpen={offers.length > 0}
+              action={
+                <Link href={`/admin/offers?lead=${lead.id}`} className="text-sm font-normal text-primary hover:underline">
                   + New offer
                 </Link>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+              }
+            >
+              <div className="space-y-2 text-sm">
                 {offers.length === 0 ? <p className="text-muted-foreground">No offers yet.</p> : null}
                 {offers.map((o) => (
                   <div key={o.id} className="flex items-center justify-between gap-3">
@@ -452,136 +512,9 @@ export default async function LeadPage(props: { params: Promise<{ id: string }> 
                     <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${OFFER_STATUS_TONE[o.status]}`}>{OFFER_STATUS_LABEL[o.status]}</span>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Documents {documents.length ? <span className="text-sm font-normal text-muted-foreground">({documents.length})</span> : null}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <LeadDocuments leadId={lead.id} documents={documents} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Tasks {openTasks ? <span className="text-sm font-normal text-muted-foreground">({openTasks} open)</span> : null}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {taskViews.length === 0 ? <p className="text-sm text-muted-foreground">No tasks yet. Add a follow-up so nothing slips.</p> : null}
-              <div className="divide-y">
-                {taskViews.map((t) => (
-                  <TaskRow key={t.id} task={t} teammates={teammates} timeZone={tz} />
-                ))}
               </div>
-              <AddTaskForm leadId={lead.id} teammates={teammates} currentUserId={user.id} timeZone={tz} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Meetings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <MeetingSyncTrigger leadId={lead.id} everyMs={upcoming.some((b) => b.startTime.getTime() - now.getTime() < 15 * 60_000) ? 60_000 : 0} />
-              {hostsMeetCalls && grants.connected && !(grants.meet && grants.docs) ? <MeetConnectBanner /> : null}
-              {lead.bookings.length === 0 ? <p className="text-muted-foreground">No meetings yet.</p> : null}
-              {[...upcoming, ...past].map((b) => {
-                const call = callView(b)
-                return (
-                <div key={b.id}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className={b.status === 'CANCELLED' ? 'text-muted-foreground line-through' : 'font-medium'}>{b.title}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {formatDateTime(b.startTime, tz)} · {b.host.name ?? 'host'}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {b.meetUrl && b.status === 'CONFIRMED' && b.endTime >= now && call?.status !== 'ENDED' ? (
-                      <a href={b.meetUrl} target="_blank" rel="noreferrer" className="text-xs text-primary underline-offset-4 hover:underline">
-                        Join
-                      </a>
-                    ) : null}
-                    {call?.status === 'LIVE' ? (
-                      <Badge variant="success">Live now</Badge>
-                    ) : call?.status === 'ENDED' ? (
-                      <Badge variant="secondary">Held</Badge>
-                    ) : call?.status === 'NOT_HELD' ? (
-                      <Badge variant="outline">No-show</Badge>
-                    ) : (
-                      <Badge variant={b.status === 'CONFIRMED' ? (b.endTime < now ? 'secondary' : 'success') : b.status === 'PENDING' ? 'warning' : 'outline'}>
-                        {b.status === 'CONFIRMED' ? (b.endTime < now ? 'Held' : 'Confirmed') : b.status === 'PENDING' ? 'Awaiting guest' : 'Cancelled'}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                {call ? <MeetingCall m={call} /> : null}
-                </div>
-                )
-              })}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-[var(--card-pad)]">
-              <LeadActions leadId={lead.id} archived={archivedByMe} canArchive={canArchive && user.role !== 'MARKETING'} isAdmin={isAdmin} name={leadName(lead)} />
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardContent className="space-y-4 pt-[var(--card-pad)]">
-              <LogTouchButtons leadId={lead.id} />
-              <AddNoteForm leadId={lead.id} />
-            </CardContent>
-          </Card>
-          <Card id="emails">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                Emails <span className="text-sm font-normal text-muted-foreground">({emailRows.length})</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <EmailsPanel
-                leadId={lead.id}
-                emails={emails}
-                gmailConnected={gmailConnected}
-                canMarkRead={!lead.assignedToId || lead.assignedToId === user.id}
-                composer={lead.email ? { email: lead.email, firstName: lead.firstName, company: lead.company, senderName: me.name ?? user.email } : null}
-              />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {timeline.length === 0 ? <p className="text-sm text-muted-foreground">No activity yet. Notes, calls, emails and stage changes appear here.</p> : null}
-              <ol className="relative space-y-5 border-l pl-6">
-                {timeline.map((l) => {
-                  const d = describe(l)
-                  return (
-                    <li key={l.id} className="relative text-sm">
-                      <span aria-hidden className="absolute -left-[2.15rem] flex h-7 w-7 items-center justify-center rounded-full border bg-card text-xs">
-                        {ICON[l.action] ?? (l.action.startsWith('task.') ? '☑️' : '•')}
-                      </span>
-                      <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-                        <span className={l.action === 'note.added' ? 'font-medium text-foreground' : 'font-medium'}>{d.title}</span>
-                        <time dateTime={l.createdAt.toISOString()} title={formatDateTime(l.createdAt, tz)} className="text-xs text-muted-foreground">
-                          {l.actor ? (l.actor.name ?? l.actor.email) : 'System'} · {timeAgo(l.createdAt, now)}
-                        </time>
-                      </div>
-                      {d.body ? <p className={`mt-1 whitespace-pre-wrap ${l.action === 'note.added' ? 'rounded-md border bg-background/40 p-3' : 'text-muted-foreground'}`}>{d.body}</p> : null}
-                    </li>
-                  )
-                })}
-              </ol>
-            </CardContent>
-          </Card>
+            </Section>
+          ) : null}
         </div>
       </div>
     </div>

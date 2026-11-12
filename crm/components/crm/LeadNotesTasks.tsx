@@ -31,7 +31,7 @@ function useRun(): { pending: boolean; error: string | null; run: (fn: () => Pro
   }
 }
 
-export function AddNoteForm({ leadId }: { leadId: string }): React.ReactElement {
+export function AddNoteForm({ leadId, onDone }: { leadId: string; onDone?: () => void }): React.ReactElement {
   const { pending, error, run } = useRun()
   const [body, setBody] = useState('')
   return (
@@ -39,7 +39,10 @@ export function AddNoteForm({ leadId }: { leadId: string }): React.ReactElement 
       className="space-y-2"
       onSubmit={(e) => {
         e.preventDefault()
-        run(() => addNote(leadId, body), () => setBody(''))
+        run(() => addNote(leadId, body), () => {
+          setBody('')
+          onDone?.()
+        })
       }}
     >
       <Label htmlFor="note" className="sr-only">
@@ -141,7 +144,7 @@ const QUICK_DUE: [string, number, number][] = [
 ]
 const quickValue = (days: number, hour: number, tz: string): string => `${dateToZonedInput(localMidnight(new Date(), tz, days), tz).slice(0, 10)}T${String(hour).padStart(2, '0')}:00`
 
-export function AddTaskForm({ leadId, teammates, currentUserId, timeZone }: { leadId: string; teammates: Teammate[]; currentUserId: string; timeZone: string }): React.ReactElement {
+export function AddTaskForm({ leadId, teammates, currentUserId, timeZone, onDone }: { leadId: string; teammates: Teammate[]; currentUserId: string; timeZone: string; onDone?: () => void }): React.ReactElement {
   const { pending, error, run } = useRun()
   const [title, setTitle] = useState('')
   const [due, setDue] = useState('')
@@ -158,6 +161,7 @@ export function AddTaskForm({ leadId, teammates, currentUserId, timeZone }: { le
             setTitle('')
             setDue('')
             setPriority('MEDIUM')
+            onDone?.()
           },
         )
       }}

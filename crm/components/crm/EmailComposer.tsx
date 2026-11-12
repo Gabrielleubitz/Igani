@@ -68,6 +68,7 @@ export function EmailComposer({
   senderName,
   bookingUrl,
   reply,
+  renderTrigger,
 }: {
   leadId: string
   email: string
@@ -77,6 +78,8 @@ export function EmailComposer({
   bookingUrl?: string | null
   /** Reply to an email in the conversation: subject gets "Re:", the original is quoted and threaded */
   reply?: { id: string; subject: string }
+  /** Draw the opening button yourself (it gets the function that opens the composer) */
+  renderTrigger?: (open: () => void) => React.ReactNode
 }): React.ReactElement {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -121,22 +124,22 @@ export function EmailComposer({
     }
   }
 
+  const openComposer = (): void => {
+    setLang('en')
+    apply('blank', 'en')
+    setError(null)
+    setSent(null)
+    setOpen(true)
+  }
   return (
     <>
-      <Button
-        size="sm"
-        variant={reply ? 'outline' : 'default'}
-        className={reply ? 'h-7 px-2 text-xs' : undefined}
-        onClick={() => {
-          setLang('en')
-          apply('blank', 'en')
-          setError(null)
-          setSent(null)
-          setOpen(true)
-        }}
-      >
-        {reply ? '↩ Reply' : '✉️ Email'}
-      </Button>
+      {renderTrigger ? (
+        renderTrigger(openComposer)
+      ) : (
+        <Button size="sm" variant={reply ? 'outline' : 'default'} className={reply ? 'h-7 px-2 text-xs' : undefined} onClick={openComposer}>
+          {reply ? '↩ Reply' : '✉️ Email'}
+        </Button>
+      )}
       {sent ? <span className="text-xs text-emerald-400">{sent}</span> : null}
       <Dialog open={open} onClose={() => setOpen(false)} title={reply ? `Reply to ${firstName || email}` : `Email ${firstName || email}`} description={`Sent in the Igani branded template${reply ? ', with their message quoted and threaded' : ''}. Replies go to your inbox and appear here. To: ${email}`} className="w-[min(94vw,40rem)]">
         <form
