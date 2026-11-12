@@ -5,12 +5,14 @@ import { PageIntro } from '@/components/PageIntro'
 import { SignaturesCard } from '@/components/admin/SignaturesCard'
 import { listSignatures, signatureAdmins } from '@/lib/signatures'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TikTokCard } from '@/components/admin/TikTokCard'
+import { tiktokConfig, tiktokStatus } from '@/lib/tiktok'
 
 export const metadata = { title: 'Settings' }
 
-export default async function SettingsPage(): Promise<React.ReactElement> {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tiktok?: string }> }): Promise<React.ReactElement> {
   await requireUser(['ADMIN'])
-  const [settings, signatures, admins] = await Promise.all([getSettings(), listSignatures(), signatureAdmins()])
+  const [settings, signatures, admins, tiktok, sp] = await Promise.all([getSettings(), listSignatures(), signatureAdmins(), tiktokStatus(), searchParams])
   return (
     <div className="space-y-6">
       <PageIntro title="Settings" hint="Company-wide options for emails, reminders and booking." />
@@ -23,6 +25,15 @@ export default async function SettingsPage(): Promise<React.ReactElement> {
         </CardHeader>
         <CardContent>
           <SignaturesCard signatures={signatures} admins={admins} />
+        </CardContent>
+      </Card>
+      <Card id="tiktok" className="scroll-mt-6">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">TikTok</CardTitle>
+          <p className="text-sm text-muted-foreground">Igani’s own TikTok account. The reel job uploads finished videos to its drafts; you publish them from the TikTok app.</p>
+        </CardHeader>
+        <CardContent>
+          <TikTokCard status={tiktok} configured={Boolean(tiktokConfig())} message={sp.tiktok ?? null} />
         </CardContent>
       </Card>
     </div>

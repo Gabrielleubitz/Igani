@@ -24,6 +24,10 @@ const schema = z.object({
   /** Listening in on live calls (lib/listen.ts): the relay's WebSocket URL (wss://listen.igani.co) and the secret it shares with the CRM. Without both, Listen is hidden. */
   LISTEN_RELAY_URL: z.string().url().optional(),
   LISTEN_RELAY_SECRET: z.string().min(16).optional(),
+  /** TikTok (Login Kit + Content Posting API, lib/tiktok.ts): the app's client key/secret, and the secret the reel job uses to fetch a token. Without them the TikTok card says not configured. */
+  TIKTOK_CLIENT_KEY: z.string().optional(),
+  TIKTOK_CLIENT_SECRET: z.string().optional(),
+  TIKTOK_JOB_SECRET: z.string().min(24).optional(),
 })
 
 export type Env = z.infer<typeof schema>
