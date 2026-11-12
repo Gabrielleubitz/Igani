@@ -164,11 +164,12 @@ import UserNotifications
         // signed out: nothing of the last person's on screen
         guard API.shared.session?.phase == .signedIn else { return [] }
         let link = PushCenter.link(from: info)
-        // already looking at that conversation: no banner, the message is right there
-        if case .chat(let c)? = link, ChatScreenTracker.open == c { return [] }
+        // already looking at that conversation (or that thread): no banner and no sound, the message is right there
+        if case .chat(let c)? = link, ChatScreenTracker.isShowing(channel: c, thread: info["threadId"] as? String) { return [] }
         let c = n.request.content
         banner = PushBanner(title: c.title, subtitle: c.subtitle.isEmpty ? nil : c.subtitle, body: c.body, kind: (info["type"] as? String) ?? "", photo: info["senderPhoto"] as? String, link: link)
         Task { await ChatBadge.shared.refresh() }
+        // .sound plays the payload's sound: chat's own chime (igani-chat.caf in the bundle), the default tone for the rest
         return [.list, .badge, .sound]
     }
 }
@@ -189,8 +190,17 @@ extension PushCenter: UNUserNotificationCenterDelegate {
     }
 }
 
-/// Which chat conversation is on screen (no banner for messages you're already reading).
-@MainActor enum ChatScreenTracker { static var open: String? }
+/// Which chat conversation, and which thread in it, is on screen (no banner or sound for messages you're already reading).
+@MainActor enum ChatScreenTracker {
+    static var open: String?
+    static var openThread: String?
+
+    /// A message in `channel` (a reply in `thread`, if set) is already in front of the person.
+    static func isShowing(channel: String, thread: String?) -> Bool {
+        if let thread, thread.count >= 20 { return openThread == thread }
+        return open == channel
+    }
+}
 
 /// UIKit's side: the APNs device token arrives here.
 final class AppDelegate: NSObject, UIApplicationDelegate {

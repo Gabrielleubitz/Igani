@@ -4,22 +4,64 @@ import { MessagesSquare, X } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
-import { chatPulse, type ChatPulse as Pulse } from '@/app/actions/chat'
+import { chatPulse, type ChatPulseItem } from '@/app/actions/chat'
 import { CHAT_UNREAD_EVENT } from '@/components/AppNav'
+import { chatSoundReady, playChatSound, unlockChatSound } from '@/components/chat/chat-sound'
 
 const SEEN_KEY = 'igani-chat-seen'
-const linkFor = (l: NonNullable<Pulse['latest']>): string => `/sales/chat?c=${l.channelId}${l.threadId ? `&t=${l.threadId}` : ''}`
+const TICK_MS = 8000
+/** a message saved a moment before the last check answered still counts as new (the clock and the write race) */
+const GRACE_MS = 3000
+/** a card for a channel or thread message fades on its own; one for a direct message or @mention stays until you act */
+const FADE_MS = 10000
+const linkFor = (l: ChatPulseItem): string => `/sales/chat?c=${l.channelId}${l.threadId ? `&t=${l.threadId}` : ''}`
+
+/** The conversation open on the chat page (its address keeps up with what's open). */
+function openConversation(): { channelId: string; threadId: string | null } | null {
+  if (!window.location.pathname.startsWith('/sales/chat')) return null
+  const q = new URLSearchParams(window.location.search)
+  const c = q.get('c')
+  return c ? { channelId: c, threadId: q.get('t') } : null
+}
+
+const viewing = (m: ChatPulseItem): boolean => {
+  const open = openConversation()
+  return Boolean(open && open.channelId === m.channelId && (!m.threadId || open.threadId === m.threadId))
+}
+
+const alertsOn = (): boolean => typeof Notification !== 'undefined' && Notification.permission === 'granted'
+
+function showNotification(m: ChatPulseItem): void {
+  try {
+    // our chime plays when it can; the browser's own sound only when it can't (nothing clicked yet this visit)
+    const n = new Notification(`${m.from} · ${m.where}`, { body: m.preview, tag: `igani-chat-${m.channelId}`, icon: m.photo ?? '/apple-touch-icon.png', silent: chatSoundReady() })
+    n.onclick = () => {
+      window.focus()
+      window.location.href = linkFor(m)
+      n.close()
+    }
+  } catch {
+    /* some browsers only allow notifications from a service worker */
+  }
+}
+
+// kept across pages: what's been announced, and when the last check was answered
+let cursor: number | null = null
+const announced = new Set<string>()
 
 /**
- * On every CRM page: the tab title shows unread chat messages, and a direct message or @mention pops up a card (once
- * per message) that opens the conversation. Quiet while you're on the chat page itself.
+ * On every CRM page: the tab title shows unread chat messages, and each new message that's for you (a direct message,
+ * an @mention, a reply in your thread, a channel you haven't muted) is announced once. Away from the tab: a desktop
+ * notification and the chime. On another page: a card and a softer note. On the chat page: the note, for
+ * conversations other than the one on screen.
  */
 export function ChatPulse({ initialUnread }: { initialUnread: number }): React.ReactElement | null {
   const path = usePathname()
-  const [card, setCard] = useState<Pulse['latest']>(null)
+  const [card, setCard] = useState<ChatPulseItem | null>(null)
   const unread = useRef(initialUnread)
   const base = useRef<string | null>(null)
-  const notified = useRef<string | null>(null)
+
+  useEffect(() => unlockChatSound(), [])
 
   useEffect(() => {
     const title = (): void => {
@@ -27,39 +69,49 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
       document.title = unread.current > 0 ? `(${unread.current}) ${base.current}` : base.current
     }
     let stop = false
+    let busy = false
+    let skipped = 0
     const tick = async (): Promise<void> => {
-      // in the background, keep checking only when desktop alerts are on
-      const alerts = typeof Notification !== 'undefined' && Notification.permission === 'granted'
-      if (document.hidden && !alerts) return
+      // a hidden tab checks half as often (and the browser slows it further on its own)
+      if (document.hidden && skipped++ % 2) return
+      if (busy) return
+      busy = true
       const r = await chatPulse()
-      if (stop || !r.ok) return
-      if (!window.location.pathname.startsWith('/sales/chat')) unread.current = r.data.unread
+        .catch(() => null)
+        .finally(() => (busy = false))
+      if (stop || !r?.ok) return
+      const onChat = window.location.pathname.startsWith('/sales/chat')
       // on the chat page, the page itself keeps the count (it knows what you've just read)
-      if (!window.location.pathname.startsWith('/sales/chat')) window.dispatchEvent(new CustomEvent(CHAT_UNREAD_EVENT, { detail: r.data.unread }))
+      if (!onChat) {
+        unread.current = r.data.unread
+        window.dispatchEvent(new CustomEvent(CHAT_UNREAD_EVENT, { detail: r.data.unread }))
+      }
       base.current = null
       title()
-      const l = r.data.latest
+
+      const since = cursor
+      cursor = Date.parse(r.data.now) - GRACE_MS
+      // the first check after a load only sets the clock: what was already unread isn't news
+      const fresh = since === null ? [] : r.data.latest.filter((m) => Date.parse(m.at) > since && !announced.has(m.id)).reverse()
+      for (const m of fresh) announced.add(m.id)
+      if (announced.size > 300) for (const id of [...announced].slice(0, 150)) announced.delete(id)
+      const away = document.hidden || !document.hasFocus()
+      const news = fresh.filter((m) => away || !viewing(m))
+      if (news.length) {
+        if (away) {
+          if (alertsOn()) for (const m of news) showNotification(m)
+          void playChatSound('chime')
+        } else void playChatSound('soft')
+      }
+
+      // the card: the newest unread message for you, until it's read (here, on the phone, in another tab) or dismissed
+      const l = r.data.latest[0] ?? null
       let seen: string | null = null
       try {
         seen = window.localStorage.getItem(SEEN_KEY)
       } catch {
         /* storage blocked: show it anyway */
       }
-      const onChat = window.location.pathname.startsWith('/sales/chat')
-      if (l && l.id !== seen && document.hidden && alerts && l.id !== notified.current) {
-        notified.current = l.id
-        try {
-          const n = new Notification(`${l.from} · ${l.where}`, { body: l.preview, tag: `igani-chat-${l.channelId}`, icon: l.photo ?? '/apple-touch-icon.png' })
-          n.onclick = () => {
-            window.focus()
-            window.location.href = linkFor(l)
-            n.close()
-          }
-        } catch {
-          /* some browsers only allow notifications from a service worker */
-        }
-      }
-      // read somewhere else (the app, another tab): the card goes
       setCard(l && l.id !== seen && !onChat ? l : null)
     }
     // the chat page reports what you've read right away
@@ -68,13 +120,16 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
       base.current = null
       title()
     }
+    const onVisible = (): void => void (!document.hidden && tick())
     window.addEventListener(CHAT_UNREAD_EVENT, onCount)
+    document.addEventListener('visibilitychange', onVisible)
     title()
     void tick()
-    const t = window.setInterval(() => void tick(), 15000)
+    const t = window.setInterval(() => void tick(), TICK_MS)
     return () => {
       stop = true
       window.removeEventListener(CHAT_UNREAD_EVENT, onCount)
+      document.removeEventListener('visibilitychange', onVisible)
       window.clearInterval(t)
     }
   }, [path])
@@ -88,6 +143,16 @@ export function ChatPulse({ initialUnread }: { initialUnread: number }): React.R
       }
     setCard(null)
   }
+
+  // channel and thread cards fade by themselves (a direct message or @mention waits for you)
+  const sticky = card?.reason === 'dm' || card?.reason === 'mention'
+  const cardId = card?.id
+  useEffect(() => {
+    if (!cardId || sticky) return
+    const t = window.setTimeout(dismiss, FADE_MS)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- a new card restarts its own timer
+  }, [cardId, sticky])
 
   if (!card || path.startsWith('/sales/chat')) return null
   return (

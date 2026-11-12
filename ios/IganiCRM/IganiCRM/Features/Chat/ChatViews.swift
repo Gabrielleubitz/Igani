@@ -374,8 +374,12 @@ struct ChatConversationView: View {
             Task { try? await API.shared.run("chatTyping", channelId, threadId ?? NSNull()) }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: tick)
-        .onAppear { if !isThread { TabRouter.shared.chatOpen = true; ChatScreenTracker.open = channelId } }
-        .onDisappear { if !isThread { TabRouter.shared.chatOpen = false; if ChatScreenTracker.open == channelId { ChatScreenTracker.open = nil } } }
+        .onAppear {
+            if let threadId { ChatScreenTracker.openThread = threadId } else { TabRouter.shared.chatOpen = true; ChatScreenTracker.open = channelId }
+        }
+        .onDisappear {
+            if let threadId { if ChatScreenTracker.openThread == threadId { ChatScreenTracker.openThread = nil } } else { TabRouter.shared.chatOpen = false; if ChatScreenTracker.open == channelId { ChatScreenTracker.open = nil } }
+        }
         .task {
             // coming back from a thread or a lead: catch up instead of starting over (keeps earlier pages and your place)
             if info == nil && parent == nil { await first() } else { await poll() }

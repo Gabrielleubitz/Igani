@@ -15,6 +15,7 @@ import {
   chatFileView,
   channelSlug,
   chatFolder,
+  chatNewestFor,
   chatTeam,
   chatUnreadByChannel,
   chatUnreadFor,
@@ -31,6 +32,7 @@ import {
   type ChatFile,
   type ChatPerson,
 } from '@/lib/chat'
+import { chatPushMessage, chatRecipients, type ChatReason } from '@/lib/chat-notify'
 import { leadName } from '@/lib/format'
 import { canSeeLead } from '@/lib/lead-access'
 import { prisma } from '@/lib/prisma'
@@ -733,68 +735,76 @@ export async function chatOpenDm(userId: string): Promise<ActionResult<{ id: str
   }
 }
 
+export interface ChatPulseItem {
+  id: string
+  channelId: string
+  threadId: string | null
+  /** why it's for you: a direct message, an @mention, a reply in your thread, or a channel you follow */
+  reason: ChatReason
+  where: string
+  from: string
+  photo: string | null
+  preview: string
+  at: string
+}
+
 export interface ChatPulse {
   unread: number
   mentions: number
-  /** the newest unread direct message or mention of you */
-  latest: { id: string; channelId: string; threadId: string | null; where: string; from: string; photo: string | null; preview: string; at: string } | null
+  /** the server's clock when this was answered: the next check treats anything newer as just arrived */
+  now: string
+  /** the newest unread messages that are for you (newest first), by the same rules as the phone's push */
+  latest: ChatPulseItem[]
 }
 
-/** For the notifier on every page: unread counts and the newest message that's for you. */
+/** For the notifier on every page: unread counts and the newest messages that are for you. */
 export async function chatPulse(): Promise<ActionResult<ChatPulse>> {
   try {
     const user = await requireUser()
-    const counts = await chatUnreadFor(user.id)
-    if (!counts.mentions) return { ok: true, data: { ...counts, latest: null } }
-    const [m] = await prisma.$queryRaw<{ id: string; channelId: string; parentId: string | null; userId: string | null; body: string; createdAt: Date; kind: 'CHANNEL' | 'DM'; name: string }[]>`
-      SELECT m."id", m."channelId", m."parentId", m."userId", m."body", m."createdAt", c."kind", c."name"
-      FROM "ChatMessage" m
-      JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${user.id}
-      JOIN "ChatChannel" c ON c."id" = m."channelId" AND c."archivedAt" IS NULL
-      WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${user.id})
-        AND ((c."kind" = 'DM' AND NOT cm."muted" AND m."parentId" IS NULL) OR strpos(m."body", ${`<@${user.id}>`}) > 0)
-      ORDER BY m."createdAt" DESC LIMIT 1`
-    if (!m) return { ok: true, data: { ...counts, latest: null } }
-    const ids = [m.userId, ...[...m.body.matchAll(/<@([a-z0-9]{20,40})>/gi)].map((x) => x[1]!)].filter((x): x is string => Boolean(x))
-    const people = await userMap(ids)
-    const preview = (m.body.replace(/<@([a-z0-9]{20,40})>/gi, (_, i: string) => `@${people.get(i)?.name ?? 'someone'}`) || '📎 A file').slice(0, 140)
-    const who = m.userId ? people.get(m.userId) : null
-    return { ok: true, data: { ...counts, latest: { id: m.id, channelId: m.channelId, threadId: m.parentId, where: m.kind === 'DM' ? 'Direct message' : `#${m.name}`, from: who?.name ?? 'Someone', photo: who?.photo ?? null, preview, at: m.createdAt.toISOString() } } }
+    const now = new Date()
+    const [counts, rows] = await Promise.all([chatUnreadFor(user.id), chatNewestFor(user.id, 5)])
+    if (!rows.length) return { ok: true, data: { ...counts, now: now.toISOString(), latest: [] } }
+    const people = await userMap(rows.flatMap((m) => [m.userId, ...mentionsIn(m.body)]).filter((x): x is string => Boolean(x)))
+    const latest = rows.map((m): ChatPulseItem => {
+      const who = m.userId ? people.get(m.userId) : null
+      return {
+        id: m.id,
+        channelId: m.channelId,
+        threadId: m.parentId,
+        reason: m.reason,
+        where: `${m.kind === 'DM' ? 'Direct message' : `#${m.name}`}${m.parentId ? ' · thread' : ''}`,
+        from: who?.name ?? 'Someone',
+        photo: who?.photo ?? null,
+        preview: (m.body.replace(/<@([a-z0-9]{20,40})>/gi, (_, i: string) => `@${people.get(i)?.name ?? 'someone'}`) || '📎 A file').slice(0, 140),
+        at: m.createdAt.toISOString(),
+      }
+    })
+    return { ok: true, data: { ...counts, now: now.toISOString(), latest } }
   } catch (err) {
     return toActionError(err)
   }
 }
 
 /**
- * Push: direct messages to the other person, @mentions to whoever was mentioned (if they can see the channel), and
- * thread replies to the people in that thread. Muted channels stay quiet unless you're mentioned.
+ * Push to phones (lib/chat-notify.ts decides who): a direct message to the other person, an @mention to whoever was
+ * named (muted or not), a thread reply to the people in that thread, and a channel message to every member who
+ * hasn't muted the channel. Never the sender; each phone's own "Team chat" switch is honoured by pushTo.
  */
 function notifyChat(channel: { id: string; kind: 'CHANNEL' | 'DM'; name: string; private: boolean }, senderId: string, body: string, thread: { threadId: string; starterId: string | null } | null): void {
   void (async () => {
     const members = await prisma.chatMember.findMany({ where: { channelId: channel.id }, select: { userId: true, muted: true } })
-    const memberIds = members.map((m) => m.userId)
-    const mutedIds = new Set(members.filter((m) => m.muted).map((m) => m.userId))
-    const mentioned = mentionsIn(body).filter((u) => !channel.private || memberIds.includes(u))
-    let threadPeople: string[] = []
+    let people: (string | null)[] = []
     if (thread) {
       const repliers = await prisma.chatMessage.findMany({ where: { parentId: thread.threadId, userId: { not: null } }, select: { userId: true }, distinct: ['userId'] })
-      threadPeople = [thread.starterId, ...repliers.map((r) => r.userId)].filter((u): u is string => Boolean(u) && !mutedIds.has(u!))
+      people = [thread.starterId, ...repliers.map((r) => r.userId)]
     }
-    const direct = channel.kind === 'DM' ? memberIds.filter((u) => !mutedIds.has(u)) : []
-    const to = [...new Set([...direct, ...mentioned, ...threadPeople])].filter((u) => u !== senderId)
+    const to = chatRecipients({ channel, senderId, body, members, mentioned: mentionsIn(body), thread: thread ? { threadId: thread.threadId, people } : null }).map((r) => r.userId)
     if (!to.length) return
     pushLater(to, 'chat', async () => {
-      const people = await userMap([senderId, ...mentionsIn(body)])
-      const from = people.get(senderId)
-      const text = body.replace(/<@([a-z0-9]{20,40})>/gi, (_, i: string) => `@${people.get(i)?.name ?? 'someone'}`)
-      return {
-        title: from?.name ?? 'Team chat',
-        ...(channel.kind === 'CHANNEL' ? { subtitle: thread ? `Thread in #${channel.name}` : `#${channel.name}` } : thread ? { subtitle: 'Thread' } : {}),
-        body: text,
-        thread: `chat-${channel.id}`,
-        category: 'CHAT',
-        data: { type: 'chat', channelId: channel.id, threadId: thread?.threadId ?? null, channel: channel.kind === 'DM' ? null : channel.name, dm: channel.kind === 'DM', senderId, senderName: from?.name ?? null, senderPhoto: photoUrl(from?.photo) },
-      }
+      const names = await userMap([senderId, ...mentionsIn(body)])
+      const from = names.get(senderId)
+      const text = body.replace(/<@([a-z0-9]{20,40})>/gi, (_, i: string) => `@${names.get(i)?.name ?? 'someone'}`)
+      return chatPushMessage({ channel, thread, sender: { id: senderId, name: from?.name ?? null, photo: photoUrl(from?.photo) }, text })
     })
   })().catch(() => undefined)
 }

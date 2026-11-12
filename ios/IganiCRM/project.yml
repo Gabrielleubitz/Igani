@@ -8,7 +8,7 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     DEVELOPMENT_TEAM: 8T65J68WA2
     # TwilioVoice has no x86_64 simulator slice
     "EXCLUDED_ARCHS[sdk=iphonesimulator*]": x86_64

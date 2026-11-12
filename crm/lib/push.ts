@@ -16,7 +16,7 @@ import { prisma } from './prisma'
 
 export type PushKind = 'chat' | 'texts' | 'calls' | 'leads'
 export const PUSH_KINDS: { key: PushKind; label: string; hint: string }[] = [
-  { key: 'chat', label: 'Team chat', hint: 'Direct messages and @mentions' },
+  { key: 'chat', label: 'Team chat', hint: 'Direct messages, @mentions, your threads, and channels you haven’t muted' },
   { key: 'texts', label: 'Texts', hint: 'Texts to your Igani number' },
   { key: 'calls', label: 'Missed calls', hint: 'Calls to your line nobody answered' },
   { key: 'leads', label: 'New leads', hint: 'Leads given to you' },
@@ -26,6 +26,8 @@ export interface PushMessage {
   title: string
   subtitle?: string
   body: string
+  /** a sound file in the app's bundle (e.g. chat's igani-chat.caf); iOS's default tone when unset */
+  sound?: string
   /** groups notifications on the lock screen (one stack per conversation) */
   thread: string
   /** the app's actions for it (Reply, Call back…) */
@@ -114,7 +116,7 @@ export async function pushTo(userIds: string[], kind: PushKind, msg: PushMessage
           const payload = JSON.stringify({
             aps: {
               alert: { title: msg.title, ...(msg.subtitle ? { subtitle: msg.subtitle } : {}), body: msg.body.slice(0, 600) },
-              sound: 'default',
+              sound: msg.sound ?? 'default',
               badge: badges.get(d.userId) ?? 0,
               'thread-id': msg.thread,
               category: msg.category,

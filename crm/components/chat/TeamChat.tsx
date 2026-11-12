@@ -1,12 +1,13 @@
 'use client'
 
-import { ArrowDown, ArrowLeft, Archive, Bell, BellOff, Hash, Lock, LogOut, MessageSquareReply, Plus, Search, UserPlus, X } from 'lucide-react'
+import { ArrowDown, ArrowLeft, Archive, Bell, BellOff, Hash, Lock, LogOut, MessageSquareReply, Play, Plus, Search, UserPlus, Volume2, VolumeX, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { chatAddMembers, chatArchiveChannel, chatDelete, chatJoin, chatLeave, chatMarkRead, chatMessages, chatMute, chatOpenDm, chatOverview, chatReact, chatSearch, chatSend, type ChatChannelInfo, type ChatChannelRow, type ChatMessageRow, type ChatOverview, type ChatSearchHit } from '@/app/actions/chat'
 import { CHAT_UNREAD_EVENT } from '@/components/AppNav'
 import { MediaViewer, mediaIn } from '@/components/chat/MediaViewer'
 import { NewChannelDialog, PeopleDialog, TopicDialog } from '@/components/chat/ChatDialogs'
 import { Avatar, Composer, Message, dayLabel, toStored, type Emoji, type Pending, type UploadedFile } from '@/components/chat/ChatParts'
+import { chatSoundEnabled, playChatSound, setChatSoundEnabled } from '@/components/chat/chat-sound'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { ChatPerson } from '@/lib/chat'
@@ -262,10 +263,13 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
   const peopleBy = useMemo(() => new Map<string, ChatPerson>(overview.people.map((p) => [p.id, p])), [overview.people])
   const onlineBy = useMemo(() => new Map(overview.people.map((p) => [p.id, p.online])), [overview.people])
 
+  // a message in the conversation on screen is silent, unless this window isn't the one you're looking at
+  const chimeIfAway = (): void => void (!document.hasFocus() && playChatSound('chime'))
   const convo = useConversation(channelId, null, () => {
     if (!stick.current) setUnseen((n) => n + 1)
+    chimeIfAway()
   })
-  const thread = useConversation(threadId ? channelId : null, threadId)
+  const thread = useConversation(threadId ? channelId : null, threadId, chimeIfAway)
   const { info } = convo
   const replies = thread.messages.filter((m) => !m.deleted).length
 
@@ -540,7 +544,7 @@ export function TeamChat({ initial, initialChannelId, initialThreadId = null }: 
             </section>
           ) : null}
         </nav>
-        <DesktopAlerts />
+        <NotifySettings />
       </aside>
 
       {/* conversation */}
@@ -827,31 +831,57 @@ function Intro({ info, me }: { info: ChatChannelInfo; me: ChatPerson }): React.R
   )
 }
 
-/** Desktop notifications for direct messages and @mentions while this tab is in the background (ChatPulse shows them). */
-function DesktopAlerts(): React.ReactElement | null {
+/**
+ * How this browser tells you about new messages (ChatPulse does the telling): desktop alerts while the tab is in the
+ * background, and the chime on or off. Both are this browser's own choice.
+ */
+function NotifySettings(): React.ReactElement {
   const [state, setState] = useState<NotificationPermission | 'unsupported'>('default')
+  const [sound, setSound] = useState(true)
   useEffect(() => {
     setState(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
+    setSound(chatSoundEnabled())
   }, [])
-  if (state === 'unsupported' || state === 'granted') return null
+  const toggleSound = (): void => {
+    const on = !sound
+    setChatSoundEnabled(on)
+    setSound(on)
+    if (on) void playChatSound('soft', { force: true })
+  }
   return (
-    <div className="border-t p-3">
+    <div className="space-y-2 border-t p-3">
       {state === 'denied' ? (
         <p className="text-[11px] text-muted-foreground">Desktop alerts are blocked for this site in your browser settings.</p>
-      ) : (
+      ) : state === 'default' ? (
         <button
           type="button"
           onClick={() => void Notification.requestPermission().then(setState)}
-          title="Get a desktop alert for direct messages and @mentions while this tab is in the background"
+          title="Get a desktop alert for new messages while this tab is in the background"
           className="flex w-full items-center gap-2.5 rounded-sm border bg-card px-3 py-2 text-left text-xs font-medium shadow-sm transition-colors hover:border-primary/40"
         >
           <Bell className="h-4 w-4 shrink-0 text-primary" />
           <span className="min-w-0">
             Turn on desktop alerts
-            <span className="block truncate font-normal text-muted-foreground">For DMs and @mentions</span>
+            <span className="block truncate font-normal text-muted-foreground">For messages while you’re elsewhere</span>
           </span>
         </button>
-      )}
+      ) : null}
+      <div className="flex items-center gap-1 px-1">
+        <button
+          type="button"
+          role="switch"
+          aria-checked={sound}
+          onClick={toggleSound}
+          title={sound ? 'Turn the message sound off' : 'Turn the message sound on'}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-sm py-1 text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {sound ? <Volume2 className="h-4 w-4 shrink-0 text-primary" /> : <VolumeX className="h-4 w-4 shrink-0" />}
+          <span className="truncate">{sound ? 'Sound on for new messages' : 'Sound off'}</span>
+        </button>
+        <button type="button" onClick={() => void playChatSound('chime', { force: true })} aria-label="Hear the message sound" title="Hear it" className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+          <Play className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   )
 }

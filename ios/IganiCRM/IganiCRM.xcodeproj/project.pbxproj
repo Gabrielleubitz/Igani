@@ -37,6 +37,7 @@
 		AFC8C55A2B1B5F44E1323E54 /* SalesScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAE3EC42F06AD6C3B4DD96AB /* SalesScreens.swift */; };
 		B211FDB6EB7A73CA42E955AC /* MoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 508FFF27437A22EE664F4639 /* MoreView.swift */; };
 		B468571772913AD07DB6C968 /* Pieces.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7545C8F3138B87B3CC295E7E /* Pieces.swift */; };
+		B65DC4CE793EFADD20D922B7 /* igani-chat.caf in Resources */ = {isa = PBXBuildFile; fileRef = 9B2CE17DA0F4C49B52B21C8E /* igani-chat.caf */; };
 		B6EBB0C4CE28385959DF338E /* WrapUpSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF403E81F5FE24ABA583855A /* WrapUpSheet.swift */; };
 		BB5A3131C53435EF89466A46 /* ChatMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = 655F63D8CF0E0F1D8B0E8288 /* ChatMedia.swift */; };
 		C7765FEE97A3F182CA106FC3 /* TasksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E4615C35E8176210721E9 /* TasksView.swift */; };
@@ -111,6 +112,7 @@
 		94EEEC73D5773D0379A11131 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		9A0808D1539A54F0177473CB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9A188971CC7EA274CA73AFE7 /* LeadProfilePanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeadProfilePanel.swift; sourceTree = "<group>"; };
+		9B2CE17DA0F4C49B52B21C8E /* igani-chat.caf */ = {isa = PBXFileReference; path = "igani-chat.caf"; sourceTree = "<group>"; };
 		9E119EDECFFFB3927FA0FADA /* PhoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneView.swift; sourceTree = "<group>"; };
 		A11E4615C35E8176210721E9 /* TasksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TasksView.swift; sourceTree = "<group>"; };
 		A2B1073B3507AE26F08A1FBD /* Routes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Routes.swift; sourceTree = "<group>"; };
@@ -274,6 +276,7 @@
 		B28C2FAB66C35759A5395AF3 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				9B2CE17DA0F4C49B52B21C8E /* igani-chat.caf */,
 				66B487E85B8AB8F2761FE7FE /* igani-ring.wav */,
 			);
 			path = Resources;
@@ -445,6 +448,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9F69DDD51CE891C30BCD013F /* Assets.xcassets in Resources */,
+				B65DC4CE793EFADD20D922B7 /* igani-chat.caf in Resources */,
 				3477A4EAADF6785EFF2B3E07 /* igani-ring.wav in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -610,7 +614,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 8T65J68WA2;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -677,7 +681,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 8T65J68WA2;
 				ENABLE_NS_ASSERTIONS = NO;

@@ -1,6 +1,7 @@
 import 'server-only'
 import type { ChatChannel, Role } from '@prisma/client'
 import { avatarPath } from './avatar'
+import type { ChatReason } from './chat-notify'
 import { prisma } from './prisma'
 
 /**
@@ -84,6 +85,40 @@ export async function chatUnreadByChannel(userId: string): Promise<Map<string, {
     WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${userId})
     GROUP BY m."channelId"`
   return new Map(rows.map((r) => [r.channelId, { unread: r.unread, mentions: r.mentions }]))
+}
+
+export interface ChatNewestRow {
+  id: string
+  channelId: string
+  parentId: string | null
+  userId: string | null
+  body: string
+  createdAt: Date
+  kind: 'CHANNEL' | 'DM'
+  name: string
+  reason: ChatReason
+}
+
+/**
+ * The newest unread messages that should reach this person (newest first), by the same rules as the phone push
+ * (lib/chat-notify.ts): direct messages, @mentions even in muted channels, replies in threads they started or replied
+ * in, and messages in channels they haven't muted. Feeds the web CRM's notifier.
+ */
+export async function chatNewestFor(userId: string, limit = 5): Promise<ChatNewestRow[]> {
+  const me = `<@${userId}>`
+  return prisma.$queryRaw<ChatNewestRow[]>`
+    SELECT m."id", m."channelId", m."parentId", m."userId", m."body", m."createdAt", c."kind", c."name",
+           CASE WHEN strpos(m."body", ${me}) > 0 THEN 'mention' WHEN c."kind" = 'DM' THEN 'dm' WHEN m."parentId" IS NOT NULL THEN 'thread' ELSE 'channel' END AS reason
+    FROM "ChatMessage" m
+    JOIN "ChatMember" cm ON cm."channelId" = m."channelId" AND cm."userId" = ${userId}
+    JOIN "ChatChannel" c ON c."id" = m."channelId" AND c."archivedAt" IS NULL
+    WHERE m."createdAt" > cm."lastReadAt" AND m."deletedAt" IS NULL AND (m."userId" IS NULL OR m."userId" <> ${userId})
+      AND (strpos(m."body", ${me}) > 0
+        OR (NOT cm."muted" AND m."parentId" IS NULL)
+        OR (NOT cm."muted" AND m."parentId" IS NOT NULL AND EXISTS (
+          SELECT 1 FROM "ChatMessage" t WHERE (t."id" = m."parentId" OR t."parentId" = m."parentId") AND t."userId" = ${userId})))
+    ORDER BY m."createdAt" DESC
+    LIMIT ${Math.max(1, Math.min(limit, 20))}`
 }
 
 // ─── presence and typing ─────────────────────────────────────────────────────
