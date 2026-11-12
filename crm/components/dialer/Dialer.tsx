@@ -14,6 +14,7 @@ import { CallActions } from './CallActions'
 import { playDtmf } from './dtmf'
 import { dialProblem, formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
 import type { CallerId } from '@/lib/caller-id'
+import { CoachPanel } from './CoachPanel'
 import { useLiveHints } from './useLiveHints'
 import type { LiveHint } from '@/lib/live-hints-core'
 import { demoEngine, fetchVoiceToken, twilioEngine, voiceErrorText, type ActiveCall, type IncomingCall, type VoiceEngine } from './voice'
@@ -195,6 +196,8 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
   const [session, setSession] = useState<Session | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  /** the call whose coaching card is showing (after its wrap-up was saved) */
+  const [coach, setCoach] = useState<{ callId: string; saved: string } | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [showPad, setShowPad] = useState(false)
   /** admins: the next call is personal (not recorded, not on the CRM). Off again after each call. */
@@ -322,6 +325,7 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
     const { call, caller } = incoming
     stopIncomingAlerts(call)
     setIncoming(null)
+    setCoach(null)
     const c = call.accept()
     active.current = c
     const display = caller?.display ?? formatPhone(call.from)
@@ -357,6 +361,7 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
         setError('Save the last call first, then dial again.')
         return
       }
+      setCoach(null)
       busy.current = true
       canceled.current = false
       setError(null)
@@ -454,10 +459,14 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
     setNotice('Private call ended. It wasn’t recorded or saved to the CRM.')
   }
 
-  const onWrapped = (leadName: string | null, madeLead = false): void => {
+  const onWrapped = (leadName: string | null, madeLead = false, info?: { callId: string; answered: boolean }): void => {
+    const saved = madeLead ? `${leadName ?? 'They'} ${leadName ? 'is' : 'are'} now a lead` : leadName ? `Saved on ${leadName}’s timeline` : 'Call saved'
     setSession(null)
     setTyped('')
-    setNotice(madeLead ? `${leadName ?? 'They'} ${leadName ? 'is' : 'are'} now a lead` : leadName ? `Saved on ${leadName}’s timeline` : 'Call saved')
+    setCoach(null)
+    // An answered call goes on to the coaching card (it says so itself if there will be no review); anything else is as before.
+    if (info?.answered) setCoach({ callId: info.callId, saved })
+    else setNotice(saved)
     router.refresh()
   }
 
@@ -523,6 +532,21 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
             <InCall session={session} now={now} showPad={showPad} setShowPad={setShowPad} onMute={toggleMute} onHangup={hangup} onDigit={(d) => active.current?.sendDigits(d)} notes={teamNotes} hint={liveHintNow} hintsActive={hintsActive} hintsOn={hintsOn} onToggleHints={() => setHintsOn((v) => { try { localStorage.setItem('igani.liveHints', v ? 'off' : 'on') } catch {} return !v })} />
           ) : session?.phase === 'wrapup' ? (
             <WrapUp session={session} onDone={onWrapped} />
+          ) : coach ? (
+            <CoachPanel
+              key={coach.callId}
+              callId={coach.callId}
+              saved={coach.saved}
+              onDone={(unresolved) => {
+                setCoach(null)
+                // Keep working: the review isn't ready, so close the phone and let the rep get on with it
+                if (unresolved) setOpen(false)
+              }}
+              onOpenReview={() => {
+                setCoach(null)
+                setOpen(false)
+              }}
+            />
           ) : (
             <>
               {error ? (
@@ -1208,7 +1232,7 @@ function RoundAction({ label, active, onClick, disabled, children }: { label: st
 
 /* ───────────────────────── wrap-up ───────────────────────── */
 
-function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: string | null, madeLead?: boolean) => void }): React.ReactElement {
+function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: string | null, madeLead?: boolean, info?: { callId: string; answered: boolean }) => void }): React.ReactElement {
   const answered = session.ended === 'answered'
   const talked = answered && session.answeredAt && session.endedAt ? session.endedAt - session.answeredAt : 0
   const prospect = session.call.prospect
@@ -1232,7 +1256,7 @@ function WrapUp({ session, onDone }: { session: Session; onDone: (leadName: stri
     const r = await saveCallWrapUp({ callId: session.call.callId, outcome: outcome as never, notes: notes.trim() || undefined, contact })
     setSaving(false)
     if (!r.ok) return setError(r.error)
-    onDone(name, r.data.madeLead || (prospect !== null && outcome === 'interested'))
+    onDone(name, r.data.madeLead || (prospect !== null && outcome === 'interested'), { callId: session.call.callId, answered })
   }
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-5">
