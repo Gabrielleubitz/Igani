@@ -1051,6 +1051,8 @@ function Live({ api: apiRaw, slot, sideSlot, topSlot, code, roomId, title, testS
       joinedCb.current()
       playCue('ready')
       if (me.avatar) api.executeCommand('avatarUrl', me.avatar)
+      // which photo the tiles got (none = initials): helps when someone's picture doesn't show
+      logRef.current('avatar', { sent: Boolean(me.avatar), host: me.avatar ? new URL(me.avatar).host : null })
       // like Meet: everyone in equal tiles side by side to start with
       api.executeCommand('setTileView', true)
       if (blur !== 'none') void applyBackground(api, blur)

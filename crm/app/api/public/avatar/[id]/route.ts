@@ -25,6 +25,9 @@ export async function GET(_req: Request, props: { params: Promise<{ id: string }
       'content-type': type,
       'cache-control': 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=2592000',
       'x-content-type-options': 'nosniff',
+      // shown inside other sites too: the Meet video tiles live in 8x8's page, which only loads images that allow it
+      'cross-origin-resource-policy': 'cross-origin',
+      'access-control-allow-origin': '*',
     },
   })
 }
