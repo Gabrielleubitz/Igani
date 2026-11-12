@@ -34,6 +34,15 @@ struct LiveCall: Decodable, Identifiable, Hashable {
 }
 
 struct LiveCalls: Decodable { let calls: [LiveCall]; let listenIn: Bool }
+
+/// A short note an admin sends the rep during a live call (shown on the rep's call screen; the client never sees it).
+struct CallNoteItem: Decodable, Identifiable, Hashable {
+    let id: String
+    let body: String
+    let author: String
+    let createdAt: Date
+}
+struct CallNotesReply: Decodable { let notes: [CallNoteItem]; let live: Bool }
 struct CallProgress: Decodable { let status: String; let answered: Bool }
 
 struct RecentCall: Decodable, Identifiable, Hashable {

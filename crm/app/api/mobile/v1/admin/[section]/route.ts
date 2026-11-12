@@ -11,6 +11,7 @@ import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { listPendingLinks } from '@/lib/sales-contract'
 import { CONTRACT_VERSION } from '@/lib/sales-contract-core'
+import { listenRelay } from '@/lib/listen'
 import { getSettings } from '@/lib/settings'
 import { SITE_PAGES, isSitePage } from '@/lib/site-pages'
 import { rankReps } from '@/lib/team-metrics'
@@ -152,6 +153,7 @@ const SECTIONS: Record<string, (user: User, sp: Params) => Promise<unknown>> = {
       record: settings['voice.record'],
       hints: settings['voice.hints'],
       listenIn: settings['voice.listenIn'],
+      listenReady: Boolean(listenRelay()),
       countries: settings['voice.countries'],
       team: team.map((u) => {
         const l = lineOf.get(u.id)

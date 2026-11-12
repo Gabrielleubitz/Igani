@@ -5,7 +5,7 @@ import { twilioClient, twilioConfig } from '@/lib/twilio'
 
 export const dynamic = 'force-dynamic'
 
-/** Admins: what Twilio says about the latest calls (legs, room, alerts), for diagnosing calls that don't connect. */
+/** Admins: what Twilio says about the latest calls (legs, alerts), for diagnosing calls that don't connect. */
 export async function GET(req: Request): Promise<NextResponse> {
   const user = await currentUserOrNull()
   if (user?.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
@@ -26,28 +26,17 @@ export async function GET(req: Request): Promise<NextResponse> {
   }
   const out = []
   for (const call of calls) {
-    let room: unknown = null
-    if (call.conferenceSid) {
-      try {
-        const conf = await client.conferences(call.conferenceSid).fetch()
-        room = { status: conf.status, reasonEnded: (conf as unknown as { reasonConferenceEnded?: string }).reasonConferenceEnded, callSidEnding: (conf as unknown as { callSidEndingConference?: string }).callSidEndingConference }
-      } catch (e) {
-        room = { error: e instanceof Error ? e.message : String(e) }
-      }
-    }
     // child legs Twilio made from the rep's leg (direct calls)
     const children = call.twilioCallSid ? await client.calls.list({ parentCallSid: call.twilioCallSid, limit: 3 }).catch(() => []) : []
     out.push({
       id: call.id,
       at: call.startedAt,
       status: call.status,
-      conference: call.conference,
-      conferenceSid: call.conferenceSid,
+      listenStreamSid: call.listenStreamSid,
       to: mask(call.toNumber),
       repLeg: await leg(call.twilioCallSid),
       clientLeg: await leg(call.childCallSid),
       childrenOfRepLeg: children.map((k) => ({ sid: k.sid, status: k.status, to: mask(k.to), duration: k.duration })),
-      room,
     })
   }
   const alerts = await client.monitor.v1.alerts

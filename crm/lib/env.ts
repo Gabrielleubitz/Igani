@@ -21,6 +21,9 @@ const schema = z.object({
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET: z.string().optional(),
+  /** Listening in on live calls (lib/listen.ts): the relay's WebSocket URL (wss://listen.igani.co) and the secret it shares with the CRM. Without both, Listen is hidden. */
+  LISTEN_RELAY_URL: z.string().url().optional(),
+  LISTEN_RELAY_SECRET: z.string().min(16).optional(),
 })
 
 export type Env = z.infer<typeof schema>

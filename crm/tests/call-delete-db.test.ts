@@ -28,6 +28,7 @@ d('deleting a call (admin only)', async () => {
     await prisma.callShare.deleteMany()
     await prisma.call.deleteMany()
     await prisma.lead.deleteMany()
+    await prisma.booking.deleteMany() // meetings left by earlier test files would block deleting their hosts
     await prisma.user.deleteMany()
     adminId = (await prisma.user.create({ data: { email: 'admin@igani.co', name: 'Admin', role: 'ADMIN' } })).id
     repId = (await prisma.user.create({ data: { email: 'rita@igani.co', name: 'Rita', role: 'SALES' } })).id
@@ -38,6 +39,7 @@ d('deleting a call (admin only)', async () => {
     await prisma.activityLog.deleteMany()
     await prisma.callShare.deleteMany()
     await prisma.call.deleteMany()
+    await prisma.booking.deleteMany() // meetings left by earlier test files would block deleting their hosts
     await prisma.user.deleteMany()
     await prisma.$disconnect()
   })

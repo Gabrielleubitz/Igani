@@ -1,13 +1,16 @@
 import SwiftUI
 
-/// Admins: calls happening right now. Listen joins one muted (Phone.listen); the bubble messages the rep in team chat.
+/// Admins: calls happening right now. Note slips a short text onto the rep's call screen (the client never sees it);
+/// the bubble messages the rep in team chat. Listening in is on the web CRM (Calls → Live now).
 /// Shows nothing when nobody is on the phone.
 struct LiveCallsPanel: View {
     @Environment(Toasts.self) private var toasts
     @State private var live: LiveCalls?
     @State private var phone = Phone.shared
     @State private var messageRep: LiveCall.Rep?
-    @State private var starting = false
+    @State private var noteFor: LiveCall?
+    @State private var noteText = ""
+    @State private var sending = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,7 +22,7 @@ struct LiveCallsPanel: View {
                         Text("Live now").font(.headline).foregroundStyle(Theme.text)
                         Text("\(live.calls.count)").font(.caption.weight(.bold)).foregroundStyle(Theme.muted)
                         Spacer()
-                        if !live.listenIn { Text("Listening in is off").font(.caption).foregroundStyle(Theme.muted) }
+                        Text(live.listenIn ? "Listen from the web" : "Listening in is off").font(.caption).foregroundStyle(Theme.muted)
                     }
                     ForEach(live.calls) { c in row(c, listenIn: live.listenIn) }
                 }
@@ -36,12 +39,37 @@ struct LiveCallsPanel: View {
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { messageRep = nil } } }
             }
         }
+        .alert("Note to \(noteFor?.rep.name ?? "the rep")", isPresented: Binding(get: { noteFor != nil }, set: { if !$0 { noteFor = nil } })) {
+            TextField("Ask about their budget", text: $noteText)
+            Button("Send") { send() }
+            Button("Cancel", role: .cancel) { noteText = "" }
+        } message: {
+            Text("Pops up on their call screen. The client never sees it.")
+        }
         .animation(.snappy, value: live?.calls.map(\.callId))
         .task {
             while !Task.isCancelled {
                 if let l: LiveCalls = try? await API.shared.act("liveCalls") { live = l }
                 try? await Task.sleep(for: .seconds(4))
             }
+        }
+    }
+
+    private func send() {
+        guard let c = noteFor else { return }
+        let text = noteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        noteFor = nil
+        noteText = ""
+        guard !text.isEmpty else { return }
+        sending = true
+        Task {
+            do {
+                let _: Anything? = try await API.shared.act("sendCallNote", c.callId, text)
+                toasts.show("Sent to \(c.rep.name)")
+            } catch {
+                toasts.show(error.localizedDescription, tone: .warn)
+            }
+            sending = false
         }
     }
 
@@ -76,30 +104,22 @@ struct LiveCallsPanel: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Message \(c.rep.name)")
             }
-            if c.canListen {
-                Button {
-                    if listeningHere { phone.hangUp(); return }
-                    starting = true
-                    Task {
-                        do { try await phone.listen(to: c) } catch { toasts.show(error.localizedDescription, tone: .warn) }
-                        starting = false
-                    }
-                } label: {
+            if c.status == "IN_PROGRESS" {
+                Button { noteText = ""; noteFor = c } label: {
                     HStack(spacing: 5) {
-                        Image(systemName: "ear")
-                        Text(listeningHere ? "Stop" : "Listen").lineLimit(1)
+                        Image(systemName: "text.bubble")
+                        Text("Note").lineLimit(1)
                     }
-                        .font(.footnote.weight(.bold))
-                        .foregroundStyle(listeningHere ? Theme.bg : Theme.green)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(listeningHere ? AnyShapeStyle(Theme.green) : AnyShapeStyle(Theme.green.opacity(0.14)), in: Capsule())
-                        .fixedSize()
-                        .frame(minHeight: 44).contentShape(Rectangle())
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(Theme.green)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(Theme.green.opacity(0.14), in: Capsule())
+                    .fixedSize()
+                    .frame(minHeight: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .disabled(starting || (phone.onCall && !listeningHere))
-                .opacity(phone.onCall && !listeningHere ? 0.4 : 1)
-                .accessibilityLabel(listeningHere ? "Stop listening to \(c.rep.name)" : "Listen in on \(c.rep.name)")
+                .disabled(sending)
+                .accessibilityLabel("Send \(c.rep.name) a note during the call")
             }
         }
         .padding(10)

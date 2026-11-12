@@ -30,7 +30,7 @@ export const SETTING_SCHEMAS = {
   /** The OpenAI model that writes call reviews (empty = the default: env var, then gpt-5.5). A cheaper one costs less per review */
   'calls.reviewModel': z.string().trim().max(60).regex(/^[A-Za-z0-9._:-]*$/),
   'voice.countries': z.array(z.enum(['IL', 'US'])).min(1),
-  /** Outgoing calls go through a Twilio conference room, so admins can listen in silently (lib/call-conference.ts) */
+  /** Admins may listen in on live calls and send the rep notes (lib/listen.ts). Calls are placed the same way either way */
   'voice.listenIn': z.boolean(),
   /** Who signs contracts for Igani (shown in the signature box) */
   'contract.signer': z.object({ name: z.string().trim().max(120), title: z.string().trim().max(120), email: z.union([z.literal(''), z.string().trim().email().max(254)]), phone: z.string().trim().max(40) }),

@@ -125,6 +125,7 @@ model User {
   phoneLine       PhoneLine?
   followUpDrafts  FollowUpDraft[]
   calls           Call[]
+  callNotes       CallNote[]
   chatMemberships ChatMember[]
   chatPresence    ChatPresence?
   signatures      Signature[]     @relation("UserSignatures")
@@ -814,22 +815,40 @@ model Call {
   simulated        Boolean       @default(false)
   /// A call to a business on a call list (before it is a lead)
   prospectId       String?
-  /// Calls placed through a Twilio conference room (Settings → Phone → Allow listening in), so admins can listen in
+  /// No longer used (calls once ran through a conference room for listening in); kept so no data is dropped
   conferenceSid    String?
   conference       Boolean       @default(false)
+  /// The Twilio media stream carrying this call's audio to the listen relay while an admin listens in (lib/listen.ts)
+  listenStreamSid  String?
   /// What the AI learned about the client on this call (lib/lead-intel.ts): person, company, site, meeting, next steps
   intel            Json?
   /// A personal call (admins only): not recorded, not reviewed, not tied to a contact, and only its caller can see it
   private          Boolean       @default(false)
 
-  user     User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  lead     Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  prospect Prospect?   @relation(fields: [prospectId], references: [id], onDelete: SetNull)
-  shares   CallShare[]
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lead      Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  prospect  Prospect?   @relation(fields: [prospectId], references: [id], onDelete: SetNull)
+  shares    CallShare[]
+  callNotes CallNote[]
 
   @@index([userId, startedAt])
   @@index([leadId, startedAt])
   @@index([prospectId])
+}
+
+/// A short note an admin sends a salesperson during a live call (Calls → Live now). Shown on the rep's call screen and
+/// afterwards on the call's page, to admins and that rep only. The client never sees it.
+model CallNote {
+  id        String   @id @default(cuid())
+  callId    String
+  authorId  String?
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+
+  call   Call  @relation(fields: [callId], references: [id], onDelete: Cascade)
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([callId, createdAt])
 }
 
 /// An admin adds a salesman to someone else's call so he can open it (recording, transcript, review) from his own Calls list.

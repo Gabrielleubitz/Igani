@@ -6,9 +6,10 @@ import { Messages } from './Messages'
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { dialerCallLists, dialerProspects, type DialerList, type DialerProspect } from '@/app/actions/call-lists'
-import { abandonCall, callProgress, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
+import { abandonCall, clearStuckCalls, identifyCaller, lookupIncoming, recentCalls, simulateIncomingCall, type IncomingCaller, saveCallWrapUp, searchDialerContacts, startCall, type DialerContact, type RecentCall, type StartedCall } from '@/app/actions/calls'
 import { markBusy } from '@/lib/stale-deploy'
 import { cn } from '@/lib/utils'
+import { TeamNotes, useTeamNotes, type TeamNotesState } from './CallNotes'
 import { CallActions } from './CallActions'
 import { playDtmf } from './dtmf'
 import { dialProblem, formatAsTyped, formatPhone, toE164 } from '@/lib/phone-numbers'
@@ -220,6 +221,8 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
   const canceled = useRef(false)
 
   const live = session && session.phase !== 'wrapup'
+  // Notes an admin sends from Live now, while the call is connected (never for private calls)
+  const teamNotes = useTeamNotes(session && session.phase === 'live' && !session.call.private ? session.call.callId : null)
   const { hint: liveHintNow, active: hintsActive } = useLiveHints({ enabled: Boolean(session && session.phase === 'live' && session.direction === 'out' && session.call.hints && hintsOn), callId: session?.call.callId ?? '', answeredAt: session?.answeredAt ?? null, getStreams: () => active.current?.streams() ?? null })
   useEffect(() => {
     if (!live) return
@@ -322,7 +325,7 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
     const c = call.accept()
     active.current = c
     const display = caller?.display ?? formatPhone(call.from)
-    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ?? null, prospect: null, record: false, hints: false, demo, conference: false, private: false }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in', company: caller?.id?.prospect?.name ?? caller?.id?.label?.company ?? null })
+    setSession({ call: { callId: call.callId, to: caller?.number ?? call.from, display, lead: caller?.lead ?? null, prospect: null, record: false, hints: false, demo, private: false }, phase: 'live', answeredAt: Date.now(), endedAt: null, muted: false, ended: null, rang: true, direction: 'in', company: caller?.id?.prospect?.name ?? caller?.id?.label?.company ?? null })
     const finish = (): void => {
       active.current = null
       setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: 'answered' } : s))
@@ -393,31 +396,13 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
           return
         }
         active.current = c
-        // Listen-in calls run through a conference room: the app joins the room straight away, so "accepted" only
-        // means ringing has started. Whether the client answered comes from the server (their leg's status).
-        let watch: number | null = null
-        const stopWatch = (): void => {
-          if (watch != null) window.clearInterval(watch)
-          watch = null
-        }
         const finish = (ended: Session['ended']): void => {
-          stopWatch()
           active.current = null
           setSession((s) => (s && s.phase !== 'wrapup' ? { ...s, phase: 'wrapup', endedAt: Date.now(), ended: s.answeredAt ? 'answered' : s.rang ? ended : 'failed' } : s))
           setOpen(true)
         }
         c.on('ringing', () => setSession((s) => (s && s.phase === 'connecting' ? { ...s, phase: 'ringing', rang: true } : s)))
-        c.on('accept', () => {
-          if (!call.conference) return setSession((s) => (s ? { ...s, phase: 'live', answeredAt: Date.now() } : s))
-          setSession((s) => (s && s.phase === 'connecting' ? { ...s, phase: 'ringing', rang: true } : s))
-          watch = window.setInterval(() => {
-            void callProgress(call.callId).then((r) => {
-              if (!r.ok || !r.data.answered) return
-              stopWatch()
-              setSession((s) => (s && s.phase !== 'wrapup' && !s.answeredAt ? { ...s, phase: 'live', answeredAt: Date.now() } : s))
-            })
-          }, 1000)
-        })
+        c.on('accept', () => setSession((s) => (s ? { ...s, phase: 'live', answeredAt: Date.now() } : s)))
         c.on('disconnect', () => finish('no_answer'))
         c.on('cancel', () => finish('canceled'))
         c.on('error', (e) => {
@@ -535,7 +520,7 @@ export function DialerProvider({ enabled, visible, number, demo, admin = false, 
           {incoming ? (
             <IncomingView caller={incoming.caller} from={incoming.call.from} onAccept={answer} onDecline={decline} />
           ) : session && session.phase !== 'wrapup' ? (
-            <InCall session={session} now={now} showPad={showPad} setShowPad={setShowPad} onMute={toggleMute} onHangup={hangup} onDigit={(d) => active.current?.sendDigits(d)} hint={liveHintNow} hintsActive={hintsActive} hintsOn={hintsOn} onToggleHints={() => setHintsOn((v) => { try { localStorage.setItem('igani.liveHints', v ? 'off' : 'on') } catch {} return !v })} />
+            <InCall session={session} now={now} showPad={showPad} setShowPad={setShowPad} onMute={toggleMute} onHangup={hangup} onDigit={(d) => active.current?.sendDigits(d)} notes={teamNotes} hint={liveHintNow} hintsActive={hintsActive} hintsOn={hintsOn} onToggleHints={() => setHintsOn((v) => { try { localStorage.setItem('igani.liveHints', v ? 'off' : 'on') } catch {} return !v })} />
           ) : session?.phase === 'wrapup' ? (
             <WrapUp session={session} onDone={onWrapped} />
           ) : (
@@ -1111,7 +1096,7 @@ function Recent({ onCall }: { onCall: (r: RecentCall) => void }): React.ReactEle
 
 /* ───────────────────────── in call ───────────────────────── */
 
-function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, hint, hintsActive, hintsOn, onToggleHints }: { session: Session; now: number; showPad: boolean; setShowPad: (v: boolean) => void; onMute: () => void; onHangup: () => void; onDigit: (d: string) => void; hint: LiveHint | null; hintsActive: boolean; hintsOn: boolean; onToggleHints: () => void }): React.ReactElement {
+function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, notes, hint, hintsActive, hintsOn, onToggleHints }: { session: Session; now: number; showPad: boolean; setShowPad: (v: boolean) => void; onMute: () => void; onHangup: () => void; onDigit: (d: string) => void; notes: TeamNotesState; hint: LiveHint | null; hintsActive: boolean; hintsOn: boolean; onToggleHints: () => void }): React.ReactElement {
   const { call, phase } = session
   const name = call.lead?.name ?? call.prospect?.name
   const [tones, setTones] = useState('')
@@ -1154,6 +1139,8 @@ function InCall({ session, now, showPad, setShowPad, onMute, onHangup, onDigit, 
         ) : null}
         {call.demo ? <div className="mt-2 text-[11px] text-amber-300">Demo call: nobody is actually being called</div> : null}
       </div>
+
+      <TeamNotes state={notes} />
 
       {session.direction === 'out' && session.call.hints && phase === 'live' ? (
         <div className="w-full">

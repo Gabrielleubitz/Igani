@@ -1,0 +1,17 @@
+{
+  "name": "igani-listen-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Forwards a live call's audio from Twilio Media Streams to admins listening in the Igani CRM",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "LISTEN_RELAY_SECRET=dev-secret-dev-secret-dev node server.mjs",
+    "test:twilio": "node test/fake-twilio.mjs",
+    "test:listen": "node test/listen-client.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

@@ -24,6 +24,7 @@ d('import a CSV into a call list', async () => {
     await prisma.activityLog.deleteMany()
     await prisma.callList.deleteMany()
     await prisma.lead.deleteMany()
+    await prisma.booking.deleteMany() // meetings left by earlier test files would block deleting their hosts
     await prisma.user.deleteMany()
   }
   beforeEach(async () => {

@@ -36,8 +36,9 @@ const ACTIONS: Record<string, Action> = {
   simulateCallProgress: calls.simulateCallProgress,
   simulateIncomingCall: calls.simulateIncomingCall,
   saveCallWrapUp: calls.saveCallWrapUp,
-  callProgress: calls.callProgress,
   liveCalls: calls.liveCalls,
+  sendCallNote: calls.sendCallNote,
+  callNotes: calls.callNotes,
   // the AI profile on a lead
   addProfileMeetingToCalendar: leadIntel.addProfileMeetingToCalendar,
   profileItemToTask: leadIntel.profileItemToTask,

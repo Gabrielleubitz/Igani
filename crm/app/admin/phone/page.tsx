@@ -11,6 +11,7 @@ import { CALL_OUTCOMES, fmtDuration } from '@/lib/calls'
 import { formatDateTime, leadName } from '@/lib/format'
 import { formatPhone } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
+import { listenRelay } from '@/lib/listen'
 import { getSetting } from '@/lib/settings'
 import { dialerDemo, listTwilioNumbers, routedToCrm, twilioConfig, twilioSetup, type TwilioNumberInfo } from '@/lib/twilio'
 import { numberCosts, twilioBills, type NumberCost, type TwilioMonthBill } from '@/lib/twilio-costs'
@@ -355,7 +356,7 @@ export default async function PhoneAdminPage(): Promise<React.ReactElement> {
           <CardTitle className="text-base">Recording</CardTitle>
         </CardHeader>
         <CardContent>
-          <VoiceSettingsForm initial={{ record, hints, listenIn, countries, reviewModel }} />
+          <VoiceSettingsForm initial={{ record, hints, listenIn, countries, reviewModel }} listenReady={Boolean(listenRelay())} />
         </CardContent>
       </Card>
 

@@ -1,5 +1,3 @@
-import { after } from 'next/server'
-import { canListen, dialClientIntoRoom, roomName } from '@/lib/call-conference'
 import { FINAL_STATUSES, MAX_CALL_MIN, advanceCall } from '@/lib/calls'
 import { dialProblem } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
@@ -24,20 +22,6 @@ export async function POST(req: Request): Promise<Response> {
   const p = await readTwilioWebhook(req, 'twiml')
   if (!p) return new Response('Forbidden', { status: 403 })
   const userId = userIdFromClient(p.From)
-
-  // An admin listening in: join the call's room muted, without a beep, never starting or ending it
-  if (p.listen) {
-    if (!userId || !/^[a-z0-9]{20,40}$/i.test(p.listen)) return refuse()
-    const me = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } })
-    const allowed = me?.email ? await prisma.allowedUser.findUnique({ where: { email: me.email.toLowerCase() }, select: { role: true, active: true } }) : null
-    if (!allowed?.active || allowed.role !== 'ADMIN') return refuse()
-    const ok = await canListen(p.listen, userId)
-    if (!ok.ok) return refuse('That call has ended.')
-    const r = twiml()
-    r.dial({ timeLimit: MAX_CALL_MIN * 60 }).conference({ muted: true, beep: 'false', startConferenceOnEnter: false, endConferenceOnExit: false, waitUrl: '' }, roomName(p.listen))
-    return xml(r.toString())
-  }
-
   const callId = p.callId
   if (!userId || !callId || !/^[a-z0-9]{20,40}$/i.test(callId)) return refuse()
 
@@ -68,25 +52,7 @@ export async function POST(req: Request): Promise<Response> {
   }
   if (claim !== 'ok') return refuse()
 
-  // Listen-in calls: the rep joins a room, and right after this answer we ring the client into the same room
-  if (call.conference) {
-    after(() => dialClientIntoRoom(call.id))
-    const r = twiml()
-    r.dial({ timeLimit: MAX_CALL_MIN * 60, action: voiceUrl('dial-done', call.id), method: 'POST' }).conference(
-      {
-        beep: 'false',
-        startConferenceOnEnter: true,
-        endConferenceOnExit: true,
-        waitUrl: '',
-        statusCallback: voiceUrl('conference', call.id),
-        statusCallbackMethod: 'POST',
-        statusCallbackEvent: ['end'],
-      },
-      roomName(call.id),
-    )
-    return xml(r.toString())
-  }
-
+  // Always a plain bridge. Listening in (lib/listen.ts) forks the audio of this leg later, on demand, and changes nothing here.
   const record = !call.private && (await getSetting('voice.record'))
   const r = twiml()
   const dial = r.dial({

@@ -58,7 +58,7 @@ export function iosPushCredential(sandbox: boolean): string | null {
   return v && /^CR[0-9a-f]{32}$/i.test(v) ? v : null
 }
 
-export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done' | 'sms' | 'sms-status' | 'conference'
+export type VoicePath = 'twiml' | 'status' | 'dial-done' | 'recording' | 'incoming' | 'incoming-done' | 'voicemail-done' | 'sms' | 'sms-status' | 'stream'
 
 /** Public URL of one of our voice webhooks (what Twilio calls, and what its signature is computed over). */
 export function voiceUrl(path: VoicePath, callId?: string): string {

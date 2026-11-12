@@ -14,6 +14,9 @@ import { dialProblem, formatPhone, toE164 } from '@/lib/phone-numbers'
 import { prisma } from '@/lib/prisma'
 import { getSetting } from '@/lib/settings'
 import { dialerDemo, twilioClient, twilioConfig } from '@/lib/twilio'
+import { listenRelay, startListen, stopListen, type ListenSession } from '@/lib/listen'
+
+export type { ListenRoles, ListenSession } from '@/lib/listen'
 import { analyzeCall } from '@/lib/call-analysis'
 import { callLength, mayReviewByHand } from '@/lib/call-review-rules'
 import { statusAfterCall } from '@/lib/call-status'
@@ -46,8 +49,6 @@ export interface StartedCall {
   /** live Control of the call hints are on (setting + OpenAI key) */
   hints: boolean
   demo: boolean
-  /** placed through a conference room (listen-in on): the app connecting doesn't mean the client answered — watch callProgress */
-  conference: boolean
   /** a personal call: not recorded, no wrap-up, not on the CRM */
   private: boolean
 }
@@ -82,10 +83,10 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     if (data.private) {
       if (user.role !== 'ADMIN') throw new BookingError('Only admins can make private calls.', 'FORBIDDEN')
       const call = await prisma.call.create({
-        data: { userId: user.id, leadId: null, prospectId: null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo, conference: false, private: true },
+        data: { userId: user.id, leadId: null, prospectId: null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo, private: true },
         select: { id: true },
       })
-      return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead: null, prospect: null, record: false, hints: false, demo, conference: false, private: true } }
+      return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead: null, prospect: null, record: false, hints: false, demo, private: true } }
     }
 
     let leadId: string
@@ -106,12 +107,11 @@ export async function startCall(input: z.input<typeof StartInput>): Promise<Acti
     // No AI during the call: live hints recorded and uploaded both sides every few seconds, competing with the call's
     // own audio for bandwidth and CPU. The AI review runs after the call, on the recording, and can't slow it down.
     const hints = false
-    const conference = !demo && (await getSetting('voice.listenIn'))
     const call = await prisma.call.create({
-      data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo, conference },
+      data: { userId: user.id, leadId: lead?.id ?? null, prospectId: data.prospectId ?? null, direction: 'OUTBOUND', status: 'INITIATED', fromNumber: line?.number ?? '+15005550006', toNumber: to, simulated: demo },
       select: { id: true },
     })
-    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, hints, demo, conference, private: false } }
+    return { ok: true, data: { callId: call.id, to, display: formatPhone(to), lead, prospect, record, hints, demo, private: false } }
   } catch (err) {
     return toActionError(err)
   }
@@ -445,18 +445,6 @@ export async function simulateIncomingCall(): Promise<ActionResult<{ callId: str
   }
 }
 
-/** Where an outgoing call stands (listen-in calls: the app is connected before the client answers). */
-export async function callProgress(callId: string): Promise<ActionResult<{ status: string; answered: boolean }>> {
-  try {
-    const user = await requireUser([...callers])
-    const call = await prisma.call.findUnique({ where: { id: z.string().regex(/^[a-z0-9]{20,40}$/i).parse(callId) }, select: { userId: true, status: true, answeredAt: true } })
-    if (!call || call.userId !== user.id) return { ok: false, error: 'Call not found.' }
-    return { ok: true, data: { status: call.status, answered: Boolean(call.answeredAt) || call.status === 'IN_PROGRESS' } }
-  } catch (err) {
-    return toActionError(err)
-  }
-}
-
 export interface LiveCall {
   callId: string
   rep: { id: string; name: string }
@@ -467,14 +455,15 @@ export interface LiveCall {
   status: 'INITIATED' | 'RINGING' | 'IN_PROGRESS'
   startedAt: string
   answeredAt: string | null
-  /** an admin can join it muted (it runs through a conference room) */
+  /** this admin can listen to it now (setting on, relay set up, connected, not private, not their own) */
   canListen: boolean
 }
 
 /** Calls happening right now across the team, for admins (Calls page → Live now). */
-export async function liveCalls(): Promise<ActionResult<{ calls: LiveCall[]; listenIn: boolean }>> {
+export async function liveCalls(): Promise<ActionResult<{ calls: LiveCall[]; listenIn: boolean; listenReady: boolean }>> {
   try {
     const user = await requireUser(['ADMIN'])
+    const [listenIn, listenReady] = [await getSetting('voice.listenIn'), Boolean(listenRelay())]
     const rows = await prisma.call.findMany({
       where: { status: { in: [...LIVE_STATUSES] }, simulated: false, private: false, startedAt: { gt: new Date(Date.now() - 95 * 60_000) }, twilioCallSid: { not: null } },
       orderBy: { startedAt: 'desc' },
@@ -490,9 +479,78 @@ export async function liveCalls(): Promise<ActionResult<{ calls: LiveCall[]; lis
       status: c.status as LiveCall['status'],
       startedAt: c.startedAt.toISOString(),
       answeredAt: c.answeredAt?.toISOString() ?? null,
-      canListen: c.conference && Boolean(c.conferenceSid) && c.userId !== user.id,
+      canListen: listenIn && listenReady && c.status === 'IN_PROGRESS' && Boolean(c.twilioCallSid) && !c.private && c.userId !== user.id,
     }))
-    return { ok: true, data: { calls, listenIn: await getSetting('voice.listenIn') } }
+    return { ok: true, data: { calls, listenIn, listenReady } }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+const CallId = z.string().regex(/^[a-z0-9]{20,40}$/i)
+
+/** An admin starts listening to a live call: forks its audio to the relay and returns what the player needs. */
+export async function listenStart(callId: string): Promise<ActionResult<ListenSession>> {
+  try {
+    const user = await requireUser(['ADMIN'])
+    return { ok: true, data: await startListen(user, CallId.parse(callId)) }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** The admin stopped listening (noted in the audit log with how long). */
+export async function listenStop(callId: string, seconds: number): Promise<ActionResult> {
+  try {
+    const user = await requireUser(['ADMIN'])
+    await stopListen(user, CallId.parse(callId), z.number().min(0).max(24 * 3600).catch(0).parse(seconds))
+    return { ok: true, data: undefined }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/** A note an admin sent the rep during a call, as the call screen and the call's page show it. */
+export interface CallNoteItem {
+  id: string
+  body: string
+  author: string
+  createdAt: string
+}
+
+const noteItem = (n: { id: string; body: string; createdAt: Date; author: { name: string | null; email: string | null } | null }): CallNoteItem => ({ id: n.id, body: n.body, author: n.author?.name ?? n.author?.email ?? 'Admin', createdAt: n.createdAt.toISOString() })
+
+/**
+ * An admin sends the rep a short note during a live call (from Live now). It pops up on the rep's call screen within
+ * a couple of seconds. The client never sees it.
+ */
+export async function sendCallNote(callId: string, body: string): Promise<ActionResult<CallNoteItem>> {
+  try {
+    const user = await requireUser(['ADMIN'])
+    const text = z.string().trim().min(1, 'Write something first.').max(200, 'Keep it under 200 characters: the rep reads it mid-call.').parse(body)
+    const call = await prisma.call.findUnique({ where: { id: CallId.parse(callId) }, select: { id: true, userId: true, status: true, private: true, simulated: true } })
+    if (!call || call.private) throw new BookingError('That call can’t take notes.', 'NOT_FOUND')
+    if (!LIVE_STATUSES.includes(call.status)) throw new BookingError('That call has ended.', 'INVALID_STATE')
+    const note = await prisma.callNote.create({ data: { callId: call.id, authorId: user.id, body: text }, include: { author: { select: { name: true, email: true } } } })
+    await logActivity({ actorId: user.id, entityType: 'USER', entityId: call.userId ?? user.id, action: 'call.note.sent', metadata: { callId: call.id, noteId: note.id, rep: call.userId } })
+    return { ok: true, data: noteItem(note) }
+  } catch (err) {
+    return toActionError(err)
+  }
+}
+
+/**
+ * Notes on a call newer than `since` (ms since the epoch), for the rep's call screen (polled every couple of seconds
+ * while the call is live) and the listener panel. The call's rep and admins only. `live` tells the poll when to stop.
+ */
+export async function callNotes(callId: string, since: number): Promise<ActionResult<{ notes: CallNoteItem[]; live: boolean }>> {
+  try {
+    const user = await requireUser([...callers])
+    const call = await prisma.call.findUnique({ where: { id: CallId.parse(callId) }, select: { id: true, userId: true, status: true, private: true } })
+    if (!call || call.private || (user.role !== 'ADMIN' && call.userId !== user.id)) return { ok: false, error: 'Call not found.' }
+    const after = new Date(Number.isFinite(since) && since > 0 ? since : 0)
+    const rows = await prisma.callNote.findMany({ where: { callId: call.id, createdAt: { gt: after } }, orderBy: { createdAt: 'asc' }, take: 50, include: { author: { select: { name: true, email: true } } } })
+    return { ok: true, data: { notes: rows.map(noteItem), live: LIVE_STATUSES.includes(call.status) } }
   } catch (err) {
     return toActionError(err)
   }

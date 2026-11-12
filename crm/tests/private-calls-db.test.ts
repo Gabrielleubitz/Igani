@@ -59,10 +59,10 @@ d('private calls (admins, personal use)', async () => {
     await prisma.$disconnect()
   })
 
-  it('an admin’s private call has no contact, no recording, no hints and no listen-in', async () => {
+  it('an admin’s private call has no contact, no recording and no hints', async () => {
     const r = await startCall({ to: '050-123-4567', private: true })
     if (!r.ok) throw new Error(r.error)
-    expect(r.data).toMatchObject({ private: true, record: false, hints: false, conference: false, lead: null })
+    expect(r.data).toMatchObject({ private: true, record: false, hints: false, lead: null })
     const row = await prisma.call.findUniqueOrThrow({ where: { id: r.data.callId } })
     // even though the number belongs to a contact, the call isn't tied to it
     expect(row).toMatchObject({ private: true, leadId: null, prospectId: null })

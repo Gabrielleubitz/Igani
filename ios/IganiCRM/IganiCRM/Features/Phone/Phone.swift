@@ -91,6 +91,9 @@ enum VoiceEvent {
 
     var setup: Setup = .unknown
     var active: ActiveCall?
+    /// notes an admin sent during the current call (newest last)
+    var callNotes: [CallNoteItem] = []
+    private var notesTask: Task<Void, Never>?
     var wrapUp: WrapUp?
     /// the full-screen call view is showing (it can be minimised to a bar while browsing the CRM)
     var expanded = false
@@ -315,6 +318,7 @@ enum VoiceEvent {
                 answeredFlag = true
                 active = a
                 if case .answered = ev { expanded = true }
+                if !a.listening, !a.callId.isEmpty { watchNotes(callId: a.callId) }
                 if engine is DemoEngine { Task { try? await API.shared.run("simulateCallProgress", ["callId": a.callId, "status": "IN_PROGRESS"]) } }
             }
         case .reconnecting(let id, let on):
@@ -350,6 +354,7 @@ enum VoiceEvent {
             ToastCenter.shared?.show(byMe ? "Declined: \(a.name) goes to voicemail" : "Missed call from \(a.name)", tone: byMe ? .ok : .warn)
         case .ended(let id, let reported):
             guard let a = active, a.id == id, a.status != .ended else { return }
+            stopNotes()
             let fromServer = serverEnd.removeValue(forKey: id)
             let failure = reported ?? fromServer
             if declined == id { declined = nil }
@@ -432,6 +437,36 @@ enum VoiceEvent {
     static func askForMicrophone() async throws {
         let ok = await AVAudioApplication.requestRecordPermission()
         if !ok { throw APIError(message: "Igani CRM needs the microphone for calls. Turn it on in Settings → Igani CRM.", status: 0) }
+    }
+}
+
+extension Phone {
+    /// While a call is live, check every 2 s for notes from an admin listening in; each new one pops up as a toast and
+    /// stays on the call screen. Stops when the call ends (or the server says it's over).
+    func watchNotes(callId: String) {
+        notesTask?.cancel()
+        callNotes = []
+        notesTask = Task { [weak self] in
+            var since = 0.0
+            while !Task.isCancelled {
+                if let r: CallNotesReply = try? await API.shared.act("callNotes", callId, since) {
+                    guard let self, !Task.isCancelled else { return }
+                    for n in r.notes where !self.callNotes.contains(where: { $0.id == n.id }) {
+                        self.callNotes.append(n)
+                        ToastCenter.shared?.show("\(n.author): \(n.body)")
+                        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    }
+                    if let last = r.notes.last { since = max(since, last.createdAt.timeIntervalSince1970 * 1000) }
+                    if !r.live { return }
+                }
+                try? await Task.sleep(for: .seconds(2))
+            }
+        }
+    }
+
+    func stopNotes() {
+        notesTask?.cancel()
+        notesTask = nil
     }
 }
 

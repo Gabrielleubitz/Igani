@@ -46,6 +46,7 @@ struct CallScreen: View {
                         listeningPanel(call)
                             .transition(.opacity)
                     } else {
+                        if call.status == .live, !phone.callNotes.isEmpty { notesCard }
                         controls(call)
                             .transition(.opacity)
                     }
@@ -152,6 +153,22 @@ struct CallScreen: View {
     }
 
     /// Listening in: no mute, keypad or hold (you're muted by the room); just the speaker and a clear reminder.
+    /// Notes from an admin listening in: the latest three, newest at the bottom. Only the rep sees them.
+    private var notesCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("From your manager", systemImage: "text.bubble.fill")
+                .font(.caption.weight(.semibold)).foregroundStyle(Theme.accent)
+            ForEach(phone.callNotes.suffix(3)) { n in
+                Text(n.body).font(.subheadline).foregroundStyle(Theme.text).frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel("Note from \(n.author): \(n.body)")
+            }
+        }
+        .padding(12)
+        .background(Theme.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.horizontal, 24)
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
     private func listeningPanel(_ call: Phone.ActiveCall) -> some View {
         VStack(spacing: 18) {
             HStack(spacing: 10) {

@@ -225,29 +225,3 @@ export function demoEngine(): VoiceEngine {
     destroy: () => undefined,
   }
 }
-
-/**
- * Admins listening in on a live call: a separate, outgoing-only Device (it never registers, so it never rings) joins
- * the call's room muted. The rep and the client don't hear or see it.
- */
-export async function listenToCall(callId: string, handlers: { onLive: () => void; onEnd: (error?: string) => void }): Promise<{ stop: () => void }> {
-  const t = await fetchVoiceToken()
-  if ('demo' in t) throw new Error('Listening in needs Twilio (it can’t run in demo mode).')
-  if ('error' in t) throw new Error(t.error)
-  const { Device, Call } = await import('@twilio/voice-sdk')
-  const device = new Device(t.token, { logLevel: 'error', codecPreferences: [Call.Codec.Opus, Call.Codec.PCMU], edge: VOICE_EDGES })
-  let over = false
-  const end = (error?: string): void => {
-    if (over) return
-    over = true
-    device.destroy()
-    handlers.onEnd(error)
-  }
-  const call = await device.connect({ params: { listen: callId } })
-  call.mute(true) // belt and braces: the room already mutes us
-  call.on('accept', () => handlers.onLive())
-  call.on('disconnect', () => end())
-  call.on('cancel', () => end())
-  call.on('error', (e: { message?: string; code?: number }) => end(voiceErrorText(e)))
-  return { stop: () => (call.disconnect(), end()) }
-}

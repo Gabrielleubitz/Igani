@@ -72,7 +72,7 @@ export function PhoneLineRow({ userId, name, role, current, numbers, takenBy }: 
 }
 
 /** Recording, and which countries can be called. */
-export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hints: boolean; listenIn: boolean; countries: DialCountry[]; reviewModel: string } }): React.ReactElement {
+export function VoiceSettingsForm({ initial, listenReady }: { initial: { record: boolean; hints: boolean; listenIn: boolean; countries: DialCountry[]; reviewModel: string }; listenReady: boolean }): React.ReactElement {
   const router = useRouter()
   const [v, setV] = useState(initial)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -103,10 +103,11 @@ export function VoiceSettingsForm({ initial }: { initial: { record: boolean; hin
       <label id="listen-in" className="flex scroll-mt-24 items-start gap-3">
         <input type="checkbox" className="mt-1" checked={v.listenIn} onChange={(e) => setV({ ...v, listenIn: e.target.checked })} />
         <span>
-          <span className="font-medium">Allow listening in</span>
+          <span className="font-medium">Admins may listen in on live calls</span>
           <span className="block text-xs text-muted-foreground">
-            Admins can join any live outgoing call from Calls → Live now, muted and unannounced: neither the salesperson nor the client hears them. Calls placed after you switch this on run through a Twilio conference room (a little more per minute, and a slightly slower connect and a little extra delay on the line; leave it off unless you use it). Each time someone listens, it’s noted in the audit log. Check that listening to calls is allowed where you and your clients are.
+            From Calls → Live now, an admin can hear a connected call (both sides) and send the salesperson short notes that pop up on their call screen. Calls are placed exactly as usual and nothing changes on the line; the client never hears or sees any of it. Each time someone listens, it’s noted in the audit log. Check that listening to calls is allowed where you and your clients are.
           </span>
+          {!listenReady ? <span className="mt-1 block text-xs text-amber-300">Listening needs the relay: see relay/README.md (set LISTEN_RELAY_URL and LISTEN_RELAY_SECRET in Vercel). Until then the Listen button stays hidden.</span> : null}
         </span>
       </label>
       <fieldset className="space-y-1">

@@ -1,6 +1,4 @@
-import { endRoom, endRoomByName } from '@/lib/call-conference'
-import { FINAL_STATUSES, advanceCall, fromTwilioStatus } from '@/lib/calls'
-import { prisma } from '@/lib/prisma'
+import { advanceCall, fromTwilioStatus } from '@/lib/calls'
 import { readTwilioWebhook } from '@/lib/twilio'
 
 export const dynamic = 'force-dynamic'
@@ -14,11 +12,6 @@ export async function POST(req: Request): Promise<Response> {
   if (callId && status) {
     const duration = p.CallDuration ? Number.parseInt(p.CallDuration, 10) : null
     await advanceCall(callId, { status, childCallSid: p.CallSid ?? null, durationSec: Number.isFinite(duration) ? duration : null })
-    // Listen-in calls: a client who never joined the room (busy, no answer, failed) must still end it for the rep
-    if (FINAL_STATUSES.includes(status)) {
-      const call = await prisma.call.findUnique({ where: { id: callId }, select: { conference: true, conferenceSid: true } })
-      if (call?.conference) await (call.conferenceSid?.startsWith('CF') ? endRoom(call.conferenceSid) : endRoomByName(callId))
-    }
   }
   return new Response(null, { status: 204 })
 }
