@@ -31,6 +31,8 @@ const schema = z.object({
   /** Instagram API with Instagram Login (lib/instagram.ts): the app's Instagram app ID/secret (not the Facebook app ID). */
   INSTAGRAM_APP_ID: z.string().optional(),
   INSTAGRAM_APP_SECRET: z.string().optional(),
+  /** Image model for social media covers (lib/social-cover.ts); defaults to gpt-image-1 */
+  OPENAI_IMAGE_MODEL: z.string().optional(),
 })
 
 export type Env = z.infer<typeof schema>
