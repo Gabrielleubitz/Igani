@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { approveReel, approveTikTok, checkReel, checkTikTok, dismissReel, reelPlayUrl } from '@/app/actions/reels'
 
-export type ReelRow = { id: string; title: string; caption: string; status: string; createdAt: string; permalink: string | null; error: string | null; tiktok: { status: string; privacy: string; error: string | null } | null }
+export type ReelRow = { cover: string | null; id: string; title: string; caption: string; status: string; createdAt: string; permalink: string | null; error: string | null; tiktok: { status: string; privacy: string; error: string | null } | null }
 
 const privacyNote = (p: string): string => (p === 'PUBLIC_TO_EVERYONE' ? 'public' : 'private (only you) until TikTok approves the app')
 
@@ -70,8 +70,22 @@ function ReelItem({ reel, instagramReady, tiktokReady }: { reel: ReelRow; instag
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border bg-card p-4 sm:flex-row">
-      <div className="w-full shrink-0 sm:w-56">
-        {src ? <video src={src} controls playsInline className="aspect-[9/16] w-full rounded-lg bg-black" /> : <div className="aspect-[9/16] w-full rounded-lg bg-muted" />}
+      <div className="flex shrink-0 gap-3">
+        <div className="w-40 sm:w-56">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Video</p>
+          {src ? <video src={src} controls playsInline className="aspect-[9/16] w-full rounded-lg bg-black" /> : <div className="aspect-[9/16] w-full rounded-lg bg-muted" />}
+        </div>
+        <div className="w-40 sm:w-56">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Cover</p>
+          {reel.cover ? (
+            <a href={reel.cover} target="_blank" rel="noreferrer">
+              {/* eslint-disable-next-line @next/next/no-img-element -- a private, short-lived link to the reel's cover */}
+              <img src={reel.cover} alt={`Cover for ${reel.title}`} className="aspect-[9/16] w-full rounded-lg bg-black object-cover" />
+            </a>
+          ) : (
+            <div className="flex aspect-[9/16] w-full items-center justify-center rounded-lg bg-muted p-3 text-center text-xs text-muted-foreground">No cover for this one</div>
+          )}
+        </div>
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-3 text-sm">
         <div>
