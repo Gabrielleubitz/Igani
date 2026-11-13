@@ -132,12 +132,12 @@ async function postApi<T>(path: string, body: unknown): Promise<T> {
  * Post a video TikTok fetches from our (verified) domain. Picks public visibility when the account allows it;
  * while the app is unaudited TikTok only offers SELF_ONLY, so the post is private until TikTok approves the app.
  */
-export async function directPost(videoUrl: string, caption: string): Promise<{ publishId: string; privacy: string }> {
+export async function directPost(videoUrl: string, caption: string, coverMs?: number): Promise<{ publishId: string; privacy: string }> {
   const info = await postApi<{ privacy_level_options?: string[] }>('/creator_info/query/', {})
   const opts = info.privacy_level_options ?? []
   const privacy = opts.includes('PUBLIC_TO_EVERYONE') ? 'PUBLIC_TO_EVERYONE' : opts.includes('SELF_ONLY') ? 'SELF_ONLY' : (opts[0] ?? 'SELF_ONLY')
   const r = await postApi<{ publish_id: string }>('/video/init/', {
-    post_info: { title: caption.slice(0, 2200), privacy_level: privacy, disable_comment: false, disable_duet: false, disable_stitch: false, is_aigc: true },
+    post_info: { title: caption.slice(0, 2200), privacy_level: privacy, disable_comment: false, disable_duet: false, disable_stitch: false, is_aigc: true, ...(coverMs ? { video_cover_timestamp_ms: coverMs } : {}) },
     source_info: { source: 'PULL_FROM_URL', video_url: videoUrl },
   })
   return { publishId: r.publish_id, privacy }

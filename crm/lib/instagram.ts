@@ -84,9 +84,11 @@ async function token(): Promise<{ token: string; userId: string }> {
 }
 
 /** Step 1: Instagram fetches the video from `videoUrl` and starts processing. Returns the container id. */
-export async function createReelContainer(videoUrl: string, caption: string): Promise<string> {
+export async function createReelContainer(videoUrl: string, caption: string, coverUrl?: string | null): Promise<string> {
   const t = await token()
-  const r = await json<{ id: string }>(await fetch(`${GRAPH}/${t.userId}/media`, { method: 'POST', body: new URLSearchParams({ media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: 'true', access_token: t.token }) }))
+  const params: Record<string, string> = { media_type: 'REELS', video_url: videoUrl, caption, share_to_feed: 'true', access_token: t.token }
+  if (coverUrl) params.cover_url = coverUrl
+  const r = await json<{ id: string }>(await fetch(`${GRAPH}/${t.userId}/media`, { method: 'POST', body: new URLSearchParams(params) }))
   return r.id
 }
 /** Step 2: IN_PROGRESS | FINISHED | ERROR | EXPIRED | PUBLISHED */

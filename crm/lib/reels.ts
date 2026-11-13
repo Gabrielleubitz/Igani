@@ -15,6 +15,10 @@ export type Reel = {
   title: string
   caption: string
   key: string
+  /** Igani-branded cover image (Instagram uses it as the reel's cover) */
+  coverKey?: string
+  /** where the cover frame sits in the video, for TikTok's cover */
+  coverMs?: number
   status: ReelStatus
   createdAt: number
   containerId?: string
@@ -38,9 +42,9 @@ async function write(list: Reel[]): Promise<void> {
 export async function getReel(id: string): Promise<Reel | null> {
   return (await listReels()).find((r) => r.id === id) ?? null
 }
-export async function addReel(title: string, caption: string): Promise<Reel> {
+export async function addReel(title: string, caption: string, coverMs?: number): Promise<Reel> {
   const id = randomBytes(8).toString('hex')
-  const reel: Reel = { id, title: title.slice(0, 120), caption: caption.slice(0, 2200), key: `reels/${id}.mp4`, status: 'uploading', createdAt: Date.now() }
+  const reel: Reel = { id, title: title.slice(0, 120), caption: caption.slice(0, 2200), key: `reels/${id}.mp4`, coverKey: `reels/${id}-cover.jpg`, coverMs: coverMs && coverMs > 0 ? Math.round(coverMs) : undefined, status: 'uploading', createdAt: Date.now() }
   await write([reel, ...(await listReels())])
   return reel
 }

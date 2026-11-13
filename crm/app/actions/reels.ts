@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
 import { getReel, updateReel } from '@/lib/reels'
-import { playUrl } from '@/lib/video'
+import { objectInfo, playUrl } from '@/lib/video'
 import { containerStatus, createReelContainer, publishContainer } from '@/lib/instagram'
 import { directPost, postStatus } from '@/lib/tiktok'
 import { reelFileUrl } from '@/lib/reels'
@@ -16,7 +16,8 @@ export async function approveReel(id: string, caption: string): Promise<ReelActi
   const reel = await getReel(id)
   if (!reel || reel.status !== 'pending') return { ok: false, error: 'This reel is no longer waiting for approval.' }
   try {
-    const containerId = await createReelContainer(await playUrl(reel.key, 'video/mp4', 3600), caption.slice(0, 2200))
+    const cover = reel.coverKey && (await objectInfo(reel.coverKey)) ? await playUrl(reel.coverKey, 'image/jpeg', 3600) : null
+    const containerId = await createReelContainer(await playUrl(reel.key, 'video/mp4', 3600), caption.slice(0, 2200), cover)
     await updateReel(id, { status: 'processing', caption, containerId, decidedBy: user.id, decidedAt: Date.now(), error: null })
     revalidatePath('/admin/reels')
     return { ok: true, status: 'processing' }
@@ -71,7 +72,7 @@ export async function approveTikTok(id: string, caption: string): Promise<ReelAc
   if (!reel) return { ok: false, error: 'Unknown reel.' }
   if (reel.tiktok && reel.tiktok.status !== 'failed') return { ok: false, error: 'This reel was already sent to TikTok.' }
   try {
-    const r = await directPost(reelFileUrl(id), caption)
+    const r = await directPost(reelFileUrl(id), caption, reel.coverMs)
     await updateReel(id, { tiktok: { status: 'processing', publishId: r.publishId, privacy: r.privacy } })
     revalidatePath('/admin/reels')
     return { ok: true, status: 'processing' }
