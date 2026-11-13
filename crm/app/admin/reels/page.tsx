@@ -39,8 +39,10 @@ export default async function ReelsPage(): Promise<React.ReactElement> {
   }))
   const seen = worker.lastSeen
   const awake = seen !== null && Date.now() - seen < 10 * 60_000
+  // during a run the Mac stops checking in; a run started under 3 hours ago still counts as working
+  const working = worker.state === 'working' && worker.since !== null && Date.now() - worker.since < 3 * 3600_000
   const header: StudioHeader = {
-    worker: worker.state === 'working' && awake
+    worker: working
       ? { label: 'Reel maker is working', tone: 'busy', detail: `${worker.message ?? 'Making a reel'} · since ${worker.since ? ago(worker.since) : 'a moment ago'}` }
       : awake ? { label: 'Reel maker is ready', tone: 'ok', detail: `Your Mac checked in ${ago(seen!)}` }
       : { label: 'Reel maker is offline', tone: 'off', detail: seen ? `Last seen ${ago(seen)}. Your Mac is probably asleep; requests wait until it wakes.` : 'Not connected yet: the Mac checker isn’t running.' },
