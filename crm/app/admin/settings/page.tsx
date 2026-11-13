@@ -11,6 +11,7 @@ import { InstagramCard } from '@/components/admin/InstagramCard'
 import { instagramConfig, instagramStatus } from '@/lib/instagram'
 
 export const metadata = { title: 'Settings' }
+export const maxDuration = 120 // "Post now" on TikTok sends the test video from this page's server action
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tiktok?: string; instagram?: string }> }): Promise<React.ReactElement> {
   await requireUser(['ADMIN'])

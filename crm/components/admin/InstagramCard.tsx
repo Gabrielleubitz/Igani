@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { SocialTestPost } from '@/components/admin/SocialTestPost'
 import type { InstagramStatus } from '@/lib/instagram'
 
 const MESSAGES: Record<string, string> = {
@@ -38,6 +39,7 @@ export function InstagramCard({ status, configured, message }: { status: Instagr
             <p className="font-medium">Connected{status.username ? ` as @${status.username}` : ''}</p>
             <p className="text-muted-foreground">Renews itself when used; otherwise reconnect within {status.daysLeft} days</p>
           </div>
+          <SocialTestPost platform="instagram" />
           <Button variant="outline" size="sm" disabled={busy} onClick={disconnect}>Disconnect</Button>
         </div>
       ) : (

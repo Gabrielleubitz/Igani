@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { SocialTestPost } from '@/components/admin/SocialTestPost'
 import type { TikTokStatus } from '@/lib/tiktok'
 
 const MESSAGES: Record<string, string> = {
@@ -38,6 +39,7 @@ export function TikTokCard({ status, configured, message }: { status: TikTokStat
             <p className="font-medium">Connected{status.displayName ? ` as ${status.displayName}` : ''}</p>
             <p className="text-muted-foreground">Permissions: {status.scope.split(',').join(', ')} · sign-in renews itself; reconnect within {status.daysLeft} days at the latest</p>
           </div>
+          <SocialTestPost platform="tiktok" />
           <Button variant="outline" size="sm" disabled={busy} onClick={disconnect}>Disconnect</Button>
         </div>
       ) : (

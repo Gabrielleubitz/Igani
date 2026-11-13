@@ -115,3 +115,50 @@ export function jobSecretOk(header: string | null): boolean {
   const a = Buffer.from(header.slice(7)), b = Buffer.from(want)
   return a.length === b.length && timingSafeEqual(a, b)
 }
+
+// ---- direct post (Content Posting API), used by the "Post now" test in Admin → Settings ----
+const API = 'https://open.tiktokapis.com/v2/post/publish'
+type ApiEnvelope<T> = { data?: T; error?: { code?: string; message?: string } }
+async function tiktokApi<T>(path: string, accessToken: string, body: unknown): Promise<T> {
+  const res = await fetch(`${API}${path}`, { method: 'POST', headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json; charset=UTF-8' }, body: JSON.stringify(body ?? {}) })
+  const j = (await res.json().catch(() => ({}))) as ApiEnvelope<T>
+  if (!res.ok || (j.error?.code && j.error.code !== 'ok')) throw new Error(`TikTok: ${j.error?.message || j.error?.code || res.status}`)
+  return (j.data ?? {}) as T
+}
+
+export type TikTokCreator = { username: string | null; nickname: string | null; privacyOptions: string[]; maxDurationSec: number | null }
+/** Who will post and which privacy levels TikTok allows them (unaudited apps only get SELF_ONLY). */
+export async function tiktokCreatorInfo(): Promise<TikTokCreator> {
+  const t = await freshAccessToken()
+  if (!t) throw new Error('TikTok is not connected (or the connection expired): reconnect it first')
+  const d = await tiktokApi<{ creator_username?: string; creator_nickname?: string; privacy_level_options?: string[]; max_video_post_duration_sec?: number }>('/creator_info/query/', t.accessToken, {})
+  return { username: d.creator_username ?? null, nickname: d.creator_nickname ?? null, privacyOptions: d.privacy_level_options ?? [], maxDurationSec: d.max_video_post_duration_sec ?? null }
+}
+
+/** TikTok takes one chunk up to 64 MB; the test keeps to that. */
+export const TIKTOK_MAX_SINGLE_UPLOAD = 64 * 1024 * 1024
+
+/** Direct-post a video (bytes in hand) and return the publish id to poll. Needs the video.publish scope. */
+export async function tiktokDirectPost(video: ArrayBuffer, caption: string, privacy: string): Promise<string> {
+  const t = await freshAccessToken()
+  if (!t) throw new Error('TikTok is not connected (or the connection expired): reconnect it first')
+  if (!t.scope.split(',').includes('video.publish')) throw new Error('TikTok did not grant video.publish: disconnect and connect again, and approve posting')
+  const size = video.byteLength
+  if (size > TIKTOK_MAX_SINGLE_UPLOAD) throw new Error('The test video must be 64 MB or smaller')
+  const init = await tiktokApi<{ publish_id: string; upload_url: string }>('/video/init/', t.accessToken, {
+    post_info: { title: caption.slice(0, 2200), privacy_level: privacy, disable_comment: false, disable_duet: false, disable_stitch: false },
+    source_info: { source: 'FILE_UPLOAD', video_size: size, chunk_size: size, total_chunk_count: 1 },
+  })
+  const put = await fetch(init.upload_url, { method: 'PUT', headers: { 'content-type': 'video/mp4', 'content-length': String(size), 'content-range': `bytes 0-${size - 1}/${size}` }, body: video })
+  if (!put.ok) throw new Error(`TikTok upload failed (${put.status})`)
+  return init.publish_id
+}
+
+/** PROCESSING_UPLOAD | PROCESSING_DOWNLOAD | SEND_TO_USER_INBOX | PUBLISH_COMPLETE | FAILED */
+export async function tiktokPostStatus(publishId: string): Promise<{ status: string; failReason: string | null; postId: string | null }> {
+  const t = await freshAccessToken()
+  if (!t) throw new Error('TikTok is not connected (or the connection expired): reconnect it first')
+  const d = await tiktokApi<{ status?: string; fail_reason?: string; publicaly_available_post_id?: (string | number)[] }>('/status/fetch/', t.accessToken, { publish_id: publishId })
+  const id = d.publicaly_available_post_id?.[0]
+  return { status: d.status ?? 'PROCESSING_UPLOAD', failReason: d.fail_reason ?? null, postId: id != null ? String(id) : null }
+}
