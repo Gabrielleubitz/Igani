@@ -9,7 +9,7 @@ import { seal, unseal } from '@/lib/tiktok'
  * Admin → Settings; the long-lived token (60 days) is stored encrypted in SiteSetting and refreshed when it gets old.
  * Reels are only ever published by an admin pressing Approve on /admin/reels (Instagram's API has no drafts).
  */
-export const INSTAGRAM_SCOPES = ['instagram_business_basic', 'instagram_business_content_publish'] as const
+export const INSTAGRAM_SCOPES = ['instagram_business_basic', 'instagram_business_content_publish', 'instagram_business_manage_messages'] as const
 const KEY = 'instagram.account'
 const GRAPH = 'https://graph.instagram.com/v21.0'
 
@@ -19,8 +19,8 @@ export function instagramConfig(): { id: string; secret: string } | null {
 }
 export const instagramRedirectUri = (): string => appUrl('/api/public/instagram/callback')
 
-type Stored = { token: string; expiresAt: number; issuedAt: number; userId: string; username: string | null; picture: string | null; connectedBy: string; connectedAt: number }
-export type InstagramStatus = { connected: false } | { connected: true; username: string | null; picture: string | null; daysLeft: number }
+type Stored = { token: string; expiresAt: number; issuedAt: number; userId: string; username: string | null; picture: string | null; connectedBy: string; connectedAt: number; /** DMs turned on (subscribed to message webhooks) */ messages?: boolean }
+export type InstagramStatus = { connected: false } | { connected: true; username: string | null; picture: string | null; daysLeft: number; canMessage: boolean }
 
 async function load(): Promise<Stored | null> {
   const row = await prisma.siteSetting.findUnique({ where: { key: KEY } })
@@ -32,7 +32,7 @@ async function save(s: Stored): Promise<void> {
 }
 export async function instagramStatus(): Promise<InstagramStatus> {
   const s = await load()
-  return s ? { connected: true, username: s.username, picture: s.picture, daysLeft: Math.max(0, Math.round((s.expiresAt - Date.now()) / 86_400_000)) } : { connected: false }
+  return s ? { connected: true, username: s.username, picture: s.picture, daysLeft: Math.max(0, Math.round((s.expiresAt - Date.now()) / 86_400_000)), canMessage: Boolean(s.messages) } : { connected: false }
 }
 export async function disconnectInstagram(): Promise<void> {
   await prisma.siteSetting.deleteMany({ where: { key: KEY } })
@@ -67,11 +67,13 @@ export async function connectInstagramWithCode(code: string, adminId: string): P
   const long = await json<{ access_token: string; expires_in: number }>(await fetch(`https://graph.instagram.com/access_token?${new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: c.secret, access_token: short.access_token })}`))
   const me = await json<{ user_id?: string; id?: string; username?: string; profile_picture_url?: string }>(await fetch(`${GRAPH}/me?fields=user_id,username,profile_picture_url&access_token=${encodeURIComponent(long.access_token)}`)).catch(() => ({}) as { user_id?: string; username?: string; profile_picture_url?: string })
   const now = Date.now()
-  await save({ token: seal(long.access_token), expiresAt: now + long.expires_in * 1000, issuedAt: now, userId: String(me.user_id ?? short.user_id), username: me.username ?? null, picture: me.profile_picture_url ?? null, connectedBy: adminId, connectedAt: now })
+  // DMs: ask Instagram to send new messages to our webhook (only works when the messages permission was granted)
+  const subscribed = await fetch(`${GRAPH}/me/subscribed_apps?subscribed_fields=messages&access_token=${encodeURIComponent(long.access_token)}`, { method: 'POST' }).then((r) => r.ok).catch(() => false)
+  await save({ token: seal(long.access_token), expiresAt: now + long.expires_in * 1000, issuedAt: now, userId: String(me.user_id ?? short.user_id), username: me.username ?? null, picture: me.profile_picture_url ?? null, connectedBy: adminId, connectedAt: now, messages: subscribed })
 }
 
 /** The long-lived token, refreshed once it's over 2 days old and within 20 days of expiry. */
-async function token(): Promise<{ token: string; userId: string }> {
+export async function token(): Promise<{ token: string; userId: string }> {
   const s = await load()
   if (!s || s.expiresAt < Date.now()) throw new Error('Instagram is not connected (or the connection expired): reconnect it in Admin → Settings')
   let tok = unseal(s.token)

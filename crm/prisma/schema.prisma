@@ -244,6 +244,7 @@ model Lead {
   sourcedBy   User?           @relation("LeadSourcer", fields: [sourcedById], references: [id], onDelete: SetNull)
   bookings    Booking[]
   notes       LeadNote[]
+  igThread    IgThread?
   emails      EmailMessage[]
   documents   LeadDocument[]
   archives    LeadArchive[]
@@ -1277,4 +1278,49 @@ model MeetReaction {
   room      MeetRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([roomId, createdAt])
+}
+
+// ─── Instagram DMs (lib/instagram-dm.ts) ─────────────────────────────────────
+
+/// One Instagram conversation with a person who messaged Igani's account. Becomes a lead on the first message.
+model IgThread {
+  id            String      @id @default(cuid())
+  /// The person's Instagram-scoped id (from the webhook)
+  igsid         String      @unique
+  username      String?
+  name          String?
+  picture       String?
+  leadId        String?     @unique
+  /// The reel whose DM word they used (Reels queue id), and the word
+  reelId        String?
+  keyword       String?
+  lastMessageAt DateTime    @default(now())
+  /// Instagram only lets us reply within 24 h of their last message
+  lastInboundAt DateTime?
+  unread        Int         @default(0)
+  /// AI-written reply waiting for a person to send it (nothing is sent automatically)
+  draft         String?     @db.Text
+  draftAt       DateTime?
+  createdAt     DateTime    @default(now())
+
+  lead     Lead?       @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  messages IgMessage[]
+
+  @@index([lastMessageAt])
+  @@index([reelId])
+}
+
+model IgMessage {
+  id       String   @id @default(cuid())
+  threadId String
+  /// Instagram's message id (dedupes webhook retries)
+  mid      String?  @unique
+  fromUs   Boolean
+  text     String   @db.Text
+  sentById String?
+  at       DateTime @default(now())
+
+  thread IgThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, at])
 }

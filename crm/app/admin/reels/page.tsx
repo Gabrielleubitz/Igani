@@ -3,6 +3,7 @@ import { getWorker, listReels, listRequests } from '@/lib/reels'
 import { instagramStatus } from '@/lib/instagram'
 import { tiktokStatus } from '@/lib/tiktok'
 import { objectInfo, playUrl } from '@/lib/video'
+import { prisma } from '@/lib/prisma'
 import { ReelStudio, type StudioHeader, type StudioReel } from '@/components/admin/ReelStudio'
 
 export const metadata = { title: 'Reels' }
@@ -29,6 +30,10 @@ export default async function ReelsPage(): Promise<React.ReactElement> {
   await requireUser(['ADMIN'])
   const [reels, ig, tt, worker, requests] = await Promise.all([listReels(), instagramStatus(), tiktokStatus(), getWorker(), listRequests()])
   const shown = reels.filter((r) => r.status !== 'uploading')
+  // what each reel brought in: DM conversations (each one a lead) and how many of those booked a call
+  const dmThreads = await prisma.igThread.findMany({ where: { reelId: { in: shown.map((r) => r.id) } }, select: { reelId: true, lead: { select: { bookings: { select: { id: true }, take: 1 } } } } }).catch(() => [])
+  const stats = new Map<string, { dms: number; booked: number }>()
+  for (const t of dmThreads) { const s = stats.get(t.reelId!) ?? { dms: 0, booked: 0 }; s.dms++; if (t.lead?.bookings.length) s.booked++; stats.set(t.reelId!, s) }
   const covers = await Promise.all(shown.map(async (r) => (r.coverKey && (await objectInfo(r.coverKey).catch(() => null)) ? playUrl(r.coverKey, 'image/jpeg', 1800) : null)))
   const openCover = new Set(requests.filter((q) => q.kind === 'cover' && (q.state === 'queued' || q.state === 'working')).map((q) => q.reelId))
   const coverReq = new Map(requests.filter((q) => q.kind === 'cover' && (q.state === 'queued' || q.state === 'working')).map((q) => [q.reelId, q]))
@@ -37,6 +42,7 @@ export default async function ReelsPage(): Promise<React.ReactElement> {
     ig: { status: r.status, permalink: r.permalink ?? null, error: r.status === 'failed' ? (r.error ?? null) : null },
     tiktok: r.tiktok ? { status: r.tiktok.status, privacy: r.tiktok.privacy, error: r.tiktok.error ?? null } : null,
     coverQueued: openCover.has(r.id),
+    stats: stats.get(r.id) ?? { dms: 0, booked: 0 },
     coverProgress: coverReq.has(r.id) ? { pct: coverReq.get(r.id)!.pct ?? 0, step: coverReq.get(r.id)!.step ?? (coverReq.get(r.id)!.state === 'queued' ? 'Waiting for your Mac' : 'Starting') } : null,
   }))
   const seen = worker.lastSeen

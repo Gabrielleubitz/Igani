@@ -22,6 +22,7 @@ export const AI_FEATURES = {
   'follow-up': 'Follow-up drafts',
   prospect: 'Prospect details',
   'social-cover': 'Social media covers',
+  'ig-reply': 'Instagram reply drafts',
 } as const
 export type AiFeature = keyof typeof AI_FEATURES
 

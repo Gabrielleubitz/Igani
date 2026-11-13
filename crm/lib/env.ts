@@ -33,6 +33,8 @@ const schema = z.object({
   INSTAGRAM_APP_SECRET: z.string().optional(),
   /** Image model for social media covers (lib/social-cover.ts); defaults to gpt-image-1 */
   OPENAI_IMAGE_MODEL: z.string().optional(),
+  /** The verify token typed into Meta's webhook settings for Instagram DMs (any long random string) */
+  INSTAGRAM_WEBHOOK_VERIFY_TOKEN: z.string().min(16).optional(),
 })
 
 export type Env = z.infer<typeof schema>

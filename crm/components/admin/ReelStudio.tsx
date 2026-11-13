@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Archive, ArchiveRestore, Clapperboard, Download, ImagePlus, Loader2, Pencil, Play, Send, Sparkles } from 'lucide-react'
+import { Archive, ArchiveRestore, Clapperboard, Download, ImagePlus, Loader2, MessageCircle, Pencil, Play, Send, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { TabBar } from '@/components/ui/tabs'
@@ -19,6 +19,7 @@ export type StudioReel = {
   tiktok: { status: string; privacy: string; error: string | null } | null
   coverQueued: boolean
   coverProgress: { pct: number; step: string } | null
+  stats: { dms: number; booked: number }
 }
 export type StudioHeader = {
   worker: { label: string; tone: 'ok' | 'busy' | 'off'; detail: string; pct?: number | null }
@@ -153,6 +154,7 @@ function ReelCard({ reel, instagramReady, tiktokReady }: { reel: StudioReel; ins
         <div className="flex flex-wrap gap-1.5">
           {igPosted && ig.permalink ? <a href={ig.permalink} target="_blank" rel="noreferrer">{igPill}</a> : igPill}
           {ttPill}
+          {reel.stats.dms > 0 && <a href="/admin/inbox"><Pill icon={<MessageCircle className="h-3.5 w-3.5" />} label={`${reel.stats.dms} DM${reel.stats.dms === 1 ? '' : 's'}${reel.stats.booked ? ` · ${reel.stats.booked} booked` : ''}`} tone="busy" /></a>}
         </div>
         <button type="button" onClick={() => { setDraft(caption); setEditing(true) }} className="group/cap rounded-lg text-left text-sm text-muted-foreground hover:text-foreground">
           <span className="line-clamp-3 whitespace-pre-line">{caption}</span>
