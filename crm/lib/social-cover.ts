@@ -10,8 +10,9 @@ export function coverPrompt(title: string, story: string): string {
   return [
     `Vertical cover illustration for a short social media video titled "${title.slice(0, 120)}".`,
     `The story: ${story.slice(0, 600)}`,
-    'Show the single most striking moment of the story as a bold, detailed editorial illustration: one clear subject, dramatic light, depth, rich texture, cinematic composition.',
-    'Igani brand colours: deep navy #1e2a44, Igani blue #3f6fd8 and light blue #8db6f7, with a few warm highlights for contrast.',
+    'Match Igani’s brand look: a premium, cinematic tech aesthetic on a deep navy-to-black background, lit by glossy electric-blue light (#2f6bff, #8db6f7): flowing glass ribbons, neon edge light, soft blue glow and reflections.',
+    'Render the single most striking object or moment of the story in that style, as one clear hero subject: sculpted, glossy, high detail, dramatic rim light, shallow depth of field.',
+    'Mostly navy, black and electric blue; at most one small warm accent.',
     'Keep the top-left corner and the bottom third calm and uncluttered: a logo and a title will be placed there.',
     'No text, letters, numbers, captions, logos, watermarks or brand marks anywhere. No real people’s likenesses.',
   ].join(' ')
