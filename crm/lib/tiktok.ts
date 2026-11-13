@@ -115,3 +115,36 @@ export function jobSecretOk(header: string | null): boolean {
   const a = Buffer.from(header.slice(7)), b = Buffer.from(want)
   return a.length === b.length && timingSafeEqual(a, b)
 }
+
+// ---- direct posting (Content Posting API, video.publish) ----
+const POST_API = 'https://open.tiktokapis.com/v2/post/publish'
+type TikTokApi<T> = { data?: T; error?: { code?: string; message?: string } }
+async function postApi<T>(path: string, body: unknown): Promise<T> {
+  const t = await freshAccessToken()
+  if (!t) throw new Error('TikTok is not connected: connect it in Admin → Settings')
+  const res = await fetch(`${POST_API}${path}`, { method: 'POST', headers: { authorization: `Bearer ${t.accessToken}`, 'content-type': 'application/json; charset=UTF-8' }, body: JSON.stringify(body) })
+  const j = (await res.json().catch(() => ({}))) as TikTokApi<T>
+  if (!res.ok || (j.error?.code && j.error.code !== 'ok')) throw new Error(`TikTok: ${j.error?.message || j.error?.code || res.status}`)
+  return j.data as T
+}
+
+/**
+ * Post a video TikTok fetches from our (verified) domain. Picks public visibility when the account allows it;
+ * while the app is unaudited TikTok only offers SELF_ONLY, so the post is private until TikTok approves the app.
+ */
+export async function directPost(videoUrl: string, caption: string): Promise<{ publishId: string; privacy: string }> {
+  const info = await postApi<{ privacy_level_options?: string[] }>('/creator_info/query/', {})
+  const opts = info.privacy_level_options ?? []
+  const privacy = opts.includes('PUBLIC_TO_EVERYONE') ? 'PUBLIC_TO_EVERYONE' : opts.includes('SELF_ONLY') ? 'SELF_ONLY' : (opts[0] ?? 'SELF_ONLY')
+  const r = await postApi<{ publish_id: string }>('/video/init/', {
+    post_info: { title: caption.slice(0, 2200), privacy_level: privacy, disable_comment: false, disable_duet: false, disable_stitch: false, is_aigc: true },
+    source_info: { source: 'PULL_FROM_URL', video_url: videoUrl },
+  })
+  return { publishId: r.publish_id, privacy }
+}
+
+/** PROCESSING_DOWNLOAD | PROCESSING_UPLOAD | SEND_TO_USER_INBOX | PUBLISH_COMPLETE | FAILED */
+export async function postStatus(publishId: string): Promise<{ status: string; reason: string | null; postId: string | null }> {
+  const r = await postApi<{ status?: string; fail_reason?: string; publicaly_available_post_id?: (string | number)[] }>('/status/fetch/', { publish_id: publishId })
+  return { status: r.status ?? 'PROCESSING_UPLOAD', reason: r.fail_reason ?? null, postId: r.publicaly_available_post_id?.[0] != null ? String(r.publicaly_available_post_id[0]) : null }
+}

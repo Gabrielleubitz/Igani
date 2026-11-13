@@ -26,3 +26,16 @@ describe('TikTok connection', async () => {
     expect(u.searchParams.get('state')).toBe('st8')
   })
 })
+
+describe('signed reel links for TikTok', async () => {
+  const r = await import('@/lib/reels')
+  it('opens only with a valid, unexpired signature for that reel', () => {
+    const u = new URL(r.reelFileUrl('abc123', 60))
+    expect(u.origin + u.pathname).toBe('https://app.igani.co/api/public/reels/file/abc123')
+    const exp = u.searchParams.get('exp'), sig = u.searchParams.get('sig')
+    expect(r.reelFileSigOk('abc123', exp, sig)).toBe(true)
+    expect(r.reelFileSigOk('other1', exp, sig)).toBe(false)
+    expect(r.reelFileSigOk('abc123', String(Number(exp) + 1), sig)).toBe(false)
+    expect(r.reelFileSigOk('abc123', String(Math.floor(Date.now() / 1000) - 5), sig)).toBe(false)
+  })
+})

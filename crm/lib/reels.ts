@@ -1,7 +1,9 @@
 import 'server-only'
 import { randomBytes } from 'node:crypto'
 import type { Prisma } from '@prisma/client'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { prisma } from '@/lib/prisma'
+import { env, appUrl } from '@/lib/env'
 
 /**
  * Reels made by the twice-a-day job, waiting for a person: the job uploads the file to the private bucket and adds it
@@ -20,6 +22,8 @@ export type Reel = {
   error?: string | null
   decidedBy?: string
   decidedAt?: number
+  /** TikTok direct post, independent of Instagram */
+  tiktok?: { status: 'processing' | 'posted' | 'failed'; publishId: string; privacy: string; postId?: string | null; error?: string | null }
 }
 const KEY = 'reels.queue'
 
@@ -47,4 +51,17 @@ export async function updateReel(id: string, patch: Partial<Reel>): Promise<Reel
   list[i] = { ...list[i]!, ...patch }
   await write(list)
   return list[i]!
+}
+
+// ---- a signed, short-lived link to the reel on our own domain (TikTok pulls videos only from verified domains) ----
+const sig = (id: string, exp: number): string => createHmac('sha256', `reels:${env().NEXTAUTH_SECRET}`).update(`${id}.${exp}`).digest('base64url')
+export function reelFileUrl(id: string, ttlSeconds = 3600): string {
+  const exp = Math.floor(Date.now() / 1000) + ttlSeconds
+  return appUrl(`/api/public/reels/file/${id}?exp=${exp}&sig=${sig(id, exp)}`)
+}
+export function reelFileSigOk(id: string, exp: string | null, given: string | null): boolean {
+  const e = Number(exp)
+  if (!given || !Number.isFinite(e) || e < Date.now() / 1000) return false
+  const a = Buffer.from(given), b = Buffer.from(sig(id, e))
+  return a.length === b.length && timingSafeEqual(a, b)
 }

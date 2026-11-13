@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { approveReel, checkReel, dismissReel, reelPlayUrl } from '@/app/actions/reels'
+import { approveReel, approveTikTok, checkReel, checkTikTok, dismissReel, reelPlayUrl } from '@/app/actions/reels'
 
-export type ReelRow = { id: string; title: string; caption: string; status: string; createdAt: string; permalink: string | null; error: string | null }
+export type ReelRow = { id: string; title: string; caption: string; status: string; createdAt: string; permalink: string | null; error: string | null; tiktok: { status: string; privacy: string; error: string | null } | null }
+
+const privacyNote = (p: string): string => (p === 'PUBLIC_TO_EVERYONE' ? 'public' : 'private (only you) until TikTok approves the app')
 
 /** One reel: watch it, edit the caption, Approve → Instagram (or Dismiss). */
-function ReelItem({ reel, instagramReady }: { reel: ReelRow; instagramReady: boolean }): React.ReactElement {
+function ReelItem({ reel, instagramReady, tiktokReady }: { reel: ReelRow; instagramReady: boolean; tiktokReady: boolean }): React.ReactElement {
   const router = useRouter()
   const [src, setSrc] = useState<string | null>(null)
   const [caption, setCaption] = useState(reel.caption)
@@ -16,6 +18,8 @@ function ReelItem({ reel, instagramReady }: { reel: ReelRow; instagramReady: boo
   const [error, setError] = useState<string | null>(reel.error)
   const [link, setLink] = useState<string | null>(reel.permalink)
   const [busy, setBusy] = useState(false)
+  const [tt, setTt] = useState(reel.tiktok)
+  const [ttError, setTtError] = useState<string | null>(reel.tiktok?.error ?? null)
 
   useEffect(() => {
     if (status !== 'pending' && status !== 'processing') return
@@ -35,6 +39,23 @@ function ReelItem({ reel, instagramReady }: { reel: ReelRow; instagramReady: boo
     return () => clearInterval(t)
   }, [status, reel.id, router])
 
+  // TikTok processes on its side too: check every 5 seconds until it's posted
+  useEffect(() => {
+    if (tt?.status !== 'processing') return
+    const t = setInterval(async () => {
+      const r = await checkTikTok(reel.id)
+      if (!r.ok) { setTtError(r.error); setTt((x) => (x ? { ...x, status: 'failed' } : x)); clearInterval(t); return }
+      if (r.status === 'posted') { setTt((x) => (x ? { ...x, status: 'posted' } : x)); clearInterval(t) }
+    }, 5000)
+    return () => clearInterval(t)
+  }, [tt?.status, reel.id])
+
+  async function toTikTok(): Promise<void> {
+    setBusy(true); setTtError(null)
+    const r = await approveTikTok(reel.id, caption)
+    setBusy(false)
+    if (r.ok) setTt({ status: 'processing', privacy: '', error: null }); else setTtError(r.error)
+  }
   async function approve(): Promise<void> {
     setBusy(true); setError(null)
     const r = await approveReel(reel.id, caption)
@@ -69,12 +90,27 @@ function ReelItem({ reel, instagramReady }: { reel: ReelRow; instagramReady: boo
         {status === 'processing' && <p className="text-muted-foreground">Instagram is processing the video. It posts by itself when it’s ready (usually under a minute). You can leave this page.</p>}
         {status === 'posted' && <p>Posted to Instagram{link ? <> · <a href={link} target="_blank" rel="noreferrer" className="underline">open it</a></> : null}</p>}
         {status === 'dismissed' && <p className="text-muted-foreground">Dismissed.</p>}
+        {status !== 'dismissed' && (
+          <div className="border-t pt-3">
+            {!tt || tt.status === 'failed' ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="secondary" disabled={busy || !tiktokReady} onClick={toTikTok}>Post to TikTok</Button>
+                {!tiktokReady && <span className="text-muted-foreground">Connect TikTok in Settings first.</span>}
+              </div>
+            ) : tt.status === 'processing' ? (
+              <p className="text-muted-foreground">TikTok is processing the video…</p>
+            ) : (
+              <p>Posted to TikTok{tt.privacy ? ` (${privacyNote(tt.privacy)})` : ''}.</p>
+            )}
+            {ttError && <p className="mt-2 rounded-md bg-red-500/10 px-3 py-2 text-red-600">{ttError}</p>}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
-export function ReelQueue({ reels, instagramReady }: { reels: ReelRow[]; instagramReady: boolean }): React.ReactElement {
+export function ReelQueue({ reels, instagramReady, tiktokReady }: { reels: ReelRow[]; instagramReady: boolean; tiktokReady: boolean }): React.ReactElement {
   if (!reels.length) return <p className="text-sm text-muted-foreground">No reels yet. The reel job adds one here each time it makes a video.</p>
-  return <div className="space-y-4">{reels.map((r) => <ReelItem key={r.id} reel={r} instagramReady={instagramReady} />)}</div>
+  return <div className="space-y-4">{reels.map((r) => <ReelItem key={r.id} reel={r} instagramReady={instagramReady} tiktokReady={tiktokReady} />)}</div>
 }
