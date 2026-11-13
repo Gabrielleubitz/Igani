@@ -76,8 +76,8 @@ export function reelFileSigOk(id: string, exp: string | null, given: string | nu
 }
 
 // ---- requests from the Reels page to the reel maker on the Mac (it checks every couple of minutes) ----
-export type ReelRequest = { id: string; kind: 'reel' | 'cover'; reelId?: string; topic?: string; requestedBy: string; at: number; state: 'queued' | 'working' | 'done' | 'failed'; message?: string | null; doneAt?: number }
-export type ReelWorker = { lastSeen: number | null; state: 'idle' | 'working'; message: string | null; since: number | null }
+export type ReelRequest = { id: string; kind: 'reel' | 'cover'; reelId?: string; topic?: string; requestedBy: string; at: number; state: 'queued' | 'working' | 'done' | 'failed'; message?: string | null; doneAt?: number; pct?: number; step?: string | null }
+export type ReelWorker = { lastSeen: number | null; state: 'idle' | 'working'; message: string | null; since: number | null; pct?: number | null }
 const REQ = 'reels.requests'
 const WORKER = 'reels.worker'
 
@@ -110,6 +110,16 @@ export async function finishRequest(id: string, ok: boolean, message: string | n
   r.state = ok ? 'done' : 'failed'
   r.message = message?.slice(0, 300) ?? null
   r.doneAt = Date.now()
+  if (ok) r.pct = 100
+  await writeRequests(list)
+}
+/** Progress from the Mac: 0–100 and what it's doing now. */
+export async function progressRequest(id: string, pct: number, step: string | null): Promise<void> {
+  const list = await listRequests()
+  const r = list.find((x) => x.id === id)
+  if (!r || r.state === 'done' || r.state === 'failed') return
+  r.pct = Math.max(r.pct ?? 0, Math.min(99, Math.round(pct)))
+  r.step = step?.slice(0, 120) ?? r.step ?? null
   await writeRequests(list)
 }
 export async function getWorker(): Promise<ReelWorker> {

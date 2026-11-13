@@ -18,13 +18,30 @@ export type StudioReel = {
   ig: { status: string; permalink: string | null; error: string | null }
   tiktok: { status: string; privacy: string; error: string | null } | null
   coverQueued: boolean
+  coverProgress: { pct: number; step: string } | null
 }
 export type StudioHeader = {
-  worker: { label: string; tone: 'ok' | 'busy' | 'off'; detail: string }
+  worker: { label: string; tone: 'ok' | 'busy' | 'off'; detail: string; pct?: number | null }
   nextRun: string
-  queue: { id: string; label: string; state: string; when: string }[]
+  queue: { id: string; label: string; state: string; when: string; pct: number; step: string | null }[]
   instagram: boolean
   tiktok: boolean
+}
+
+/** A slim progress bar with the percentage. */
+function Progress({ pct, step, dark }: { pct: number; step?: string | null; dark?: boolean }): React.ReactElement {
+  const v = Math.max(2, Math.min(100, Math.round(pct)))
+  return (
+    <div className="w-full space-y-1">
+      <div className={cn('flex items-center justify-between gap-2 text-xs', dark ? 'text-white/85' : 'text-muted-foreground')}>
+        <span className="truncate">{step ?? 'Working'}</span>
+        <span className="tabular-nums font-medium">{v}%</span>
+      </div>
+      <div className={cn('h-1.5 w-full overflow-hidden rounded-full', dark ? 'bg-white/20' : 'bg-muted')} role="progressbar" aria-valuenow={v} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-full rounded-full bg-[#3f7bff] transition-[width] duration-700 ease-out" style={{ width: `${v}%` }} />
+      </div>
+    </div>
+  )
 }
 
 const Dot = ({ tone }: { tone: 'ok' | 'busy' | 'off' }): React.ReactElement => (
@@ -121,7 +138,12 @@ function ReelCard({ reel, instagramReady, tiktokReady }: { reel: StudioReel; ins
         <button type="button" onClick={() => run('play', async () => setPlaying(await reelPlayUrl(reel.id)))} className="absolute inset-0 flex items-center justify-center bg-black/0 transition hover:bg-black/25" aria-label={`Play ${reel.title}`}>
           <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 text-[#0a0f1a] opacity-0 shadow-lg transition group-hover:opacity-100">{busy === 'play' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="ml-0.5 h-5 w-5" />}</span>
         </button>
-        {coverQueued && <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-xs text-white backdrop-blur"><Sparkles className="h-3.5 w-3.5" />New cover on its way</span>}
+        {(coverQueued || reel.coverProgress) && (
+          <div className="absolute inset-x-3 bottom-3 rounded-xl bg-black/65 p-3 backdrop-blur">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-white"><Sparkles className="h-3.5 w-3.5" />New cover</p>
+            <Progress pct={reel.coverProgress?.pct ?? 0} step={reel.coverProgress?.step ?? 'Waiting for your Mac'} dark />
+          </div>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div>
@@ -195,10 +217,10 @@ export function ReelStudio({ reels, header }: { reels: StudioReel[]; header: Stu
   const shown = groups[tab]
 
   // while something is queued or being made, keep the page fresh
-  const active = header.queue.some((q) => q.state === 'queued' || q.state === 'working')
+  const active = header.worker.tone === 'busy' || header.queue.some((q) => q.state === 'queued' || q.state === 'working')
   useEffect(() => {
     if (!active) return
-    const t = setInterval(() => router.refresh(), 30_000)
+    const t = setInterval(() => router.refresh(), 4_000)
     return () => clearInterval(t)
   }, [active, router])
 
@@ -225,9 +247,10 @@ export function ReelStudio({ reels, header }: { reels: StudioReel[]; header: Stu
       <div className="grid gap-3 rounded-2xl border bg-card p-4 text-sm sm:grid-cols-[1.4fr_1fr_1fr]">
         <div className="flex items-start gap-2.5">
           <Dot tone={header.worker.tone} />
-          <div className="-mt-1">
+          <div className="-mt-1 min-w-0 flex-1">
             <p className="font-medium">{header.worker.label}</p>
             <p className="text-xs text-muted-foreground">{header.worker.detail}</p>
+            {header.worker.tone === 'busy' && typeof header.worker.pct === 'number' && <div className="mt-2 max-w-sm"><Progress pct={header.worker.pct} step={null} /></div>}
           </div>
         </div>
         <div className="-mt-1">
@@ -239,12 +262,16 @@ export function ReelStudio({ reels, header }: { reels: StudioReel[]; header: Stu
           <span className="inline-flex items-center gap-1.5 text-xs"><Dot tone={header.tiktok ? 'ok' : 'off'} />TikTok</span>
         </div>
         {header.queue.length > 0 && (
-          <ul className="space-y-1 border-t pt-3 sm:col-span-3">
+          <ul className="space-y-3 border-t pt-3 sm:col-span-3">
             {header.queue.map((q) => (
-              <li key={q.id} className="flex items-center gap-2 text-xs">
-                {q.state === 'working' ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" /> : q.state === 'queued' ? <Dot tone="off" /> : q.state === 'failed' ? <Dot tone="off" /> : <Dot tone="ok" />}
-                <span className="font-medium">{q.label}</span>
-                <span className="text-muted-foreground">· {q.state === 'working' ? 'in progress' : q.state} · {q.when}</span>
+              <li key={q.id} className="space-y-1.5">
+                <div className="flex items-center gap-2 text-xs">
+                  {q.state === 'working' ? <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-500" /> : q.state === 'failed' ? <span className="h-2 w-2 rounded-full bg-red-500" /> : q.state === 'done' ? <Dot tone="ok" /> : <Dot tone="off" />}
+                  <span className="font-medium">{q.label}</span>
+                  <span className="text-muted-foreground">· {q.state === 'working' ? 'in progress' : q.state} · {q.when}</span>
+                </div>
+                {(q.state === 'queued' || q.state === 'working') && <div className="pl-5"><Progress pct={q.pct} step={q.step} /></div>}
+                {q.state === 'failed' && q.step && <p className="pl-5 text-xs text-red-600">{q.step}</p>}
               </li>
             ))}
           </ul>
