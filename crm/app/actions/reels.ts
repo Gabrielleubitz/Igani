@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireUser } from '@/lib/auth'
-import { getReel, updateReel } from '@/lib/reels'
+import { addRequest, getReel, listRequests, updateReel } from '@/lib/reels'
 import { objectInfo, playUrl } from '@/lib/video'
 import { containerStatus, createReelContainer, publishContainer } from '@/lib/instagram'
 import { directPost, postStatus } from '@/lib/tiktok'
@@ -102,4 +102,47 @@ export async function checkTikTok(id: string): Promise<ReelAction & { privacy?: 
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'TikTok check failed' }
   }
+}
+
+/** "Generate new reel": queues a request for the reel maker on the Mac (optionally with a topic idea). */
+export async function requestNewReel(topic: string): Promise<ReelAction> {
+  const user = await requireUser(['ADMIN'])
+  const open = (await listRequests()).filter((r) => r.kind === 'reel' && (r.state === 'queued' || r.state === 'working'))
+  if (open.length >= 3) return { ok: false, error: 'Three reels are already queued. Wait for one to finish.' }
+  await addRequest({ kind: 'reel', topic: topic.trim().slice(0, 300) || undefined, requestedBy: user.id })
+  revalidatePath('/admin/reels')
+  return { ok: true, status: 'queued' }
+}
+
+/** "New cover": the Mac makes fresh AI cover art for this reel and replaces its cover. */
+export async function requestNewCover(id: string): Promise<ReelAction> {
+  const user = await requireUser(['ADMIN'])
+  const reel = await getReel(id)
+  if (!reel) return { ok: false, error: 'Unknown reel.' }
+  if ((await listRequests()).some((r) => r.kind === 'cover' && r.reelId === id && (r.state === 'queued' || r.state === 'working'))) return { ok: false, error: 'A new cover is already on its way.' }
+  await addRequest({ kind: 'cover', reelId: id, requestedBy: user.id })
+  revalidatePath('/admin/reels')
+  return { ok: true, status: 'queued' }
+}
+
+/** Put a dismissed reel back in the review list. */
+export async function restoreReel(id: string): Promise<ReelAction> {
+  await requireUser(['ADMIN'])
+  await updateReel(id, { status: 'pending' })
+  revalidatePath('/admin/reels')
+  return { ok: true, status: 'pending' }
+}
+
+/** A short-lived download link for the video. */
+export async function reelDownloadUrl(id: string): Promise<string | null> {
+  await requireUser(['ADMIN'])
+  const reel = await getReel(id)
+  return reel ? playUrl(reel.key, 'video/mp4', 600) : null
+}
+
+export async function saveCaption(id: string, caption: string): Promise<ReelAction> {
+  await requireUser(['ADMIN'])
+  await updateReel(id, { caption: caption.slice(0, 2200) })
+  revalidatePath('/admin/reels')
+  return { ok: true, status: 'saved' }
 }

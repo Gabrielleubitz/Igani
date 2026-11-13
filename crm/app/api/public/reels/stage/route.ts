@@ -9,8 +9,8 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: Request): Promise<NextResponse> {
   if (!jobSecretOk(req.headers.get('authorization'))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!storageConfigured()) return NextResponse.json({ error: 'Video storage (R2) is not configured' }, { status: 503 })
-  const body = (await req.json().catch(() => ({}))) as { title?: string; caption?: string; coverMs?: number }
+  const body = (await req.json().catch(() => ({}))) as { title?: string; caption?: string; coverMs?: number; story?: string; file?: string }
   if (!body.title || !body.caption) return NextResponse.json({ error: 'title and caption are required' }, { status: 400 })
-  const reel = await addReel(body.title, body.caption, body.coverMs)
+  const reel = await addReel(body.title, body.caption, body.coverMs, { story: body.story, file: body.file })
   return NextResponse.json({ id: reel.id, uploadUrl: await uploadUrl(reel.key, 'video/mp4'), coverUploadUrl: await uploadUrl(reel.coverKey!, 'image/jpeg') })
 }

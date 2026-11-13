@@ -1,27 +1,57 @@
-import { PageIntro } from '@/components/PageIntro'
 import { requireUser } from '@/lib/auth'
-import { listReels } from '@/lib/reels'
+import { getWorker, listReels, listRequests } from '@/lib/reels'
 import { instagramStatus } from '@/lib/instagram'
 import { tiktokStatus } from '@/lib/tiktok'
 import { objectInfo, playUrl } from '@/lib/video'
-import { ReelQueue } from '@/components/admin/ReelQueue'
+import { ReelStudio, type StudioHeader, type StudioReel } from '@/components/admin/ReelStudio'
 
 export const metadata = { title: 'Reels' }
 export const dynamic = 'force-dynamic'
 
-/** Reels from the twice-a-day job, waiting for a person to approve them for Instagram. Admin only. */
+const TZ = 'Asia/Jerusalem'
+const fmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: TZ })
+const ago = (ms: number): string => {
+  const m = Math.round((Date.now() - ms) / 60000)
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`
+}
+/** The scheduled runs on the Mac: 11:45 and 18:45 Israel time. */
+function nextRun(): string {
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('en-GB', { hour: 'numeric', minute: 'numeric', hour12: false, timeZone: TZ }).formatToParts(now)
+  const mins = Number(parts.find((p) => p.type === 'hour')?.value) * 60 + Number(parts.find((p) => p.type === 'minute')?.value)
+  if (mins < 11 * 60 + 45) return 'Today at 11:45'
+  if (mins < 18 * 60 + 45) return 'Today at 18:45'
+  return 'Tomorrow at 11:45'
+}
+
+/** Reels from the reel maker: review, post to Instagram and TikTok, ask for new ones. Admin only. */
 export default async function ReelsPage(): Promise<React.ReactElement> {
   await requireUser(['ADMIN'])
-  const [reels, ig, tt] = await Promise.all([listReels(), instagramStatus(), tiktokStatus()])
-  const fmt = new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Asia/Jerusalem' })
+  const [reels, ig, tt, worker, requests] = await Promise.all([listReels(), instagramStatus(), tiktokStatus(), getWorker(), listRequests()])
   const shown = reels.filter((r) => r.status !== 'uploading')
-  // a 30-minute private link to each reel's cover (when the job uploaded one)
   const covers = await Promise.all(shown.map(async (r) => (r.coverKey && (await objectInfo(r.coverKey).catch(() => null)) ? playUrl(r.coverKey, 'image/jpeg', 1800) : null)))
-  const rows = shown.map((r, i) => ({ cover: covers[i] ?? null, id: r.id, title: r.title, caption: r.caption, status: r.status, createdAt: fmt.format(r.createdAt), permalink: r.permalink ?? null, error: r.error ?? null, tiktok: r.tiktok ? { status: r.tiktok.status, privacy: r.tiktok.privacy, error: r.tiktok.error ?? null } : null }))
-  return (
-    <div className="space-y-5">
-      <PageIntro title="Reels" hint="Videos made by the reel job. Watch each one, adjust the caption, and post it to Instagram and TikTok. Nothing posts without your approval." />
-      <ReelQueue reels={rows} instagramReady={ig.connected} tiktokReady={tt.connected} />
-    </div>
-  )
+  const openCover = new Set(requests.filter((q) => q.kind === 'cover' && (q.state === 'queued' || q.state === 'working')).map((q) => q.reelId))
+  const rows: StudioReel[] = shown.map((r, i) => ({
+    id: r.id, title: r.title, caption: r.caption, createdAt: fmt.format(r.createdAt), cover: covers[i] ?? null,
+    ig: { status: r.status, permalink: r.permalink ?? null, error: r.status === 'failed' ? (r.error ?? null) : null },
+    tiktok: r.tiktok ? { status: r.tiktok.status, privacy: r.tiktok.privacy, error: r.tiktok.error ?? null } : null,
+    coverQueued: openCover.has(r.id),
+  }))
+  const seen = worker.lastSeen
+  const awake = seen !== null && Date.now() - seen < 10 * 60_000
+  const header: StudioHeader = {
+    worker: worker.state === 'working' && awake
+      ? { label: 'Reel maker is working', tone: 'busy', detail: `${worker.message ?? 'Making a reel'} · since ${worker.since ? ago(worker.since) : 'a moment ago'}` }
+      : awake ? { label: 'Reel maker is ready', tone: 'ok', detail: `Your Mac checked in ${ago(seen!)}` }
+      : { label: 'Reel maker is offline', tone: 'off', detail: seen ? `Last seen ${ago(seen)}. Your Mac is probably asleep; requests wait until it wakes.` : 'Not connected yet: the Mac checker isn’t running.' },
+    nextRun: nextRun(),
+    queue: requests.filter((q) => q.state !== 'done' || Date.now() - (q.doneAt ?? 0) < 6 * 3600_000).slice(0, 5).map((q) => ({
+      id: q.id,
+      label: q.kind === 'reel' ? (q.topic ? `New reel: ${q.topic}` : 'New reel (its pick)') : `New cover: ${shown.find((r) => r.id === q.reelId)?.title ?? 'a reel'}`,
+      state: q.state, when: ago(q.doneAt ?? q.at),
+    })),
+    instagram: ig.connected,
+    tiktok: tt.connected,
+  }
+  return <ReelStudio reels={rows} header={header} />
 }
