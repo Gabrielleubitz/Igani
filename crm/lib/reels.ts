@@ -81,9 +81,12 @@ export type ReelWorker = { lastSeen: number | null; state: 'idle' | 'working'; m
 const REQ = 'reels.requests'
 const WORKER = 'reels.worker'
 
+/** A request the Mac took but never finished (it crashed, or slept mid-way) counts as failed after a while. */
+const STALE = { cover: 20 * 60_000, reel: 3 * 3600_000 }
 export async function listRequests(): Promise<ReelRequest[]> {
   const row = await prisma.siteSetting.findUnique({ where: { key: REQ } })
-  return ((row?.value as unknown as ReelRequest[]) ?? []).slice().sort((a, b) => b.at - a.at)
+  const list = ((row?.value as unknown as ReelRequest[]) ?? []).slice().sort((a, b) => b.at - a.at)
+  return list.map((r) => (r.state === 'working' && Date.now() - r.at > STALE[r.kind] ? { ...r, state: 'failed', message: r.message ?? 'Timed out: your Mac stopped before it finished. Try again.', doneAt: r.doneAt ?? r.at + STALE[r.kind] } : r))
 }
 async function writeRequests(list: ReelRequest[]): Promise<void> {
   const v = list.slice(0, 40) as unknown as Prisma.InputJsonValue
