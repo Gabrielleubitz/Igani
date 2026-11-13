@@ -40,7 +40,7 @@ export default async function BoardPage(props: { searchParams: Promise<SP> }): P
         values={f}
         sources={sources}
         reps={reps.map((r) => ({ id: r.id, label: r.name ?? r.email ?? r.id }))}
-        exportHref={`/sales/export?${new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString()}`}
+        exportHref={!isAdmin ? undefined : `/sales/export?${new URLSearchParams(Object.entries(f).filter(([, v]) => v) as [string, string][]).toString()}`}
       />
       <p className="mb-3 text-xs text-muted-foreground">
         {leads.length} contact{leads.length === 1 ? '' : 's'}{isAdmin ? '' : ' · you can move the cards you own'}

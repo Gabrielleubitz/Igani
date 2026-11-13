@@ -288,10 +288,10 @@ export async function bulkUpdateLeads(leadIds: string[], change: { assigneeId?: 
   }
 }
 
-/** CSV export of the contacts the user can see, matching the (URL-style) filters. */
+/** CSV export of the contacts, matching the (URL-style) filters. Admins only. */
 export async function exportLeadsCsv(params: Record<string, string | undefined> = {}): Promise<ActionResult<{ csv: string }>> {
   try {
-    const user = await requireUser()
+    const user = await requireUser(['ADMIN'])
     const leads = await prisma.lead.findMany({
       where: { AND: [buildLeadWhere(parseLeadFilters(params), user.id), leadScope(user)] },
       orderBy: { createdAt: 'desc' },

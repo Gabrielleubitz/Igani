@@ -195,9 +195,11 @@ export function LeadsTable({ rows, reps, archivedView, query, isAdmin, currentUs
             ))}
           </div>
         </details>
-        <Button size="sm" variant="outline" disabled={pending} onClick={download} className="ml-auto">
-          Export CSV
-        </Button>
+        {isAdmin ? (
+          <Button size="sm" variant="outline" disabled={pending} onClick={download} className="ml-auto">
+            Export CSV
+          </Button>
+        ) : null}
         {msg && !sel.size ? <span className="text-xs text-muted-foreground">{msg}</span> : null}
       </div>
       {sel.size ? (

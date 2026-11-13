@@ -10,9 +10,9 @@ import { prisma } from '@/lib/prisma'
 
 export const dynamic = 'force-dynamic'
 
-/** CSV export of leads the caller may see, honouring the same filters as the board. */
+/** CSV export of leads, honouring the same filters as the board. Admins only. */
 export async function GET(req: Request): Promise<Response> {
-  const user = await requireUser()
+  const user = await requireUser(['ADMIN'])
   const p = new URL(req.url).searchParams
   const f = { q: p.get('q') ?? undefined, status: p.get('status') ?? undefined, source: p.get('source') ?? undefined, owner: p.get('owner') ?? undefined }
   const scope: Prisma.LeadWhereInput = { AND: [leadScope(user), notArchivedBy(user.id)] }
