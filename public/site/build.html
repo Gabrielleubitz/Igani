@@ -1,25 +1,13 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Capabilities · Igani</title><meta name="description" content="Build your own: pick the pieces you need, see them stack on your website, and send it in. Marketing, sales and AI tools in one login."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap"><link rel="stylesheet" href="/site/home3.css"><link rel="stylesheet" href="/site/showcase.css"><link rel="stylesheet" href="/site/widgets3.css"><link rel="stylesheet" href="/site/home4.css"><link rel="stylesheet" href="/site/pages.css"><link rel="stylesheet" href="/site/bricks3d.css"><style>body{margin:0;font:14px var(--sans)}img{max-width:100%}[hidden]{display:none!important}.lg-hero{padding:clamp(48px,8vh,88px) 0 40px;background:linear-gradient(180deg,#fff 0%,var(--paper,#f4f6f9) 100%)}
 .lg-hero h1{margin:0;font:500 clamp(40px,4.7vw,66px)/1.03 var(--sans);letter-spacing:-.025em}
-.lg-hero h1 em{display:block;font-style:normal;color:var(--hot,#FF503C)}
+.lg-hero h1 em{display:block;font-style:normal;color:inherit}
 .lg-hero{position:relative;overflow:hidden}
 .lg-hero::before{content:"";position:absolute;right:0;top:0;width:55%;height:100%;background:radial-gradient(closest-side,rgba(255,80,60,.18),rgba(255,160,130,.08) 60%,transparent);pointer-events:none}
-.lh-g{position:relative;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);gap:40px;align-items:center}
-.lh-tag{display:inline-block;margin:0 0 18px;padding:6px 12px;border-radius:999px;background:var(--hot-tint,#ffece8);color:var(--hot-ink,#d93a26);font:600 12px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase}
+.lh-g{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:48px;align-items:center}
 .lh-pr{display:flex;flex-wrap:wrap;gap:8px 22px;margin:26px 0 0;padding:0;list-style:none;font-size:15px;color:var(--ink-2,#3a4152)}
 .lh-pr li::before{content:"✓";display:inline-grid;place-items:center;width:18px;height:18px;margin-right:8px;border-radius:50%;background:var(--hot-tint,#ffece8);color:var(--hot,#FF503C);font-size:11px;font-weight:700}
-.lh-art{display:flex;flex-direction:column-reverse;gap:7px;max-width:380px;margin:0 auto;padding:36px 0 10px;width:100%}
-.lh-b{position:relative;height:58px;border-radius:10px;color:#fff;font:600 16px/58px var(--sans);padding:0 20px;background:var(--c);box-shadow:0 16px 28px -16px rgba(12,23,48,.55),inset 0 1px 0 rgba(255,255,255,.2);animation:lhIn .6s cubic-bezier(.2,.9,.3,1.2) both,lhFl 6s ease-in-out infinite}
-.lh-b::before{content:"";position:absolute;left:14px;right:14px;top:-6px;height:7px;background:radial-gradient(circle at 8px 7px,var(--c) 0 5.5px,transparent 6px) 0 0/24px 7px repeat-x;filter:brightness(1.1)}
-.lh-b small{float:right;font:500 12px/58px var(--sans);opacity:.75}
-.lh-b:nth-child(1){--c:var(--navy-x,#0c1730);height:66px;animation-delay:0s,0s}
-.lh-b:nth-child(2){--c:#1f55b5;margin:0 14px 0 0;animation-delay:.12s,.3s}
-.lh-b:nth-child(3){--c:#c4730d;margin:0 0 0 22px;animation-delay:.24s,.6s}
-.lh-b:nth-child(4){--c:#FF503C;margin:0 26px 0 6px;animation-delay:.36s,.9s}
-.lh-b:nth-child(5){--c:#1f55b5;margin:0 0 0 34px;animation-delay:.48s,1.2s}
-@keyframes lhIn{from{opacity:0;transform:translateY(-26px)}to{opacity:1;transform:none}}
-@keyframes lhFl{0%,100%{translate:0 0}50%{translate:0 -3px}}
-@media (max-width:900px){.lg-hero::before{display:none}.lh-g{grid-template-columns:1fr;gap:20px}.lh-art{max-width:320px;padding-top:28px}.lh-b{height:48px;line-height:48px;font-size:14.5px}.lh-b small{line-height:48px}}
-@media (prefers-reduced-motion:reduce){.lh-b{animation:none}}
+.lh-panel{border-radius:22px;overflow:hidden;box-shadow:0 30px 60px -36px rgba(12,23,48,.4)}
+@media (max-width:900px){.lg-hero::before{display:none}.lh-g{grid-template-columns:1fr;gap:20px}.igani-bricks{aspect-ratio:8/5}}
 .lg-hero p{max-width:36rem;margin:20px 0 0;font-size:19px;line-height:1.5;color:var(--ink-2,#3a4152)}
 .lg-hero .pg-c{margin-top:28px}
 .lg-pre{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px}
@@ -61,6 +49,24 @@
 .lg-bar{display:none}
 @media (max-width:900px){.lg-grid{grid-template-columns:1fr}.lg-side{position:static;order:-1}.lg-bar{position:fixed;left:12px;right:12px;bottom:12px;z-index:30;display:flex;align-items:center;gap:12px;padding:10px 10px 10px 16px;border-radius:14px;background:var(--navy-x,#0c1730);color:#fff;box-shadow:0 12px 32px rgba(12,23,48,.4);transform:translateY(140%);transition:transform .25s}.lg-bar.on{transform:none}.lg-bar span{flex:1;font:500 14px/1.3 var(--sans)}.lg-bar a{flex:none;padding:12px 16px;border-radius:10px;background:#fff;color:var(--navy-x,#0c1730);font:600 14.5px/1 var(--sans);text-decoration:none}}
 @media (max-width:520px){.lg-opts{grid-template-columns:1fr}.lg-b{--h:40px}.lg-panel{padding:16px}.lg-pre button{padding:10px 13px;font-size:14px}}
+.igani-bricks{--ground:#eaf0fa;--main:#1f55b5;--second:#ffffff;--accent:#24407e;position:relative;width:100%;aspect-ratio:5/4;overflow:hidden;background:linear-gradient(140deg,#e3ecfb 0%,#f4f6fa 50%,#ffd9cf 85%,#ffb9a6 100%);font-family:var(--sans);cursor:pointer;border-radius:var(--r-lg,22px)}
+.igani-bricks .stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0}
+.igani-bricks .pool{position:absolute;left:360px;top:60px;width:1200px;height:900px;border-radius:50%;background:radial-gradient(closest-side,color-mix(in srgb,color-mix(in srgb,var(--ground) 70%,var(--second)) 60%,transparent),transparent)}
+.igani-bricks .edge{position:absolute;inset:0;background:radial-gradient(90% 80% at 50% 45%,transparent 55%,color-mix(in srgb,color-mix(in srgb,var(--ground) 80%,var(--accent)) 55%,transparent))}
+.igani-bricks svg.art{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.igani-bricks .lab{position:absolute;left:0;top:0;transform-origin:0 0}
+.igani-bricks .row{position:absolute;inset:0;display:flex;align-items:center;gap:16px;padding:0 22px 6px;color:var(--second)}
+.igani-bricks .row p{margin:0;font-size:54px;font-weight:600;letter-spacing:-0.02em;line-height:1;white-space:nowrap;text-shadow:0 1px 0 rgba(0,0,0,.14)}
+.igani-bricks .row--slim .chip{display:none}
+.igani-bricks .row--slim{padding:0 16px 6px;justify-content:center}
+.igani-bricks .chip{flex:none;width:68px;height:68px;border-radius:17px;background:rgba(255,255,255,.16);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.24);display:flex;align-items:center;justify-content:center}
+.igani-bricks .chip svg{width:40px;height:40px;fill:none;stroke:var(--second);stroke-width:2.3;stroke-linecap:round;stroke-linejoin:round}
+.igani-bricks .name{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--second)}
+.igani-bricks .name{gap:30px}
+.igani-bricks .name img{width:168px;height:168px;max-width:none;flex:none;margin-bottom:6px;filter:drop-shadow(0 4px 0 rgba(0,0,0,.14))}
+.igani-bricks .name p{position:relative}
+.igani-bricks .name p{margin:0 0 8px;font-size:176px;font-weight:500;letter-spacing:-0.02em;line-height:1;text-shadow:0 4px 0 rgba(0,0,0,.14)}
+.igani-bricks .edge{top:-420px;bottom:-420px}
 </style><link rel="canonical" href="https://www.igani.co/build">
 <link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png"><link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="manifest" href="/site.webmanifest"><meta name="theme-color" content="#ffffff">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Igani"><meta property="og:title" content="Capabilities · Igani"><meta property="og:description" content="Pick the bricks, we build the system: your website plus marketing, sales and AI back ends, in one login."><meta property="og:url" content="https://www.igani.co/build"><meta property="og:image" content="https://www.igani.co/og/default.jpg">
@@ -83,7 +89,7 @@ t.addEventListener("click",e=>{e.stopPropagation();set(!dd.classList.contains("o
 dd.addEventListener("mouseenter",()=>set(true));dd.addEventListener("mouseleave",()=>set(false));
 document.addEventListener("click",e=>{if(!dd.contains(e.target))set(false);});
 dd.addEventListener("keydown",e=>{if(e.key==="Escape"){set(false);t.focus();}});
-dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);});})();</script><main><section class="lg-hero" aria-label="Capabilities"><div class="w lh-g"><div><span class="lh-tag">Capabilities</span><h1>Build your own. <em>Snap on what you need.</em></h1><p>Your website is the base. Pick the pieces you want, watch them stack on top, then send it in. We do the tailoring.</p><div class="pg-c"><a class="bt bt--dark" href="#builder">Start building</a><a class="ln" href="/#contact">Or book a free demo <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div><ul class="lh-pr"><li>₪0 upfront</li><li>Live in 1–4 weeks</li><li>3 months of free fixes</li></ul></div><div class="lh-art" aria-hidden="true"><div class="lh-b">Your website <small>the base</small></div><div class="lh-b">Lead inbox</div><div class="lh-b">Booking</div><div class="lh-b">Automations</div><div class="lh-b">Reports</div></div></div></section>
+dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);});})();</script><main><section class="lg-hero" aria-label="Capabilities"><div class="w lh-g"><div><h1>Build your own. <em>Snap on what you need.</em></h1><p>Your website is the base. Pick the pieces you want, watch them stack on top, then send it in. We do the tailoring.</p><div class="pg-c"><a class="bt bt--dark" href="#builder">Start building</a><a class="ln" href="/#contact">Or book a free demo <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div><ul class="lh-pr"><li>₪0 upfront</li><li>Live in 1–4 weeks</li><li>3 months of free fixes</li></ul></div><div class="lh-panel"><div class="igani-bricks" id="igani-bricks" role="img" aria-label="Separate bricks labelled Website, Integrations, Booking app, Invoicing and Spreadsheets stack up and become one brick labelled Igani"></div></div></div></section>
 <section class="pg-s pg-s--paper" id="builder"><div class="w"><div class="pg-sh"><h2>Start from a typical setup. <em>Or from nothing.</em></h2><p>Tap a business to see what it usually picks, then add or remove pieces until it fits yours.</p></div>
 <div class="lg-pre" data-lg-pre role="group" aria-label="Typical setups"><button type="button" data-lg-p="re" aria-pressed="false">Real estate agency</button><button type="button" data-lg-p="loan" aria-pressed="false">Loan site</button><button type="button" data-lg-p="clinic" aria-pressed="false">Clinic or services</button><button type="button" data-lg-p="none" aria-pressed="false">Start empty</button></div>
 <p class="lg-why" data-lg-why>Pick a setup above, or just start tapping pieces.</p>
@@ -132,4 +138,274 @@ render();})();</script></section>
   </div>
   <div class="ft__b"><span>© 2026 Igani. All rights reserved. · <a href="/privacy">Privacy policy</a> · <a href="/terms">Terms of use</a></span><span>Your calls and data are private.</span></div>
 </div></footer><script>(()=>{const s=[...document.querySelectorAll("[data-scn]")];if(!s.length)return;const go=e=>{e.classList.add("is-in");const c=e.querySelector("[data-count]");if(c){let n=0;const m=+c.dataset.count;const t=setInterval(()=>{c.textContent=++n;if(n>=m)clearInterval(t);},350);}const k=e.querySelector("[data-clock]");if(k){let m=5;const t2=setInterval(()=>{m++;k.textContent="14:"+String(m).padStart(2,"0");if(m>=20)clearInterval(t2);},160);}};if(matchMedia("(prefers-reduced-motion: reduce)").matches||!("IntersectionObserver" in window)){s.forEach(e=>{e.classList.add("is-in","no-anim");const c=e.querySelector("[data-count]");if(c)c.textContent=c.dataset.count;});return;}const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){go(en.target);io.unobserve(en.target);}}),{threshold:.45});s.forEach(e=>io.observe(e));})();</script>
+<script>
+(function () {
+  const root = document.getElementById("igani-bricks");
+  if (!root) return;
+
+  // ---- timing helpers (everything on screen is worked out from t alone) ----
+  const clamp01 = (x) => Math.max(0, Math.min(1, x));
+  const seg = (t, a, b) => clamp01((t - a) / (b - a));
+  const lerp = (a, b, p) => a + (b - a) * p;
+  const eo = (x) => 1 - Math.pow(1 - x, 3);
+  const ei = (x) => x * x * x;
+  const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+  const DURATION = 5;     // the animation
+  const PLAY = 8;         // real seconds the animation takes (slowed from 5)
+  const HOLD = 1;         // how long the Igani brick stays before it plays again
+  const LOOP = true;      // set to false to play once and stay on the Igani brick
+
+  // Bricks of different lengths fit together into one even block: [layer, left edge, width] as fractions of the full width.
+  const LAYOUT = [[0, 0, 0.4], [0, 0.4, 0.6], [1, 0, 0.58], [1, 0.58, 0.42], [2, 0, 1]];
+  const NL = 3;
+  const LABELS = [
+    { text: "Website", icon: '<circle cx="12" cy="12" r="9.5"/><path d="M2.5 12h19M12 2.5c3 3 3 16 0 19M12 2.5c-3 3-3 16 0 19"/>' },
+    { text: "Integrations", icon: '<path d="M9 2.5v5M15 2.5v5M6 7.5h12v4a6 6 0 0 1-12 0zM12 17.5v4"/>' },
+    { text: "Booking app", icon: '<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M3 10h18M8 3v4M16 3v4"/>' },
+    { text: "Invoicing", icon: '<path d="M5 2.5h14v19l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6"/>' },
+    { text: "Spreadsheets", icon: '<rect x="3" y="3" width="18" height="18" rx="2.5"/><path d="M3 9h18M3 15h18M9 3v18"/>' },
+  ];
+
+  // The faces of a box: corner signs (x, top?, z) and outward normals.
+  const BOX = [
+    { n: [0, 1, 0], c: [[-1, 1, -1], [1, 1, -1], [1, 1, 1], [-1, 1, 1]], top: 1 },
+    { n: [0, -1, 0], c: [[-1, 0, -1], [-1, 0, 1], [1, 0, 1], [1, 0, -1]] },
+    { n: [0, 0, 1], c: [[-1, 1, 1], [1, 1, 1], [1, 0, 1], [-1, 0, 1]] },
+    { n: [0, 0, -1], c: [[1, 1, -1], [-1, 1, -1], [-1, 0, -1], [1, 0, -1]] },
+    { n: [1, 0, 0], c: [[1, 1, 1], [1, 1, -1], [1, 0, -1], [1, 0, 1]] },
+    { n: [-1, 0, 0], c: [[-1, 1, -1], [-1, 1, 1], [-1, 0, 1], [-1, 0, -1]] },
+  ];
+
+  const uid = "ib" + Math.random().toString(36).slice(2, 7);
+  function brickMarkup(id) {
+    let s = '<g class="' + id + '"><defs>';
+    for (let f = 0; f < 6; f++) s += '<linearGradient id="' + id + "-f" + f + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0"/><stop offset=".16"/><stop offset=".8"/><stop offset=".83"/><stop offset="1"/></linearGradient>';
+    s += '<linearGradient id="' + id + '-wall" x1="0" y1="0" x2="1" y2="0"><stop offset="0"/><stop offset=".22"/><stop offset=".5"/><stop offset=".78"/><stop offset="1"/></linearGradient>';
+    s += '<linearGradient id="' + id + '-cap" x1="0" y1="0" x2="1" y2="1"><stop offset="0"/><stop offset=".45"/><stop offset="1"/></linearGradient></defs>';
+    for (let f = 0; f < 6; f++) s += '<path data-face fill="url(#' + id + "-f" + f + ')" stroke="url(#' + id + "-f" + f + ')" stroke-linejoin="round"/>';
+    for (let k = 0; k < 8; k++) s += '<g data-stud><ellipse fill="rgba(0,0,0,.22)"/><path fill="url(#' + id + '-wall)"/><ellipse fill="url(#' + id + '-cap)" stroke="rgba(245,243,255,.65)" stroke-width="1.5"/><ellipse fill="rgba(245,243,255,.55)"/></g>';
+    return s + "</g>";
+  }
+
+  // ---- build ----
+  let svg = '<svg class="art" viewBox="0 0 1920 1080"><defs><radialGradient id="' + uid + '-soft"><stop offset="0" stop-color="rgba(0,0,0,.32)"/><stop offset="1" stop-color="rgba(0,0,0,0)"/></radialGradient></defs><ellipse class="shadow" fill="url(#' + uid + '-soft)"/>';
+  let labs = "";
+  LABELS.forEach((l, i) => {
+    svg += brickMarkup(uid + "-b" + i);
+    const w = LAYOUT[i][2];
+    labs += '<div class="lab" data-lab style="width:' + (480 * w).toFixed(1) + 'px;height:144px"><div class="row' + (w < 0.45 ? ' row--slim' : '') + '"><span class="chip"><svg viewBox="0 0 24 24">' + l.icon + "</svg></span><p>" + l.text + "</p></div></div>";
+  });
+  svg += "</svg>";
+  labs += '<div class="lab" data-name style="width:760px;height:300px"><div class="name"><img src="/site/img/igani-mark.png" alt=""><p>Igani</p></div></div>';
+
+  const stage = document.createElement("div");
+  stage.className = "stage";
+  stage.innerHTML = '<div class="pool"></div><div class="edge"></div>' + svg + '<div class="labels">' + labs + "</div>";
+  root.appendChild(stage);
+
+  const shadow = stage.querySelector(".shadow");
+  const name = stage.querySelector("[data-name]");
+  const labEls = stage.querySelectorAll("[data-lab]");
+  const bricks = LABELS.map((_, i) => {
+    const id = uid + "-b" + i;
+    const g = stage.querySelector("." + id);
+    const stops = (n) => Array.from(document.getElementById(n).children);
+    return {
+      g,
+      faces: Array.from(g.querySelectorAll("[data-face]")),
+      studs: Array.from(g.querySelectorAll("[data-stud]")),
+      fstops: [0, 1, 2, 3, 4, 5].map((f) => stops(id + "-f" + f)),
+      wall: stops(id + "-wall"),
+      cap: stops(id + "-cap"),
+      lab: labEls[i],
+      L: -0.3 + i * 0.32,
+      a0: [6, 96, 52, 18, 78][i],
+      Ly: LAYOUT[i][0], left: LAYOUT[i][1], ox: LAYOUT[i][1] + LAYOUT[i][2] / 2 - 0.5, wf: LAYOUT[i][2],
+      a1: 24,
+    };
+  });
+
+  // ---- one frame ----
+  const mix = (a, p, b) => "color-mix(in srgb, " + a + " " + Math.round(Math.max(0, Math.min(100, p))) + "%, " + b + ")";
+  const f1 = (v) => v.toFixed(1);
+
+  let CYCLE = 0;   // 0 = first build; later builds start on top of the previous Igani brick
+  function render(t, O) {
+    const R = Math.PI / 180, pitch = 30 * R, sp = Math.sin(pitch), cp = Math.cos(pitch);
+    const m = O ? O.m : eio(seg(t, 2.4, 3.15));                         // the stack becoming one brick
+    const gN = O ? 0 : eio(seg(t, 1.75, 2.15)) * (1 - eio(seg(t, 2.65, 3.15))); // bricks pull apart, then close
+    const gap = 0.55 * gN;
+    const after = Math.max(0, t - 3.22);
+    const spin = 360 * eio(seg(t, 2.05, 3.22)) + (t > 3.22 ? 6 * Math.sin(after * 9) * Math.exp(-after * 4) : 0);
+    const gy = O ? O.gy : 22 + 4 * eio(seg(t, 0, 2)) + 3 * eio(seg(t, 3.3, 5)) + spin;
+    const sqb = O ? 0 : Math.sin(Math.PI * seg(t, 3.15, 3.5)) * 0.07 * m;
+    const k = lerp(1, 1.6, m), Hs = lerp(1.35, 2.6 / NL, m) * (1 - sqb);
+    const Wd = 4 * k * (1 + sqb * 0.4), Dp = 2 * k * (1 + sqb * 0.4);
+    const s = O ? O.s : lerp(92, 122, eio(seg(t, 2.3, 3.3))) * (1 + 0.025 * eio(seg(t, 3.3, 5)));
+    const Hc = (NL * (Hs + gap) + 0.3) / 2;
+    const CX = 960, CY = 548 + Hc * cp * s;
+    const Lt = [0.4, 0.78, 0.48];
+    const ga = gy * R;
+    const proj = (x, y, z) => {
+      const ca = Math.cos(ga), sa = Math.sin(ga), X = x * ca + z * sa, Z = -x * sa + z * ca;
+      return [CX + X * s, CY - y * cp * s + Z * sp * s, Z * cp + y * sp];
+    };
+    const affine = (el, P0, P1, P3, lw, lh) => {
+      el.style.transform = "matrix(" + [(P1[0] - P0[0]) / lw, (P1[1] - P0[1]) / lw, (P3[0] - P0[0]) / lh, (P3[1] - P0[1]) / lh, P0[0], P0[1]].map((v) => v.toFixed(4)).join(",") + ")";
+    };
+    const labOn = O ? O.lab : 1 - seg(t, 1.75, 2.0);
+
+    bricks.forEach((b, i) => {
+      const base = (O || CYCLE > 0) && b.Ly === 0;   // on repeat builds the bottom layer is already there: it is the last Igani brick
+      if (O && !base) { b.g.style.opacity = 0; b.lab.style.opacity = 0; return; }
+      const fall = base ? 1 : seg(t, b.L - 0.42, b.L);
+      const kq = base ? 1 : seg(t, b.L, b.L + 0.36), sq = Math.sin(kq * Math.PI * 2) * (1 - kq) * 0.14;
+      let dip = 0;
+      for (let j = i + 1; j < 5; j++) dip += 0.06 * Math.sin(Math.PI * seg(t, bricks[j].L, bricks[j].L + 0.22));
+      const wi = (i % 2 ? 1 : -1) * (28 * (1 - eo(fall)) + 16 * gN) * R;   // twists only in the air
+      const solo = !O && m >= 0.999;   // once merged, draw the block as one brick so no seams show
+      if (solo && b.Ly < NL - 1) { b.g.style.opacity = 0; b.lab.style.opacity = 0; return; }
+      const cols = Math.max(1, Math.round(4 * b.wf));
+      const H = (solo ? NL * Hs : O ? Hs * (NL - (NL - 1) * O.q) : Hs) * (1 - sq), Wb = Wd * (b.wf - (solo ? 0 : 0.035 * Math.max(0, 1 - m * 1.5))) * (1 + sq * 0.4), Db = Dp * (1 + sq * 0.4), OX = (b.ox + Math.sign(b.ox) * 0.12 * gN) * Wd;   // a visible seam between pieces, and side-by-side pieces drift apart when the stack separates
+      const by = solo ? 0 : b.Ly * (Hs + gap) + 9 * (1 - ei(fall)) - dip;
+      const visible = base || t >= b.L - 0.42;
+      b.g.style.opacity = visible ? 1 : 0;
+      const cw = Math.cos(wi), sw = Math.sin(wi);
+      const world = (lx, ly, lz) => proj(OX + lx * cw + lz * sw, by + ly, -lx * sw + lz * cw);
+      const turn = (v) => { const ang = ga + wi, c = Math.cos(ang), sn = Math.sin(ang); return [v[0] * c + v[2] * sn, v[1], -v[0] * sn + v[2] * c]; };
+      const ci = mix(["#1f55b5", "#24407e", "#4b7be0", "#162f5e", "#6a93e6"][i], 100 * (1 - m), "var(--main)");   // each piece its own blue until they merge
+      const shine = O ? 1 : b.Ly === NL - 1 ? 1 : 1 - m, lip = O ? O.q : b.Ly === 0 ? 1 : 1 - m;
+
+      BOX.map((F, fi) => {
+        const pts = F.c.map((c) => world(c[0] * Wb / 2, c[1] * H, c[2] * Db / 2));
+        const n = turn(F.n), vis = n[1] * sp + n[2] * cp, lit = n[0] * Lt[0] + n[1] * Lt[1] + n[2] * Lt[2];
+        const el = b.faces[fi];
+        el.setAttribute("d", "M" + pts.map((p) => f1(p[0]) + " " + f1(p[1])).join(" L") + " Z");
+        const Lc = lit > 0 ? mix(ci, 100 - lit * 34, "var(--second)") : mix(ci, 100 + lit * 44, "black");
+        const st = b.fstops[fi];
+        if (F.top) {
+          st[0].style.stopColor = mix(Lc, 72, "var(--second)");
+          for (let z = 1; z < 5; z++) st[z].style.stopColor = Lc;
+        } else {
+          st[0].style.stopColor = mix(Lc, 100 - 42 * shine, "var(--second)");
+          st[1].style.stopColor = Lc;
+          st[2].style.stopColor = mix(Lc, 100 - 10 * lip, "black");
+          st[3].style.stopColor = mix(Lc, 100 - 30 * lip, "black");
+          st[4].style.stopColor = mix(Lc, 100 - 38 * lip, "black");
+        }
+        const inner = m > 0.97 && ((fi === 4 && b.ox + b.wf / 2 < 0.499) || (fi === 5 && b.ox - b.wf / 2 > -0.499));   // side touching a neighbour
+        el.style.opacity = vis > 0.01 && !inner ? 1 : 0;
+        el.style.strokeWidth = F.top ? 3 : 1.4;
+        return { el, z: pts.reduce((sum, p) => sum + p[2], 0) / 4 };
+      }).sort((p, q) => p.z - q.z).forEach((o) => b.g.appendChild(o.el));
+
+      const dark = mix(ci, 62, "black"), mid = mix(ci, 72, "var(--second)");
+      [dark, mix(ci, 88, "black"), mid, mix(ci, 88, "black"), dark].forEach((c, z) => { b.wall[z].style.stopColor = c; });
+      [mix(ci, 45, "var(--second)"), mix(ci, 78, "var(--second)"), ci].forEach((c, z) => { b.cap[z].style.stopColor = c; });
+      const above = bricks.filter((o) => o.Ly === b.Ly + 1);
+      const keep = O ? 1 : b.Ly < NL - 1 ? 1 - m : 1;
+      // a stud hides only once the brick that actually lands on top of it arrives
+      const studAlpha = (col) => {
+        const fx = b.left + b.wf / 2 + (col - (cols - 1) / 2) / 4;
+        const top = above.find((o) => fx >= o.left - 1e-6 && fx <= o.left + o.wf + 1e-6);
+        const cover = top && !O ? seg(t, top.L - 0.05, top.L) : 0;
+        return (1 - cover * (1 - gN)) * keep;
+      };
+      const Wu = Wd * (1 + sq * 0.4), r = 0.3 * Wu / 4, hs = 0.22 * Wu / 4, rx = r * s, ry = r * s * sp;
+
+      b.studs.map((st, si) => {
+        const col = si % 4, lx = (col - (cols - 1) / 2) * Wu / 4 + (O ? (1 - O.q) * ((Math.round(b.left * 4) + col + 0.5) / 4 - (b.left + b.wf / 2 + (col - (cols - 1) / 2) / 4)) * Wu : 0), lz = (si < 4 ? -0.25 : 0.25) * Db;
+        const c0 = world(lx, H, lz), c1 = world(lx, H + hs, lz);
+        const [shade, body, cap, glint] = st.children;
+        shade.setAttribute("cx", f1(c0[0] + rx * 0.12)); shade.setAttribute("cy", f1(c0[1] + ry * 0.25)); shade.setAttribute("rx", f1(rx * 1.15)); shade.setAttribute("ry", f1(ry * 1.2));
+        body.setAttribute("d", "M" + f1(c0[0] - rx) + " " + f1(c0[1]) + " L" + f1(c1[0] - rx) + " " + f1(c1[1]) + " L" + f1(c1[0] + rx) + " " + f1(c1[1]) + " L" + f1(c0[0] + rx) + " " + f1(c0[1]) + " A" + f1(rx) + " " + f1(ry) + " 0 0 1 " + f1(c0[0] - rx) + " " + f1(c0[1]) + " Z");
+        cap.setAttribute("cx", f1(c1[0])); cap.setAttribute("cy", f1(c1[1])); cap.setAttribute("rx", f1(rx)); cap.setAttribute("ry", f1(ry));
+        glint.setAttribute("cx", f1(c1[0] - rx * 0.38)); glint.setAttribute("cy", f1(c1[1] - ry * 0.25)); glint.setAttribute("rx", f1(rx * 0.32)); glint.setAttribute("ry", f1(ry * 0.3));
+        st.style.opacity = (col < cols ? studAlpha(col) : 0).toFixed(3);
+        return { el: st, z: c1[2] };
+      }).sort((p, q) => p.z - q.z).forEach((o) => b.g.appendChild(o.el));
+
+      b.zc = world(0, H / 2, 0)[2];
+      const Hl = O ? Hs : H, ly0 = (H + Hl) / 2, ly1 = (H - Hl) / 2;   // labels keep their own height while the brick is taller
+      const P0 = world(-Wb / 2, ly0, Db / 2), P1 = world(Wb / 2, ly0, Db / 2), P3 = world(-Wb / 2, ly1, Db / 2);
+      const lw = 480 * b.wf;
+      affine(b.lab, P0, P1, P3, lw, 144);
+      const fv = turn([0, 0, 1]);
+      b.lab.style.opacity = (visible ? labOn * clamp01((fv[1] * sp + fv[2] * cp - 0.15) / 0.2) : 0).toFixed(3);
+    });
+
+    // draw far bricks first so nearer bricks always cover them (solid, never see-through)
+    bricks.slice().sort((p, q) => (p.Ly - q.Ly) || ((p.zc || 0) - (q.zc || 0))).forEach((o) => o.g.parentNode.appendChild(o.g));   // the camera looks down, so lower layers go first, then back-to-front within a layer
+    const hb = O ? Hs * (NL - (NL - 1) * O.q) / 2 : NL * Hs / 2, hn = NL * Hs / 2;
+    affine(name, proj(-Wd / 2, hb + hn, Dp / 2), proj(Wd / 2, hb + hn, Dp / 2), proj(-Wd / 2, hb - hn, Dp / 2), 760, 300);
+    name.style.opacity = ((O ? O.name : eo(seg(t, 3.1, 3.45))) * clamp01((Math.cos(ga) * cp - 0.15) / 0.2)).toFixed(3);
+
+    const c = proj(0, 0, 0);
+    shadow.setAttribute("cx", f1(c[0] + 30)); shadow.setAttribute("cy", f1(c[1] + 10));
+    shadow.setAttribute("rx", f1(Wd * 0.85 * s)); shadow.setAttribute("ry", f1(Wd * 0.85 * s * sp * 0.75));
+    shadow.style.opacity = 0.95 * eo(seg(t, -0.6, -0.3));
+  }
+
+  // ---- fit the 1920×1080 stage to the box ----
+  function fit() {
+    // on phones, zoom in so the bricks fill the wider, taller box
+    const w = root.clientWidth, h = root.clientHeight, z = w < 600 ? 1.75 : 1, sc = w / 1920 * z;
+    const dy = window.matchMedia("(max-width:560px)").matches ? -0.021 * w : 0; /* phones: the short frame is centred on the bricks */
+    stage.style.transform = "translate(" + ((w - 1920 * sc) / 2).toFixed(1) + "px," + ((h - 1080 * sc) / 2 + dy).toFixed(1) + "px) scale(" + sc.toFixed(4) + ")";
+  }
+  fit();
+  if (window.ResizeObserver) new ResizeObserver(fit).observe(root);
+  else window.addEventListener("resize", fit);
+
+  // ---- play ----
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) { render(DURATION); return; }
+
+  const RESET = 1.6;   // real seconds for the Igani brick to settle into the base of the next tower
+  const GY_END = 22 + 4 + 3 + 360;
+  let start = null;
+  function frame(now) {
+    if (start === null) start = now;
+    let t = (now - start) / 1000;
+    const first = PLAY + HOLD, rest = RESET + PLAY + HOLD;
+    if (LOOP && t >= first) {
+      CYCLE = 1 + Math.floor((t - first) / rest);
+      const u = (t - first) % rest;
+      if (u < RESET) {
+        const p = u / RESET, q = eio(p);
+        render(DURATION, { q, m: 1 - q, gy: lerp(GY_END, 22 + 360, q), s: lerp(122 * 1.025, 92, q), lab: seg(p, 0.55, 1), name: 1 - seg(p, 0, 0.3) });
+      } else render(Math.min(u - RESET, PLAY) * DURATION / PLAY);
+    } else {
+      CYCLE = 0;
+      render(Math.min(t, PLAY) * DURATION / PLAY);
+    }
+    if (LOOP || t < PLAY) requestAnimationFrame(frame);
+  }
+  render(0);
+  const go = () => requestAnimationFrame(frame);
+  // wait for the font so labels don't jump
+  // shrink any label that does not fit its brick
+  function fitLabels() {
+    let min = 54;
+    labEls.forEach((el) => {
+      const row = el.querySelector(".row"), p = row.querySelector("p");
+      let fs = 54; p.style.fontSize = fs + "px";
+      while (row.scrollWidth > el.clientWidth && fs > 24) { fs -= 2; p.style.fontSize = fs + "px"; }
+      min = Math.min(min, fs);
+    });
+    labEls.forEach((el) => { el.querySelector("p").style.fontSize = min + "px"; });   // one size for every label
+  }
+  fitLabels();
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { fitLabels(); go(); });
+
+  // click to replay from the start
+  root.addEventListener("click", () => {
+    const wasDone = !LOOP && start !== null && (performance.now() - start) / 1000 >= PLAY;
+    start = null;
+    if (wasDone) go();
+  });
+})();
+
+</script>
 </body></html>
