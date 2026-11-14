@@ -1073,8 +1073,3 @@ a.bk3:hover{transform:translateY(-4px)}
 .rk3__stage{height:300px}
 @media (max-width:560px){.rk3__stage{height:252px}.rk3__frame .l{left:22px}.rk3__frame .r{right:22px}}
 
-/* brand accent #FF503C */
-::selection{background:#FF503C;color:#fff}
-.cta h2 em,.pg-s--navy .pg-sh h2 em{color:#FF503C}
-.cta .bt:hover{background:#FF503C;color:#fff}
-.sx-tag--hot{background:var(--hot-tint,#ffece8);color:var(--hot-ink,#d93a26)}
