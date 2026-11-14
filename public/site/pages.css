@@ -981,7 +981,7 @@ a.bk3:hover{transform:translateY(-4px)}
 @media (prefers-reduced-motion:reduce){.cfg__side li.new{animation:none}}
 .ft__da{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;padding:8px 0 40px;margin-bottom:40px;border-bottom:1px solid rgba(255,255,255,.12);color:#fff;text-decoration:none}.ft__da span{font:400 clamp(48px,8vw,112px)/.9 var(--mark,"Anton",Impact,sans-serif);text-transform:uppercase;letter-spacing:.005em;transform:skewX(-9deg);transform-origin:left;display:inline-block}.ft__da em{font:500 16px/1 var(--sans);font-style:normal;color:rgba(255,255,255,.75);transition:color .2s}.ft__da:hover em{color:#fff}
 .ft__da2{display:block;margin-top:18px;color:rgba(255,255,255,.55);text-decoration:none;font:400 22px/1 var(--mark,"Anton",Impact,sans-serif);text-transform:uppercase;letter-spacing:.01em;transform:skewX(-9deg);transform-origin:left;transition:color .2s}.ft__da2:hover{color:#fff}
-.ft__da3{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:0 0 56px;padding:26px 32px;border-radius:18px;background:#fff;color:var(--ink,#12151c);text-decoration:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}.ft__da3:hover{transform:translateY(-3px)}.ft__da3 span{font:400 clamp(40px,6vw,84px)/.95 var(--mark,"Anton",Impact,sans-serif);text-transform:uppercase;letter-spacing:.005em;transform:skewX(-9deg);transform-origin:left;display:inline-block}.ft__da3 em{display:inline-flex;align-items:center;padding:12px 18px;border-radius:999px;background:var(--ink,#12151c);color:#fff;font:600 15px/1 var(--sans);font-style:normal;white-space:nowrap}@media (max-width:560px){.ft__da3{padding:20px}}
+.ft__da3{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:0 0 56px;padding:26px 32px;border-radius:18px;background:#fff;color:var(--ink,#12151c);text-decoration:none;transition:transform .25s cubic-bezier(.34,1.56,.64,1)}.ft__da3:hover{transform:translateY(-3px)}.ft__da3:hover em{background:var(--hot,#FF503C)}.ft__da3 span{font:400 clamp(40px,6vw,84px)/.95 var(--mark,"Anton",Impact,sans-serif);text-transform:uppercase;letter-spacing:.005em;transform:skewX(-9deg);transform-origin:left;display:inline-block}.ft__da3 em{display:inline-flex;align-items:center;padding:12px 18px;border-radius:999px;background:var(--ink,#12151c);color:#fff;font:600 15px/1 var(--sans);font-style:normal;white-space:nowrap}@media (max-width:560px){.ft__da3{padding:20px}}
 /* Capabilities hero: the rack (one feature per garment) */
 .rk{display:grid;gap:22px;font-family:var(--sans)}
 .rk__stage{position:relative;padding:18px 8px 0}
@@ -1072,3 +1072,9 @@ a.bk3:hover{transform:translateY(-4px)}
 .rk3__rail::before{left:-4px}.rk3__rail::after{right:-4px}
 .rk3__stage{height:300px}
 @media (max-width:560px){.rk3__stage{height:252px}.rk3__frame .l{left:22px}.rk3__frame .r{right:22px}}
+
+/* brand accent #FF503C */
+::selection{background:#FF503C;color:#fff}
+.cta h2 em,.pg-s--navy .pg-sh h2 em{color:#FF503C}
+.cta .bt:hover{background:#FF503C;color:#fff}
+.sx-tag--hot{background:var(--hot-tint,#ffece8);color:var(--hot-ink,#d93a26)}
