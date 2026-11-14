@@ -1,6 +1,25 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Capabilities · Igani</title><meta name="description" content="Build your own: pick the pieces you need, see them stack on your website, and send it in. Marketing, sales and AI tools in one login."><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap"><link rel="stylesheet" href="/site/home3.css"><link rel="stylesheet" href="/site/showcase.css"><link rel="stylesheet" href="/site/widgets3.css"><link rel="stylesheet" href="/site/home4.css"><link rel="stylesheet" href="/site/pages.css"><link rel="stylesheet" href="/site/bricks3d.css"><style>body{margin:0;font:14px var(--sans)}img{max-width:100%}[hidden]{display:none!important}.lg-hero{padding:clamp(48px,8vh,88px) 0 40px;background:linear-gradient(180deg,#fff 0%,var(--paper,#f4f6f9) 100%)}
-.lg-hero h1{margin:0;font:500 clamp(42px,5.2vw,72px)/1.03 var(--sans);letter-spacing:-.025em}
-.lg-hero h1 em{display:block;font-style:normal;color:var(--blue,#1f55b5)}
+.lg-hero h1{margin:0;font:500 clamp(40px,4.7vw,66px)/1.03 var(--sans);letter-spacing:-.025em}
+.lg-hero h1 em{display:block;font-style:normal;color:var(--hot,#FF503C)}
+.lg-hero{position:relative;overflow:hidden}
+.lg-hero::before{content:"";position:absolute;right:0;top:0;width:55%;height:100%;background:radial-gradient(closest-side,rgba(255,80,60,.18),rgba(255,160,130,.08) 60%,transparent);pointer-events:none}
+.lh-g{position:relative;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);gap:40px;align-items:center}
+.lh-tag{display:inline-block;margin:0 0 18px;padding:6px 12px;border-radius:999px;background:var(--hot-tint,#ffece8);color:var(--hot-ink,#d93a26);font:600 12px/1 var(--sans);letter-spacing:.07em;text-transform:uppercase}
+.lh-pr{display:flex;flex-wrap:wrap;gap:8px 22px;margin:26px 0 0;padding:0;list-style:none;font-size:15px;color:var(--ink-2,#3a4152)}
+.lh-pr li::before{content:"✓";display:inline-grid;place-items:center;width:18px;height:18px;margin-right:8px;border-radius:50%;background:var(--hot-tint,#ffece8);color:var(--hot,#FF503C);font-size:11px;font-weight:700}
+.lh-art{display:flex;flex-direction:column-reverse;gap:7px;max-width:380px;margin:0 auto;padding:36px 0 10px;width:100%}
+.lh-b{position:relative;height:58px;border-radius:10px;color:#fff;font:600 16px/58px var(--sans);padding:0 20px;background:var(--c);box-shadow:0 16px 28px -16px rgba(12,23,48,.55),inset 0 1px 0 rgba(255,255,255,.2);animation:lhIn .6s cubic-bezier(.2,.9,.3,1.2) both,lhFl 6s ease-in-out infinite}
+.lh-b::before{content:"";position:absolute;left:14px;right:14px;top:-6px;height:7px;background:radial-gradient(circle at 8px 7px,var(--c) 0 5.5px,transparent 6px) 0 0/24px 7px repeat-x;filter:brightness(1.1)}
+.lh-b small{float:right;font:500 12px/58px var(--sans);opacity:.75}
+.lh-b:nth-child(1){--c:var(--navy-x,#0c1730);height:66px;animation-delay:0s,0s}
+.lh-b:nth-child(2){--c:#1f55b5;margin:0 14px 0 0;animation-delay:.12s,.3s}
+.lh-b:nth-child(3){--c:#c4730d;margin:0 0 0 22px;animation-delay:.24s,.6s}
+.lh-b:nth-child(4){--c:#FF503C;margin:0 26px 0 6px;animation-delay:.36s,.9s}
+.lh-b:nth-child(5){--c:#1f55b5;margin:0 0 0 34px;animation-delay:.48s,1.2s}
+@keyframes lhIn{from{opacity:0;transform:translateY(-26px)}to{opacity:1;transform:none}}
+@keyframes lhFl{0%,100%{translate:0 0}50%{translate:0 -3px}}
+@media (max-width:900px){.lg-hero::before{display:none}.lh-g{grid-template-columns:1fr;gap:20px}.lh-art{max-width:320px;padding-top:28px}.lh-b{height:48px;line-height:48px;font-size:14.5px}.lh-b small{line-height:48px}}
+@media (prefers-reduced-motion:reduce){.lh-b{animation:none}}
 .lg-hero p{max-width:36rem;margin:20px 0 0;font-size:19px;line-height:1.5;color:var(--ink-2,#3a4152)}
 .lg-hero .pg-c{margin-top:28px}
 .lg-pre{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 8px}
@@ -36,7 +55,7 @@
 @media (prefers-reduced-motion:reduce){.lg-b,.lg-b.gone{animation:none}}
 .lg-send{display:grid;gap:12px}
 .lg-sum{font-size:14.5px;line-height:1.45;color:var(--ink-2,#3a4152)}.lg-sum b{color:var(--ink,#12151c)}
-.lg-go{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border-radius:12px;background:var(--blue,#1f55b5);color:#fff;font:600 16px/1 var(--sans);text-decoration:none}
+.lg-go{display:flex;align-items:center;justify-content:center;gap:10px;min-height:52px;border-radius:12px;background:var(--hot,#FF503C);color:#fff;font:600 16px/1 var(--sans);text-decoration:none}
 .lg-go[aria-disabled="true"]{background:#c9d0dc;pointer-events:none}
 .lg-fine{margin:0;font-size:12.5px;color:var(--ink-3,#626a7c)}
 .lg-bar{display:none}
@@ -64,7 +83,7 @@ t.addEventListener("click",e=>{e.stopPropagation();set(!dd.classList.contains("o
 dd.addEventListener("mouseenter",()=>set(true));dd.addEventListener("mouseleave",()=>set(false));
 document.addEventListener("click",e=>{if(!dd.contains(e.target))set(false);});
 dd.addEventListener("keydown",e=>{if(e.key==="Escape"){set(false);t.focus();}});
-dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);});})();</script><main><section class="lg-hero" aria-label="Capabilities"><div class="w"><h1>Build your own. <em>Snap on what you need.</em></h1><p>Your website is the base. Pick the pieces you want, watch them stack on top, then send it in. We do the tailoring.</p><div class="pg-c"><a class="bt bt--dark" href="#builder">Start building</a><a class="ln" href="/#contact">Or book a free demo <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div></div></section>
+dd.addEventListener("focusout",e=>{if(!dd.contains(e.relatedTarget))set(false);});})();</script><main><section class="lg-hero" aria-label="Capabilities"><div class="w lh-g"><div><span class="lh-tag">Capabilities</span><h1>Build your own. <em>Snap on what you need.</em></h1><p>Your website is the base. Pick the pieces you want, watch them stack on top, then send it in. We do the tailoring.</p><div class="pg-c"><a class="bt bt--dark" href="#builder">Start building</a><a class="ln" href="/#contact">Or book a free demo <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div><ul class="lh-pr"><li>₪0 upfront</li><li>Live in 1–4 weeks</li><li>3 months of free fixes</li></ul></div><div class="lh-art" aria-hidden="true"><div class="lh-b">Your website <small>the base</small></div><div class="lh-b">Lead inbox</div><div class="lh-b">Booking</div><div class="lh-b">Automations</div><div class="lh-b">Reports</div></div></div></section>
 <section class="pg-s pg-s--paper" id="builder"><div class="w"><div class="pg-sh"><h2>Start from a typical setup. <em>Or from nothing.</em></h2><p>Tap a business to see what it usually picks, then add or remove pieces until it fits yours.</p></div>
 <div class="lg-pre" data-lg-pre role="group" aria-label="Typical setups"><button type="button" data-lg-p="re" aria-pressed="false">Real estate agency</button><button type="button" data-lg-p="loan" aria-pressed="false">Loan site</button><button type="button" data-lg-p="clinic" aria-pressed="false">Clinic or services</button><button type="button" data-lg-p="none" aria-pressed="false">Start empty</button></div>
 <p class="lg-why" data-lg-why>Pick a setup above, or just start tapping pieces.</p>
